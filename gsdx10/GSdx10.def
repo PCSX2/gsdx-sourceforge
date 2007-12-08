@@ -1,0 +1,33 @@
+; GSdx10.def : Declares the module parameters for the DLL.
+
+LIBRARY      "GSdx10"
+
+EXPORTS
+    ; Explicit exports can go here
+	PS2EgetLibType		
+	PS2EgetLibName		
+	PS2EgetLibVersion2	
+	PS2EgetCpuPlatform
+	GSsetBaseMem
+	GSinit				
+	GSshutdown			
+	GSopen				
+	GSclose		
+	GSreset
+	GSwriteCSR		
+	GSgifTransfer1		
+	GSgifTransfer2		
+	GSgifTransfer3		
+	GSvsync				
+	GSmakeSnapshot		
+	GSkeyEvent			
+	GSfreeze            
+	GSconfigure			
+	GStest				
+	GSabout				
+	GSreadFIFO
+	GSreadFIFO2
+	GSirqCallback
+	GSsetGameCRC
+	GSsetFrameSkip
+	; GSReplay
