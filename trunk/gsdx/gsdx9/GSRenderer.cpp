@@ -142,7 +142,7 @@ void GSRenderer::VSync(int field)
 bool GSRenderer::MakeSnapshot(char* path)
 {
 	CString fn;
-	fn.Format(_T("%sgsdx10_%s.bmp"), CString(path), CTime::GetCurrentTime().Format(_T("%Y%m%d%H%M%S")));
+	fn.Format(_T("%sgsdx9_%s.bmp"), CString(path), CTime::GetCurrentTime().Format(_T("%Y%m%d%H%M%S")));
 	return m_dev.SaveCurrent(fn);
 }
 
@@ -239,7 +239,11 @@ void GSRenderer::FinishFlip(FlipInfo src[2])
 
 	Merge(src, m_dev.m_tex_merge);
 
-	ID3D10Texture2D* current = m_dev.m_tex_merge;
+	//::D3DXSaveTextureToFile(_T("c:\\1.bmp"), D3DXIFF_BMP, src[0].t, NULL);
+	//::D3DXSaveTextureToFile(_T("c:\\2.bmp"), D3DXIFF_BMP, src[1].t, NULL);
+	//::D3DXSaveTextureToFile(_T("c:\\3.bmp"), D3DXIFF_BMP, m_dev.m_tex_merge, NULL);
+
+	IDirect3DTexture9* current = m_dev.m_tex_merge;
 
 	if(SMODE2->INT && m_interlace > 0)
 	{
@@ -256,13 +260,44 @@ void GSRenderer::FinishFlip(FlipInfo src[2])
 
 void GSRenderer::Merge(FlipInfo src[2], GSTexture2D& dst)
 {
-	// om
+	HRESULT hr;
 
-	m_dev.OMSetRenderTargets(dst, NULL);
+	hr = m_dev->BeginScene();
 
-	m_dev.OMSet(m_dev.m_convert.dss, 0, m_dev.m_convert.bs, 0);
+	hr = m_dev->SetRenderTarget(0, dst);
+	hr = m_dev->SetDepthStencilSurface(NULL);
 
-	// ia
+	hr = m_dev->SetTexture(0, src[0].t ? src[0].t : m_dev.m_tex_1x1);
+	hr = m_dev->SetTexture(1, src[1].t ? src[1].t : m_dev.m_tex_1x1);
+
+    hr = m_dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+    hr = m_dev->SetRenderState(D3DRS_LIGHTING, FALSE);
+	hr = m_dev->SetRenderState(D3DRS_ZENABLE, FALSE);
+	hr = m_dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+	hr = m_dev->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE); 
+	hr = m_dev->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
+	hr = m_dev->SetRenderState(D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_RGBA);
+
+	hr = m_dev->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
+	hr = m_dev->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
+	hr = m_dev->SetSamplerState(1, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
+	hr = m_dev->SetSamplerState(1, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
+
+	hr = m_dev->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+	hr = m_dev->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+	hr = m_dev->SetSamplerState(1, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+	hr = m_dev->SetSamplerState(1, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+
+	const float c[] = 
+	{
+		(float)BGCOLOR->B / 255, (float)BGCOLOR->G / 255, (float)BGCOLOR->R / 255, (float)PMODE->ALP / 255,
+		(float)IsEnabled(0), (float)IsEnabled(1), (float)PMODE->MMOD - 0.1f, (float)PMODE->SLBG - 0.1f,
+	};
+
+	hr = m_dev->SetPixelShaderConstantF(0, c, countof(c) / 4);
+
+	hr = m_dev->SetVertexShader(NULL);
+	hr = m_dev->SetPixelShader(m_dev.m_ps_merge);
 
 	CRect r[2];
 	
@@ -271,79 +306,42 @@ void GSRenderer::Merge(FlipInfo src[2], GSTexture2D& dst)
 
 	VertexPT2 vertices[] =
 	{
-		{-1, +1, 0.5f, 1.0f, 
+		{0, 0, 0.5f, 1.0f, 
 			src[0].s.x * r[0].left / src[0].t.m_desc.Width, src[0].s.y * r[0].top / src[0].t.m_desc.Height,
 			src[1].s.x * r[1].left / src[1].t.m_desc.Width, src[1].s.y * r[1].top / src[1].t.m_desc.Height},
-		{+1, +1, 0.5f, 1.0f, 
+		{(float)dst.m_desc.Width, 0, 0.5f, 1.0f, 
 			src[0].s.x * r[0].right / src[0].t.m_desc.Width, src[0].s.y * r[0].top / src[0].t.m_desc.Height,
 			src[1].s.x * r[1].right / src[1].t.m_desc.Width, src[1].s.y * r[1].top / src[1].t.m_desc.Height},
-		{-1, -1, 0.5f, 1.0f, 
-			src[0].s.x * r[0].left / src[0].t.m_desc.Width, src[0].s.y * r[0].bottom / src[0].t.m_desc.Height,
-			src[1].s.x * r[1].left / src[1].t.m_desc.Width, src[1].s.y * r[1].bottom / src[1].t.m_desc.Height}, 
-		{+1, -1, 0.5f, 1.0f,
+		{(float)dst.m_desc.Width, (float)dst.m_desc.Height, 0.5f, 1.0f, 
 			src[0].s.x * r[0].right / src[0].t.m_desc.Width, src[0].s.y * r[0].bottom / src[0].t.m_desc.Height,
 			src[1].s.x * r[1].right / src[1].t.m_desc.Width, src[1].s.y * r[1].bottom / src[1].t.m_desc.Height}, 
+		{0, (float)dst.m_desc.Height, 0.5f, 1.0f, 
+			src[0].s.x * r[0].left / src[0].t.m_desc.Width, src[0].s.y * r[0].bottom / src[0].t.m_desc.Height,
+			src[1].s.x * r[1].left / src[1].t.m_desc.Width, src[1].s.y * r[1].bottom / src[1].t.m_desc.Height}, 
 	};
 
-	m_dev.IASet(m_dev.m_merge.vb, 4, vertices, m_dev.m_merge.il, D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-
-	// vs
-
-	m_dev.VSSet(m_dev.m_merge.vs, NULL);
-
-	// gs
-
-	m_dev.GSSet(NULL);
-
-	// ps
-	
-	MergeCB* cb = NULL;
-	
-	if(SUCCEEDED(m_dev.m_merge.cb->Map(D3D10_MAP_WRITE_DISCARD, NULL, (void**)&cb)))
+	for(int i = 0; i < countof(vertices); i++)
 	{
-		cb->BGColor.x = (float)BGCOLOR->R / 255;
-		cb->BGColor.y = (float)BGCOLOR->G / 255;
-		cb->BGColor.z = (float)BGCOLOR->B / 255;
-		cb->BGColor.w = 0;
-		cb->Alpha = (float)PMODE->ALP / 255;
-		cb->EN1 = (float)IsEnabled(0);
-		cb->EN2 = (float)IsEnabled(1);
-		cb->MMOD = !!PMODE->MMOD;
-		cb->SLBG = !!PMODE->SLBG;
-
-		m_dev.m_merge.cb->Unmap();
+		vertices[i].x -= 0.5f;
+		vertices[i].y -= 0.5f;
 	}
-	
-	m_dev->PSSetConstantBuffers(0, 1, &m_dev.m_merge.cb.p);
 
-	m_dev.PSSetShaderResources(
-		src[0].t ? src[0].t : m_dev.m_tex_1x1, 
-		src[1].t ? src[1].t : m_dev.m_tex_1x1);
+	hr = m_dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX2);
 
-	m_dev.PSSet(m_dev.m_merge.ps, m_dev.m_ss_linear);
+	hr = m_dev->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 2, vertices, sizeof(vertices[0]));
 
-	// rs
-
-	m_dev.RSSet(dst.m_desc.Width, dst.m_desc.Height);
-
-	//
-
-	m_dev->Draw(4, 0);
-
-	m_dev.EndScene();
+	hr = m_dev->EndScene();
 }
 
 void GSRenderer::Present()
 {
 	m_perfmon.Put(GSPerfMon::Frame);
 
-	HRESULT hr;
-
 	CRect cr;
 
 	GetClientRect(&cr);
 
-	D3D10_TEXTURE2D_DESC desc;
+	D3DSURFACE_DESC desc;
 
 	memset(&desc, 0, sizeof(desc));
 
@@ -356,13 +354,10 @@ void GSRenderer::Present()
 		m_dev.ResetDevice(cr.Width(), cr.Height());		
 	}
 
-	CComPtr<ID3D10RenderTargetView> rtv;
+	m_dev->SetRenderTarget(0, m_dev.m_backbuffer);
+	m_dev->SetDepthStencilSurface(NULL);
 
-	hr = m_dev->CreateRenderTargetView(m_dev.m_backbuffer, NULL, &rtv.p);
-
-	float color[4] = {0, 0, 0, 0};
-
-	m_dev->ClearRenderTargetView(rtv, color);
+	m_dev->Clear(0, NULL, D3DCLEAR_TARGET, 0, 1.0f, 0);
 
 	if(m_dev.m_tex_current)
 	{

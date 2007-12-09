@@ -42,6 +42,6 @@ void GSTextureCache::GSDepthStencil::Update()
 {
 	__super::Update();
 
-	// TODO: dx 10.1 could update ds directly
+	// TODO
 }
 

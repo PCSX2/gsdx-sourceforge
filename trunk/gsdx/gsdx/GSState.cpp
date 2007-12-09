@@ -1089,6 +1089,8 @@ void GSState::WriteCSR(UINT32 csr)
 
 void GSState::ReadFIFO(BYTE* mem, int size)
 {
+	GSPerfMonAutoTimer pmat(m_perfmon);
+
 	Flush();
 
 	Read(mem, size * 16);
@@ -1096,6 +1098,8 @@ void GSState::ReadFIFO(BYTE* mem, int size)
 
 void GSState::Transfer(BYTE* mem, int size, int index)
 {
+	GSPerfMonAutoTimer pmat(m_perfmon);
+
 	GIFPath& path = m_path[index];
 
 	while(size > 0)
@@ -1273,7 +1277,7 @@ int GSState::Defrost(const freezeData* fd)
 		return -1;
 	}
 
-	if(fd->size != m_vmsize) 
+	if(fd->size != m_sssize) 
 	{
 		return -1;
 	}
@@ -1312,3 +1316,151 @@ int GSState::Defrost(const freezeData* fd)
 	return 0;
 }
 
+bool GSState::DetectBadFrame(int crc, int& skip)
+{
+	DWORD FBP = m_context->FRAME.Block();
+	DWORD FPSM = m_context->FRAME.PSM;
+
+	bool TME = PRIM->TME;
+	DWORD TBP0 = m_context->TEX0.TBP0;
+	DWORD TPSM = m_context->TEX0.PSM;
+
+	switch(crc)
+	{
+	case 0x21068223: // okami ntsc/us
+	case 0x891f223f: // okami pal/fr
+
+		if(skip == 0)
+		{
+			if(TME && FBP == 0x00e00 && FPSM == PSM_PSMCT32 && TBP0 == 0x00000 && TPSM == PSM_PSMCT32)
+			{
+				skip = 1000;
+			}
+		}
+		else
+		{
+			if(TME && FBP == 0x00e00 && FPSM == PSM_PSMCT32 && TBP0 == 0x03800 && TPSM == PSM_PSMT4)
+			{
+				skip = 0;
+			}
+		}
+
+		break;
+
+	case 0x053D2239: // mgs3s1 ntsc/us
+	// TODO: case 0x086273D2: mgs3 snake eater pal/fr
+
+		if(skip == 0)
+		{
+			if(TME && FBP == 0x02000 && FPSM == PSM_PSMCT32 && (TBP0 == 0x00000 || TBP0 == 0x01000) && TPSM == PSM_PSMCT24)
+			{
+				skip = 1000; // 76, 79
+			}
+			else if(TME && FBP == 0x02800 && FPSM == PSM_PSMCT24 && (TBP0 == 0x00000 || TBP0 == 0x01000) && TPSM == PSM_PSMCT32)
+			{
+				skip = 1000; // 69
+			}
+		}
+		else 
+		{
+			if(!TME && (FBP == 0x00000 || FBP == 0x01000) && FPSM == PSM_PSMCT32)
+			{
+				skip = 0;
+			}
+		}
+
+		break;
+
+	case 0x278722BF: // dbz bt2 ntsc/us
+
+		if(skip == 0)
+		{
+			if(TME && /*FBP == 0x00000 && FPSM == PSM_PSMCT16 &&*/ TBP0 == 0x02000 && TPSM == PSM_PSMZ16)
+			{
+				skip = 27;
+			}
+		}
+
+		break;
+
+	case 0x72B3802A: // sfex3 ntsc/us
+
+		if(skip == 0)
+		{
+			if(TME && FBP == 0x00f00 && FPSM == PSM_PSMCT16 && (TBP0 == 0x00500 || TBP0 == 0x00000) && TPSM == PSM_PSMCT32)
+			{
+				skip = 4;
+			}
+		}
+
+		break;
+
+	case 0x28703748: // bully ntsc/us
+
+		if(skip == 0)
+		{
+			if(TME && (FBP == 0x00000 || FBP == 0x01180) && (TBP0 == 0x00000 || TBP0 == 0x01180) && FBP == TBP0 && FPSM == PSM_PSMCT32 && FPSM == TPSM)
+			{
+				return true; // allowed for bully
+			}
+
+			if(TME && (FBP == 0x00000 || FBP == 0x01180) && FPSM == PSM_PSMCT16S && TBP0 == 0x02300 && TPSM == PSM_PSMZ16S)
+			{
+				skip = 6;
+			}
+		}
+		else 
+		{
+			if(!TME && (FBP == 0x00000 || FBP == 0x01180) && FPSM == PSM_PSMCT32)
+			{
+				skip = 0;
+			}
+		}
+
+		break;
+
+	case 0xC19A374E: // shadow of the colossus ntsc/us
+
+		if(skip == 0)
+		{
+			if(TME && FBP == 0x02b80 && FPSM == PSM_PSMCT24 && TBP0 == 0x01e80 && TPSM == PSM_PSMCT24)
+			{
+				skip = 9;
+			}
+			else if(TME && FBP == 0x01e80 && FPSM == PSM_PSMCT32 && TBP0 == 0x03880 && TPSM == PSM_PSMCT32)
+			{
+				skip = 8;
+			}
+		}
+
+		break;
+	}
+
+	if(skip == 0)
+	{
+		if(TME)
+		{
+			if(HasSharedBits(FBP, FPSM, TBP0, TPSM))
+			{
+				skip = 1;
+			}
+
+			// depth textures (bully, mgs3s1 intro)
+
+			if(TPSM == PSM_PSMZ32 || TPSM == PSM_PSMZ24 || TPSM == PSM_PSMZ16 || TPSM == PSM_PSMZ16S)
+			{
+				// m_perfmon.Put(GSPerfMon::DepthTexture);
+				skip = 1;
+			}
+		}
+	}
+
+	if(skip > 0)
+	{
+		skip--;
+
+		return true;
+	}
+
+	return false;
+}

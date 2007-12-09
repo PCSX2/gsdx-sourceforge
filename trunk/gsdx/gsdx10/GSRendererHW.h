@@ -54,7 +54,6 @@ protected:
 
 	void SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache::GSDepthStencil* ds);
 	bool OverrideInput(int& prim, GSTextureCache::GSTexture* tex);	
-	bool DetectBadFrame();
 
 public:
 	GSRendererHW(BYTE* base, bool mt, void (*irq)(), bool nloophack);

@@ -181,7 +181,7 @@ public:
 
 	ID3D10Texture2D* Interlace(GSTexture2D& st, CSize ds, int field, int mode, float yoffset);
 
-	HRESULT CompileShader(ID3D10VertexShader** ps, UINT id, LPCSTR entry, D3D10_INPUT_ELEMENT_DESC* layout, int count, ID3D10InputLayout** pl, D3D10_SHADER_MACRO* macro = NULL);
+	HRESULT CompileShader(ID3D10VertexShader** vs, UINT id, LPCSTR entry, D3D10_INPUT_ELEMENT_DESC* layout, int count, ID3D10InputLayout** pl, D3D10_SHADER_MACRO* macro = NULL);
 	HRESULT CompileShader(ID3D10GeometryShader** gs, UINT id, LPCSTR entry, D3D10_SHADER_MACRO* macro = NULL);
 	HRESULT CompileShader(ID3D10PixelShader** ps, UINT id, LPCSTR entry, D3D10_SHADER_MACRO* macro = NULL);
 };

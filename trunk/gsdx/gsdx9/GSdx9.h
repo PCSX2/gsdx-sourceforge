@@ -19,29 +19,21 @@
  *
  */
 
-#include "stdafx.h"
-#include "GSTextureCache.h"
-#include "GSRendererHW.h"
+#pragma once
 
-GSTextureCache::GSDepthStencil::GSDepthStencil(GSTextureCache* tc)
-	: GSSurface(tc)
-	, m_used(false)
+#ifndef __AFXWIN_H__
+	#error include 'stdafx.h' before including this file for PCH
+#endif
+
+#include "resource.h"
+
+class GSdx9App : public CWinApp
 {
-}
+public:
+	GSdx9App();
 
-bool GSTextureCache::GSDepthStencil::Create(int w, int h)
-{
-	HRESULT hr;
+public:
+	virtual BOOL InitInstance();
 
-	hr = m_tc->m_renderer->m_dev.CreateDepthStencil(m_texture, w, h);
-
-	return SUCCEEDED(hr);
-}
-
-void GSTextureCache::GSDepthStencil::Update()
-{
-	__super::Update();
-
-	// TODO: dx 10.1 could update ds directly
-}
-
+	DECLARE_MESSAGE_MAP()
+};

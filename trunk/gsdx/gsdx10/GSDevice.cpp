@@ -496,7 +496,6 @@ void GSDevice::Recycle(GSTexture2D& t)
 
 		while(m_pool.GetCount() > 200)
 		{
-//_tprintf(_T("Destroy %d x %d (%d)\n"), m_pool.GetTail().m_desc.Width, m_pool.GetTail().m_desc.Height, m_pool.GetCount());
 			m_pool.RemoveTail();
 		}
 

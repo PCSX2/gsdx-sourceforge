@@ -19,29 +19,21 @@
  *
  */
 
-#include "stdafx.h"
-#include "GSTextureCache.h"
-#include "GSRendererHW.h"
+#pragma once
 
-GSTextureCache::GSDepthStencil::GSDepthStencil(GSTextureCache* tc)
-	: GSSurface(tc)
-	, m_used(false)
+#include "GSRenderer.h"
+
+struct VertexNull {};
+
+class GSRendererNull : public GSRendererT<VertexNull>
 {
-}
+protected:
+	void VertexKick(bool skip);
+	void DrawingKick(bool skip);
+	void Draw() {}
+	void Flip();
 
-bool GSTextureCache::GSDepthStencil::Create(int w, int h)
-{
-	HRESULT hr;
-
-	hr = m_tc->m_renderer->m_dev.CreateDepthStencil(m_texture, w, h);
-
-	return SUCCEEDED(hr);
-}
-
-void GSTextureCache::GSDepthStencil::Update()
-{
-	__super::Update();
-
-	// TODO: dx 10.1 could update ds directly
-}
-
+public:
+	GSRendererNull(BYTE* base, bool mt, void (*irq)(), bool nloophack);
+	virtual ~GSRendererNull();
+};

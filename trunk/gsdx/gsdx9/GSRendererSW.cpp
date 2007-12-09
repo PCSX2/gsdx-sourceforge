@@ -330,14 +330,32 @@ void GSRendererSW<Vertex>::Flip()
 
 		CLAMP.WMS = CLAMP.WMT = 1;
 
-		static BYTE* buff = (BYTE*)_aligned_malloc(1024 * 1024 * 4, 16);
-		static int pitch = 1024 * 4;
+		D3DLOCKED_RECT lr;
 
-		m_mem.ReadTexture(CRect(0, 0, w, h), buff, pitch, TEX0, m_env.TEXA, CLAMP);
+		if(SUCCEEDED(m_texture[i]->LockRect(0, &lr, NULL, 0)))
+		{
+			if(((UINT_PTR)lr.pBits & 0xf) == 0)
+			{
+				m_mem.ReadTexture(CRect(0, 0, w, h), (BYTE*)lr.pBits, lr.Pitch, TEX0, m_env.TEXA, CLAMP);
+			}
+			else
+			{
+				static BYTE* buff = (BYTE*)_aligned_malloc(1024 * 1024 * 4, 16);
+				static int pitch = 1024 * 4;
 
-		D3D10_BOX box = {0, 0, 0, w, h, 1};
+				m_mem.ReadTexture(CRect(0, 0, w, h), buff, pitch, TEX0, m_env.TEXA, CLAMP);
 
-		m_dev->UpdateSubresource(m_texture[i], 0, &box, buff, pitch, 0);
+				BYTE* src = buff;
+				BYTE* dst = (BYTE*)lr.pBits;
+
+				for(int i = 0; i < h; i++, src += pitch, dst += lr.Pitch)
+				{
+					memcpy(dst, src, min(pitch, lr.Pitch));
+				}
+			}
+
+			m_texture[i]->UnlockRect(0);
+		}
 
 		src[i].t = m_texture[i];
 		src[i].s = GSScale(1, 1);
