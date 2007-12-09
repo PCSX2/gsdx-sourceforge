@@ -25,22 +25,11 @@
 
 #pragma pack(push, 1)
 
-struct MergeCB
-{
-	D3DXVECTOR4 BGColor;
-	float Alpha;
-	float EN1;
-	float EN2;
-	int MMOD;
-	int SLBG;
-	float Padding[3];
-};
-
 struct InterlaceCB
 {
 	D3DXVECTOR2 ZrH;
 	float hH;
-	float _pad;
+	float _pad[1];
 };
 
 struct VertexPT1
@@ -121,15 +110,6 @@ public: // TODO
 		CComPtr<ID3D10DepthStencilState> dss;
 		CComPtr<ID3D10BlendState> bs;
 	} m_convert;
-
-	struct
-	{
-		CComPtr<ID3D10Buffer> vb;
-		CComPtr<ID3D10InputLayout> il;
-		CComPtr<ID3D10VertexShader> vs;
-		CComPtr<ID3D10PixelShader> ps;
-		CComPtr<ID3D10Buffer> cb;
-	} m_merge;
 
 	struct
 	{

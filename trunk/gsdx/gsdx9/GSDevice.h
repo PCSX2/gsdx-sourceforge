@@ -38,7 +38,6 @@ public: // TODO
 	GSTexture2D m_tex_1x1;
 
 	CComPtr<IDirect3DPixelShader9> m_ps_convert[4];
-	CComPtr<IDirect3DPixelShader9> m_ps_merge;
 	CComPtr<IDirect3DPixelShader9> m_ps_interlace[4];
 
 public:

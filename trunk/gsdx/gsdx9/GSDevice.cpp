@@ -79,8 +79,6 @@ bool GSDevice::Create(HWND hWnd)
 	m_d3dcaps.PixelShaderVersion = min(psver, m_d3dcaps.PixelShaderVersion);
 	m_d3dcaps.VertexShaderVersion = m_d3dcaps.PixelShaderVersion & ~0x10000;
 
-	CompileShader(IDR_MERGE_FX, "ps_main", NULL, &m_ps_merge);
-
 	for(int i = 0; i < countof(m_ps_interlace); i++)
 	{
 		CStringA main;
@@ -352,7 +350,7 @@ HRESULT GSDevice::CreateOffscreenPlainSurface(GSTexture2D& t, int w, int h, D3DF
 	{
 		const GSTexture2D& t2 = m_pool.GetAt(pos);
 
-		if(t2.IsDepthStencil() && t2.m_desc.Width == w && t2.m_desc.Height == h && t2.m_desc.Format == format)
+		if(t2.IsOffscreenPlainTexture() && t2.m_desc.Width == w && t2.m_desc.Height == h && t2.m_desc.Format == format)
 		{
 			t = t2;
 
