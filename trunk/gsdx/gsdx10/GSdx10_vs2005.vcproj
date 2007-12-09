@@ -6,7 +6,6 @@
 	ProjectGUID="{345C9F24-0B9A-4289-B375-ADD3B63461B7}"
 	RootNamespace="GSdx10"
 	Keyword="MFCDLLProj"
-	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
 		<Platform
@@ -64,7 +63,6 @@
 				AdditionalDependencies="d3d10.lib d3dx10.lib dxguid.lib winmm.lib"
 				OutputFile="$(OutDir)\GSdx10.dll"
 				ModuleDefinitionFile=".\GSdx10.def"
-				DataExecutionPrevention="0"
 				ImportLibrary="$(OutDir)/GSdx10.lib"
 				TargetMachine="1"
 			/>
@@ -86,6 +84,9 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -138,7 +139,6 @@
 				AdditionalDependencies="d3d10.lib d3dx10.lib dxguid.lib winmm.lib"
 				OutputFile="$(OutDir)\GSdx10.dll"
 				ModuleDefinitionFile=""
-				DataExecutionPrevention="0"
 				ImportLibrary="$(OutDir)/GSdx10.lib"
 				TargetMachine="17"
 			/>
@@ -159,6 +159,9 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -210,7 +213,6 @@
 				AdditionalDependencies="d3d10.lib d3dx10.lib dxguid.lib winmm.lib"
 				OutputFile="$(OutDir)\GSdx10.dll"
 				ModuleDefinitionFile=".\GSdx10.def"
-				DataExecutionPrevention="0"
 				ImportLibrary="$(OutDir)/GSdx10.lib"
 				TargetMachine="1"
 			/>
@@ -232,6 +234,9 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -287,7 +292,6 @@
 				AdditionalDependencies="d3d10.lib d3dx10.lib dxguid.lib winmm.lib"
 				OutputFile="$(OutDir)\GSdx10.dll"
 				ModuleDefinitionFile=""
-				DataExecutionPrevention="0"
 				ImportLibrary="$(OutDir)/GSdx10.lib"
 				TargetMachine="17"
 			/>
@@ -308,6 +312,9 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -358,7 +365,6 @@
 				AdditionalDependencies="d3d10.lib d3dx10.lib dxguid.lib winmm.lib"
 				OutputFile="C:\Users\Gabest\Desktop\pcsx2\plugins\GSdx10.dll"
 				ModuleDefinitionFile=".\GSdx10.def"
-				DataExecutionPrevention="0"
 				ImportLibrary="$(OutDir)/GSdx10.lib"
 				TargetMachine="1"
 			/>
@@ -380,6 +386,9 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -443,6 +452,9 @@
 				Name="VCAppVerifierTool"
 			/>
 			<Tool
+				Name="VCWebDeploymentTool"
+			/>
+			<Tool
 				Name="VCPostBuildEventTool"
 			/>
 		</Configuration>
@@ -493,7 +505,6 @@
 				AdditionalDependencies="d3d10.lib d3dx10.lib dxguid.lib winmm.lib"
 				OutputFile="C:\Users\Gabest\Desktop\pcsx2\plugins\GSdx10.dll"
 				ModuleDefinitionFile=".\GSdx10.def"
-				DataExecutionPrevention="0"
 				ImportLibrary="$(OutDir)/GSdx10.lib"
 				TargetMachine="1"
 			/>
@@ -515,6 +526,9 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -578,6 +592,9 @@
 				Name="VCAppVerifierTool"
 			/>
 			<Tool
+				Name="VCWebDeploymentTool"
+			/>
+			<Tool
 				Name="VCPostBuildEventTool"
 			/>
 		</Configuration>
@@ -619,6 +636,10 @@
 						Name="VCCustomBuildTool"
 					/>
 				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\GSMergeFX.cpp"
+				>
 			</File>
 			<File
 				RelativePath=".\GSRenderer.cpp"
@@ -732,6 +753,10 @@
 			</File>
 			<File
 				RelativePath=".\GSdx10.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSMergeFX.h"
 				>
 			</File>
 			<File

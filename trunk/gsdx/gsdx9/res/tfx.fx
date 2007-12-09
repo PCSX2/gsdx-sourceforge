@@ -24,7 +24,8 @@ VS_OUTPUT vs_main(VS_INPUT input)
 	VS_OUTPUT output;
 	
 	output.p = input.p * VertexScale - VertexOffset;
-	//output.p.z = log2(1.0f + input.p.z) / 32;
+	//
+	output.p.z = log2(1.0f + input.p.z) / 32;
 	
 	output.c = input.c;
 	
