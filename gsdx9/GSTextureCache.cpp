@@ -537,7 +537,7 @@ void GSTextureCache::InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, const 
 
 void GSTextureCache::IncAge()
 {
-	RecycleByAge(m_tex, 3);
+	RecycleByAge(m_tex, 2);
 	RecycleByAge(m_rt);
 	RecycleByAge(m_ds);
 }
