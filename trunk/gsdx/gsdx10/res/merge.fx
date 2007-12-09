@@ -23,8 +23,8 @@ VS_OUTPUT vs_main(VS_INPUT input)
 	return output;
 }
 
-Texture2D RA01;
-Texture2D RA02;
+Texture2D RA01 : register(t0);
+Texture2D RA02 : register(t1);
 SamplerState Sampler;
 
 cbuffer cb0
@@ -40,7 +40,7 @@ struct PS_INPUT
 };
 
 #ifndef EN1
-#define EN1 1
+#define EN1 0
 #define EN2 1
 #define SLBG 0
 #define MMOD 1
