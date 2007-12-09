@@ -1445,7 +1445,7 @@ bool GSState::DetectBadFrame(int crc, int& skip)
 
 		break;
 
-	default:
+	case 0x3122B508: // one piece grand adventure ntsc/us
 
 		if(skip == 0)
 		{
