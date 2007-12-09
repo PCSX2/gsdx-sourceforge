@@ -275,7 +275,6 @@ GSTextureCache::GSTexture* GSTextureCache::GetTexture()
 			&& (pal == 0 || TEX0.CPSM == t->m_TEX0.CPSM && !memcmp(t->m_clut, clut, pal * sizeof(clut[0]))))
 			{
 				m_tex.MoveToHead(pos);
-
 				break;
 			}
 		}
@@ -532,7 +531,7 @@ void GSTextureCache::InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, const 
 
 void GSTextureCache::IncAge()
 {
-	RecycleByAge(m_tex, 2);
+	RecycleByAge(m_tex, 3);
 	RecycleByAge(m_rt);
 	RecycleByAge(m_ds);
 }

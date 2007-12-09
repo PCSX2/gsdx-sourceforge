@@ -79,6 +79,32 @@ bool HasCompatibleBits(DWORD spsm, DWORD dpsm)
 	return false;
 }
 
+int GetPrimClass(DWORD prim)
+{
+	switch(prim)
+	{
+	case GS_POINTLIST:
+		return 0;
+		break;
+	case GS_LINELIST:
+	case GS_LINESTRIP:
+		return 1;
+		break;
+	case GS_TRIANGLELIST:
+	case GS_TRIANGLESTRIP:
+	case GS_TRIANGLEFAN:
+		return 2;
+		break;
+	case GS_SPRITE:
+		return 3;
+		break;
+	}
+
+	ASSERT(0);
+
+	return -1;
+}
+
 bool IsRectInRect(const CRect& inner, const CRect& outer)
 {
 	return outer.left <= inner.left && inner.right <= outer.right && outer.top <= inner.top && inner.bottom <= outer.bottom;

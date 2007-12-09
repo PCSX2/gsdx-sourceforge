@@ -847,6 +847,7 @@ public:
 
 	void InvalidateCLUT() {m_fCLUTMayBeDirty = true;}
 	bool IsCLUTDirty(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT);
+	bool IsCLUTUpdating(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT);
 	bool WriteCLUT(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT);
 
 	void ReadCLUT(GIFRegTEX0 TEX0, DWORD* pCLUT32);

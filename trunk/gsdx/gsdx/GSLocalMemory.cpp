@@ -461,6 +461,23 @@ bool GSLocalMemory::IsCLUTDirty(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT)
 	return m_fCLUTMayBeDirty || m_prevTEX0.i64 != TEX0.i64 || m_prevTEXCLUT.i64 != TEXCLUT.i64;
 }
 
+bool GSLocalMemory::IsCLUTUpdating(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT)
+{
+	switch(TEX0.CLD)
+	{
+	case 1:
+	case 2:
+	case 3:
+		break;
+	case 4:
+		if(m_CBP[0] == TEX0.CBP) return false;
+	case 5:
+		if(m_CBP[1] == TEX0.CBP) return false;
+	}
+
+	return IsCLUTDirty(TEX0, TEXCLUT);
+}
+
 bool GSLocalMemory::WriteCLUT(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT)
 {
 	switch(TEX0.CLD)

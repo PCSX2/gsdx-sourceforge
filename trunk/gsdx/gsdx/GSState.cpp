@@ -296,10 +296,9 @@ void GSState::GIFPackedRegHandlerNull(GIFPackedReg* r)
 
 void GSState::GIFPackedRegHandlerPRIM(GIFPackedReg* r)
 {
-	ASSERT(r->PRIM.PRIM < 7);
-
 	GIFReg r2;
 	r2.PRIM.i64 = r->PRIM.PRIM;
+	ASSERT(r2.PRIM.PRIM < 7);
 	GIFRegHandlerPRIM(&r2);
 }
 
@@ -426,9 +425,19 @@ void GSState::GIFRegHandlerPRIM(GIFReg* r)
 {
 	// ASSERT(r->PRIM.PRIM < 7);
 
-	if(m_env.PRIM.i64 != r->PRIM.i64)
+	if(GetPrimClass(m_env.PRIM.PRIM) == GetPrimClass(r->PRIM.PRIM))
 	{
-		Flush();
+		if(((m_env.PRIM.i64 ^ r->PRIM.i64) & ~7) != 0)
+		{
+			Flush();
+		}
+	}
+	else
+	{
+		if(m_env.PRIM.i64 != r->PRIM.i64)
+		{
+			Flush();
+		}
 	}
 
 	m_env.PRIM = r->PRIM;
@@ -483,8 +492,7 @@ template<int i> void GSState::GIFRegHandlerTEX0(GIFReg* r)
 {
 	// even if TEX0 did not change, a new palette may have been uploaded and will overwrite the currently queued for drawing
 
-	if(PRIM->CTXT == i && m_env.CTXT[i].TEX0.i64 != r->TEX0.i64
-	|| r->TEX0.CLD >= 1 && r->TEX0.CLD <= 3 && m_mem.IsCLUTDirty(r->TEX0, m_env.TEXCLUT))
+	if(PRIM->CTXT == i && m_env.CTXT[i].TEX0.i64 != r->TEX0.i64 || m_mem.IsCLUTUpdating(r->TEX0, m_env.TEXCLUT))
 	{
 		Flush(); 
 	}
@@ -919,8 +927,6 @@ void GSState::FlushWrite(BYTE* mem, int len)
 		r.bottom = min(m_x == m_env.TRXPOS.DSAX ? m_y : m_y + 1, m_env.TRXREG.RRH);
 
 		InvalidateTexture(m_env.BITBLTBUF, r);
-
-		m_mem.InvalidateCLUT();
 	}
 }
 
@@ -971,6 +977,8 @@ void GSState::Write(BYTE* mem, int len)
 	{
 		FlushWrite(mem, len);
 	}
+
+	m_mem.InvalidateCLUT();
 }
 
 void GSState::Read(BYTE* mem, int len)
@@ -1313,6 +1321,8 @@ int GSState::Defrost(const freezeData* fd)
 	m_env.CTXT[1].ztbl = &GSLocalMemory::m_psm[m_env.CTXT[1].ZBUF.PSM];
 	m_env.CTXT[1].ttbl = &GSLocalMemory::m_psm[m_env.CTXT[1].TEX0.PSM];
 
+m_perfmon.SetFrame(5000);
+
 	return 0;
 }
 
@@ -1434,6 +1444,19 @@ bool GSState::DetectBadFrame(int crc, int& skip)
 		}
 
 		break;
+
+	default:
+
+		if(skip == 0)
+		{
+			if(TME && FBP == 0x02d00 && FPSM == PSM_PSMCT16 && (TBP0 == 0x00000 || TBP0 == 0x00e00) && TPSM == PSM_PSMCT16)
+			{
+				skip = 3;
+			}
+		}
+
+		break;
+
 	}
 
 	if(skip == 0)
