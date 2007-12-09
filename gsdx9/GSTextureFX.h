@@ -24,6 +24,8 @@
 #include "GSVertexHW.h"
 #include "GSDevice.h"
 
+#define PS_ALPHA_TEST
+
 class GSTextureFX
 {
 public:
@@ -66,26 +68,12 @@ public:
 			DWORD atst:3;
 			DWORD fog:1;
 			DWORD clr1:1;
-			DWORD fba:1;
-			DWORD aout:1;
+			DWORD rt:1;
 		};
 
 		DWORD dw;
 
-		operator DWORD() {return dw & 0x3ffff;}
-	};
-
-	union GSSelector
-	{
-		struct
-		{
-			DWORD iip:1;
-			DWORD prim:2;
-		};
-
-		DWORD dw;
-
-		operator DWORD() {return dw & 0x7;}
+		operator DWORD() {return dw & 0x1ffff;}
 	};
 
 	union PSSamplerSelector
@@ -142,34 +130,21 @@ public:
 
 private:
 	GSDevice* m_dev;
-	CComPtr<ID3D10InputLayout> m_il;
-	CComPtr<ID3D10VertexShader> m_vs;
-	CComPtr<ID3D10Buffer> m_vs_cb;
-	CSimpleMap<DWORD, CComPtr<ID3D10GeometryShader> > m_gs;
-	CSimpleMap<DWORD, CComPtr<ID3D10PixelShader> > m_ps;
-	CComPtr<ID3D10Buffer> m_ps_cb;
-	CSimpleMap<DWORD, CComPtr<ID3D10SamplerState> > m_ps_ss;
-	CSimpleMap<DWORD, CComPtr<ID3D10DepthStencilState> > m_om_dss;	
-	CSimpleMap<DWORD, CComPtr<ID3D10BlendState> > m_om_bs;	
+	CComPtr<IDirect3DVertexDeclaration9> m_vd;
+	CComPtr<IDirect3DVertexShader9> m_vs;
+	CComPtr<ID3DXConstantTable> m_vs_ct;
+	D3DXHANDLE m_vs_params;
+	CSimpleMap<DWORD, CComPtr<IDirect3DPixelShader9> > m_ps;
 
-	CComPtr<ID3D10Buffer> m_vb[1];
-	int m_vb_max[1];
-	int m_vb_cur;
-
-	VSConstantBuffer m_vs_cb_cache;
-	PSConstantBuffer m_ps_cb_cache;
-	
 public:
 	GSTextureFX();
 
 	bool Create(GSDevice* dev);
 	
-	bool SetupIA(const GSVertexHW* vertices, UINT count, D3D10_PRIMITIVE_TOPOLOGY prim);
 	bool SetupVS(const VSConstantBuffer* cb);
-	bool SetupGS(GSSelector sel);
-	bool SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel, ID3D10ShaderResourceView* srv, ID3D10ShaderResourceView* pal);
+	bool SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel, IDirect3DTexture9* tex, IDirect3DTexture9* pal);
 	void UpdatePS(PSSelector sel, PSSamplerSelector ssel);
-	void SetupRS(UINT w, UINT h, const RECT& scissor);
-	void SetupOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, float bf, ID3D10RenderTargetView* rtv, ID3D10DepthStencilView* dsv);
-	void UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, float bf);
+	void SetupRS(const RECT& scissor);
+	void SetupOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, BYTE bf, IDirect3DSurface9* rt, IDirect3DSurface9* ds);
+	void UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, BYTE bf);
 };

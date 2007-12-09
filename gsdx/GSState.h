@@ -118,6 +118,11 @@ class GSState
 	void FlushWrite(BYTE* mem, int len);
 	void StepTransfer(int sx, int ex) {if(++m_x == ex) {m_x = sx; m_y++;}}
 
+protected:
+	bool DetectBadFrame(int crc, int& skip);
+
+	GSPerfMon m_perfmon;
+
 public:
 	GIFRegPRIM*		PRIM;
 	GSRegPMODE*		PMODE;

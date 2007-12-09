@@ -23,6 +23,11 @@
 #include "GSRendererHW.h"
 #include "resource.h"
 
+int s_n = 0;
+bool s_dump = false;
+bool s_save = true;
+bool s_savez = false;
+
 GSRendererHW::GSRendererHW(BYTE* base, bool mt, void (*irq)(), bool nloophack)
 	: GSRendererT(base, mt, irq, nloophack)
 	, m_tc(this)
@@ -207,42 +212,14 @@ void GSRendererHW::DrawingKick(bool skip)
 	}
 */
 }
-/*
-int s_n = 0;
-bool s_dump = false;
-bool s_save = false;
-bool s_savez = false;
-*/
 
 void GSRendererHW::Draw()
 {
-/*
-TRACE(_T("[%d] FlushPrim f %05x (%d) z %05x (%d %d %d %d) t %05x %05x (%d)\n"), 
-	  (int)m_perfmon.GetFrame(), 
-	  (int)m_context->FRAME.Block(), 
-	  (int)m_context->FRAME.PSM, 
-	  (int)m_context->ZBUF.Block(), 
-	  (int)m_context->ZBUF.PSM, 
-	  m_context->TEST.ZTE, 
-	  m_context->TEST.ZTST, 
-	  m_context->ZBUF.ZMSK, 
-	  PRIM->TME ? (int)m_context->TEX0.TBP0 : 0xfffff, 
-	  PRIM->TME && m_context->TEX0.PSM > PSM_PSMCT16S ? (int)m_context->TEX0.CBP : 0xfffff, 
-	  PRIM->TME ? (int)m_context->TEX0.PSM : 0xff);
-*/
-	//
-
-	if(DetectBadFrame())
+	if(DetectBadFrame(m_crc, m_skip))
 	{
 		return;
 	}
 
-/*
-if(s_n >= 4653)
-{
-	s_save = true;
-}
-*/
 	//
 
 	GIFRegTEX0 TEX0;
@@ -273,7 +250,7 @@ if(s_n >= 4653)
 
 		if(!tex) return;
 	}
-/*
+
 if(s_dump)
 {
 	CString str;
@@ -284,10 +261,11 @@ if(s_dump)
 	str.Format(_T("c:\\temp2\\_%05d_f%I64d_rz0_%05x_%d.bmp"), s_n-1, m_perfmon.GetFrame(), m_context->ZBUF.Block(), m_context->ZBUF.PSM);
 	if(s_savez) m_dev.SaveToFileD32S8X24(ds->m_texture, str);
 }
-*/
+
 	//
 
 	int prim = PRIM->PRIM;
+	int prims = 0;
 
 	if(!OverrideInput(prim, tex))
 	{
@@ -300,25 +278,26 @@ if(s_dump)
 	{
 	case GS_POINTLIST:
 		topology = D3D10_PRIMITIVE_TOPOLOGY_POINTLIST;
-		// m_perfmon.Put(GSPerfMon::Prim, m_count);
+		prims = m_count;
 		break;
 	case GS_LINELIST: 
 	case GS_LINESTRIP:
 	case GS_SPRITE:
 		topology = D3D10_PRIMITIVE_TOPOLOGY_LINELIST;
-		// m_perfmon.Put(GSPerfMon::Prim, m_count / 2);
+		prims = m_count / 2;
 		break;
 	case GS_TRIANGLELIST: 
 	case GS_TRIANGLESTRIP: 
 	case GS_TRIANGLEFAN: 
 		topology = D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		// m_perfmon.Put(GSPerfMon::Prim, m_count / 3);
+		prims = m_count / 3;
 		break;
 	default:
 		__assume(0);
 	}
 
-	// m_perfmon.Put(GSPerfMon::Draw, 1);
+	m_perfmon.Put(GSPerfMon::Prim, prims);
+	m_perfmon.Put(GSPerfMon::Draw, 1);
 
 	// date
 
@@ -561,13 +540,6 @@ if(s_dump)
 
 	m_dev.EndScene();
 
-/*
-	if(m_env.COLCLAMP.CLAMP == 0) m_perfmon.Put(GSPerfMon::COLCLAMP);
-	if(m_env.PABE.PABE) m_perfmon.Put(GSPerfMon::PABE);
-	if(m_context->TEST.DATE) m_perfmon.Put(GSPerfMon::DATE);
-	if(om_bsel.abe && om_bsel.a == om_bsel.d && om_bsel.a != om_bsel.b && om_bsel.a != 1 && om_bsel.b != 2) m_perfmon.Put(GSPerfMon::ABE);
-*/
-/*
 if(s_dump)
 {
 	CString str;
@@ -576,7 +548,7 @@ if(s_dump)
 	str.Format(_T("c:\\temp2\\_%05d_f%I64d_rz1_%05x_%d.bmp"), s_n-1, m_perfmon.GetFrame(), m_context->ZBUF.Block(), m_context->ZBUF.PSM);
 	if(s_savez) m_dev.SaveToFileD32S8X24(ds->m_texture, str);
 }
-*/
+
 }
 
 void GSRendererHW::Flip()
@@ -600,16 +572,16 @@ void GSRendererHW::Flip()
 		{
 			src[i].t = rt->m_texture;
 			src[i].s = rt->m_scale;
-/*
+
 if(s_dump)
 {
 	CString str;
 	str.Format(_T("c:\\temp2\\_%05d_f%I64d_fr%d_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), i, (int)TEX0.TBP0, (int)TEX0.PSM);
 	if(s_save) ::D3DX10SaveTextureToFile(rt->m_texture, D3DX10_IFF_BMP, str);
 }
-*/
-//s_dump = m_perfmon.GetFrame() >= 5000;
-//if(m_perfmon.GetFrame() == 5000) m_tc.RemoveAll();
+
+// s_dump = m_perfmon.GetFrame() >= 540;
+
 		}
 	}
 
@@ -757,6 +729,7 @@ void GSRendererHW::MinMaxUV(int w, int h, CRect& r)
 			r.bottom = min(((int)(uv.vmax * h) + bsm.cy + 1) & ~bsm.cy, h);
 		}
 	}
+
 	//ASSERT(r.left <= r.right);
 	//ASSERT(r.top <= r.bottom);
 }
@@ -811,15 +784,19 @@ void GSRendererHW::SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache:
 
 #endif
 
-	float sx = 2.0f * rt->m_scale.x / (rt->m_texture.m_desc.Width * 16);
-	float sy = 2.0f * rt->m_scale.y / (rt->m_texture.m_desc.Height * 16);
+	int w = rt->m_texture.m_desc.Width;
+	int h = rt->m_texture.m_desc.Height;
+
+	float sx = 2.0f * rt->m_scale.x / (w * 16);
+	float sy = 2.0f * rt->m_scale.y / (h * 16);
+	
 	float ox = (float)(int)m_context->XYOFFSET.OFX;
 	float oy = (float)(int)m_context->XYOFFSET.OFY;
 
-	xmin = xmin * sx - (ox * sx + 1);
-	xmax = xmax * sx - (ox * sx + 1);
-	ymin = ymin * sy - (oy * sy + 1);
-	ymax = ymax * sy - (oy * sy + 1);
+	xmin = (xmin - ox) * sx - 1;
+	xmax = (xmax - ox) * sx - 1;
+	ymin = (ymin - oy) * sy - 1;
+	ymax = (ymax - oy) * sy - 1;
 
 	if(xmin < -1) xmin = -1;
 	if(xmax > +1) xmax = +1;
@@ -884,155 +861,6 @@ void GSRendererHW::SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache:
 	m_dev.EndScene();
 
 	m_dev.Recycle(tmp);
-}
-
-bool GSRendererHW::DetectBadFrame()
-{
-	DWORD FBP = m_context->FRAME.Block();
-	DWORD FPSM = m_context->FRAME.PSM;
-
-	bool TME = PRIM->TME;
-	DWORD TBP0 = m_context->TEX0.TBP0;
-	DWORD TPSM = m_context->TEX0.PSM;
-
-	switch(m_crc)
-	{
-	case 0x21068223: // okami ntsc/us
-	case 0x891f223f: // okami pal/fr
-
-		if(m_skip == 0)
-		{
-			if(TME && FBP == 0x00e00 && FPSM == PSM_PSMCT32 && TBP0 == 0x00000 && TPSM == PSM_PSMCT32)
-			{
-				m_skip = 1000;
-			}
-		}
-		else
-		{
-			if(TME && FBP == 0x00e00 && FPSM == PSM_PSMCT32 && TBP0 == 0x03800 && TPSM == PSM_PSMT4)
-			{
-				m_skip = 0;
-			}
-		}
-
-		break;
-
-	case 0x053D2239: // mgs3s1 ntsc/us
-	// TODO: case 0x086273D2: mgs3 snake eater pal/fr
-
-		if(m_skip == 0)
-		{
-			if(TME && FBP == 0x02000 && FPSM == PSM_PSMCT32 && (TBP0 == 0x00000 || TBP0 == 0x01000) && TPSM == PSM_PSMCT24)
-			{
-				m_skip = 1000; // 76, 79
-			}
-			else if(TME && FBP == 0x02800 && FPSM == PSM_PSMCT24 && (TBP0 == 0x00000 || TBP0 == 0x01000) && TPSM == PSM_PSMCT32)
-			{
-				m_skip = 1000; // 69
-			}
-		}
-		else 
-		{
-			if(!TME && (FBP == 0x00000 || FBP == 0x01000) && FPSM == PSM_PSMCT32)
-			{
-				m_skip = 0;
-			}
-		}
-
-		break;
-
-	case 0x278722BF: // dbz bt2 ntsc/us
-
-		if(m_skip == 0)
-		{
-			if(TME && /*FBP == 0x00000 && FPSM == PSM_PSMCT16 &&*/ TBP0 == 0x02000 && TPSM == PSM_PSMZ16)
-			{
-				m_skip = 27;
-			}
-		}
-
-		break;
-
-	case 0x72B3802A: // sfex3 ntsc/us
-
-		if(m_skip == 0)
-		{
-			if(TME && FBP == 0x00f00 && FPSM == PSM_PSMCT16 && (TBP0 == 0x00500 || TBP0 == 0x00000) && TPSM == PSM_PSMCT32)
-			{
-				m_skip = 4;
-			}
-		}
-
-		break;
-
-	case 0x28703748: // bully ntsc/us
-
-		if(m_skip == 0)
-		{
-			if(TME && (FBP == 0x00000 || FBP == 0x01180) && (TBP0 == 0x00000 || TBP0 == 0x01180) && FBP == TBP0 && FPSM == PSM_PSMCT32 && FPSM == TPSM)
-			{
-				return true; // allowed for bully
-			}
-
-			if(TME && (FBP == 0x00000 || FBP == 0x01180) && FPSM == PSM_PSMCT16S && TBP0 == 0x02300 && TPSM == PSM_PSMZ16S)
-			{
-				m_skip = 6;
-			}
-		}
-		else 
-		{
-			if(!TME && (FBP == 0x00000 || FBP == 0x01180) && FPSM == PSM_PSMCT32)
-			{
-				m_skip = 0;
-			}
-		}
-
-		break;
-
-	case 0xC19A374E: // shadow of the colossus ntsc/us
-
-		if(m_skip == 0)
-		{
-			if(TME && FBP == 0x02b80 && FPSM == PSM_PSMCT24 && TBP0 == 0x01e80 && TPSM == PSM_PSMCT24)
-			{
-				m_skip = 9;
-			}
-			else if(TME && FBP == 0x01e80 && FPSM == PSM_PSMCT32 && TBP0 == 0x03880 && TPSM == PSM_PSMCT32)
-			{
-				m_skip = 8;
-			}
-		}
-
-		break;
-	}
-
-	if(m_skip == 0)
-	{
-		if(TME)
-		{
-			if(HasSharedBits(FBP, FPSM, TBP0, TPSM))
-			{
-				m_skip = 1;
-			}
-
-			// depth textures (bully, mgs3s1 intro)
-
-			if(TPSM == PSM_PSMZ32 || TPSM == PSM_PSMZ24 || TPSM == PSM_PSMZ16 || TPSM == PSM_PSMZ16S)
-			{
-				// m_perfmon.Put(GSPerfMon::DepthTexture);
-				m_skip = 1;
-			}
-		}
-	}
-
-	if(m_skip > 0)
-	{
-		m_skip--;
-
-		return true;
-	}
-
-	return false;
 }
 
 bool GSRendererHW::OverrideInput(int& prim, GSTextureCache::GSTexture* tex)

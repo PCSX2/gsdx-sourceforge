@@ -19,29 +19,38 @@
  *
  */
 
-#include "stdafx.h"
+#pragma once
+
+#include "GSRenderer.h"
 #include "GSTextureCache.h"
-#include "GSRendererHW.h"
+#include "GSTextureFX.h"
+#include "GSVertexHW.h"
 
-GSTextureCache::GSDepthStencil::GSDepthStencil(GSTextureCache* tc)
-	: GSSurface(tc)
-	, m_used(false)
+class GSRendererHW : public GSRendererT<GSVertexHW>
 {
-}
+	friend class GSTextureCache;
 
-bool GSTextureCache::GSDepthStencil::Create(int w, int h)
-{
-	HRESULT hr;
+protected:
+	int m_width;
+	int m_height;
+	int m_skip;
 
-	hr = m_tc->m_renderer->m_dev.CreateDepthStencil(m_texture, w, h);
+	GSTextureCache m_tc;
+	GSTextureFX m_tfx;
 
-	return SUCCEEDED(hr);
-}
+	void VertexKick(bool skip);
+	void DrawingKick(bool skip);
+	void Draw();
+	void Flip();
+	void InvalidateTexture(const GIFRegBITBLTBUF& BITBLTBUF, CRect r);
+	void InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r);
+	void MinMaxUV(int w, int h, CRect& r);
 
-void GSTextureCache::GSDepthStencil::Update()
-{
-	__super::Update();
+	void SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache::GSDepthStencil* ds);
+	bool OverrideInput(int& prim, GSTextureCache::GSTexture* tex);	
 
-	// TODO: dx 10.1 could update ds directly
-}
+public:
+	GSRendererHW(BYTE* base, bool mt, void (*irq)(), bool nloophack);
 
+	bool Create(LPCTSTR title);
+};

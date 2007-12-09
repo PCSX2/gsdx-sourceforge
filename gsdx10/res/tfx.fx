@@ -183,8 +183,6 @@ PS_OUTPUT ps_main(PS_INPUT input)
 		tc = clamp(tc, ClampMin, ClampMax);
 	}
 	
-	// TODO: region repeat (PITA, would loose automatic bilinear then)
-	
 	float4 t;
 	
 	if(BPP == 0) // 32
@@ -287,8 +285,6 @@ PS_OUTPUT ps_main(PS_INPUT input)
 	}
 
 	c = saturate(c);
-	
-	// TODO: alpha test hurts a lot
 	
 	if(ATE == 1)
 	{
