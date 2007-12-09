@@ -22,6 +22,7 @@
 #pragma once
 
 #include "GSDevice.h"
+#include "GSMergeFX.h"
 
 class GSRenderer : public CWnd, public GSState
 {
@@ -57,6 +58,7 @@ public:
 	// TODO
 
 	GSDevice m_dev;
+	GSMergeFX m_merge;
 
 	struct FlipInfo 
 	{

@@ -67,7 +67,7 @@ struct PS_INPUT
 #define AEM 0
 #define TFX 0
 #define TCC 1
-#define ATE 1
+#define ATE 0
 #define ATST 1
 #define FOG 0
 #define CLR1 0
@@ -111,7 +111,7 @@ float4 ps_main(PS_INPUT input) : COLOR
 	else if(BPP == 3) // 8HP ln
 	{
 		tc -= 0.5 * rWrH; // ?
-		
+
 		float4 f = float4(
 			tex2D(Texture, tc).a,
 			tex2D(Texture, tc + rWZ).a,

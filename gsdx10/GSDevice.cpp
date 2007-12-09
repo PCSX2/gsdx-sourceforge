@@ -126,38 +126,6 @@ bool GSDevice::Create(HWND hWnd)
 
 	hr = m_dev->CreateBlendState(&bsd, &m_convert.bs);
 
-	// merge
-
-	D3D10_INPUT_ELEMENT_DESC il_merge[] =
-	{
-		{"POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D10_INPUT_PER_VERTEX_DATA, 0},
-		{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 16, D3D10_INPUT_PER_VERTEX_DATA, 0},
-		{"TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D10_INPUT_PER_VERTEX_DATA, 0},
-	};
-
-	hr = CompileShader(&m_merge.vs, IDR_MERGE_FX, "vs_main", il_merge, countof(il_merge), &m_merge.il);
-	hr = CompileShader(&m_merge.ps, IDR_MERGE_FX, "ps_main");
-
-	memset(&bd, 0, sizeof(bd));
-
-    bd.ByteWidth = sizeof(MergeCB);
-    bd.Usage = D3D10_USAGE_DYNAMIC; // TODO: default
-    bd.BindFlags = D3D10_BIND_CONSTANT_BUFFER;
-    bd.CPUAccessFlags = D3D10_CPU_ACCESS_WRITE;
-    bd.MiscFlags = 0;
-
-    hr = m_dev->CreateBuffer(&bd, NULL, &m_merge.cb);
-
-	memset(&bd, 0, sizeof(bd));
-
-	bd.Usage = D3D10_USAGE_DEFAULT;
-	bd.BindFlags = D3D10_BIND_VERTEX_BUFFER;
-	bd.CPUAccessFlags = 0;
-	bd.MiscFlags = 0;
-	bd.ByteWidth = 4 * sizeof(VertexPT2);
-
-	hr = m_dev->CreateBuffer(&bd, NULL, &m_merge.vb);
-
 	// interlace
 
 	memset(&bd, 0, sizeof(bd));

@@ -670,6 +670,10 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath=".\GSMergeFX.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\GSRenderer.cpp"
 				>
 			</File>
@@ -805,6 +809,10 @@
 			</File>
 			<File
 				RelativePath=".\GSdx9.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSMergeFX.h"
 				>
 			</File>
 			<File

@@ -43,6 +43,11 @@ bool GSTexture2D::IsManagedTexture() const
 	return m_desc.Pool == D3DPOOL_MANAGED;
 }
 
+bool GSTexture2D::IsOffscreenPlainTexture() const
+{
+	return m_desc.Pool == D3DPOOL_SYSTEMMEM;
+}
+
 bool GSTexture2D::IsRenderTarget() const
 {
 	return !!(m_desc.Usage & D3DUSAGE_RENDERTARGET);

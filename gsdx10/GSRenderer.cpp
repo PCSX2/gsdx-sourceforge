@@ -68,6 +68,11 @@ bool GSRenderer::Create(LPCTSTR title)
 		return false;
 	}
 
+	if(!m_merge.Create(&m_dev))
+	{
+		return false;
+	}
+
 	Reset();
 
 	return true;
@@ -256,81 +261,43 @@ void GSRenderer::FinishFlip(FlipInfo src[2])
 
 void GSRenderer::Merge(FlipInfo src[2], GSTexture2D& dst)
 {
-	// om
-
-	m_dev.OMSetRenderTargets(dst, NULL);
-
-	m_dev.OMSet(m_dev.m_convert.dss, 0, m_dev.m_convert.bs, 0);
-
-	// ia
+	GSTexture2D st[2] = 
+	{
+		src[0].t ? src[0].t : m_dev.m_tex_1x1,
+		src[1].t ? src[1].t : m_dev.m_tex_1x1,
+	};
 
 	CRect r[2];
 	
 	r[0] = GetFrameRect(0);
 	r[1] = GetFrameRect(1);
 
-	VertexPT2 vertices[] =
-	{
-		{-1, +1, 0.5f, 1.0f, 
-			src[0].s.x * r[0].left / src[0].t.m_desc.Width, src[0].s.y * r[0].top / src[0].t.m_desc.Height,
-			src[1].s.x * r[1].left / src[1].t.m_desc.Width, src[1].s.y * r[1].top / src[1].t.m_desc.Height},
-		{+1, +1, 0.5f, 1.0f, 
-			src[0].s.x * r[0].right / src[0].t.m_desc.Width, src[0].s.y * r[0].top / src[0].t.m_desc.Height,
-			src[1].s.x * r[1].right / src[1].t.m_desc.Width, src[1].s.y * r[1].top / src[1].t.m_desc.Height},
-		{-1, -1, 0.5f, 1.0f, 
-			src[0].s.x * r[0].left / src[0].t.m_desc.Width, src[0].s.y * r[0].bottom / src[0].t.m_desc.Height,
-			src[1].s.x * r[1].left / src[1].t.m_desc.Width, src[1].s.y * r[1].bottom / src[1].t.m_desc.Height}, 
-		{+1, -1, 0.5f, 1.0f,
-			src[0].s.x * r[0].right / src[0].t.m_desc.Width, src[0].s.y * r[0].bottom / src[0].t.m_desc.Height,
-			src[1].s.x * r[1].right / src[1].t.m_desc.Width, src[1].s.y * r[1].bottom / src[1].t.m_desc.Height}, 
-	};
+	D3DXVECTOR4 sr[2];
 
-	m_dev.IASet(m_dev.m_merge.vb, 4, vertices, m_dev.m_merge.il, D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	sr[0].x = src[0].s.x * r[0].left / src[0].t.m_desc.Width;
+	sr[1].x = src[1].s.x * r[1].left / src[1].t.m_desc.Width;
+	sr[0].y = src[0].s.y * r[0].top / src[0].t.m_desc.Height;
+	sr[1].y = src[1].s.y * r[1].top / src[1].t.m_desc.Height;
+	sr[0].z = src[0].s.x * r[0].right / src[0].t.m_desc.Width;
+	sr[1].z = src[1].s.x * r[1].right / src[1].t.m_desc.Width;
+	sr[0].w = src[0].s.y * r[0].bottom / src[0].t.m_desc.Height;
+	sr[1].w = src[1].s.y * r[1].bottom / src[1].t.m_desc.Height;
 
-	// vs
+	GSMergeFX::PSSelector sel;
 
-	m_dev.VSSet(m_dev.m_merge.vs, NULL);
+	sel.en1 = IsEnabled(0);
+	sel.en2 = IsEnabled(1);
+	sel.mmod = PMODE->MMOD;
+	sel.slbg = PMODE->SLBG;
 
-	// gs
+	GSMergeFX::PSConstantBuffer cb;
 
-	m_dev.GSSet(NULL);
+	cb.BGColor.x = (float)BGCOLOR->R / 255;
+	cb.BGColor.y = (float)BGCOLOR->G / 255;
+	cb.BGColor.z = (float)BGCOLOR->B / 255;
+	cb.BGColor.w = (float)PMODE->ALP / 255;
 
-	// ps
-	
-	MergeCB* cb = NULL;
-	
-	if(SUCCEEDED(m_dev.m_merge.cb->Map(D3D10_MAP_WRITE_DISCARD, NULL, (void**)&cb)))
-	{
-		cb->BGColor.x = (float)BGCOLOR->R / 255;
-		cb->BGColor.y = (float)BGCOLOR->G / 255;
-		cb->BGColor.z = (float)BGCOLOR->B / 255;
-		cb->BGColor.w = 0;
-		cb->Alpha = (float)PMODE->ALP / 255;
-		cb->EN1 = (float)IsEnabled(0);
-		cb->EN2 = (float)IsEnabled(1);
-		cb->MMOD = !!PMODE->MMOD;
-		cb->SLBG = !!PMODE->SLBG;
-
-		m_dev.m_merge.cb->Unmap();
-	}
-	
-	m_dev->PSSetConstantBuffers(0, 1, &m_dev.m_merge.cb.p);
-
-	m_dev.PSSetShaderResources(
-		src[0].t ? src[0].t : m_dev.m_tex_1x1, 
-		src[1].t ? src[1].t : m_dev.m_tex_1x1);
-
-	m_dev.PSSet(m_dev.m_merge.ps, m_dev.m_ss_linear);
-
-	// rs
-
-	m_dev.RSSet(dst.m_desc.Width, dst.m_desc.Height);
-
-	//
-
-	m_dev->Draw(4, 0);
-
-	m_dev.EndScene();
+	m_merge.Draw(st, sr, dst, sel, cb);
 }
 
 void GSRenderer::Present()

@@ -68,6 +68,11 @@ bool GSRenderer::Create(LPCTSTR title)
 		return false;
 	}
 
+	if(!m_merge.Create(&m_dev))
+	{
+		return false;
+	}
+
 	Reset();
 
 	return true;
@@ -239,10 +244,6 @@ void GSRenderer::FinishFlip(FlipInfo src[2])
 
 	Merge(src, m_dev.m_tex_merge);
 
-	//::D3DXSaveTextureToFile(_T("c:\\1.bmp"), D3DXIFF_BMP, src[0].t, NULL);
-	//::D3DXSaveTextureToFile(_T("c:\\2.bmp"), D3DXIFF_BMP, src[1].t, NULL);
-	//::D3DXSaveTextureToFile(_T("c:\\3.bmp"), D3DXIFF_BMP, m_dev.m_tex_merge, NULL);
-
 	IDirect3DTexture9* current = m_dev.m_tex_merge;
 
 	if(SMODE2->INT && m_interlace > 0)
@@ -260,77 +261,43 @@ void GSRenderer::FinishFlip(FlipInfo src[2])
 
 void GSRenderer::Merge(FlipInfo src[2], GSTexture2D& dst)
 {
-	HRESULT hr;
-
-	hr = m_dev->BeginScene();
-
-	hr = m_dev->SetRenderTarget(0, dst);
-	hr = m_dev->SetDepthStencilSurface(NULL);
-
-	hr = m_dev->SetTexture(0, src[0].t ? src[0].t : m_dev.m_tex_1x1);
-	hr = m_dev->SetTexture(1, src[1].t ? src[1].t : m_dev.m_tex_1x1);
-
-    hr = m_dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
-    hr = m_dev->SetRenderState(D3DRS_LIGHTING, FALSE);
-	hr = m_dev->SetRenderState(D3DRS_ZENABLE, FALSE);
-	hr = m_dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
-	hr = m_dev->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE); 
-	hr = m_dev->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
-	hr = m_dev->SetRenderState(D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_RGBA);
-
-	hr = m_dev->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
-	hr = m_dev->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
-	hr = m_dev->SetSamplerState(1, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
-	hr = m_dev->SetSamplerState(1, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
-
-	hr = m_dev->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
-	hr = m_dev->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
-	hr = m_dev->SetSamplerState(1, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
-	hr = m_dev->SetSamplerState(1, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
-
-	const float c[] = 
+	GSTexture2D st[2] = 
 	{
-		(float)BGCOLOR->B / 255, (float)BGCOLOR->G / 255, (float)BGCOLOR->R / 255, (float)PMODE->ALP / 255,
-		(float)IsEnabled(0), (float)IsEnabled(1), (float)PMODE->MMOD - 0.1f, (float)PMODE->SLBG - 0.1f,
+		src[0].t ? src[0].t : m_dev.m_tex_1x1,
+		src[1].t ? src[1].t : m_dev.m_tex_1x1,
 	};
-
-	hr = m_dev->SetPixelShaderConstantF(0, c, countof(c) / 4);
-
-	hr = m_dev->SetVertexShader(NULL);
-	hr = m_dev->SetPixelShader(m_dev.m_ps_merge);
 
 	CRect r[2];
 	
 	r[0] = GetFrameRect(0);
 	r[1] = GetFrameRect(1);
 
-	VertexPT2 vertices[] =
-	{
-		{0, 0, 0.5f, 1.0f, 
-			src[0].s.x * r[0].left / src[0].t.m_desc.Width, src[0].s.y * r[0].top / src[0].t.m_desc.Height,
-			src[1].s.x * r[1].left / src[1].t.m_desc.Width, src[1].s.y * r[1].top / src[1].t.m_desc.Height},
-		{(float)dst.m_desc.Width, 0, 0.5f, 1.0f, 
-			src[0].s.x * r[0].right / src[0].t.m_desc.Width, src[0].s.y * r[0].top / src[0].t.m_desc.Height,
-			src[1].s.x * r[1].right / src[1].t.m_desc.Width, src[1].s.y * r[1].top / src[1].t.m_desc.Height},
-		{(float)dst.m_desc.Width, (float)dst.m_desc.Height, 0.5f, 1.0f, 
-			src[0].s.x * r[0].right / src[0].t.m_desc.Width, src[0].s.y * r[0].bottom / src[0].t.m_desc.Height,
-			src[1].s.x * r[1].right / src[1].t.m_desc.Width, src[1].s.y * r[1].bottom / src[1].t.m_desc.Height}, 
-		{0, (float)dst.m_desc.Height, 0.5f, 1.0f, 
-			src[0].s.x * r[0].left / src[0].t.m_desc.Width, src[0].s.y * r[0].bottom / src[0].t.m_desc.Height,
-			src[1].s.x * r[1].left / src[1].t.m_desc.Width, src[1].s.y * r[1].bottom / src[1].t.m_desc.Height}, 
-	};
+	D3DXVECTOR4 sr[2];
 
-	for(int i = 0; i < countof(vertices); i++)
-	{
-		vertices[i].x -= 0.5f;
-		vertices[i].y -= 0.5f;
-	}
+	sr[0].x = src[0].s.x * r[0].left / src[0].t.m_desc.Width;
+	sr[1].x = src[1].s.x * r[1].left / src[1].t.m_desc.Width;
+	sr[0].y = src[0].s.y * r[0].top / src[0].t.m_desc.Height;
+	sr[1].y = src[1].s.y * r[1].top / src[1].t.m_desc.Height;
+	sr[0].z = src[0].s.x * r[0].right / src[0].t.m_desc.Width;
+	sr[1].z = src[1].s.x * r[1].right / src[1].t.m_desc.Width;
+	sr[0].w = src[0].s.y * r[0].bottom / src[0].t.m_desc.Height;
+	sr[1].w = src[1].s.y * r[1].bottom / src[1].t.m_desc.Height;
 
-	hr = m_dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX2);
+	GSMergeFX::PSSelector sel;
 
-	hr = m_dev->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 2, vertices, sizeof(vertices[0]));
+	sel.en1 = IsEnabled(0);
+	sel.en2 = IsEnabled(1);
+	sel.mmod = PMODE->MMOD;
+	sel.slbg = PMODE->SLBG;
 
-	hr = m_dev->EndScene();
+	GSMergeFX::PSConstantBuffer cb;
+
+	cb.BGColor.x = (float)BGCOLOR->R / 255;
+	cb.BGColor.y = (float)BGCOLOR->G / 255;
+	cb.BGColor.z = (float)BGCOLOR->B / 255;
+	cb.BGColor.w = (float)PMODE->ALP / 255;
+
+	m_merge.Draw(st, sr, dst, sel, cb);
 }
 
 void GSRenderer::Present()

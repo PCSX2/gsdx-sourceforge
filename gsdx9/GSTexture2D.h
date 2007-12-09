@@ -16,6 +16,7 @@ public:
 	operator bool();
 
 	bool IsManagedTexture() const;
+	bool IsOffscreenPlainTexture() const;
 	bool IsRenderTarget() const;
 	bool IsDepthStencil() const;
 
