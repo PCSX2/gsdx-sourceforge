@@ -105,16 +105,18 @@ public:
 		return m_vm8;
 	}
 
-	__forceinline static void RoundDown(CSize& s, CSize bs)
+	template<class T>
+	static void RoundDown(T& x, T& y, CSize bs)
 	{
-		s.cx &= ~(bs.cx-1);
-		s.cy &= ~(bs.cy-1);
+		x &= ~(bs.cx-1);
+		y &= ~(bs.cy-1);
 	}
 
-	__forceinline static void RoundUp(CSize& s, CSize bs)
+	template<class T>
+	static void RoundUp(T& x, T& y, CSize bs)
 	{
-		s.cx = (s.cx + (bs.cx-1)) & ~(bs.cx-1);
-		s.cy = (s.cy + (bs.cy-1)) & ~(bs.cy-1);
+		x = (x + (bs.cx-1)) & ~(bs.cx-1);
+		y = (y + (bs.cy-1)) & ~(bs.cy-1);
 	}
 
 	__forceinline static DWORD Expand24To32(DWORD c, GIFRegTEXA& TEXA)

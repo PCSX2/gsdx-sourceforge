@@ -357,7 +357,7 @@ GSLocalMemory::GSLocalMemory()
 
 	m_psm[PSM_PSMCT16].bs = m_psm[PSM_PSMCT16S].bs = CSize(16, 8);
 	m_psm[PSM_PSMT8].bs = CSize(16, 16);
-	m_psm[PSM_PSMT4].bs = CSize(32, 32);
+	m_psm[PSM_PSMT4].bs = CSize(32, 16);
 	m_psm[PSM_PSMZ16].bs = m_psm[PSM_PSMZ16S].bs = CSize(16, 8);
 
 	m_psm[PSM_PSMCT16].pgs = m_psm[PSM_PSMCT16S].pgs = CSize(64, 64);
@@ -693,7 +693,7 @@ static void SwizzleTextureStep(int& tx, int& ty, GIFRegTRXPOS& TRXPOS, GIFRegTRX
 {
 //	if(ty == TRXREG.RRH && tx == TRXPOS.DSAX) ASSERT(0);
 
-	if(++tx == TRXREG.RRW)
+	if(++tx == (int)TRXREG.RRW)
 	{
 		tx = TRXPOS.DSAX;
 		ty++;
@@ -701,7 +701,7 @@ static void SwizzleTextureStep(int& tx, int& ty, GIFRegTRXPOS& TRXPOS, GIFRegTRX
 }
 
 #define IsTopLeftAligned(dsax, tx, ty, bw, bh) \
-	(((dsax) & ((bw)-1)) == 0 && ((tx) & ((bw)-1)) == 0 && (dsax) == (tx) && ((ty) & ((bh)-1)) == 0)
+	((((int)dsax) & ((bw)-1)) == 0 && ((tx) & ((bw)-1)) == 0 && ((int)dsax) == (tx) && ((ty) & ((bh)-1)) == 0)
 
 void GSLocalMemory::SwizzleTexture32(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
 {
@@ -1773,26 +1773,10 @@ void GSLocalMemory::ReadTexture(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TE
 	DWORD minu = CLAMP.MINU, maxu = CLAMP.MAXU;
 	DWORD minv = CLAMP.MINV, maxv = CLAMP.MAXV;
 
-	if(wms == 2)
-	{
-		r.left = min(r.right, max(r.left, (int)minu));
-		r.right = max(r.left, min(r.right, (int)maxu));
-	}
-
-	if(wmt == 2)
-	{
-		r.top = min(r.bottom, max(r.top, (int)minv));
-		r.bottom = max(r.top, min(r.bottom, (int)maxv));
-	}
-
 	CSize bs = m_psm[TEX0.PSM].bs;
 
 	int bsxm = bs.cx - 1;
 	int bsym = bs.cy - 1;
-
-	CRect cr((r.left + bsxm) & ~bsxm, (r.top + bsym) & ~bsym, r.right & ~bsxm, r.bottom & ~bsym);
-
-	bool aligned = ((DWORD_PTR)(dst + (cr.left - r.left) * sizeof(T)) & 0xf) == 0;
 
 	if(wms == 3 || wmt == 3) // TODO: do region repeat in pixel shader
 	{
@@ -1842,6 +1826,18 @@ void GSLocalMemory::ReadTexture(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TE
 			}
 		}
 
+		if(wms == 2)
+		{
+			r.left = min(r.right, max(r.left, (int)minu));
+			r.right = max(r.left, min(r.right, (int)maxu));
+		}
+
+		if(wmt == 2)
+		{
+			r.top = min(r.bottom, max(r.top, (int)minv));
+			r.bottom = max(r.top, min(r.bottom, (int)maxv));
+		}
+
 		switch(wms)
 		{
 		default: for(int x = r.left; x < r.right; x++) m_xtbl[x] = x; break;
@@ -1854,7 +1850,7 @@ void GSLocalMemory::ReadTexture(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TE
 		case 3: for(int y = r.top; y < r.bottom; y++) m_ytbl[y] = (y & minv) | maxv; break;
 		}
 
-//printf("1 wms = %d, wmt = %d, %3x %3x %3x %3x, %d %d - %d %d\n", wms, wmt, minu, maxu, minv, maxv, r.left, r.top, r.right, r.bottom);
+// printf("1 wms = %d, wmt = %d, %3x %3x %3x %3x, %d %d - %d %d\n", wms, wmt, minu, maxu, minv, maxv, r.left, r.top, r.right, r.bottom);
 
 		for(int y = r.top; y < r.bottom; y++, dst += dstpitch)
 			for(int x = r.left, i = 0; x < r.right; x++, i++)
@@ -1862,8 +1858,46 @@ void GSLocalMemory::ReadTexture(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TE
 	}
 	else
 	{
-		if(aligned)
+		// find a block-aligned rect that fits between r and the region clamped area (if any)
+
+		CRect r1 = r;
+		CRect r2 = r;
+
+		r1.left = (r1.left + bsxm) & ~bsxm;
+		r1.top = (r1.top + bsym) & ~bsym;
+		r1.right = r1.right & ~bsxm; 
+		r1.bottom = r1.bottom & ~bsym; 
+
+		if(wms == 2 && minu < maxu) 
 		{
+			r2.left = minu & ~bsxm; 
+			r2.right = (maxu + bsxm) & ~bsxm;
+		}
+
+		if(wmt == 2 && minv < maxv) 
+		{
+			r2.top = minv & ~bsym; 
+			r2.bottom = (maxv + bsym) & ~bsym;
+		}
+
+		CRect cr = r1 & r2;
+
+		bool aligned = ((DWORD_PTR)(dst + (cr.left - r.left) * sizeof(T)) & 0xf) == 0;
+
+		if(cr.left >= cr.right && cr.top >= cr.bottom || !aligned)
+		{
+			// TODO: expand r to block size, read into temp buffer, copy to r (like above)
+
+// printf("2 wms = %d, wmt = %d, %3x %3x %3x %3x, %d %d - %d %d\n", wms, wmt, minu, maxu, minv, maxv, r.left, r.top, r.right, r.bottom);
+
+			for(int y = r.top; y < r.bottom; y++, dst += dstpitch)
+				for(int x = r.left, i = 0; x < r.right; x++, i++)
+					((T*)dst)[i] = (T)(this->*rt)(x, y, TEX0, TEXA);
+		}
+		else
+		{
+// printf("4 wms = %d, wmt = %d, %3x %3x %3x %3x, %d %d - %d %d\n", wms, wmt, minu, maxu, minv, maxv, r.left, r.top, r.right, r.bottom);
+
 			for(int y = r.top; y < cr.top; y++, dst += dstpitch)
 				for(int x = r.left, i = 0; x < r.right; x++, i++)
 					((T*)dst)[i] = (T)(this->*rt)(x, y, TEX0, TEXA);
@@ -1882,14 +1916,6 @@ void GSLocalMemory::ReadTexture(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TE
 			}
 
 			for(int y = cr.bottom; y < r.bottom; y++, dst += dstpitch)
-				for(int x = r.left, i = 0; x < r.right; x++, i++)
-					((T*)dst)[i] = (T)(this->*rt)(x, y, TEX0, TEXA);
-		}
-		else
-		{
-//printf("2 wms = %d, wmt = %d, %3x %3x %3x %3x, %d %d - %d %d\n", wms, wmt, minu, maxu, minv, maxv, r.left, r.top, r.right, r.bottom);
-
-			for(int y = r.top; y < r.bottom; y++, dst += dstpitch)
 				for(int x = r.left, i = 0; x < r.right; x++, i++)
 					((T*)dst)[i] = (T)(this->*rt)(x, y, TEX0, TEXA);
 		}

@@ -100,8 +100,6 @@ int GetPrimClass(DWORD prim)
 		break;
 	}
 
-	ASSERT(0);
-
 	return -1;
 }
 
