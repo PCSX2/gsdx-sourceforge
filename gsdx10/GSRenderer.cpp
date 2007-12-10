@@ -287,8 +287,8 @@ void GSRenderer::Merge(FlipInfo src[2], GSTexture2D& dst)
 
 	sel.en1 = IsEnabled(0);
 	sel.en2 = IsEnabled(1);
-	sel.mmod = PMODE->MMOD;
 	sel.slbg = PMODE->SLBG;
+	sel.mmod = PMODE->MMOD;
 
 	GSMergeFX::PSConstantBuffer cb;
 

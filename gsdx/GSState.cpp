@@ -1357,7 +1357,7 @@ bool GSState::DetectBadFrame(int crc, int& skip)
 
 		break;
 
-	case 0x053D2239: // mgs3s1 ntsc/us
+	case 0x053D2239: // mgs3s1 ntsc/us (TODO: in-game has funny colors)
 	// TODO: case 0x086273D2: mgs3 snake eater pal/fr
 
 		if(skip == 0)
@@ -1394,6 +1394,7 @@ bool GSState::DetectBadFrame(int crc, int& skip)
 		break;
 
 	case 0x72B3802A: // sfex3 ntsc/us
+	case 0x71521863: // sfex3 ntsc/us
 
 		if(skip == 0)
 		{
@@ -1411,7 +1412,7 @@ bool GSState::DetectBadFrame(int crc, int& skip)
 		{
 			if(TME && (FBP == 0x00000 || FBP == 0x01180) && (TBP0 == 0x00000 || TBP0 == 0x01180) && FBP == TBP0 && FPSM == PSM_PSMCT32 && FPSM == TPSM)
 			{
-				return true; // allowed for bully
+				return false; // allowed for bully
 			}
 
 			if(TME && (FBP == 0x00000 || FBP == 0x01180) && FPSM == PSM_PSMCT16S && TBP0 == 0x02300 && TPSM == PSM_PSMZ16S)

@@ -219,7 +219,7 @@ void GSRendererHW::Draw()
 	{
 		return;
 	}
-
+/*
 TRACE(_T("[%d] FlushPrim f %05x (%d) z %05x (%d %d %d %d) t %05x %05x (%d)\n"), 
 	  (int)m_perfmon.GetFrame(), 
 	  (int)m_context->FRAME.Block(), 
@@ -232,7 +232,7 @@ TRACE(_T("[%d] FlushPrim f %05x (%d) z %05x (%d %d %d %d) t %05x %05x (%d)\n"),
 	  PRIM->TME ? (int)m_context->TEX0.TBP0 : 0xfffff, 
 	  PRIM->TME && m_context->TEX0.PSM > PSM_PSMCT16S ? (int)m_context->TEX0.CBP : 0xfffff, 
 	  PRIM->TME ? (int)m_context->TEX0.PSM : 0xff);
-
+*/
 	//
 
 	GIFRegTEX0 TEX0;
@@ -514,7 +514,7 @@ if(s_dump)
 
 	if(m_context->TEST.ATE && m_context->TEST.ATST != 1 && m_context->TEST.AFAIL)
 	{
-		ASSERT(!m_env.PABE.PABE);
+		// ASSERT(!m_env.PABE.PABE);
 
 		static const DWORD iatst[] = {1, 0, 5, 6, 7, 2, 3, 4};
 
@@ -607,7 +607,7 @@ if(s_dump)
 
 void GSRendererHW::InvalidateTexture(const GIFRegBITBLTBUF& BITBLTBUF, CRect r)
 {
-	TRACE(_T("[%d] InvalidateTexture %d,%d - %d,%d %05x\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.DBP);
+	// TRACE(_T("[%d] InvalidateTexture %d,%d - %d,%d %05x\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.DBP);
 
 	m_tc.InvalidateTexture(BITBLTBUF, &r);
 }
