@@ -60,7 +60,7 @@ bool GSTextureCache::GSTexture::Create()
 	switch(psm)
 	{
 	default:
-		ASSERT(0);
+		TRACE(_T("Invalid TEX0.PSM/CPSM (%I64d, %I64d)\n"), m_TEX0.PSM, m_TEX0.CPSM);
 	case PSM_PSMCT32:
 		m_bpp = 32;
 		m_bpp2 = 0;

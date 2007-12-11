@@ -146,7 +146,7 @@ void GSRendererHW::DrawingKick(bool skip)
 		nv = 6;
 		break;
 	default:
-		//m_vl.RemoveAll();
+		m_vl.RemoveAll();
 		ASSERT(0);
 		return;
 	}
