@@ -99,11 +99,12 @@ public:
 			DWORD ztst:2;
 			DWORD zwe:1;
 			DWORD date:1;
+			DWORD fba:1;
 		};
 
 		DWORD dw;
 
-		operator DWORD() {return dw & 0x1f;}
+		operator DWORD() {return dw & 0x3f;}
 	};
 
 	union OMBlendSelector

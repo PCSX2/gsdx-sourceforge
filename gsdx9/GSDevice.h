@@ -2,6 +2,17 @@
 
 #include "GSTexture2D.h"
 
+struct VertexP
+{
+	float x, y, z, w;
+};
+
+struct VertexPC
+{
+	float x, y, z, w;
+	DWORD c;
+};
+
 struct VertexPT1
 {
 	float x, y, z, w;
@@ -31,13 +42,14 @@ public: // TODO
 	CComPtr<IDirect3DSwapChain9> m_swapchain;
 	CComPtr<IDirect3DSurface9> m_backbuffer;
 	CComPtr<IDirect3DTexture9> m_tex_current;
+	CComPtr<ID3DXFont> m_font;
 
 	GSTexture2D m_tex_merge;
 	GSTexture2D m_tex_interlace;
 	GSTexture2D m_tex_deinterlace;
 	GSTexture2D m_tex_1x1;
 
-	CComPtr<IDirect3DPixelShader9> m_ps_convert[4];
+	CComPtr<IDirect3DPixelShader9> m_ps_convert[3];
 	CComPtr<IDirect3DPixelShader9> m_ps_interlace[4];
 
 public:
@@ -50,16 +62,18 @@ public:
 	operator IDirect3DDevice9*() {return m_dev;}
 
 	bool ResetDevice(int w, int h, bool fs = false);
+	void Draw(LPCTSTR str);
 	void Present();
 
 	HRESULT CreateRenderTarget(GSTexture2D& t, int w, int h, D3DFORMAT format = D3DFMT_A8R8G8B8);
-	HRESULT CreateDepthStencil(GSTexture2D& t, int w, int h, D3DFORMAT format = D3DFMT_D24S8);
+	HRESULT CreateDepthStencil(GSTexture2D& t, int w, int h, D3DFORMAT format = D3DFMT_D24S8/*D3DFMT_D32F_LOCKABLE*/);
 	HRESULT CreateTexture(GSTexture2D& t, int w, int h, D3DFORMAT format = D3DFMT_A8R8G8B8);
 	HRESULT CreateOffscreenPlainSurface(GSTexture2D& t, int w, int h, D3DFORMAT format = D3DFMT_A8R8G8B8);
 
 	void Recycle(GSTexture2D& t);
 
 	bool SaveCurrent(LPCTSTR fn);
+	bool SaveToFileD24S8(IDirect3DSurface9* ds, LPCTSTR fn);
 
 	void StretchRect(GSTexture2D& st, GSTexture2D& dt, const D3DXVECTOR4& dr, bool linear = true);
 	void StretchRect(GSTexture2D& st, const D3DXVECTOR4& sr, GSTexture2D& dt, const D3DXVECTOR4& dr, bool linear = true);

@@ -19,13 +19,20 @@ float4 vs_params[3];
 #define VertexOffset vs_params[1]
 #define TextureScale vs_params[2].xy
 
+#ifndef LOGZ
+#define LOGZ 1
+#endif
+
 VS_OUTPUT vs_main(VS_INPUT input)
 {
 	VS_OUTPUT output;
 	
 	output.p = input.p * VertexScale - VertexOffset;
-	//
-	output.p.z = log2(1.0f + input.p.z) / 32;
+
+	if(LOGZ == 1)
+	{
+		output.p.z = log2(1.0f + input.p.z) / 32;
+	}
 	
 	output.c = input.c;
 	
@@ -54,7 +61,6 @@ float4 ps_params[5];
 
 struct PS_INPUT
 {
-	float4 p : POSITION;
 	float4 c : COLOR0;
 	float4 t : TEXCOORD0;
 };

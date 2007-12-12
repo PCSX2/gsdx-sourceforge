@@ -67,6 +67,8 @@ GSSettingsDlg::GSSettingsDlg(CWnd* pParent /*=NULL*/)
 	, m_nloophack(2)
 	, m_nativeres(FALSE)
 	, m_vsync(FALSE)
+	, m_logz(FALSE)
+	, m_fba(TRUE)
 {
 }
 
@@ -106,14 +108,13 @@ void GSSettingsDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT1, m_resxedit);
 	DDX_Control(pDX, IDC_EDIT2, m_resyedit);
 	DDX_Check(pDX, IDC_CHECK2, m_vsync);
+	DDX_Check(pDX, IDC_CHECK5, m_logz);
+	DDX_Check(pDX, IDC_CHECK7, m_fba);
 }
-
 
 BEGIN_MESSAGE_MAP(GSSettingsDlg, CDialog)
 	ON_BN_CLICKED(IDC_CHECK1, &GSSettingsDlg::OnBnClickedCheck1)
 END_MESSAGE_MAP()
-
-// GSSettingsDlg message handlers
 
 BOOL GSSettingsDlg::OnInitDialog()
 {
@@ -183,6 +184,8 @@ BOOL GSSettingsDlg::OnInitDialog()
 	m_tvout = pApp->GetProfileInt(_T("Settings"), _T("tvout"), FALSE);
 	m_nloophack = pApp->GetProfileInt(_T("Settings"), _T("nloophack"), 2);
 	m_vsync = !!pApp->GetProfileInt(_T("Settings"), _T("vsync"), FALSE);
+	m_logz = !!pApp->GetProfileInt(_T("Settings"), _T("logz"), FALSE);
+	m_fba = !!pApp->GetProfileInt(_T("Settings"), _T("fba"), TRUE);
 
 	m_resx.SetRange(512, 4096);
 	m_resy.SetRange(512, 4096);
@@ -241,6 +244,8 @@ void GSSettingsDlg::OnOK()
 	pApp->WriteProfileInt(_T("Settings"), _T("tvout"), m_tvout);
 	pApp->WriteProfileInt(_T("Settings"), _T("nloophack"), m_nloophack);
 	pApp->WriteProfileInt(_T("Settings"), _T("vsync"), m_vsync);
+	pApp->WriteProfileInt(_T("Settings"), _T("logz"), m_logz);
+	pApp->WriteProfileInt(_T("Settings"), _T("fba"), m_fba);
 
 	pApp->WriteProfileInt(_T("Settings"), _T("resx"), m_resx.GetPos());
 	pApp->WriteProfileInt(_T("Settings"), _T("resy"), m_resy.GetPos());

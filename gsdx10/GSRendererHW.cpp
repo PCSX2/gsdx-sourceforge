@@ -26,7 +26,7 @@
 int s_n = 0;
 bool s_dump = false;
 bool s_save = true;
-bool s_savez = false;
+bool s_savez = true;
 
 GSRendererHW::GSRendererHW(BYTE* base, bool mt, void (*irq)(), bool nloophack)
 	: GSRendererT(base, mt, irq, nloophack)
@@ -233,6 +233,11 @@ TRACE(_T("[%d] FlushPrim f %05x (%d) z %05x (%d %d %d %d) t %05x %05x (%d)\n"),
 	  PRIM->TME && m_context->TEX0.PSM > PSM_PSMCT16S ? (int)m_context->TEX0.CBP : 0xfffff, 
 	  PRIM->TME ? (int)m_context->TEX0.PSM : 0xff);
 */
+
+if(s_n >= 500)
+{
+	s_save = s_savez = true;
+}
 	//
 
 	GIFRegTEX0 TEX0;
@@ -410,7 +415,7 @@ if(s_dump)
 	ps_sel.fog = PRIM->FGE;
 	ps_sel.clr1 = om_bsel.abe && om_bsel.a == 1 && om_bsel.b == 2 && om_bsel.d == 1;
 	ps_sel.fba = m_context->FBA.FBA;
-	ps_sel.aout = m_context->FRAME.PSM == PSM_PSMCT16 || m_context->FRAME.PSM == PSM_PSMCT16S ? 1 : 0;
+	ps_sel.aout = m_context->FRAME.PSM == PSM_PSMCT16 || m_context->FRAME.PSM == PSM_PSMCT16S || (m_context->FRAME.FBMSK & 0xff000000) == 0x7f000000 ? 1 : 0;
 
 	GSTextureFX::PSSamplerSelector ps_ssel;
 

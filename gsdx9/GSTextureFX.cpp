@@ -47,7 +47,13 @@ bool GSTextureFX::Create(GSDevice* dev)
 
 	if(FAILED(hr)) return false;
 
-	hr = m_dev->CompileShader(IDR_TFX_FX, "vs_main", NULL, &m_vs, &m_vs_ct);
+	D3DXMACRO macro[] =
+	{
+		{"LOGZ", !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("logz"), FALSE) ? "1" : "0"},
+		{NULL, NULL},
+	};
+
+	hr = m_dev->CompileShader(IDR_TFX_FX, "vs_main", macro, &m_vs, &m_vs_ct);
 
 	if(FAILED(hr)) return false;
 
@@ -205,6 +211,17 @@ void GSTextureFX::UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, B
 		(*m_dev)->SetRenderState(D3DRS_STENCILFAIL, D3DSTENCILOP_KEEP);
 		(*m_dev)->SetRenderState(D3DRS_STENCILZFAIL, D3DSTENCILOP_KEEP);
 	}
+	else if(dssel.fba)
+	{
+		(*m_dev)->SetRenderState(D3DRS_STENCILENABLE, TRUE);
+		(*m_dev)->SetRenderState(D3DRS_STENCILREF, 2);
+		(*m_dev)->SetRenderState(D3DRS_STENCILMASK, 2);
+		(*m_dev)->SetRenderState(D3DRS_STENCILWRITEMASK, 2);
+		(*m_dev)->SetRenderState(D3DRS_STENCILFUNC, D3DCMP_ALWAYS);
+		(*m_dev)->SetRenderState(D3DRS_STENCILPASS, D3DSTENCILOP_REPLACE);
+		(*m_dev)->SetRenderState(D3DRS_STENCILFAIL, D3DSTENCILOP_ZERO);
+		(*m_dev)->SetRenderState(D3DRS_STENCILZFAIL, D3DSTENCILOP_ZERO);
+	}
 	else
 	{
 		(*m_dev)->SetRenderState(D3DRS_STENCILENABLE, FALSE);
@@ -218,9 +235,17 @@ void GSTextureFX::UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, B
 		D3DCMP_GREATER
 	};
 
-	(*m_dev)->SetRenderState(D3DRS_ZENABLE, dssel.zte);
-	(*m_dev)->SetRenderState(D3DRS_ZWRITEENABLE, dssel.zwe);
-	(*m_dev)->SetRenderState(D3DRS_ZFUNC, ztst[dssel.ztst]);
+	if(!(dssel.zte && dssel.ztst == 1 && !dssel.zwe))
+	{
+		(*m_dev)->SetRenderState(D3DRS_ZENABLE, dssel.zte);
+		(*m_dev)->SetRenderState(D3DRS_ZWRITEENABLE, dssel.zwe);
+		(*m_dev)->SetRenderState(D3DRS_ZFUNC, ztst[dssel.ztst]);
+	}
+	else
+	{
+		(*m_dev)->SetRenderState(D3DRS_ZENABLE, FALSE);
+		(*m_dev)->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
+	}
 
 	(*m_dev)->SetRenderState(D3DRS_ALPHABLENDENABLE, bsel.abe);
 

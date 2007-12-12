@@ -598,7 +598,7 @@ void GSState::GIFRegHandlerPRMODECONT(GIFReg* r)
 
 	PRIM = !m_env.PRMODECONT.AC ? (GIFRegPRIM*)&m_env.PRMODE : &m_env.PRIM;
 
-	ASSERT(PRIM->PRIM < 7);
+	if(PRIM->PRIM == 7) TRACE(_T("Invalid PRMODECONT/PRIM\n"));
 
 	m_context = &m_env.CTXT[PRIM->CTXT];
 }

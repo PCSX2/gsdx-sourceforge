@@ -61,6 +61,8 @@ public:
 	CEdit m_resxedit;
 	CEdit m_resyedit;
 	BOOL m_vsync;
+	BOOL m_logz;
+	BOOL m_fba;
 
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support

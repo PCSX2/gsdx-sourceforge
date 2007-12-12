@@ -402,31 +402,11 @@ void GSRenderer::Present()
 		if(m_perfmon.Get(GSPerfMon::DepthTexture)) _tprintf(_T("*** NOT SUPPORTED: depth texture ***\n"));		
 	}
 
-/*
-	if(m_osd && !m_d3dpp.Windowed)
+
+	if(m_osd)
 	{
-		hr = m_dev->BeginScene();
-
-		hr = m_dev->SetRenderTarget(0, pBackBuffer);
-		hr = m_dev->SetDepthStencilSurface(NULL);
-
-		CRect r;
-		
-		GetClientRect(r);
-
-		D3DCOLOR c = D3DCOLOR_ARGB(255, 0, 255, 0);
-
-		CString str = s_stats;
-
-		str += _T("\n\nF5: interlace mode\nF6: aspect ratio\nF7: OSD");
-
-		if(m_pD3DXFont->DrawText(NULL, str, -1, &r, DT_CALCRECT|DT_LEFT|DT_WORDBREAK, c))
-		{
-			m_pD3DXFont->DrawText(NULL, str, -1, &r, DT_LEFT|DT_WORDBREAK, c);
-		}
-
-		hr = m_dev->EndScene();
+		m_dev.Draw(s_stats + _T("\n\nF5: interlace mode\nF6: aspect ratio\nF7: OSD"));
 	}
-*/
+
 	m_dev.Present();
 }

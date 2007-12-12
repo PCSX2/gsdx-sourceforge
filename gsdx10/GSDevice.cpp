@@ -504,7 +504,6 @@ bool GSDevice::SaveToFileD32S8X24(ID3D10Texture2D* ds, LPCTSTR fn)
 	D3D10_MAPPED_TEXTURE2D sm, dm;
 
 	hr = src->Map(0, D3D10_MAP_READ, 0, &sm);
-	
 	hr = dst->Map(0, D3D10_MAP_WRITE, 0, &dm);
 
 	BYTE* s = (BYTE*)sm.pData;
@@ -512,19 +511,13 @@ bool GSDevice::SaveToFileD32S8X24(ID3D10Texture2D* ds, LPCTSTR fn)
 
 	for(int y = 0; y < desc.Height; y++, s += sm.RowPitch, d += dm.RowPitch)
 	{
-		float* sf = (float*)s;
-		DWORD* dd = (DWORD*)d;
-
 		for(int x = 0; x < desc.Width; x++)
 		{
-			BYTE b = (BYTE)(sf[x*2] * 255);
-
-			dd[x] = (b << 24) | (b << 16) | (b << 8) | 0xff;
+			((float*)d)[x] = ((float*)s)[x*2];
 		}
 	}
 
 	src->Unmap(0);
-
 	dst->Unmap(0);
 
 	return SUCCEEDED(D3DX10SaveTextureToFile(dst, D3DX10_IFF_BMP, fn));

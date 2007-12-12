@@ -23,6 +23,7 @@
 #define IDC_SPIN2                       2019
 #define IDD_CONFIG                      2020
 #define IDB_LOGO1                       2021
+#define IDC_CHECK7                      2022
 #define IDR_CONVERT_FX                  10000
 #define IDR_TFX_FX                      10001
 #define IDR_MERGE_FX                    10002
@@ -34,7 +35,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        10004
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         2022
+#define _APS_NEXT_CONTROL_VALUE         2023
 #define _APS_NEXT_SYMED_VALUE           5000
 #endif
 #endif

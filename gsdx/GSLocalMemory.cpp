@@ -1888,6 +1888,7 @@ void GSLocalMemory::ReadTexture(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TE
 		{
 			// TODO: expand r to block size, read into temp buffer, copy to r (like above)
 
+if(!aligned) printf("unaligned memory pointer passed to ReadTexture\n");
 // printf("2 wms = %d, wmt = %d, %3x %3x %3x %3x, %d %d - %d %d\n", wms, wmt, minu, maxu, minv, maxv, r.left, r.top, r.right, r.bottom);
 
 			for(int y = r.top; y < r.bottom; y++, dst += dstpitch)
