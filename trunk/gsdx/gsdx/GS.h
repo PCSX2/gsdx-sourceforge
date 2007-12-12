@@ -666,7 +666,11 @@ REG64_(GIFReg, TEST)
 	UINT32 ZTST:2;
 	UINT32 _PAD1:13;
 	UINT32 _PAD2:32;
-REG_END
+REG_END2
+	bool DoFirstPass() {return !(ATE && ATST == 0);} // not all pixels fail automatically
+	bool DoSecondPass() {return ATE && ATST != 1 && AFAIL != 0;} // pixels may fail, write fb/z  
+	bool NoSecondPass() {return ATE && ATST != 1 && AFAIL == 0;} // pixels may fail, no output
+REG_END2
 
 REG64_(GIFReg, TEX0)
 	UINT64 TBP0:14;

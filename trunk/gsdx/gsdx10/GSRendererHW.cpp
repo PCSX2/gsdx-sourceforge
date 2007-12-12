@@ -512,12 +512,12 @@ if(s_dump)
 
 	// draw
 
-	if(!m_context->TEST.ATE || m_context->TEST.ATST != 0)
+	if(m_context->TEST.DoFirstPass())
 	{
 		m_dev->Draw(m_count, 0);
 	}
 
-	if(m_context->TEST.ATE && m_context->TEST.ATST != 1 && m_context->TEST.AFAIL)
+	if(m_context->TEST.DoSecondPass())
 	{
 		// ASSERT(!m_env.PABE.PABE);
 
