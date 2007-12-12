@@ -7,10 +7,10 @@ cbuffer cb0
 
 struct VS_INPUT
 {
-    float4 p : POSITION; 
+	float4 p : POSITION; 
 	float4 c : COLOR0;
 	float4 f : COLOR1;
-    float2 t : TEXCOORD0;
+	float2 t : TEXCOORD0;
 };
 
 struct VS_OUTPUT
@@ -23,15 +23,15 @@ struct VS_OUTPUT
 VS_OUTPUT vs_main(VS_INPUT input)
 {
 	VS_OUTPUT output;
-	
+
 	output.p = input.p * VertexScale - VertexOffset;
-	
+
 	output.c = input.c;
-	
+
 	output.t.xy = input.t.xy * TextureScale;
 	output.t.z = input.f.a;
 	output.t.w = input.p.w < 0 ? 1 : input.p.w; // FIXME: <= takes small but not 0 numbers as 0
-	
+
 	return output;
 }
 
@@ -73,7 +73,7 @@ void gs_main(triangle VS_OUTPUT input[3], inout TriangleStream<VS_OUTPUT> stream
 	input[1].c = input[2].c;
 	input[1].t.z = input[2].t.z;
 	#endif
-	
+
 	stream.Append(input[0]);
 	stream.Append(input[1]);
 	stream.Append(input[2]);
@@ -86,17 +86,17 @@ void gs_main(line VS_OUTPUT input[2], inout TriangleStream<VS_OUTPUT> stream)
 {
 	input[0].p.z = input[1].p.z;
 	input[0].t.zw = input[1].t.zw;
-	
+
 	VS_OUTPUT lb = input[1];
-	
+
 	lb.p.x = input[0].p.x;
 	lb.t.x = input[0].t.x;
-	
+
 	VS_OUTPUT rt = input[1];
-	
+
 	rt.p.y = input[0].p.y;
 	rt.t.y = input[0].t.y;
-	
+
 	stream.Append(input[0]);
 	stream.Append(lb);
 	stream.Append(rt);
@@ -165,7 +165,7 @@ float4 Extract16(uint i)
 	f.g = i & 0x03e0;
 	f.b = i & 0x7c00;
 	f.a = i & 0x8000;
-	
+
 	return f;
 }
 
@@ -182,9 +182,9 @@ PS_OUTPUT ps_main(PS_INPUT input)
 	{
 		tc = clamp(tc, ClampMin, ClampMax);
 	}
-	
+
 	float4 t;
-	
+
 	if(BPP == 0) // 32
 	{
 		t = Texture.Sample(Sampler, tc);
@@ -192,19 +192,19 @@ PS_OUTPUT ps_main(PS_INPUT input)
 	else if(BPP == 1) // 24
 	{
 		t = Texture.Sample(Sampler, tc);
-		
+
 		t.a = AEM == 0 || any(t.rgb) ? TA0 : 0;
 	}
 	else if(BPP == 2) // 16
 	{
 		t = Texture.Sample(Sampler, tc);
-		
+
 		t.a = t.a >= 0.5 ? TA1 : AEM == 0 || any(t.rgb) ? TA0 : 0; // a bit incompatible with up-scaling because the 1 bit alpha is interpolated
 	}
 	else if(BPP == 3) // 16P
 	{
 		// tc -= 0.5 * rWrH; // ?
-		
+
 		uint4 i = float4(
 			Texture.Sample(Sampler, tc).r,
 			Texture.Sample(Sampler, tc + rWZ).r,
@@ -219,15 +219,15 @@ PS_OUTPUT ps_main(PS_INPUT input)
 		float2 dd = frac(tc * WH); 
 
 		t = lerp(lerp(t00, t01, dd.x), lerp(t10, t11, dd.x), dd.y);
-		
+
 		t = Normalize16(t);
-		
+
 		t.a = t.a >= 0.5 ? TA1 : AEM == 0 || any(t.rgb) ? TA0 : 0; // a bit incompatible with up-scaling because the 1 bit alpha is interpolated
 	}
 	else if(BPP == 4) // 8HP / 32-bit palette
 	{
 		// tc -= 0.5 * rWrH; // ?
-		
+
 		float4 f = float4(
 			Texture.Sample(Sampler, tc).a,
 			Texture.Sample(Sampler, tc + rWZ).a,
@@ -238,18 +238,18 @@ PS_OUTPUT ps_main(PS_INPUT input)
 		float4 t01 = Palette.Sample(Sampler, f.y);
 		float4 t10 = Palette.Sample(Sampler, f.z);
 		float4 t11 = Palette.Sample(Sampler, f.w);
-		
+
 		float2 dd = frac(tc * WH);
-		
+
 		t = lerp(lerp(t00, t01, dd.x), lerp(t10, t11, dd.x), dd.y);
 	}
 	else if(BPP == 5) // 8HP / 16-bit palette
 	{
 		// TODO: yuck, just pre-convert the palette to 32-bit
 	}
-	
+
 	float4 c = input.c;
-	
+
 	if(TFX == 0)
 	{
 		if(TCC == 0) 
@@ -285,7 +285,7 @@ PS_OUTPUT ps_main(PS_INPUT input)
 	}
 
 	c = saturate(c);
-	
+
 	if(ATE == 1)
 	{
 		if(ATST == 0)
@@ -314,16 +314,16 @@ PS_OUTPUT ps_main(PS_INPUT input)
 	{
 		c.rgb = lerp(FogColor.rgb, c.rgb, input.t.z);
 	}
-	
+
 	if(CLR1 == 1) // needed for Cd * (As/Ad/F + 1) blending modes
 	{
 		c.rgb = 1; 
 	}
-	
+
 	PS_OUTPUT output;
-	
+
 	output.c1 = c.a * 2; // used for alpha blending
-	
+
 	if(AOUT == 1) // 16 bit output
 	{
 		c.a = FBA == 1 ? 0.5 : step(0.5, c.a) * 0.5;
@@ -334,6 +334,6 @@ PS_OUTPUT ps_main(PS_INPUT input)
 	}
 
 	output.c0 = c;
-	
+
 	return output;
 }
