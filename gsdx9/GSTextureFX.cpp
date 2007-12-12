@@ -200,27 +200,16 @@ void GSTextureFX::SetupOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, BY
 
 void GSTextureFX::UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, BYTE bf)
 {
-	if(dssel.date)
+	if(dssel.date || dssel.fba)
 	{
 		(*m_dev)->SetRenderState(D3DRS_STENCILENABLE, TRUE);
-		(*m_dev)->SetRenderState(D3DRS_STENCILREF, 1);
+		(*m_dev)->SetRenderState(D3DRS_STENCILREF, 3);
 		(*m_dev)->SetRenderState(D3DRS_STENCILMASK, 1);
-		(*m_dev)->SetRenderState(D3DRS_STENCILWRITEMASK, 1);	
-		(*m_dev)->SetRenderState(D3DRS_STENCILFUNC, D3DCMP_EQUAL);
-		(*m_dev)->SetRenderState(D3DRS_STENCILPASS, D3DSTENCILOP_KEEP);
-		(*m_dev)->SetRenderState(D3DRS_STENCILFAIL, D3DSTENCILOP_KEEP);
-		(*m_dev)->SetRenderState(D3DRS_STENCILZFAIL, D3DSTENCILOP_KEEP);
-	}
-	else if(dssel.fba)
-	{
-		(*m_dev)->SetRenderState(D3DRS_STENCILENABLE, TRUE);
-		(*m_dev)->SetRenderState(D3DRS_STENCILREF, 2);
-		(*m_dev)->SetRenderState(D3DRS_STENCILMASK, 2);
-		(*m_dev)->SetRenderState(D3DRS_STENCILWRITEMASK, 2);
-		(*m_dev)->SetRenderState(D3DRS_STENCILFUNC, D3DCMP_ALWAYS);
-		(*m_dev)->SetRenderState(D3DRS_STENCILPASS, D3DSTENCILOP_REPLACE);
-		(*m_dev)->SetRenderState(D3DRS_STENCILFAIL, D3DSTENCILOP_ZERO);
-		(*m_dev)->SetRenderState(D3DRS_STENCILZFAIL, D3DSTENCILOP_ZERO);
+		(*m_dev)->SetRenderState(D3DRS_STENCILWRITEMASK, 2);	
+		(*m_dev)->SetRenderState(D3DRS_STENCILFUNC, dssel.date ? D3DCMP_EQUAL : D3DCMP_ALWAYS);
+		(*m_dev)->SetRenderState(D3DRS_STENCILPASS, dssel.fba ? D3DSTENCILOP_REPLACE : D3DSTENCILOP_KEEP);
+		(*m_dev)->SetRenderState(D3DRS_STENCILFAIL, dssel.fba ? D3DSTENCILOP_ZERO : D3DSTENCILOP_KEEP);
+		(*m_dev)->SetRenderState(D3DRS_STENCILZFAIL, dssel.fba ? D3DSTENCILOP_ZERO : D3DSTENCILOP_KEEP);
 	}
 	else
 	{

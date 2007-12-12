@@ -217,7 +217,7 @@ void GSRendererHW::Draw()
 	{
 		return;
 	}
-
+	
 	//
 
 	GIFRegTEX0 TEX0;
@@ -315,7 +315,7 @@ if(s_dump)
 	om_dssel.ztst = m_context->TEST.ZTST;
 	om_dssel.zwe = !m_context->ZBUF.ZMSK;
 	om_dssel.date = m_context->TEST.DATE;
-	om_dssel.fba = m_context->FBA.FBA;
+	om_dssel.fba = m_fba ? m_context->FBA.FBA : 0;
 
 	GSTextureFX::OMBlendSelector om_bsel;
 
@@ -463,18 +463,14 @@ if(s_dump)
 
 	m_tfx.SetupRS(scissor);
 
-	// fba
-
-	SetupFBA();
-
 	// draw
 
-	if(!m_context->TEST.ATE || m_context->TEST.ATST != 0)
+	if(m_context->TEST.DoFirstPass())
 	{
 		m_dev->DrawPrimitiveUP(topology, prims, m_vertices, sizeof(m_vertices[0]));
 	}
 
-	if(m_context->TEST.ATE && m_context->TEST.ATST != 1 && m_context->TEST.AFAIL)
+	if(m_context->TEST.DoSecondPass())
 	{
 		ASSERT(!m_env.PABE.PABE);
 
@@ -515,7 +511,7 @@ if(s_dump)
 
 	hr = m_dev->EndScene();
 
-	UpdateFBA(rt);
+	if(om_dssel.fba) UpdateFBA(rt);
 
 	hr = m_dev->SetRenderState(D3DRS_STENCILENABLE, FALSE);
 
@@ -828,26 +824,8 @@ void GSRendererHW::SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache:
 	m_dev.Recycle(tmp);
 }
 
-void GSRendererHW::SetupFBA()
-{
-	if(!m_context->FBA.FBA || !m_fba) return;
-
-	if(m_context->TEST.DATE) {ASSERT(0); return;} // can't do both at the same time
-
-	if(m_context->TEST.ATE && m_context->TEST.ATST != 1 && m_context->TEST.AFAIL == 0)
-	{
-		// if not all pixels will reach the stencil test then clear it
-
-		m_dev->Clear(0, NULL, D3DCLEAR_STENCIL, 0, 0, 0);
-	}
-}
-
 void GSRendererHW::UpdateFBA(GSTextureCache::GSRenderTarget* rt)
 {
-	if(!m_context->FBA.FBA || !m_fba) return;
-
-	if(m_context->TEST.DATE) {ASSERT(0); return;} // can't do both at the same time
-
 	HRESULT hr;
 	
 	hr = m_dev->SetTexture(0, NULL);

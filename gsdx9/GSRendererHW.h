@@ -48,7 +48,6 @@ protected:
 	void MinMaxUV(int w, int h, CRect& r);
 
 	void SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache::GSDepthStencil* ds);
-	void SetupFBA();
 	void UpdateFBA(GSTextureCache::GSRenderTarget* rt);
 	bool OverrideInput(int& prim, GSTextureCache::GSTexture* tex);	
 
