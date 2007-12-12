@@ -12,12 +12,7 @@ float4 ps_main1(float2 tex : TEXCOORD0) : COLOR
 	return c;
 }
 
-float4 ps_main2() : COLOR
-{
-	return float4(0, 0, 0, 1);
-}
-
-float4 ps_main3(float2 tex : TEXCOORD0) : COLOR
+float4 ps_main2(float2 tex : TEXCOORD0) : COLOR
 {
 	float4 c = tex2D(Texture, tex);
 	if(c.a < 1) c.a = 0;

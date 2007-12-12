@@ -55,7 +55,9 @@ bool GSDevice::Create(HWND hWnd)
 
 	m_d3d->GetDeviceCaps(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, &m_d3dcaps);
 
-	if(!ResetDevice(1, 1)) return false;
+	bool fs = AfxGetApp()->GetProfileInt(_T("Settings"), _T("ModeWidth"), 0) > 0;
+
+	if(!ResetDevice(1, 1, fs)) return false;
 
 	m_dev->Clear(0, NULL, D3DCLEAR_TARGET, 0, 1.0f, 0);
 
@@ -127,6 +129,7 @@ bool GSDevice::ResetDevice(int w, int h, bool fs)
 	m_tex_deinterlace = GSTexture2D();
 	m_tex_1x1 = GSTexture2D();
 	m_pool.RemoveAll();
+	m_font = NULL;
 
 	memset(&m_pp, 0, sizeof(m_pp));
 
@@ -136,7 +139,12 @@ bool GSDevice::ResetDevice(int w, int h, bool fs)
 	m_pp.BackBufferFormat = D3DFMT_X8R8G8B8;
 	m_pp.BackBufferWidth = 1;
 	m_pp.BackBufferHeight = 1;
-	m_pp.PresentationInterval = /* m_vsync ? D3DPRESENT_INTERVAL_DEFAULT : */ D3DPRESENT_INTERVAL_IMMEDIATE;
+	m_pp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
+
+	if(!!AfxGetApp()->GetProfileInt(_T("Settings"), _T("vsync"), FALSE))
+	{
+		m_pp.PresentationInterval = D3DPRESENT_INTERVAL_DEFAULT;
+	}
 
 	if(!!AfxGetApp()->GetProfileInt(_T("Settings"), _T("tvout"), FALSE))
 	{
@@ -180,10 +188,7 @@ bool GSDevice::ResetDevice(int w, int h, bool fs)
 				hr = m_dev->Reset(&m_pp);
 			}
 
-			if(FAILED(hr))
-			{
-				return false;
-			}
+			if(FAILED(hr)) return false;
 		}
 	}
 
@@ -229,7 +234,37 @@ bool GSDevice::ResetDevice(int w, int h, bool fs)
 
 	CreateTexture(m_tex_1x1, 1, 1);
 
+	D3DXFONT_DESC fd;
+	memset(&fd, 0, sizeof(fd));
+	_tcscpy(fd.FaceName, _T("Arial"));
+	fd.Height = 20;
+	D3DXCreateFontIndirect(m_dev, &fd, &m_font);
+
 	return true;
+}
+
+void GSDevice::Draw(LPCTSTR str)
+{
+	if(!m_pp.Windowed)
+	{
+		m_dev->BeginScene();
+
+		m_dev->SetRenderTarget(0, m_backbuffer);
+		m_dev->SetDepthStencilSurface(NULL);
+
+		D3DSURFACE_DESC desc;
+		m_backbuffer->GetDesc(&desc);
+		CRect r(0, 0, desc.Width, desc.Height);
+
+		D3DCOLOR c = D3DCOLOR_ARGB(255, 0, 255, 0);
+
+		if(m_font->DrawText(NULL, str, -1, &r, DT_CALCRECT|DT_LEFT|DT_WORDBREAK, c))
+		{
+			m_font->DrawText(NULL, str, -1, &r, DT_LEFT|DT_WORDBREAK, c);
+		}
+
+		m_dev->EndScene();
+	}
 }
 
 void GSDevice::Present()
@@ -390,6 +425,43 @@ void GSDevice::Recycle(GSTexture2D& t)
 bool GSDevice::SaveCurrent(LPCTSTR fn)
 {
 	return SUCCEEDED(D3DXSaveTextureToFile(fn, D3DXIFF_BMP, m_tex_current, NULL));
+}
+
+bool GSDevice::SaveToFileD24S8(IDirect3DSurface9* ds, LPCTSTR fn)
+{
+	HRESULT hr;
+
+	D3DSURFACE_DESC desc;
+
+	ds->GetDesc(&desc);
+
+	if(desc.Format != D3DFMT_D32F_LOCKABLE)
+		return false;
+
+	CComPtr<IDirect3DSurface9> surface;
+	
+	hr = m_dev->CreateOffscreenPlainSurface(desc.Width, desc.Height, D3DFMT_A8R8G8B8, D3DPOOL_SYSTEMMEM, &surface, NULL);
+
+	D3DLOCKED_RECT slr, dlr;
+
+	hr = ds->LockRect(&slr, NULL, 0);;
+	hr = surface->LockRect(&dlr, NULL, 0);
+
+	BYTE* s = (BYTE*)slr.pBits;
+	BYTE* d = (BYTE*)dlr.pBits;
+
+	for(int y = 0; y < desc.Height; y++, s += slr.Pitch, d += dlr.Pitch)
+	{
+		for(int x = 0; x < desc.Width; x++)
+		{
+			((float*)d)[x] = ((float*)s)[x];
+		}
+	}
+
+	ds->UnlockRect();
+	surface->UnlockRect();
+
+	return SUCCEEDED(D3DXSaveSurfaceToFile(fn, D3DXIFF_BMP, surface, NULL, NULL));
 }
 
 void GSDevice::StretchRect(GSTexture2D& st, GSTexture2D& dt, const D3DXVECTOR4& dr, bool linear)

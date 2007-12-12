@@ -348,5 +348,5 @@ bool GSTextureCache::GSTexture::GetDirtyRect(CRect& r)
 		r |= valid;
 	}
 
-	return true;
+	return !r.IsRectEmpty();
 }

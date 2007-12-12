@@ -35,6 +35,15 @@ bool GSTextureCache::GSDepthStencil::Create(int w, int h)
 
 	hr = m_tc->m_renderer->m_dev.CreateDepthStencil(m_texture, w, h);
 
+	// FIXME: initial data should be unswizzled from local mem in Update() if dirty
+
+	CComPtr<IDirect3DSurface9> surface;
+
+	m_tc->m_renderer->m_dev->GetDepthStencilSurface(&surface);
+	m_tc->m_renderer->m_dev->SetDepthStencilSurface(m_texture);
+	m_tc->m_renderer->m_dev->Clear(0, NULL, D3DCLEAR_ZBUFFER, 0, 0, 0);
+	m_tc->m_renderer->m_dev->SetDepthStencilSurface(surface);
+
 	return SUCCEEDED(hr);
 }
 
