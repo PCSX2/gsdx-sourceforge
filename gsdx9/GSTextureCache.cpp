@@ -372,7 +372,7 @@ GSTextureCache::GSTexture* GSTextureCache::GetTexture()
 
 					t->m_palette->UnlockRect(0);
 
-					// m_renderer->m_perfmon.Put(GSPerfMon::Texture, size);
+					m_renderer->m_perfmon.Put(GSPerfMon::Texture, size);
 				}
 			}
 		}

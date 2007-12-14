@@ -121,8 +121,6 @@ class GSState
 protected:
 	bool DetectBadFrame(int crc, int& skip);
 
-	GSPerfMon m_perfmon;
-
 public:
 	GIFRegPRIM*		PRIM;
 	GSRegPMODE*		PMODE;
@@ -146,6 +144,7 @@ public:
 	GSVertex m_v;
 	float m_q;
 
+	GSPerfMon m_perfmon;
 	bool m_nloophack;
 
 public:

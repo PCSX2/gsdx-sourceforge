@@ -239,7 +239,8 @@ TRACE(_T("[%d] FlushPrim f %05x (%d) z %05x (%d %d %d %d) t %05x %05x (%d)\n"),
 	  PRIM->TME ? (int)m_context->TEX0.PSM : 0xff);
 */
 
-if(s_n >= 274)
+if(s_dump && m_env.COLCLAMP.CLAMP == 0)
+//if(s_n >= 260)
 {
 	s_save = true;
 	// s_savez = true;
@@ -627,7 +628,7 @@ if(s_dump)
 	if(s_save) ::D3DX10SaveTextureToFile(rt->m_texture, D3DX10_IFF_BMP, str);
 }
 
-//s_dump = m_perfmon.GetFrame() >= 5000;
+// s_dump = m_perfmon.GetFrame() >= 5001;
 
 		}
 	}
@@ -641,7 +642,7 @@ if(s_dump)
 
 void GSRendererHW::InvalidateTexture(const GIFRegBITBLTBUF& BITBLTBUF, CRect r)
 {
-	// TRACE(_T("[%d] InvalidateTexture %d,%d - %d,%d %05x\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.DBP);
+	TRACE(_T("[%d] InvalidateTexture %d,%d - %d,%d %05x\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.DBP);
 
 	m_tc.InvalidateTexture(BITBLTBUF, &r);
 }

@@ -284,6 +284,8 @@ void GSTextureCache::GSTexture::Update(GSLocalMemory::readTexture rt)
 		return;
 	}
 
+	TRACE(_T("GSTexture::Update %d,%d - %d,%d (%08x)\n"), r.left, r.top, r.right, r.bottom, m_TEX0.TBP0);
+
 	static BYTE* buff = (BYTE*)::_aligned_malloc(1024 * 1024 * 4, 16);
 
 	int pitch = 1024 * m_bpp >> 3;
@@ -296,19 +298,19 @@ void GSTextureCache::GSTexture::Update(GSLocalMemory::readTexture rt)
 
 	m_tc->m_renderer->m_dev->UpdateSubresource(m_texture, 0, &box, bits, pitch, 0); 
 
-	// m_tc->m_renderer->m_perfmon.Put(GSPerfMon::Unswizzle, r.Width() * r.Height() * m_bpp >> 3);
+	m_tc->m_renderer->m_perfmon.Put(GSPerfMon::Unswizzle, r.Width() * r.Height() * m_bpp >> 3);
 
 	CRect r2 = m_valid & r;
 
 	if(!r2.IsRectEmpty())
 	{
-		// m_tc->m_renderer->m_perfmon.Put(GSPerfMon::Unswizzle2, r2.Width() * r2.Height() * m_bpp >> 3);
+		m_tc->m_renderer->m_perfmon.Put(GSPerfMon::Unswizzle2, r2.Width() * r2.Height() * m_bpp >> 3);
 	}
 
 	m_valid |= r;
 	m_dirty.RemoveAll();
 
-	// m_tc->m_renderer->m_perfmon.Put(GSPerfMon::Texture, r.Width() * r.Height() * m_bpp >> 3);
+	m_tc->m_renderer->m_perfmon.Put(GSPerfMon::Texture, r.Width() * r.Height() * m_bpp >> 3);
 }
 
 bool GSTextureCache::GSTexture::GetDirtyRect(CRect& r)

@@ -23,7 +23,7 @@
 			ConfigurationType="2"
 			InheritedPropertySheets="..\debug.vsprops;..\common.vsprops"
 			UseOfMFC="1"
-			CharacterSet="1"
+			CharacterSet="2"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
@@ -97,7 +97,7 @@
 			ConfigurationType="2"
 			InheritedPropertySheets="..\debug.vsprops;..\common.vsprops"
 			UseOfMFC="1"
-			CharacterSet="1"
+			CharacterSet="2"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
@@ -172,7 +172,7 @@
 			ConfigurationType="2"
 			InheritedPropertySheets="..\release.vsprops;..\common.vsprops"
 			UseOfMFC="1"
-			CharacterSet="1"
+			CharacterSet="2"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
@@ -247,7 +247,7 @@
 			ConfigurationType="2"
 			InheritedPropertySheets="..\release.vsprops;..\common.vsprops"
 			UseOfMFC="1"
-			CharacterSet="1"
+			CharacterSet="2"
 			WholeProgramOptimization="1"
 			>
 			<Tool
@@ -325,7 +325,7 @@
 			ConfigurationType="2"
 			InheritedPropertySheets="..\debug.vsprops;..\common.vsprops;..\sse2.vsprops"
 			UseOfMFC="1"
-			CharacterSet="1"
+			CharacterSet="2"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
@@ -400,7 +400,7 @@
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="1"
 			UseOfMFC="1"
-			CharacterSet="1"
+			CharacterSet="2"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
@@ -463,7 +463,7 @@
 			ConfigurationType="2"
 			InheritedPropertySheets="..\release.vsprops;..\common.vsprops;..\sse2.vsprops"
 			UseOfMFC="1"
-			CharacterSet="1"
+			CharacterSet="2"
 			WholeProgramOptimization="1"
 			>
 			<Tool
@@ -540,7 +540,7 @@
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="1"
 			UseOfMFC="1"
-			CharacterSet="1"
+			CharacterSet="2"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
