@@ -292,20 +292,20 @@ void GSTextureCache::GSTexture::Update(GSLocalMemory::readTexture rt)
 
 		m_texture->UnlockRect(0);
 
-		// m_tc->m_renderer->m_perfmon.Put(GSPerfMon::Unswizzle, r.Width() * r.Height() * m_bpp >> 3);
+		m_tc->m_renderer->m_perfmon.Put(GSPerfMon::Unswizzle, r.Width() * r.Height() * m_bpp >> 3);
 	}
 
 	CRect r2 = m_valid & r;
 
 	if(!r2.IsRectEmpty())
 	{
-		// m_tc->m_renderer->m_perfmon.Put(GSPerfMon::Unswizzle2, r2.Width() * r2.Height() * m_bpp >> 3);
+		m_tc->m_renderer->m_perfmon.Put(GSPerfMon::Unswizzle2, r2.Width() * r2.Height() * m_bpp >> 3);
 	}
 
 	m_valid |= r;
 	m_dirty.RemoveAll();
 
-	// m_tc->m_renderer->m_perfmon.Put(GSPerfMon::Texture, r.Width() * r.Height() * m_bpp >> 3);
+	m_tc->m_renderer->m_perfmon.Put(GSPerfMon::Texture, r.Width() * r.Height() * m_bpp >> 3);
 }
 
 bool GSTextureCache::GSTexture::GetDirtyRect(CRect& r)

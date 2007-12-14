@@ -82,7 +82,7 @@ void GSRendererNull::DrawingKick(bool skip)
 
 	if(!skip)
 	{
-		//m_perfmon.Put(GSPerfMon::Prim, 1);
+		m_perfmon.Put(GSPerfMon::Prim, 1);
 	}
 }
 

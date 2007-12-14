@@ -61,5 +61,7 @@ float4 ps_main3(PS_INPUT input) : SV_Target0
 
 float4 ps_main4(PS_INPUT input) : SV_Target0
 {
-	return (float4)((uint4)Texture.Sample(Sampler, input.t) & 0xff);
+	float4 c = Texture.Sample(Sampler, input.t);
+	
+	return fmod(c * 255 + 0.5f, 256) / 255;
 }

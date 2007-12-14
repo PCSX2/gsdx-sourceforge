@@ -915,7 +915,7 @@ void GSState::FlushWrite(BYTE* mem, int len)
 
 		(m_mem.*st)(m_x, m_y, mem, len, m_env.BITBLTBUF, m_env.TRXPOS, m_env.TRXREG);
 
-		// TODO: m_perfmon.Put(GSPerfMon::Swizzle, len);
+		m_perfmon.Put(GSPerfMon::Swizzle, len);
 
 		//ASSERT(m_env.TRXREG.RRH >= m_y - y);
 
@@ -1459,6 +1459,28 @@ bool GSState::DetectBadFrame(int crc, int& skip)
 
 		break;
 
+	case 0x6F8545DB: // ICO ntsc/us
+
+		if(skip == 0)
+		{
+			if(TME && FBP == 0x00800 && FPSM == PSM_PSMCT32 && TBP0 == 0x03d00 && TPSM == PSM_PSMCT32)
+			{
+				skip = 3;
+			}
+			else if(TME && FBP == 0x00800 && FPSM == PSM_PSMCT32 && TBP0 == 0x02800 && TPSM == PSM_PSMT8H)
+			{
+				skip = 56;
+			}
+		}
+		else
+		{
+			if(TME && TBP0 == 0x00800 && TPSM == PSM_PSMCT32)
+			{
+				skip = 0;
+			}
+		}
+
+		break;
 	}
 
 	if(skip == 0)

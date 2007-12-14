@@ -1790,15 +1790,16 @@ void GSLocalMemory::ReadTexture(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TE
 
 			if(w % bs.cx == 0 && maxu % bs.cx == 0 && h % bs.cy == 0 && maxv % bs.cy == 0)
 			{
-//printf("!!! 3 wms = %d, wmt = %d, %3x %3x %3x %3x, %d %d - %d %d\n", wms, wmt, minu, maxu, minv, maxv, r.left, r.top, r.right, r.bottom);
+// printf("!!! 1 wms = %d, wmt = %d, %3x %3x %3x %3x, %d %d - %d %d\n", wms, wmt, minu, maxu, minv, maxv, r.left, r.top, r.right, r.bottom);
 
 				T* buff = (T*)_aligned_malloc(w * h * sizeof(T), 16);
 
 				(this->*st)(CRect(CPoint(maxu, maxv), CSize(w, h)), (BYTE*)buff, w * sizeof(T), TEX0, TEXA);
 
-				dst -= r.left;
+				dst -= r.left * sizeof(T);
 
-				int k = (r.right - r.left) >> 2;
+				int left = (r.left + minu) & ~minu;
+				int right = r.right & ~minu;
 
 				for(int y = r.top; y < r.bottom; y++, dst += dstpitch)
 				{
@@ -1806,15 +1807,17 @@ void GSLocalMemory::ReadTexture(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TE
 
 					int x = r.left;
 
-					for(int i = 0; i < k; x += 4, i++)
+					for(; x < left; x++)
 					{
-						((T*)dst)[x+0] = src[(x+0) & minu];
-						((T*)dst)[x+1] = src[(x+1) & minu];
-						((T*)dst)[x+2] = src[(x+2) & minu];
-						((T*)dst)[x+3] = src[(x+3) & minu];
+						((T*)dst)[x] = src[x & minu];
 					}
 
-					for(; x < r.right; x++)
+					for(; x < right; x += minu + 1)
+					{
+						memcpy(&((T*)dst)[x], src, sizeof(T) * (minu + 1));
+					}
+
+					for(; x < right; x++)
 					{
 						((T*)dst)[x] = src[x & minu];
 					}
@@ -1838,6 +1841,84 @@ void GSLocalMemory::ReadTexture(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TE
 			r.bottom = max(r.top, min(r.bottom, (int)maxv));
 		}
 
+		if(wms == 3 && wmt != 3)
+		{
+			int w = ((minu + 1) + bsxm) & ~bsxm;
+
+			if(w % bs.cx == 0 && maxu % bs.cx == 0)
+			{
+// printf("!!! 2 wms = %d, wmt = %d, %3x %3x %3x %3x, %d %d - %d %d\n", wms, wmt, minu, maxu, minv, maxv, r.left, r.top, r.right, r.bottom);
+				int top = r.top & ~bsym; 
+				int bottom = (r.bottom + bsym) & ~bsym;
+				
+				int h = bottom - top;
+
+				T* buff = (T*)_aligned_malloc(w * h * sizeof(T), 16);
+
+				(this->*st)(CRect(CPoint(maxu, top), CSize(w, h)), (BYTE*)buff, w * sizeof(T), TEX0, TEXA);
+
+				dst -= r.left * sizeof(T);
+
+				int left = (r.left + minu) & ~minu;
+				int right = r.right & ~minu;
+
+				for(int y = r.top; y < r.bottom; y++, dst += dstpitch)
+				{
+					T* src = &buff[(y - top) * w];
+
+					int x = r.left;
+
+					for(; x < left; x++)
+					{
+						((T*)dst)[x] = src[x & minu];
+					}
+
+					for(; x < right; x += minu + 1)
+					{
+						memcpy(&((T*)dst)[x], src, sizeof(T) * (minu + 1));
+					}
+
+					for(; x < right; x++)
+					{
+						((T*)dst)[x] = src[x & minu];
+					}
+				}
+
+				_aligned_free(buff);
+
+				return;
+			}
+		}
+
+		if(wms != 3 && wmt == 3)
+		{
+			int h = (minv + 1 + bsym) & ~bsym;
+
+			if(h % bs.cy == 0 && maxv % bs.cy == 0)
+			{
+// printf("!!! 3 wms = %d, wmt = %d, %3x %3x %3x %3x, %d %d - %d %d\n", wms, wmt, minu, maxu, minv, maxv, r.left, r.top, r.right, r.bottom);
+				int left = r.left & ~bsxm; 
+				int right = (r.right + bsxm) & ~bsxm;
+				
+				int w = right - left;
+
+				T* buff = (T*)_aligned_malloc(w * h * sizeof(T), 16);
+
+				(this->*st)(CRect(CPoint(left, maxv), CSize(w, h)), (BYTE*)buff, w * sizeof(T), TEX0, TEXA);
+
+				for(int y = r.top; y < r.bottom; y++, dst += dstpitch)
+				{
+					T* src = &buff[(y & minv) * w + (r.left - left)];
+
+					memcpy(dst, src, sizeof(T) * r.Width());
+				}
+
+				_aligned_free(buff);
+
+				return;
+			}
+		}
+
 		switch(wms)
 		{
 		default: for(int x = r.left; x < r.right; x++) m_xtbl[x] = x; break;
@@ -1850,7 +1931,7 @@ void GSLocalMemory::ReadTexture(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TE
 		case 3: for(int y = r.top; y < r.bottom; y++) m_ytbl[y] = (y & minv) | maxv; break;
 		}
 
-// printf("1 wms = %d, wmt = %d, %3x %3x %3x %3x, %d %d - %d %d\n", wms, wmt, minu, maxu, minv, maxv, r.left, r.top, r.right, r.bottom);
+// printf("!!! 4 wms = %d, wmt = %d, %3x %3x %3x %3x, %d %d - %d %d\n", wms, wmt, minu, maxu, minv, maxv, r.left, r.top, r.right, r.bottom);
 
 		for(int y = r.top; y < r.bottom; y++, dst += dstpitch)
 			for(int x = r.left, i = 0; x < r.right; x++, i++)
@@ -1889,7 +1970,8 @@ void GSLocalMemory::ReadTexture(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TE
 			// TODO: expand r to block size, read into temp buffer, copy to r (like above)
 
 if(!aligned) printf("unaligned memory pointer passed to ReadTexture\n");
-// printf("2 wms = %d, wmt = %d, %3x %3x %3x %3x, %d %d - %d %d\n", wms, wmt, minu, maxu, minv, maxv, r.left, r.top, r.right, r.bottom);
+
+// printf("!!! 5 wms = %d, wmt = %d, %3x %3x %3x %3x, %d %d - %d %d\n", wms, wmt, minu, maxu, minv, maxv, r.left, r.top, r.right, r.bottom);
 
 			for(int y = r.top; y < r.bottom; y++, dst += dstpitch)
 				for(int x = r.left, i = 0; x < r.right; x++, i++)
@@ -1897,7 +1979,7 @@ if(!aligned) printf("unaligned memory pointer passed to ReadTexture\n");
 		}
 		else
 		{
-// printf("4 wms = %d, wmt = %d, %3x %3x %3x %3x, %d %d - %d %d\n", wms, wmt, minu, maxu, minv, maxv, r.left, r.top, r.right, r.bottom);
+// printf("!!! 6 wms = %d, wmt = %d, %3x %3x %3x %3x, %d %d - %d %d\n", wms, wmt, minu, maxu, minv, maxv, r.left, r.top, r.right, r.bottom);
 
 			for(int y = r.top; y < cr.top; y++, dst += dstpitch)
 				for(int x = r.left, i = 0; x < r.right; x++, i++)

@@ -28,8 +28,8 @@ __declspec(align(16)) union GSVertexHW
 	struct
 	{
 		float x, y, z, w;
-		union {struct {BYTE r, g, b, a;}; DWORD c;};
-		DWORD f;
+		union {struct {BYTE r, g, b, a;}; DWORD c0;};
+		union {struct {BYTE ta0, ta1, res, f;}; DWORD c1;};
 		float u, v;
 	};
 	

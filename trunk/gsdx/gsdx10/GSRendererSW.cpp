@@ -218,7 +218,7 @@ static int bZTE; // , iZTST, iATST, iLOD, bLCM, bTCC, iTFX;
 template <class Vertex>
 void GSRendererSW<Vertex>::Draw()
 {
-if(s_n >= 252)
+if(s_dump && m_env.COLCLAMP.CLAMP == 0)
 {
 	s_save = true;
 	// s_savez = true;
@@ -376,7 +376,7 @@ if(s_dump)
 	if(s_save) ::D3DX10SaveTextureToFile(m_texture[i], D3DX10_IFF_BMP, str);
 }
 
-// s_dump = m_perfmon.GetFrame() >= 5000;
+// s_dump = m_perfmon.GetFrame() >= 5001;
 
 	}
 

@@ -367,7 +367,7 @@ GSTextureCache::GSTexture* GSTextureCache::GetTexture()
 
 				m_renderer->m_dev->UpdateSubresource(t->m_palette, 0, &box, t->m_clut, size, 0);
 
-				// m_renderer->m_perfmon.Put(GSPerfMon::Texture, size);
+				m_renderer->m_perfmon.Put(GSPerfMon::Texture, size);
 			}
 		}
 		else
@@ -524,9 +524,45 @@ void GSTextureCache::InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, const 
 		if(HasSharedBits(BITBLTBUF.SBP, BITBLTBUF.SPSM, rt->m_TEX0.TBP0, rt->m_TEX0.PSM))
 		{
 			rt->Read(r);
-			break;
+			return;
 		}
 	}
+
+	GSRenderTarget* rt2 = NULL;
+	int ymin = INT_MAX;
+
+	pos = m_rt.GetHeadPosition();
+
+	while(pos)
+	{
+		GSRenderTarget* rt = m_rt.GetNext(pos);
+
+		if(HasSharedBits(BITBLTBUF.SPSM, rt->m_TEX0.PSM) && BITBLTBUF.SBP > rt->m_TEX0.TBP0)
+		{
+			// ffx2 pause screen background
+
+			DWORD rowsize = BITBLTBUF.SBW * 8192;
+			DWORD offset = (BITBLTBUF.SBP - rt->m_TEX0.TBP0) * 256;
+
+			if(rowsize > 0 && offset % rowsize == 0)
+			{
+				int y = m_renderer->m_mem.m_psm[BITBLTBUF.SPSM].pgs.cy * offset / rowsize;
+
+				if(y < ymin && y < 512)
+				{
+					rt2 = rt;
+					ymin = y;
+				}
+			}
+		}
+	}
+
+	if(rt2)
+	{
+		rt2->Read(CRect(r.left, r.top + ymin, r.right, r.bottom + ymin));
+	}
+
+	// TODO: ds
 }
 
 void GSTextureCache::IncAge()
