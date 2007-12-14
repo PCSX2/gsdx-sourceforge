@@ -1358,7 +1358,8 @@ bool GSState::DetectBadFrame(int crc, int& skip)
 		break;
 
 	case 0x053D2239: // mgs3s1 ntsc/us (TODO: in-game has funny colors)
-	// TODO: case 0x086273D2: mgs3 snake eater pal/fr
+	case 0x086273D2: // mgs3 snake eater pal/fr
+	case 0xAA31B5BF: // mgs3 snake eater 
 
 		if(skip == 0)
 		{

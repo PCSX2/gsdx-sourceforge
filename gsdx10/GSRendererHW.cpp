@@ -25,8 +25,8 @@
 
 int s_n = 0;
 bool s_dump = false;
-bool s_save = true;
-bool s_savez = true;
+bool s_save = false;
+bool s_savez = false;
 
 GSRendererHW::GSRendererHW(BYTE* base, bool mt, void (*irq)(), bool nloophack)
 	: GSRendererT(base, mt, irq, nloophack)
@@ -210,6 +210,11 @@ void GSRendererHW::DrawingKick(bool skip)
 	{
 		Flush();
 	}
+
+	if(m_env.COLCLAMP.CLAMP == 0)
+	{
+		Flush();
+	}
 */
 }
 
@@ -234,9 +239,10 @@ TRACE(_T("[%d] FlushPrim f %05x (%d) z %05x (%d %d %d %d) t %05x %05x (%d)\n"),
 	  PRIM->TME ? (int)m_context->TEX0.PSM : 0xff);
 */
 
-if(s_n >= 500)
+if(s_n >= 274)
 {
-	s_save = s_savez = true;
+	s_save = true;
+	// s_savez = true;
 }
 	//
 
@@ -321,6 +327,19 @@ if(s_dump)
 
 	SetupDATE(rt, ds);
 
+	// color wrap
+
+	GSTexture2D rt2;
+/*
+	if(m_env.COLCLAMP.CLAMP == 0) // color wrap is a crime against humanity!
+	{
+		m_dev.CreateRenderTarget(rt2, rt->m_texture.m_desc.Width, rt->m_texture.m_desc.Height, DXGI_FORMAT_R16G16B16A16_FLOAT);
+
+		D3DXVECTOR4 dr(0, 0, rt->m_texture.m_desc.Width, rt->m_texture.m_desc.Height);
+
+		m_dev.StretchRect(rt->m_texture, rt2, dr, false);
+	}
+*/
 	// om
 
 	GSTextureFX::OMDepthStencilSelector om_dssel;
@@ -344,7 +363,7 @@ if(s_dump)
 
 	float factor = (float)(int)m_context->ALPHA.FIX / 0x80;
 
-	m_tfx.SetupOM(om_dssel, om_bsel, factor, rt->m_texture, ds->m_texture);
+	m_tfx.SetupOM(om_dssel, om_bsel, factor, rt2 ? rt2 : rt->m_texture, ds->m_texture);
 
 	// ia
 
@@ -557,7 +576,17 @@ if(s_dump)
 	}
 
 	m_dev.EndScene();
+/*
+	if(rt2)
+	{
+		D3DXVECTOR4 sr(0, 0, 1, 1);
+		D3DXVECTOR4 dr(0, 0, rt->m_texture.m_desc.Width, rt->m_texture.m_desc.Height);
 
+		m_dev.StretchRect(rt2, sr, rt->m_texture, dr, m_dev.m_convert.ps[4], false);
+
+		m_dev.Recycle(rt2);
+	}
+*/
 if(s_dump)
 {
 	CString str;
@@ -598,7 +627,7 @@ if(s_dump)
 	if(s_save) ::D3DX10SaveTextureToFile(rt->m_texture, D3DX10_IFF_BMP, str);
 }
 
-// s_dump = m_perfmon.GetFrame() >= 5000;
+//s_dump = m_perfmon.GetFrame() >= 5000;
 
 		}
 	}

@@ -914,7 +914,7 @@ public:
 
 	template<typename T> void ReadTexture(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA, GIFRegCLAMP& CLAMP, readTexel rt, unSwizzleTexture st);
 
-	// HRESULT SaveBMP(ID3D10Device* dev, LPCTSTR fn, DWORD bp, DWORD bw, DWORD psm, int w, int h);
+	HRESULT SaveBMP(LPCTSTR fn, DWORD bp, DWORD bw, DWORD psm, int w, int h);
 };
 
 #pragma warning(default: 4244)
