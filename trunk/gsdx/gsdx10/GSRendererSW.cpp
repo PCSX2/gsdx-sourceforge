@@ -22,6 +22,10 @@
 #include "StdAfx.h"
 #include "GSRendererSW.h"
 
+extern int s_n;
+extern bool s_dump;
+extern bool s_save;
+
 #pragma warning(push)
 #pragma warning(disable: 4701)
 
@@ -214,6 +218,22 @@ static int bZTE; // , iZTST, iATST, iLOD, bLCM, bTCC, iTFX;
 template <class Vertex>
 void GSRendererSW<Vertex>::Draw()
 {
+if(s_n >= 252)
+{
+	s_save = true;
+	// s_savez = true;
+}
+
+if(s_dump)
+{
+	CString str;
+	str.Format(_T("c:\\temp1\\_%05d_f%I64d_tex_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), (int)m_context->TEX0.TBP0, (int)m_context->TEX0.PSM);
+	if(PRIM->TME) if(s_save) {m_mem.SetupCLUT32(m_context->TEX0, m_env.TEXA); m_mem.SaveBMP(str, m_context->TEX0.TBP0, m_context->TEX0.TBW, m_context->TEX0.PSM, 1 << m_context->TEX0.TW, 1 << m_context->TEX0.TH);}
+
+	str.Format(_T("c:\\temp1\\_%05d_f%I64d_rt0_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), m_context->FRAME.Block(), m_context->FRAME.PSM);
+	if(s_save) {m_mem.SaveBMP(str, m_context->FRAME.Block(), m_context->FRAME.FBW, m_context->FRAME.PSM, GetFrameSize(1).cx, 512);}//GetFrameSize(1).cy);
+}
+
 	bZTE = m_context->TEST.ZTE && m_context->TEST.ZTST >= 2 || !m_context->ZBUF.ZMSK;
 
 	int iZTST = !m_context->TEST.ZTE ? 1 : m_context->TEST.ZTST;
@@ -287,6 +307,13 @@ void GSRendererSW<Vertex>::Draw()
 
 	m_perfmon.Put(GSPerfMon::Prim, prims);
 	m_perfmon.Put(GSPerfMon::Draw, 1);
+
+if(s_dump)
+{
+	CString str;
+	str.Format(_T("c:\\temp1\\_%05d_f%I64d_rt1_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), m_context->FRAME.Block(), m_context->FRAME.PSM);
+	if(s_save) {m_mem.SaveBMP(str, m_context->FRAME.Block(), m_context->FRAME.FBW, m_context->FRAME.PSM, GetFrameSize(1).cx, 512);}//GetFrameSize(1).cy);
+}
 }
 
 template <class Vertex>
@@ -341,6 +368,16 @@ void GSRendererSW<Vertex>::Flip()
 
 		src[i].t = m_texture[i];
 		src[i].s = GSScale(1, 1);
+
+if(s_dump)
+{
+	CString str;
+	str.Format(_T("c:\\temp1\\_%05d_f%I64d_fr%d_%05x.bmp"), s_n++, m_perfmon.GetFrame(), i, (int)TEX0.TBP0);
+	if(s_save) ::D3DX10SaveTextureToFile(m_texture[i], D3DX10_IFF_BMP, str);
+}
+
+// s_dump = m_perfmon.GetFrame() >= 5000;
+
 	}
 
 	FinishFlip(src);

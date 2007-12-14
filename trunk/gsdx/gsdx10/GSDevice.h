@@ -106,7 +106,7 @@ public: // TODO
 		CComPtr<ID3D10Buffer> vb;
 		CComPtr<ID3D10InputLayout> il;
 		CComPtr<ID3D10VertexShader> vs;
-		CComPtr<ID3D10PixelShader> ps[4];
+		CComPtr<ID3D10PixelShader> ps[5];
 		CComPtr<ID3D10DepthStencilState> dss;
 		CComPtr<ID3D10BlendState> bs;
 	} m_convert;

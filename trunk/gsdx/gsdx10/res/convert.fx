@@ -58,3 +58,8 @@ float4 ps_main3(PS_INPUT input) : SV_Target0
 
 	return 0;
 }
+
+float4 ps_main4(PS_INPUT input) : SV_Target0
+{
+	return (float4)((uint4)Texture.Sample(Sampler, input.t) & 0xff);
+}

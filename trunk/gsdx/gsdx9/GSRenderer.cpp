@@ -68,6 +68,13 @@ bool GSRenderer::Create(LPCTSTR title)
 		return false;
 	}
 
+	// FIXME
+
+	if(!m_dev.m_pp.Windowed)
+	{
+		m_osd = false;
+	}
+
 	if(!m_merge.Create(&m_dev))
 	{
 		return false;
@@ -165,6 +172,7 @@ void GSRenderer::SetGameCRC(int crc, int options)
 		case 0x941bb7d9: // ffx pal/de
 		case 0xa39517a9: // ffx pal/it
 		case 0x941bb7de: // ffx pal/es
+		case 0xb4414ea1: // ffx pal/ru
 		case 0xbb3d833a: // ffx ntsc/us
 		case 0x6a4efe60: // ffx ntsc/j
 		case 0x3866ca7e: // ffx int. ntsc/asia (SLPM-67513, some kind of a asia version) 

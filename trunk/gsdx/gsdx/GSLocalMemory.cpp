@@ -1924,33 +1924,12 @@ if(!aligned) printf("unaligned memory pointer passed to ReadTexture\n");
 }
 
 //
-/*
-HRESULT GSLocalMemory::SaveBMP(ID3D10Device* dev, LPCTSTR fn, DWORD bp, DWORD bw, DWORD psm, int w, int h)
+
+HRESULT GSLocalMemory::SaveBMP(LPCTSTR fn, DWORD bp, DWORD bw, DWORD psm, int w, int h)
 {
-	D3D10_TEXTURE2D_DESC desc;
-
-	memset(&desc, 0, sizeof(desc));
-
-	desc.Width = w;
-	desc.Height = h;
-	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	desc.MipLevels = 1;
-	desc.ArraySize = 1;
-	desc.SampleDesc.Count = 1;
-	desc.Usage = D3D10_USAGE_STAGING;
-	desc.BindFlags = 0;
-	desc.CPUAccessFlags = D3D10_CPU_ACCESS_READ | D3D10_CPU_ACCESS_WRITE;
-
-	CComPtr<ID3D10Texture2D> texture;
-
-	HRESULT hr = dev->CreateTexture2D(&desc, NULL, &texture);
-
-	D3D10_MAPPED_TEXTURE2D map;
-
-	if(FAILED(hr) || FAILED(texture->Map(0, D3D10_MAP_WRITE, 0, &map)))
-	{
-		return E_FAIL;
-	}
+	int pitch = w * 4;
+	int size = pitch * h;
+	void* bits = ::_aligned_malloc(size, 16);
 
 	GIFRegTEX0 TEX0;
 
@@ -1964,18 +1943,43 @@ HRESULT GSLocalMemory::SaveBMP(ID3D10Device* dev, LPCTSTR fn, DWORD bp, DWORD bw
 	TEXA.TA0 = 0;
 	TEXA.TA1 = 0x80;
 
-	// (this->*m_psm[TEX0.PSM].ust)(CRect(0, 0, w, h), (BYTE*)lr.pBits, lr.Pitch, TEX0, TEXA);
+	// (this->*m_psm[TEX0.PSM].ust)(CRect(0, 0, w, h), bits, pitch, TEX0, TEXA);
 
 	readTexel rt = m_psm[psm].rt;
 
-	BYTE* p = (BYTE*)map.pData;
+	BYTE* p = (BYTE*)bits;
 
-	for(int j = 0; j < h; j++, p += map.RowPitch)
+	for(int j = h-1; j >= 0; j--, p += pitch)
 		for(int i = 0; i < w; i++)
 			((DWORD*)p)[i] = (this->*rt)(i, j, TEX0, TEXA);
 
-	texture->Unmap(0);
+	if(FILE* fp = _tfopen(fn, _T("wb")))
+	{
+		BITMAPINFOHEADER bih;
+		memset(&bih, 0, sizeof(bih));
+        bih.biSize = sizeof(bih);
+        bih.biWidth = w;
+        bih.biHeight = h;
+        bih.biPlanes = 1;
+        bih.biBitCount = 32;
+        bih.biCompression = BI_RGB;
+        bih.biSizeImage = size;
 
-	return D3DX10SaveTextureToFile(texture, D3DX10_IFF_BMP, fn);
+		BITMAPFILEHEADER bfh;
+		memset(&bfh, 0, sizeof(bfh));
+		bfh.bfType = 'MB';
+		bfh.bfOffBits = sizeof(bfh) + sizeof(bih);
+		bfh.bfSize = bfh.bfOffBits + size;
+		bfh.bfReserved1 = bfh.bfReserved2 = 0;
+
+		fwrite(&bfh, 1, sizeof(bfh), fp);
+		fwrite(&bih, 1, sizeof(bih), fp);
+		fwrite(bits, 1, size, fp);
+
+		fclose(fp);
+	}
+
+	::_aligned_free(bits);
+
+	return true;
 }
-*/
