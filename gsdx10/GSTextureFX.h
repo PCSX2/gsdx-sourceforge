@@ -40,8 +40,14 @@ public:
 	struct PSConstantBuffer
 	{
 		D3DXVECTOR4 FogColor;
-		D3DXVECTOR2 ClampMin;
-		D3DXVECTOR2 ClampMax;
+		float MINU;
+		float MAXU;
+		float MINV;
+		float MAXV;
+		DWORD UMSK;
+		DWORD UFIX;
+		DWORD VMSK;
+		DWORD VFIX;
 		float TA0;
 		float TA1;
 		float AREF;
@@ -57,7 +63,8 @@ public:
 		struct
 		{
 			DWORD fst:1;
-			DWORD clamp:1;
+			DWORD wms:2;
+			DWORD wmt:2;
 			DWORD bpp:3;
 			DWORD aem:1;
 			DWORD tfx:3;
@@ -72,7 +79,7 @@ public:
 
 		DWORD dw;
 
-		operator DWORD() {return dw & 0x3ffff;}
+		operator DWORD() {return dw & 0x1fffff;}
 	};
 
 	union GSSelector

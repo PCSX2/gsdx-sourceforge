@@ -25,7 +25,7 @@
 
 int s_n = 0;
 bool s_dump = false;
-bool s_save = false;
+bool s_save = true;
 bool s_savez = false;
 
 GSRendererHW::GSRendererHW(BYTE* base, bool mt, void (*irq)(), bool nloophack)
@@ -424,7 +424,8 @@ if(s_dump)
 	GSTextureFX::PSSelector ps_sel;
 
 	ps_sel.fst = PRIM->FST;
-	ps_sel.clamp = 0;
+	ps_sel.wms = m_context->CLAMP.WMS;
+	ps_sel.wmt = m_context->CLAMP.WMT;
 	ps_sel.bpp = 0;
 	ps_sel.aem = m_env.TEXA.AEM;
 	ps_sel.tfx = m_context->TEX0.TFX;
@@ -436,6 +437,9 @@ if(s_dump)
 	ps_sel.fba = m_context->FBA.FBA;
 	ps_sel.aout = m_context->FRAME.PSM == PSM_PSMCT16 || m_context->FRAME.PSM == PSM_PSMCT16S || (m_context->FRAME.FBMSK & 0xff000000) == 0x7f000000 ? 1 : 0;
 
+//if(ps_sel.wms == 3) ps_sel.wms = 0;
+//if(ps_sel.wmt == 3) ps_sel.wmt = 0;
+
 	GSTextureFX::PSSamplerSelector ps_ssel;
 
 	ps_ssel.min = m_filter == 2 ? (m_context->TEX1.MMIN & 1) : m_filter;
@@ -445,9 +449,9 @@ if(s_dump)
 
 	GSTextureFX::PSConstantBuffer ps_cb;
 
+	memset(&ps_cb, 0, sizeof(ps_cb));
+
 	ps_cb.FogColor = D3DXVECTOR4((float)(int)m_env.FOGCOL.FCR / 255, (float)(int)m_env.FOGCOL.FCG / 255, (float)(int)m_env.FOGCOL.FCB / 255, 0);
-	ps_cb.ClampMin = D3DXVECTOR2(-4096, -4096);
-	ps_cb.ClampMax = D3DXVECTOR2(+4096, +4096);
 	ps_cb.TA0 = (float)(int)m_env.TEXA.TA0 / 255;
 	ps_cb.TA1 = (float)(int)m_env.TEXA.TA1 / 255;
 	ps_cb.AREF = (float)(int)m_context->TEST.AREF / 255;
@@ -470,30 +474,46 @@ if(s_dump)
 
 		switch(m_context->CLAMP.WMS)
 		{
-		case 0: case 3: ps_ssel.tau = 1; break;
-		case 1: case 2: ps_ssel.tau = 0; break;
-		default: __assume(0);
+		case 0: 
+			ps_ssel.tau = 1; 
+			break;
+		case 1: 
+			ps_ssel.tau = 0; 
+			break;
+		case 2: 
+			ps_cb.MINU = (float)(int)m_context->CLAMP.MINU / (1 << m_context->TEX0.TW);
+			ps_cb.MAXU = (float)(int)m_context->CLAMP.MAXU / (1 << m_context->TEX0.TW);
+			ps_ssel.tau = 0; 
+			break;
+		case 3: 
+			ps_cb.UMSK = m_context->CLAMP.MINU;
+			ps_cb.UFIX = m_context->CLAMP.MAXU;
+			ps_ssel.tau = 1; 
+			break;
+		default: 
+			__assume(0);
 		}
 
 		switch(m_context->CLAMP.WMT)
 		{
-		case 0: case 3: ps_ssel.tav = 1; break;
-		case 1: case 2: ps_ssel.tav = 0; break;
-		default: __assume(0);
-		}
-
-		if(m_context->CLAMP.WMS == 2)
-		{
-			ps_cb.ClampMin.x = (float)(int)m_context->CLAMP.MINU / (1 << m_context->TEX0.TW);
-			ps_cb.ClampMax.x = (float)(int)m_context->CLAMP.MAXU / (1 << m_context->TEX0.TW);
-			ps_sel.clamp = 1;
-		}
-
-		if(m_context->CLAMP.WMT == 2)
-		{
-			ps_cb.ClampMin.y = (float)(int)m_context->CLAMP.MINV / (1 << m_context->TEX0.TH);
-			ps_cb.ClampMax.y = (float)(int)m_context->CLAMP.MAXV / (1 << m_context->TEX0.TH);
-			ps_sel.clamp = 1;
+		case 0: 
+			ps_ssel.tav = 1; 
+			break;
+		case 1: 
+			ps_ssel.tav = 0; 
+			break;
+		case 2: 
+			ps_cb.MINV = (float)(int)m_context->CLAMP.MINV / (1 << m_context->TEX0.TH);
+			ps_cb.MAXV = (float)(int)m_context->CLAMP.MAXV / (1 << m_context->TEX0.TH);
+			ps_ssel.tav = 0; 
+			break;
+		case 3: 
+			ps_cb.VMSK = m_context->CLAMP.MINV;
+			ps_cb.VFIX = m_context->CLAMP.MAXV;
+			ps_ssel.tav = 1; 
+			break;
+		default: 
+			__assume(0);
 		}
 
 		float w = (float)(int)tex->m_texture.m_desc.Width;
@@ -657,32 +677,25 @@ void GSRendererHW::MinMaxUV(int w, int h, CRect& r)
 {
 	r.SetRect(0, 0, w, h);
 
-	if(m_count > 100) 
-	{
-		return;
-	}
+	uvmm_t uv;
+
+	uv.umin = uv.vmin = 0;
+	uv.umax = uv.vmax = 1;
 
 	if(m_context->CLAMP.WMS < 3 || m_context->CLAMP.WMT < 3)
 	{
-		uvmm_t uv;
-
-		uv.umin = uv.vmin = 0;
-		uv.umax = uv.vmax = 1;
-
-		if(PRIM->FST)
+		if(m_count < 100) 
 		{
-			UVMinMax(m_count, (vertex_t*)m_vertices, &uv);
+			if(PRIM->FST)
+			{
+				UVMinMax(m_count, (vertex_t*)m_vertices, &uv);
 
-			uv.umin *= 1.0f / (16 << m_context->TEX0.TW);
-			uv.umax *= 1.0f / (16 << m_context->TEX0.TW);
-			uv.vmin *= 1.0f / (16 << m_context->TEX0.TH);
-			uv.vmax *= 1.0f / (16 << m_context->TEX0.TH);
-		}
-		else
-		{
-			// FIXME
-
-			if(m_count > 0)// && m_count < 100)
+				uv.umin *= 1.0f / (16 << m_context->TEX0.TW);
+				uv.umax *= 1.0f / (16 << m_context->TEX0.TW);
+				uv.vmin *= 1.0f / (16 << m_context->TEX0.TH);
+				uv.vmax *= 1.0f / (16 << m_context->TEX0.TH);
+			}
+			else
 			{
 				uv.umin = uv.vmin = +1e10;
 				uv.umax = uv.vmax = -1e10;
@@ -699,86 +712,99 @@ void GSRendererHW::MinMaxUV(int w, int h, CRect& r)
 				}
 			}
 		}
-
-		CSize bs = GSLocalMemory::m_psm[m_context->TEX0.PSM].bs;
-
-		CSize bsm(bs.cx-1, bs.cy-1);
-
-		if(m_context->CLAMP.WMS < 3)
-		{
-			if(m_context->CLAMP.WMS == 0)
-			{
-				float fmin = floor(uv.umin);
-				float fmax = floor(uv.umax);
-
-				if(fmin != fmax) {uv.umin = 0; uv.umax = 1.0f;}
-				else {uv.umin -= fmin; uv.umax -= fmax;}
-
-				// FIXME: 
-				if(uv.umin == 0 && uv.umax != 1.0f) uv.umax = 1.0f;
-			}
-			else if(m_context->CLAMP.WMS == 1)
-			{
-				if(uv.umin < 0) uv.umin = 0;
-				else if(uv.umin > 1.0f) uv.umin = 1.0f;
-				if(uv.umax < 0) uv.umax = 0;
-				else if(uv.umax > 1.0f) uv.umax = 1.0f;
-				if(uv.umin > uv.umax) uv.umin = uv.umax;
-			}
-			else if(m_context->CLAMP.WMS == 2)
-			{
-				float minu = 1.0f * m_context->CLAMP.MINU / w;
-				float maxu = 1.0f * m_context->CLAMP.MAXU / w;
-				if(uv.umin < minu) uv.umin = minu;
-				else if(uv.umin > maxu) uv.umin = maxu;
-				if(uv.umax < minu) uv.umax = minu;
-				else if(uv.umax > maxu) uv.umax = maxu;
-				if(uv.umin > uv.umax) uv.umin = uv.umax;
-			}
-
-			r.left = max((int)(uv.umin * w) & ~bsm.cx, 0);
-			r.right = min(((int)(uv.umax * w) + bsm.cx + 1) & ~bsm.cx, w);
-		}
-
-		if(m_context->CLAMP.WMT < 3)
-		{
-			if(m_context->CLAMP.WMT == 0)
-			{
-				float fmin = floor(uv.vmin);
-				float fmax = floor(uv.vmax);
-
-				if(fmin != fmax) {uv.vmin = 0; uv.vmax = 1.0f;}
-				else {uv.vmin -= fmin; uv.vmax -= fmax;}
-
-				// FIXME: 
-				if(uv.vmin == 0 && uv.vmax != 1.0f) uv.vmax = 1.0f;
-			}
-			else if(m_context->CLAMP.WMT == 1)
-			{
-				if(uv.vmin < 0) uv.vmin = 0;
-				else if(uv.vmin > 1.0f) uv.vmin = 1.0f;
-				if(uv.vmax < 0) uv.vmax = 0;
-				else if(uv.vmax > 1.0f) uv.vmax = 1.0f;
-				if(uv.vmin > uv.vmax) uv.vmin = uv.vmax;
-			}
-			else if(m_context->CLAMP.WMT == 2)
-			{
-				float minv = 1.0f * m_context->CLAMP.MINV / h;
-				float maxv = 1.0f * m_context->CLAMP.MAXV / h;
-				if(uv.vmin < minv) uv.vmin = minv;
-				else if(uv.vmin > maxv) uv.vmin = maxv;
-				if(uv.vmax < minv) uv.vmax = minv;
-				else if(uv.vmax > maxv) uv.vmax = maxv;
-				if(uv.vmin > uv.vmax) uv.vmin = uv.vmax;
-			}
-			
-			r.top = max((int)(uv.vmin * h) & ~bsm.cy, 0);
-			r.bottom = min(((int)(uv.vmax * h) + bsm.cy + 1) & ~bsm.cy, h);
-		}
 	}
 
-	//ASSERT(r.left <= r.right);
-	//ASSERT(r.top <= r.bottom);
+	CSize bs = GSLocalMemory::m_psm[m_context->TEX0.PSM].bs;
+
+	CSize bsm(bs.cx - 1, bs.cy - 1);
+
+	if(m_context->CLAMP.WMS != 3)
+	{
+		if(m_context->CLAMP.WMS == 0)
+		{
+			float fmin = floor(uv.umin);
+			float fmax = floor(uv.umax);
+
+			if(fmin != fmax) {uv.umin = 0; uv.umax = 1.0f;}
+			else {uv.umin -= fmin; uv.umax -= fmax;}
+
+			// FIXME: 
+			if(uv.umin == 0 && uv.umax != 1.0f) uv.umax = 1.0f;
+		}
+		else if(m_context->CLAMP.WMS == 1)
+		{
+			if(uv.umin < 0) uv.umin = 0;
+			else if(uv.umin > 1.0f) uv.umin = 1.0f;
+			if(uv.umax < 0) uv.umax = 0;
+			else if(uv.umax > 1.0f) uv.umax = 1.0f;
+			if(uv.umin > uv.umax) uv.umin = uv.umax;
+		}
+		else if(m_context->CLAMP.WMS == 2)
+		{
+			float minu = 1.0f * m_context->CLAMP.MINU / w;
+			float maxu = 1.0f * m_context->CLAMP.MAXU / w;
+			if(uv.umin < minu) uv.umin = minu;
+			else if(uv.umin > maxu) uv.umin = maxu;
+			if(uv.umax < minu) uv.umax = minu;
+			else if(uv.umax > maxu) uv.umax = maxu;
+			if(uv.umin > uv.umax) uv.umin = uv.umax;
+		}
+
+		r.left = (int)(uv.umin * w);
+		r.right = (int)(uv.umax * w);
+	}
+	else
+	{
+		r.left = m_context->CLAMP.MAXU;
+		r.right = r.left + (m_context->CLAMP.MINU + 1);
+	}
+
+	if(m_context->CLAMP.WMT != 3)
+	{
+		if(m_context->CLAMP.WMT == 0)
+		{
+			float fmin = floor(uv.vmin);
+			float fmax = floor(uv.vmax);
+
+			if(fmin != fmax) {uv.vmin = 0; uv.vmax = 1.0f;}
+			else {uv.vmin -= fmin; uv.vmax -= fmax;}
+
+			// FIXME: 
+			if(uv.vmin == 0 && uv.vmax != 1.0f) uv.vmax = 1.0f;
+		}
+		else if(m_context->CLAMP.WMT == 1)
+		{
+			if(uv.vmin < 0) uv.vmin = 0;
+			else if(uv.vmin > 1.0f) uv.vmin = 1.0f;
+			if(uv.vmax < 0) uv.vmax = 0;
+			else if(uv.vmax > 1.0f) uv.vmax = 1.0f;
+			if(uv.vmin > uv.vmax) uv.vmin = uv.vmax;
+		}
+		else if(m_context->CLAMP.WMT == 2)
+		{
+			float minv = 1.0f * m_context->CLAMP.MINV / h;
+			float maxv = 1.0f * m_context->CLAMP.MAXV / h;
+			if(uv.vmin < minv) uv.vmin = minv;
+			else if(uv.vmin > maxv) uv.vmin = maxv;
+			if(uv.vmax < minv) uv.vmax = minv;
+			else if(uv.vmax > maxv) uv.vmax = maxv;
+			if(uv.vmin > uv.vmax) uv.vmin = uv.vmax;
+		}
+
+		r.top = (int)(uv.vmin * h);
+		r.bottom = (int)(uv.vmax * h);
+	}
+	else
+	{
+		r.top = m_context->CLAMP.MAXV;
+		r.bottom = r.top + (m_context->CLAMP.MINV + 1);
+	}
+
+	r.left = max(r.left & ~bsm.cx, 0);
+	r.right = min((r.right + bsm.cx + 1) & ~bsm.cx, w);
+
+	r.top = max(r.top & ~bsm.cy, 0);
+	r.bottom = min((r.bottom + bsm.cy + 1) & ~bsm.cy, h);
 }
 
 void GSRendererHW::SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache::GSDepthStencil* ds)

@@ -1725,7 +1725,20 @@ void GSLocalMemory::ReadTextureNP(const CRect& r, BYTE* dst, int dstpitch, GIFRe
 	|| (r.right & (bs.cx-1)) || (r.bottom & (bs.cy-1)) 
 	|| (CLAMP.WMS == 3) || (CLAMP.WMT == 3))
 	{
-		switch(TEX0.PSM)
+		DWORD psm = TEX0.PSM;
+
+		switch(psm)
+		{
+		case PSM_PSMT8:
+		case PSM_PSMT8H:
+		case PSM_PSMT4:
+		case PSM_PSMT4HL:
+		case PSM_PSMT4HH:
+			psm = TEX0.CPSM;
+			break;
+		}
+
+		switch(psm)
 		{
 		default:
 		case PSM_PSMCT32:
@@ -1736,23 +1749,47 @@ void GSLocalMemory::ReadTextureNP(const CRect& r, BYTE* dst, int dstpitch, GIFRe
 		case PSM_PSMCT16S:
 			ReadTexture<WORD>(r, dst, dstpitch, TEX0, TEXA, CLAMP, rt, st);
 			break;
+		}
+	}
+	else
+	{
+		(this->*st)(r, dst, dstpitch, TEX0, TEXA);
+	}
+}
+
+void GSLocalMemory::ReadTextureNP2(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA, GIFRegCLAMP& CLAMP)
+{
+	unSwizzleTexture st = m_psm[TEX0.PSM].ustNP;
+	readTexel rt = m_psm[TEX0.PSM].rtNP;
+	CSize bs = m_psm[TEX0.PSM].bs;
+
+	if(r.Width() < bs.cx || r.Height() < bs.cy 
+	|| (r.left & (bs.cx-1)) || (r.top & (bs.cy-1)) 
+	|| (r.right & (bs.cx-1)) || (r.bottom & (bs.cy-1)))
+	{
+		DWORD psm = TEX0.PSM;
+
+		switch(psm)
+		{
 		case PSM_PSMT8:
 		case PSM_PSMT8H:
 		case PSM_PSMT4:
 		case PSM_PSMT4HL:
 		case PSM_PSMT4HH:
-			switch(TEX0.CPSM)
-			{
-			default:
-				ASSERT(0);
-			case PSM_PSMCT32:
-				ReadTexture<DWORD>(r, dst, dstpitch, TEX0, TEXA, CLAMP, rt, st);
-				break;
-			case PSM_PSMCT16:
-			case PSM_PSMCT16S:
-				ReadTexture<WORD>(r, dst, dstpitch, TEX0, TEXA, CLAMP, rt, st);
-				break;
-			}
+			psm = TEX0.CPSM;
+			break;
+		}
+
+		switch(psm)
+		{
+		default:
+		case PSM_PSMCT32:
+		case PSM_PSMCT24:
+			ReadTexture2<DWORD>(r, dst, dstpitch, TEX0, TEXA, rt, st);
+			break;
+		case PSM_PSMCT16:
+		case PSM_PSMCT16S:
+			ReadTexture2<WORD>(r, dst, dstpitch, TEX0, TEXA, rt, st);
 			break;
 		}
 	}
@@ -2002,6 +2039,56 @@ if(!aligned) printf("unaligned memory pointer passed to ReadTexture\n");
 				for(int x = r.left, i = 0; x < r.right; x++, i++)
 					((T*)dst)[i] = (T)(this->*rt)(x, y, TEX0, TEXA);
 		}
+	}
+}
+
+template<typename T> 
+void GSLocalMemory::ReadTexture2(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA, readTexel rt, unSwizzleTexture st)
+{
+	CSize bs = m_psm[TEX0.PSM].bs;
+
+	int bsxm = bs.cx - 1;
+	int bsym = bs.cy - 1;
+
+	CRect cr;
+
+	cr.left = (r.left + bsxm) & ~bsxm;
+	cr.top = (r.top + bsym) & ~bsym;
+	cr.right = r.right & ~bsxm; 
+	cr.bottom = r.bottom & ~bsym; 
+
+	bool aligned = ((DWORD_PTR)(dst + (cr.left - r.left) * sizeof(T)) & 0xf) == 0;
+
+	if(cr.left >= cr.right && cr.top >= cr.bottom || !aligned)
+	{
+		// TODO: expand r to block size, read into temp buffer, copy to r (like above)
+
+if(!aligned) printf("unaligned memory pointer passed to ReadTexture\n");
+
+		for(int y = r.top; y < r.bottom; y++, dst += dstpitch)
+			for(int x = r.left, i = 0; x < r.right; x++, i++)
+				((T*)dst)[i] = (T)(this->*rt)(x, y, TEX0, TEXA);
+	}
+	else
+	{
+		for(int y = r.top; y < cr.top; y++, dst += dstpitch)
+			for(int x = r.left, i = 0; x < r.right; x++, i++)
+				((T*)dst)[i] = (T)(this->*rt)(x, y, TEX0, TEXA);
+
+		if(!cr.IsRectEmpty())
+			(this->*st)(cr, dst + (cr.left - r.left)*sizeof(T), dstpitch, TEX0, TEXA);
+
+		for(int y = cr.top; y < cr.bottom; y++, dst += dstpitch)
+		{
+			for(int x = r.left, i = 0; x < cr.left; x++, i++)
+				((T*)dst)[i] = (T)(this->*rt)(x, y, TEX0, TEXA);
+			for(int x = cr.right, i = x - r.left; x < r.right; x++, i++)
+				((T*)dst)[i] = (T)(this->*rt)(x, y, TEX0, TEXA);
+		}
+
+		for(int y = cr.bottom; y < r.bottom; y++, dst += dstpitch)
+			for(int x = r.left, i = 0; x < r.right; x++, i++)
+				((T*)dst)[i] = (T)(this->*rt)(x, y, TEX0, TEXA);
 	}
 }
 

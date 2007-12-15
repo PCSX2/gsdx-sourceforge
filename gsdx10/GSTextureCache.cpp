@@ -201,7 +201,6 @@ GSTextureCache::GSDepthStencil* GSTextureCache::GetDepthStencil(const GIFRegTEX0
 GSTextureCache::GSTexture* GSTextureCache::GetTexture()
 {
 	const GIFRegTEX0& TEX0 = m_renderer->m_context->TEX0;
-	const GIFRegCLAMP& CLAMP = m_renderer->m_context->CLAMP;
 
 	DWORD clut[256];
 
@@ -271,7 +270,6 @@ GSTextureCache::GSTexture* GSTextureCache::GetTexture()
 		{
 			if(TEX0.PSM == t->m_TEX0.PSM && TEX0.TBW == t->m_TEX0.TBW
 			&& TEX0.TW == t->m_TEX0.TW && TEX0.TH == t->m_TEX0.TH
-			&& (CLAMP.WMS != 3 && t->m_CLAMP.WMS != 3 && CLAMP.WMT != 3 && t->m_CLAMP.WMT != 3 || CLAMP.i64 == t->m_CLAMP.i64)
 			&& (pal == 0 || TEX0.CPSM == t->m_TEX0.CPSM && !memcmp(t->m_clut, clut, pal * sizeof(clut[0]))))
 			{
 				m_tex.MoveToHead(pos);

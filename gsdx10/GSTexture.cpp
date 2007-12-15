@@ -40,7 +40,6 @@ bool GSTextureCache::GSTexture::Create()
 	HRESULT hr;
 
 	m_TEX0 = m_tc->m_renderer->m_context->TEX0;
-	m_CLAMP = m_tc->m_renderer->m_context->CLAMP;
 
 	DWORD psm = m_TEX0.PSM;
 
@@ -97,7 +96,6 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 
 	m_scale = rt->m_scale;
 	m_TEX0 = m_tc->m_renderer->m_context->TEX0;
-	m_CLAMP = m_tc->m_renderer->m_context->CLAMP;
 	m_rendered = true;
 
 	int tw = 1 << m_TEX0.TW;
@@ -292,7 +290,7 @@ void GSTextureCache::GSTexture::Update()
 
 	BYTE* bits = buff + pitch * r.top + (r.left * m_bpp >> 3);
 
-	GSLocalMemory::readTexture rt = &GSLocalMemory::ReadTextureNP;
+	GSLocalMemory::readTexture rt = &GSLocalMemory::ReadTextureNP2;
 
 	(m_tc->m_renderer->m_mem.*rt)(r, bits, pitch, m_tc->m_renderer->m_context->TEX0, m_tc->m_renderer->m_env.TEXA, m_tc->m_renderer->m_context->CLAMP);
 
