@@ -266,7 +266,7 @@ bool GSTextureCache::GSTexture::Create(GSDepthStencil* ds)
 	return false;
 }
 
-void GSTextureCache::GSTexture::Update(GSLocalMemory::readTexture rt)
+void GSTextureCache::GSTexture::Update()
 {
 	__super::Update();
 
@@ -288,6 +288,8 @@ void GSTextureCache::GSTexture::Update(GSLocalMemory::readTexture rt)
 
 	if(SUCCEEDED(hr = m_texture->LockRect(0, &lr, &r, 0))) 
 	{
+		GSLocalMemory::readTexture rt = &GSLocalMemory::ReadTextureNP;
+
 		(m_tc->m_renderer->m_mem.*rt)(r, (BYTE*)lr.pBits, lr.Pitch, m_tc->m_renderer->m_context->TEX0, m_tc->m_renderer->m_env.TEXA, m_tc->m_renderer->m_context->CLAMP);
 
 		m_texture->UnlockRect(0);

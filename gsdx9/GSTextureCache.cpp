@@ -382,7 +382,7 @@ GSTextureCache::GSTexture* GSTextureCache::GetTexture()
 		}
 	}
 
-	t->Update(&GSLocalMemory::ReadTextureNP);
+	t->Update();
 
 	return t;
 }

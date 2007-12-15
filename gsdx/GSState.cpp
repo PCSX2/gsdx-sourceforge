@@ -1481,6 +1481,23 @@ bool GSState::DetectBadFrame(int crc, int& skip)
 		}
 
 		break;
+
+	case 0x44A61C8F: // gt4
+	case 0x0086E35B: // gt4
+
+		if(skip == 0)
+		{
+			if(TME && (FBP == 0x03440 || FBP >= 0x03e00) && FPSM == PSM_PSMCT32 && (TBP0 == 0x00000 || TBP0 == 0x01400) && TPSM == PSM_PSMT8)
+			{
+				skip = 880;
+			}
+			else if(TME && (FBP == 0x00000 || FBP == 0x01400) && FPSM == PSM_PSMCT24 && TBP0 >= 0x03420 && TPSM == PSM_PSMT8)
+			{
+				skip = 58;
+			}
+		}
+
+		break;
 	}
 
 	if(skip == 0)
