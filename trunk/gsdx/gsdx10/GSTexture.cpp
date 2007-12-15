@@ -268,7 +268,7 @@ bool GSTextureCache::GSTexture::Create(GSDepthStencil* ds)
 	return false;
 }
 
-void GSTextureCache::GSTexture::Update(GSLocalMemory::readTexture rt)
+void GSTextureCache::GSTexture::Update()
 {
 	__super::Update();
 
@@ -291,6 +291,8 @@ void GSTextureCache::GSTexture::Update(GSLocalMemory::readTexture rt)
 	int pitch = 1024 * m_bpp >> 3;
 
 	BYTE* bits = buff + pitch * r.top + (r.left * m_bpp >> 3);
+
+	GSLocalMemory::readTexture rt = &GSLocalMemory::ReadTextureNP;
 
 	(m_tc->m_renderer->m_mem.*rt)(r, bits, pitch, m_tc->m_renderer->m_context->TEX0, m_tc->m_renderer->m_env.TEXA, m_tc->m_renderer->m_context->CLAMP);
 

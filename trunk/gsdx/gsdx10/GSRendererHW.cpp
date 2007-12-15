@@ -86,9 +86,9 @@ void GSRendererHW::VertexKick(bool skip)
 	v.y = (float)m_v.XYZ.Y;
 	v.z = (float)m_v.XYZ.Z;
 
-	v.c = m_v.RGBAQ.ai32[0];
+	v.c0 = m_v.RGBAQ.ai32[0];
 
-	v.f = m_v.FOG.ai32[1];
+	v.c1 = m_v.FOG.ai32[1];
 
 	if(PRIM->TME)
 	{
@@ -239,8 +239,7 @@ TRACE(_T("[%d] FlushPrim f %05x (%d) z %05x (%d %d %d %d) t %05x %05x (%d)\n"),
 	  PRIM->TME ? (int)m_context->TEX0.PSM : 0xff);
 */
 
-if(s_dump && m_env.COLCLAMP.CLAMP == 0)
-//if(s_n >= 260)
+if(s_n >= 600)
 {
 	s_save = true;
 	// s_savez = true;
@@ -934,7 +933,7 @@ bool GSRendererHW::OverrideInput(int& prim, GSTextureCache::GSTexture* tex)
 				{
 					for(int j = 0; j < 16; j++, i++)
 					{
-						dst[j] = m_vertices[i].c;
+						dst[j] = m_vertices[i].c0;
 					}
 				}
 			}

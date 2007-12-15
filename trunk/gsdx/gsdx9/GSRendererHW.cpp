@@ -63,9 +63,9 @@ void GSRendererHW::VertexKick(bool skip)
 	v.y = (float)m_v.XYZ.Y;
 	v.z = (float)m_v.XYZ.Z;
 
-	v.c = m_v.RGBAQ.ai32[0];
+	v.c0 = m_v.RGBAQ.ai32[0];
 
-	v.f = m_v.FOG.ai32[1];
+	v.c1 = m_v.FOG.ai32[1];
 
 	if(PRIM->TME)
 	{
@@ -200,11 +200,13 @@ void GSRendererHW::DrawingKick(bool skip)
 
 	if(!PRIM->IIP)
 	{
-		v[0].c = v[nv - 1].c;
+		v[0].c0 = v[nv - 1].c0;
+		v[0].c1 = v[nv - 1].c1;
 
 		if(PRIM->PRIM == 6)
 		{
-			v[3].c = v[5].c;
+			v[3].c0 = v[5].c0;
+			v[3].c1 = v[5].c1;
 		}
 	}
 
@@ -887,7 +889,7 @@ bool GSRendererHW::OverrideInput(int& prim, GSTextureCache::GSTexture* tex)
 				{
 					for(int j = 0; j < 16; j++, i++)
 					{
-						dst[j] = m_vertices[i].c;
+						dst[j] = m_vertices[i].c0;
 					}
 				}
 			}

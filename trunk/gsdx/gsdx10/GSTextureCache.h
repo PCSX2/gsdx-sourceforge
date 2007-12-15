@@ -87,7 +87,7 @@ public:
 		bool Create();
 		bool Create(GSRenderTarget* rt);
 		bool Create(GSDepthStencil* ds);
-		void Update(GSLocalMemory::readTexture rt);
+		void Update();
 	};
 
 protected:
