@@ -74,8 +74,8 @@ struct PS_INPUT
 #define AEM 0
 #define TFX 0
 #define TCC 1
-#define ATE 0
-#define ATST 1
+#define ATE 1
+#define ATST 7
 #define FOG 0
 #define CLR1 0
 #define RT 0

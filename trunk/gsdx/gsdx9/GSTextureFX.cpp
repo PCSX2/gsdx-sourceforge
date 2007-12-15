@@ -165,8 +165,6 @@ void GSTextureFX::UpdatePS(PSSelector sel, PSSamplerSelector ssel)
 
 		hr = m_dev->CompileShader(IDR_TFX_FX, "ps_main", macro, &ps);
 
-		ASSERT(SUCCEEDED(hr));
-
 		m_ps.Add(sel, ps);
 	}
 
