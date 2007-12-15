@@ -159,8 +159,6 @@ bool GSTextureFX::SetupGS(GSSelector sel)
 
 			hr = m_dev->CompileShader(&gs, IDR_TFX_FX, "gs_main", macro);
 
-			ASSERT(SUCCEEDED(hr));
-
 			m_gs.Add(sel, gs);
 		}
 	}

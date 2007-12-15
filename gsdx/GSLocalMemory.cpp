@@ -1798,15 +1798,15 @@ void GSLocalMemory::ReadTexture(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TE
 
 				dst -= r.left * sizeof(T);
 
-				int left = (r.left + minu) & ~minu;
-				int right = r.right & ~minu;
+//				int left = (r.left + minu) & ~minu;
+//				int right = r.right & ~minu;
 
 				for(int y = r.top; y < r.bottom; y++, dst += dstpitch)
 				{
 					T* src = &buff[(y & minv) * w];
 
 					int x = r.left;
-
+/*
 					for(; x < left; x++)
 					{
 						((T*)dst)[x] = src[x & minu];
@@ -1816,8 +1816,8 @@ void GSLocalMemory::ReadTexture(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TE
 					{
 						memcpy(&((T*)dst)[x], src, sizeof(T) * (minu + 1));
 					}
-
-					for(; x < right; x++)
+*/
+					for(; x < r.right; x++)
 					{
 						((T*)dst)[x] = src[x & minu];
 					}
@@ -1859,15 +1859,15 @@ void GSLocalMemory::ReadTexture(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TE
 
 				dst -= r.left * sizeof(T);
 
-				int left = (r.left + minu) & ~minu;
-				int right = r.right & ~minu;
+//				int left = (r.left + minu) & ~minu;
+//				int right = r.right & ~minu;
 
 				for(int y = r.top; y < r.bottom; y++, dst += dstpitch)
 				{
 					T* src = &buff[(y - top) * w];
 
 					int x = r.left;
-
+/*
 					for(; x < left; x++)
 					{
 						((T*)dst)[x] = src[x & minu];
@@ -1877,8 +1877,8 @@ void GSLocalMemory::ReadTexture(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TE
 					{
 						memcpy(&((T*)dst)[x], src, sizeof(T) * (minu + 1));
 					}
-
-					for(; x < right; x++)
+*/
+					for(; x < r.right; x++)
 					{
 						((T*)dst)[x] = src[x & minu];
 					}

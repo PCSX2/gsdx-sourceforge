@@ -596,17 +596,17 @@ HRESULT GSDevice::CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro, I
 		return E_FAIL;
 	}
 
-	CComPtr<ID3DXBuffer> pShader, pErrorMsgs;
+	CComPtr<ID3DXBuffer> shader, error;
 
-	HRESULT hr = D3DXCompileShaderFromResource(AfxGetResourceHandle(), MAKEINTRESOURCE(id), macro, NULL, entry, target, 0, &pShader, &pErrorMsgs, ct);
+	HRESULT hr = D3DXCompileShaderFromResource(AfxGetResourceHandle(), MAKEINTRESOURCE(id), macro, NULL, entry, target, 0, &shader, &error, ct);
 
 	if(SUCCEEDED(hr))
 	{
-		hr = m_dev->CreateVertexShader((DWORD*)pShader->GetBufferPointer(), vs);
+		hr = m_dev->CreateVertexShader((DWORD*)shader->GetBufferPointer(), vs);
 	}
-	else
+	else if(error)
 	{
-		LPCSTR msg = (LPCSTR)pErrorMsgs->GetBufferPointer();
+		LPCSTR msg = (LPCSTR)error->GetBufferPointer();
 
 		TRACE(_T("%s\n"), CString(msg));
 	}
@@ -635,17 +635,22 @@ HRESULT GSDevice::CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro, I
 		return false;
 	}
 
-	CComPtr<ID3DXBuffer> pShader, pErrorMsgs;
+	CComPtr<ID3DXBuffer> shader, error;
 
-	HRESULT hr = D3DXCompileShaderFromResource(AfxGetResourceHandle(), MAKEINTRESOURCE(id), macro, NULL, entry, target, flags, &pShader, &pErrorMsgs, ct);
+	HRESULT hr = D3DXCompileShaderFromResource(AfxGetResourceHandle(), MAKEINTRESOURCE(id), macro, NULL, entry, target, flags, &shader, &error, ct);
 
 	if(SUCCEEDED(hr))
 	{
-		hr = m_dev->CreatePixelShader((DWORD*)pShader->GetBufferPointer(), ps);
+		DWORD* ptr = (DWORD*)shader->GetBufferPointer();
+		DWORD size = shader->GetBufferSize();
+
+		hr = m_dev->CreatePixelShader((DWORD*)shader->GetBufferPointer(), ps);
+
+		ASSERT(SUCCEEDED(hr));
 	}
-	else
+	else if(error)
 	{
-		LPCSTR msg = (LPCSTR)pErrorMsgs->GetBufferPointer();
+		LPCSTR msg = (LPCSTR)error->GetBufferPointer();
 
 		TRACE(_T("%s\n"), CString(msg));
 	}
