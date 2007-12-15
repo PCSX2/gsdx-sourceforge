@@ -194,35 +194,37 @@ void GSTextureFX::UpdatePS(PSSelector sel, PSSamplerSelector ssel)
 
 	if(!(ps = m_ps.Lookup(sel)))
 	{
-		CStringA str[12];
+		CStringA str[13];
 
 		str[0].Format("%d", sel.fst);
-		str[1].Format("%d", sel.clamp);
-		str[2].Format("%d", sel.bpp);
-		str[3].Format("%d", sel.aem);
-		str[4].Format("%d", sel.tfx);
-		str[5].Format("%d", sel.tcc);
-		str[6].Format("%d", sel.ate);
-		str[7].Format("%d", sel.atst);
-		str[8].Format("%d", sel.fog);
-		str[9].Format("%d", sel.clr1);
-		str[10].Format("%d", sel.fba);
-		str[11].Format("%d", sel.aout);
+		str[1].Format("%d", sel.wms);
+		str[2].Format("%d", sel.wmt);
+		str[3].Format("%d", sel.bpp);
+		str[4].Format("%d", sel.aem);
+		str[5].Format("%d", sel.tfx);
+		str[6].Format("%d", sel.tcc);
+		str[7].Format("%d", sel.ate);
+		str[8].Format("%d", sel.atst);
+		str[9].Format("%d", sel.fog);
+		str[10].Format("%d", sel.clr1);
+		str[11].Format("%d", sel.fba);
+		str[12].Format("%d", sel.aout);
 
 		D3D10_SHADER_MACRO macro[] =
 		{
 			{"FST", str[0]},
-			{"CLAMP", str[1]},
-			{"BPP", str[2]},
-			{"AEM", str[3]},
-			{"TFX", str[4]},
-			{"TCC", str[5]},
-			{"ATE", str[6]},
-			{"ATST", str[7]},
-			{"FOG", str[8]},
-			{"CLR1", str[9]},
-			{"FBA", str[10]},
-			{"AOUT", str[11]},
+			{"WMS", str[1]},
+			{"WMT", str[2]},
+			{"BPP", str[3]},
+			{"AEM", str[4]},
+			{"TFX", str[5]},
+			{"TCC", str[6]},
+			{"ATE", str[7]},
+			{"ATST", str[8]},
+			{"FOG", str[9]},
+			{"CLR1", str[10]},
+			{"FBA", str[11]},
+			{"AOUT", str[12]},
 			{NULL, NULL},
 		};
 

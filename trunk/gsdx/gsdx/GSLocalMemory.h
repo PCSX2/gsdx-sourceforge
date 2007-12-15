@@ -907,12 +907,14 @@ public:
 	void unSwizzleTexture4HHNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
 
 	void ReadTextureNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA, GIFRegCLAMP& CLAMP);
+	void ReadTextureNP2(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA, GIFRegCLAMP& CLAMP);
 
 	//
 
 	static DWORD m_xtbl[1024], m_ytbl[1024]; 
 
 	template<typename T> void ReadTexture(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA, GIFRegCLAMP& CLAMP, readTexel rt, unSwizzleTexture st);
+	template<typename T> void ReadTexture2(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA, readTexel rt, unSwizzleTexture st);
 
 	HRESULT SaveBMP(LPCTSTR fn, DWORD bp, DWORD bw, DWORD psm, int w, int h);
 };

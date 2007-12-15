@@ -112,8 +112,14 @@ SamplerState Sampler;
 cbuffer cb1
 {
 	float4 FogColor;
-	float2 ClampMin;
-	float2 ClampMax;
+	float MINU;
+	float MAXU;
+	float MINV;
+	float MAXV;
+	uint UMSK;
+	uint UFIX;
+	uint VMSK;
+	uint VFIX;
 	float TA0;
 	float TA1;
 	float AREF;
@@ -139,7 +145,8 @@ struct PS_OUTPUT
 
 #ifndef FST
 #define FST 0
-#define CLAMP 0
+#define WMS 2
+#define WMT 3
 #define BPP 0
 #define AEM 0
 #define TFX 0
@@ -169,6 +176,16 @@ float4 Extract16(uint i)
 	return f;
 }
 
+float RegionRepeat(float tc, float size, float rsize, uint msk, uint fix)
+{
+	tc *= size;
+	float f = frac(tc);
+	tc = (float)(((int)tc & msk) | fix);
+	tc += f;
+	tc *= rsize;
+	return tc;
+}
+
 PS_OUTPUT ps_main(PS_INPUT input)
 {
 	float2 tc = input.t.xy;
@@ -177,10 +194,25 @@ PS_OUTPUT ps_main(PS_INPUT input)
 	{
 		tc /= input.t.w;
 	}
-
-	if(CLAMP == 1)
+	
+	if(WMS == 2)
 	{
-		tc = clamp(tc, ClampMin, ClampMax);
+		tc.x = clamp(tc.x, MINU, MAXU);
+	}
+	
+	if(WMS == 3)
+	{
+		tc.x = RegionRepeat(tc.x, WH.x, rWrH.x, UMSK, UFIX);
+	}
+
+	if(WMT == 2)
+	{
+		tc.y = clamp(tc.y, MINV, MAXV);
+	}
+
+	if(WMT == 3)
+	{
+		tc.y = RegionRepeat(tc.y, WH.y, rWrH.y, VMSK, VFIX);
 	}
 
 	float4 t;
