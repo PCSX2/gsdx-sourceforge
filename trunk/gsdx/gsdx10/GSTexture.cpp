@@ -132,7 +132,7 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 				int sx = o % sw;
 				int sy = o / sw;
 
-				D3DXVECTOR4 src, dst;
+				GSVector4 src, dst;
 
 				src.x = m_scale.x * sx / rt->m_texture.m_desc.Width;
 				src.y = m_scale.y * sy / rt->m_texture.m_desc.Height;
@@ -166,7 +166,7 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 
 	if(w != rt->m_texture.m_desc.Width || h != rt->m_texture.m_desc.Height)
 	{
-		D3DXVECTOR4 dst(0, 0, w, h);
+		GSVector4 dst(0, 0, w, h);
 		
 		if(w > rt->m_texture.m_desc.Width) 
 		{
@@ -184,7 +184,7 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 			h = rt->m_texture.m_desc.Height;
 		}
 
-		D3DXVECTOR4 src(0, 0, w, h);
+		GSVector4 src(0, 0, w, h);
 
 		GSTexture2D* st;
 		GSTexture2D* dt;

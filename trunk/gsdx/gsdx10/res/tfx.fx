@@ -28,7 +28,7 @@ VS_OUTPUT vs_main(VS_INPUT input)
 
 	output.c = input.c;
 
-	output.t.xy = input.t.xy * TextureScale;
+	output.t.xy = input.t * TextureScale;
 	output.t.z = input.f.a;
 	output.t.w = input.p.w < 0 ? 1 : input.p.w; // FIXME: <= takes small but not 0 numbers as 0
 
@@ -176,7 +176,7 @@ float4 Extract16(uint i)
 	return f;
 }
 
-float RegionRepeat(float tc, float size, float rsize, uint msk, uint fix)
+float repeat(float tc, uint msk, uint fix, float size, float rsize)
 {
 	tc *= size;
 	float f = frac(tc);
@@ -202,7 +202,7 @@ PS_OUTPUT ps_main(PS_INPUT input)
 	
 	if(WMS == 3)
 	{
-		tc.x = RegionRepeat(tc.x, WH.x, rWrH.x, UMSK, UFIX);
+		tc.x = repeat(tc.x, UMSK, UFIX, WH.x, rWrH.x);
 	}
 
 	if(WMT == 2)
@@ -212,7 +212,7 @@ PS_OUTPUT ps_main(PS_INPUT input)
 
 	if(WMT == 3)
 	{
-		tc.y = RegionRepeat(tc.y, WH.y, rWrH.y, VMSK, VFIX);
+		tc.y = repeat(tc.y, VMSK, VFIX, WH.y, rWrH.y);
 	}
 
 	float4 t;

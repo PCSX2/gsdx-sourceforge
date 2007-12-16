@@ -523,17 +523,17 @@ bool GSDevice::SaveToFileD32S8X24(ID3D10Texture2D* ds, LPCTSTR fn)
 	return SUCCEEDED(D3DX10SaveTextureToFile(dst, D3DX10_IFF_BMP, fn));
 }
 
-void GSDevice::StretchRect(GSTexture2D& st, GSTexture2D& dt, const D3DXVECTOR4& dr, bool linear)
+void GSDevice::StretchRect(GSTexture2D& st, GSTexture2D& dt, const GSVector4& dr, bool linear)
 {
-	StretchRect(st, D3DXVECTOR4(0, 0, 1, 1), dt, dr, m_convert.ps[0], linear);
+	StretchRect(st, GSVector4(0, 0, 1, 1), dt, dr, m_convert.ps[0], linear);
 }
 
-void GSDevice::StretchRect(GSTexture2D& st, const D3DXVECTOR4& sr, GSTexture2D& dt, const D3DXVECTOR4& dr, bool linear)
+void GSDevice::StretchRect(GSTexture2D& st, const GSVector4& sr, GSTexture2D& dt, const GSVector4& dr, bool linear)
 {
 	StretchRect(st, sr, dt, dr, m_convert.ps[0], linear);
 }
 
-void GSDevice::StretchRect(GSTexture2D& st, const D3DXVECTOR4& sr, GSTexture2D& dt, const D3DXVECTOR4& dr, ID3D10PixelShader* ps, bool linear)
+void GSDevice::StretchRect(GSTexture2D& st, const GSVector4& sr, GSTexture2D& dt, const GSVector4& dr, ID3D10PixelShader* ps, bool linear)
 {
 	// om
 
@@ -587,15 +587,15 @@ void GSDevice::Interlace(GSTexture2D& st, GSTexture2D& dt, int shader, bool line
 {
 	InterlaceCB cb;
 
-	cb.ZrH = D3DXVECTOR2(0, 1.0f / dt.m_desc.Height);
+	cb.ZrH = GSVector2(0, 1.0f / dt.m_desc.Height);
 	cb.hH = (float)dt.m_desc.Height / 2;
 
 	m_dev->UpdateSubresource(m_interlace.cb, 0, NULL, &cb, 0, 0);
 	
 	m_dev->PSSetConstantBuffers(0, 1, &m_interlace.cb.p);
 
-	D3DXVECTOR4 sr(0, 0, 1, 1);
-	D3DXVECTOR4 dr(0, yoffset, (float)dt.m_desc.Width, (float)dt.m_desc.Height + yoffset);
+	GSVector4 sr(0, 0, 1, 1);
+	GSVector4 dr(0, yoffset, (float)dt.m_desc.Width, (float)dt.m_desc.Height + yoffset);
 
 	StretchRect(st, sr, dt, dr, m_interlace.ps[shader], linear);
 }

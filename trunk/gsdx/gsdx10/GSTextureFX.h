@@ -31,15 +31,15 @@ public:
 
 	struct VSConstantBuffer
 	{
-		D3DXVECTOR4 VertexScale;
-		D3DXVECTOR4 VertexOffset;
-		D3DXVECTOR2 TextureScale;
+		GSVector4 VertexScale;
+		GSVector4 VertexOffset;
+		GSVector2 TextureScale;
 		float _pad[2];
 	};
 
 	struct PSConstantBuffer
 	{
-		D3DXVECTOR4 FogColor;
+		GSVector4 FogColor;
 		float MINU;
 		float MAXU;
 		float MINV;
@@ -52,10 +52,10 @@ public:
 		float TA1;
 		float AREF;
 		float _pad[1];
-		D3DXVECTOR2 WH;
-		D3DXVECTOR2 rWrH;
-		D3DXVECTOR2 rWZ;
-		D3DXVECTOR2 ZrH;
+		GSVector2 WH;
+		GSVector2 rWrH;
+		GSVector2 rWZ;
+		GSVector2 ZrH;
 	};
 
 	union PSSelector

@@ -379,7 +379,7 @@ GSTextureCache::GSTexture* GSTextureCache::GetTexture()
 	return t;
 }
 
-void GSTextureCache::InvalidateTexture(const GIFRegBITBLTBUF& BITBLTBUF, const CRect& r)
+void GSTextureCache::InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, const CRect& r)
 {
 	POSITION pos = m_tex.GetHeadPosition();
 

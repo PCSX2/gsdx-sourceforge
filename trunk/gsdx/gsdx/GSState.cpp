@@ -22,10 +22,13 @@
 #include "stdafx.h"
 #include "GSState.h"
 
-GSState::GSState(BYTE* base, bool mt, void (*irq)(), bool nloophack)
+GSState::GSState(BYTE* base, bool mt, void (*irq)(), int nloophack)
 	: m_mt(mt)
 	, m_irq(irq)
-	, m_nloophack(nloophack)
+	, m_nloophack_org(nloophack)
+	, m_nloophack(nloophack == 1)
+	, m_crc(0)
+	, m_options(0)
 	, m_path3hack(0)
 	, m_q(1.0f)
 	, m_version(4)
@@ -926,7 +929,7 @@ void GSState::FlushWrite(BYTE* mem, int len)
 		r.right = m_env.TRXREG.RRW;
 		r.bottom = min(m_x == m_env.TRXPOS.DSAX ? m_y : m_y + 1, m_env.TRXREG.RRH);
 
-		InvalidateTexture(m_env.BITBLTBUF, r);
+		InvalidateVideoMem(m_env.BITBLTBUF, r);
 	}
 }
 
@@ -1083,16 +1086,11 @@ void GSState::Move()
 	if(sy < dy) sy += h-1, dy += h-1, yinc = -1;
 
 	InvalidateLocalMem(m_env.BITBLTBUF, CRect(CPoint(sx, sy), CSize(w, h)));
-	InvalidateTexture(m_env.BITBLTBUF, CRect(CPoint(dx, dy), CSize(w, h)));
+	InvalidateVideoMem(m_env.BITBLTBUF, CRect(CPoint(dx, dy), CSize(w, h)));
 
 	for(int y = 0; y < h; y++, sy += yinc, dy += yinc, sx -= xinc*w, dx -= xinc*w)
 		for(int x = 0; x < w; x++, sx += xinc, dx += xinc)
 			(m_mem.*wp)(dx, dy, (m_mem.*rp)(sx, sy, m_env.BITBLTBUF.SBP, m_env.BITBLTBUF.SBW), m_env.BITBLTBUF.DBP, m_env.BITBLTBUF.DBW);
-}
-
-void GSState::WriteCSR(UINT32 csr)
-{
-	CSR->ai32[1] = csr;
 }
 
 void GSState::ReadFIFO(BYTE* mem, int size)
@@ -1324,6 +1322,61 @@ int GSState::Defrost(const freezeData* fd)
 m_perfmon.SetFrame(5000);
 
 	return 0;
+}
+
+void GSState::SetGameCRC(int crc, int options)
+{
+	m_crc = crc;
+	m_options = options;
+
+	if(m_nloophack_org == 2)
+	{
+		switch(crc)
+		{
+		case 0xa39517ab: // ffx pal/eu
+		case 0xa39517ae: // ffx pal/fr
+		case 0x941bb7d9: // ffx pal/de
+		case 0xa39517a9: // ffx pal/it
+		case 0x941bb7de: // ffx pal/es
+		case 0xb4414ea1: // ffx pal/ru
+		case 0xbb3d833a: // ffx ntsc/us
+		case 0x6a4efe60: // ffx ntsc/j
+		case 0x3866ca7e: // ffx int. ntsc/asia (SLPM-67513, some kind of a asia version) 
+		case 0x658597e2: // ffx int. ntsc/j
+		case 0x9aac5309: // ffx-2 pal/e
+		case 0x9aac530c: // ffx-2 pal/fr
+		case 0x9aac530a: // ffx-2 pal/fr? (maybe belgium or luxembourg version)
+		case 0x9aac530d: // ffx-2 pal/de
+		case 0x9aac530b: // ffx-2 pal/it
+		case 0x48fe0c71: // ffx-2 ntsc/us
+		case 0xe1fd9a2d: // ffx-2 int+lm ntsc/j
+		case 0xf0a6d880: // harvest moon ntsc/us
+			m_nloophack = true;
+			break;
+		}
+	}
+}
+
+void GSState::SetFrameSkip(int frameskip)
+{
+	if(m_frameskip != frameskip)
+	{
+		m_frameskip = frameskip;
+
+		if(frameskip)
+		{
+		}
+		else
+		{
+		}
+	}
+}
+
+bool GSState::MakeSnapshot(LPCTSTR path)
+{
+	CString fn;
+	fn.Format(_T("%s_%s.bmp"), path, CTime::GetCurrentTime().Format(_T("%Y%m%d%H%M%S")));
+	return false; // TODO: m_dev.SaveCurrent(fn);
 }
 
 bool GSState::DetectBadFrame(int crc, int& skip)

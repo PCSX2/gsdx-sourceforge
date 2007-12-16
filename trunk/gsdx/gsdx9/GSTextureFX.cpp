@@ -62,11 +62,41 @@ bool GSTextureFX::Create(GSDevice* dev)
 	return true;
 }
 
+bool GSTextureFX::CreateMskFix(GSTexture2D& t, DWORD size, DWORD msk, DWORD fix)
+{
+	DWORD hash = (size << 20) | (msk << 10) | fix;
+
+	if(!m_mskfix.Lookup(hash, t))
+	{
+		HRESULT hr = m_dev->CreateTexture(t, size, 1, D3DFMT_R32F);
+
+		if(FAILED(hr)) return false;
+
+		D3DLOCKED_RECT lr;
+		
+		if(SUCCEEDED(t->LockRect(0, &lr, NULL, 0)))
+		{
+			for(DWORD i = 0; i < size; i++)
+			{
+				((float*)lr.pBits)[i] = (float)((i & msk) | fix);
+			}
+
+			t->UnlockRect(0);
+		}
+
+		printf("CreateMskFix %03x %03x %d\n", msk, fix, size);
+
+		m_mskfix[hash] = t;
+	}
+
+	return true;
+}
+
 bool GSTextureFX::SetupVS(const VSConstantBuffer* cb)
 {
 	(*m_dev)->SetVertexShader(m_vs);
 
-	(*m_dev)->SetVertexShaderConstantF(0, (const float*)cb, sizeof(*cb) / sizeof(D3DXVECTOR4));
+	(*m_dev)->SetVertexShaderConstantF(0, (const float*)cb, sizeof(*cb) / sizeof(GSVector4));
 
 	(*m_dev)->SetVertexDeclaration(m_vd);
 
@@ -86,10 +116,41 @@ bool GSTextureFX::SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerS
 
 #endif
 
-	(*m_dev)->SetPixelShaderConstantF(0, (const float*)cb, sizeof(*cb) / sizeof(D3DXVECTOR4));
+	(*m_dev)->SetPixelShaderConstantF(0, (const float*)cb, sizeof(*cb) / sizeof(GSVector4));
 
 	(*m_dev)->SetTexture(0, tex);
 	(*m_dev)->SetTexture(1, pal);
+
+	if(tex)
+	{
+		if(sel.wms == 3)
+		{
+			D3DSURFACE_DESC desc;
+			tex->GetLevelDesc(0, &desc);
+
+			GSTexture2D t;
+			CreateMskFix(t, desc.Width, cb->UMSK, cb->UFIX);			
+
+			(*m_dev)->SetTexture(2, t);
+			(*m_dev)->SetSamplerState(2, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP);
+			(*m_dev)->SetSamplerState(2, D3DSAMP_MINFILTER, D3DTEXF_POINT);
+			(*m_dev)->SetSamplerState(2, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
+		}
+
+		if(sel.wmt == 3)
+		{
+			D3DSURFACE_DESC desc;
+			tex->GetLevelDesc(0, &desc);
+
+			GSTexture2D t;
+			CreateMskFix(t, desc.Height, cb->VMSK, cb->VFIX);			
+
+			(*m_dev)->SetTexture(3, t);
+			(*m_dev)->SetSamplerState(3, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP);
+			(*m_dev)->SetSamplerState(3, D3DSAMP_MINFILTER, D3DTEXF_POINT);
+			(*m_dev)->SetSamplerState(3, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
+		}
+	}
 
 	UpdatePS(sel, ssel);
 
@@ -133,33 +194,35 @@ void GSTextureFX::UpdatePS(PSSelector sel, PSSamplerSelector ssel)
 
 	if(!(ps = m_ps.Lookup(sel)))
 	{
-		CStringA str[11];
+		CStringA str[12];
 
 		str[0].Format("%d", sel.fst);
-		str[1].Format("%d", sel.clamp);
-		str[2].Format("%d", sel.bpp);
-		str[3].Format("%d", sel.aem);
-		str[4].Format("%d", sel.tfx);
-		str[5].Format("%d", sel.tcc);
-		str[6].Format("%d", sel.ate);
-		str[7].Format("%d", sel.atst);
-		str[8].Format("%d", sel.fog);
-		str[9].Format("%d", sel.clr1);
-		str[10].Format("%d", sel.rt);
+		str[1].Format("%d", sel.wms);
+		str[2].Format("%d", sel.wmt);
+		str[3].Format("%d", sel.bpp);
+		str[4].Format("%d", sel.aem);
+		str[5].Format("%d", sel.tfx);
+		str[6].Format("%d", sel.tcc);
+		str[7].Format("%d", sel.ate);
+		str[8].Format("%d", sel.atst);
+		str[9].Format("%d", sel.fog);
+		str[10].Format("%d", sel.clr1);
+		str[11].Format("%d", sel.rt);
 
 		D3DXMACRO macro[] =
 		{
 			{"FST", str[0]},
-			{"CLAMP", str[1]},
-			{"BPP", str[2]},
-			{"AEM", str[3]},
-			{"TFX", str[4]},
-			{"TCC", str[5]},
-			{"ATE", str[6]},
-			{"ATST", str[7]},
-			{"FOG", str[8]},
-			{"CLR1", str[9]},
-			{"RT", str[10]},
+			{"WMS", str[1]},
+			{"WMT", str[2]},
+			{"BPP", str[3]},
+			{"AEM", str[4]},
+			{"TFX", str[5]},
+			{"TCC", str[6]},
+			{"ATE", str[7]},
+			{"ATST", str[8]},
+			{"FOG", str[9]},
+			{"CLR1", str[10]},
+			{"RT", str[11]},
 			{NULL, NULL},
 		};
 
@@ -353,7 +416,6 @@ void GSTextureFX::UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, B
 		}
 
 		(*m_dev)->SetRenderState(D3DRS_BLENDFACTOR, 0x010101 * (bf >= 0x80 ? 0xff : bf*2));
-
 	}
 
 	DWORD mask = 0;

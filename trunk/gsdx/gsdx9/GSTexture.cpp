@@ -40,7 +40,6 @@ bool GSTextureCache::GSTexture::Create()
 	HRESULT hr;
 
 	m_TEX0 = m_tc->m_renderer->m_context->TEX0;
-	m_CLAMP = m_tc->m_renderer->m_context->CLAMP;
 
 	DWORD psm = m_TEX0.PSM;
 
@@ -97,7 +96,6 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 
 	m_scale = rt->m_scale;
 	m_TEX0 = m_tc->m_renderer->m_context->TEX0;
-	m_CLAMP = m_tc->m_renderer->m_context->CLAMP;
 	m_rendered = true;
 
 	int tw = 1 << m_TEX0.TW;
@@ -134,7 +132,7 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 				int sx = o % sw;
 				int sy = o / sw;
 
-				D3DXVECTOR4 src, dst;
+				GSVector4 src, dst;
 
 				src.x = m_scale.x * sx / rt->m_texture.m_desc.Width;
 				src.y = m_scale.y * sy / rt->m_texture.m_desc.Height;
@@ -166,7 +164,7 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 
 	if(w != rt->m_texture.m_desc.Width || h != rt->m_texture.m_desc.Height)
 	{
-		D3DXVECTOR4 dst(0, 0, w, h);
+		GSVector4 dst(0, 0, w, h);
 		
 		if(w > rt->m_texture.m_desc.Width) 
 		{
@@ -184,7 +182,7 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 			h = rt->m_texture.m_desc.Height;
 		}
 
-		D3DXVECTOR4 src(0, 0, w, h);
+		GSVector4 src(0, 0, w, h);
 
 		GSTexture2D* st;
 		GSTexture2D* dt;
@@ -288,7 +286,7 @@ void GSTextureCache::GSTexture::Update()
 
 	if(SUCCEEDED(hr = m_texture->LockRect(0, &lr, &r, 0))) 
 	{
-		GSLocalMemory::readTexture rt = &GSLocalMemory::ReadTextureNP;
+		GSLocalMemory::readTexture rt = &GSLocalMemory::ReadTextureNP2;
 
 		(m_tc->m_renderer->m_mem.*rt)(r, (BYTE*)lr.pBits, lr.Pitch, m_tc->m_renderer->m_context->TEX0, m_tc->m_renderer->m_env.TEXA, m_tc->m_renderer->m_context->CLAMP);
 

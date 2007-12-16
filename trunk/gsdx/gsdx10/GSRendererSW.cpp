@@ -218,11 +218,6 @@ static int bZTE; // , iZTST, iATST, iLOD, bLCM, bTCC, iTFX;
 template <class Vertex>
 void GSRendererSW<Vertex>::Draw()
 {
-if(s_dump && m_env.COLCLAMP.CLAMP == 0)
-{
-	s_save = true;
-	// s_savez = true;
-}
 
 if(s_dump)
 {
@@ -367,7 +362,7 @@ void GSRendererSW<Vertex>::Flip()
 		m_dev->UpdateSubresource(m_texture[i], 0, &box, buff, pitch, 0);
 
 		src[i].t = m_texture[i];
-		src[i].s = GSScale(1, 1);
+		src[i].s = GSVector2(1, 1);
 
 if(s_dump)
 {

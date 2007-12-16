@@ -27,7 +27,7 @@
 
 struct InterlaceCB
 {
-	D3DXVECTOR2 ZrH;
+	GSVector2 ZrH;
 	float hH;
 	float _pad[1];
 };
@@ -155,9 +155,9 @@ public:
 	bool SaveCurrent(LPCTSTR fn);
 	bool SaveToFileD32S8X24(ID3D10Texture2D* ds, LPCTSTR fn);
 
-	void StretchRect(GSTexture2D& st, GSTexture2D& dt, const D3DXVECTOR4& dr, bool linear = true);
-	void StretchRect(GSTexture2D& st, const D3DXVECTOR4& sr, GSTexture2D& dt, const D3DXVECTOR4& dr, bool linear = true);
-	void StretchRect(GSTexture2D& st, const D3DXVECTOR4& sr, GSTexture2D& dt, const D3DXVECTOR4& dr, ID3D10PixelShader* ps, bool linear = true);
+	void StretchRect(GSTexture2D& st, GSTexture2D& dt, const GSVector4& dr, bool linear = true);
+	void StretchRect(GSTexture2D& st, const GSVector4& sr, GSTexture2D& dt, const GSVector4& dr, bool linear = true);
+	void StretchRect(GSTexture2D& st, const GSVector4& sr, GSTexture2D& dt, const GSVector4& dr, ID3D10PixelShader* ps, bool linear = true);
 
 	ID3D10Texture2D* Interlace(GSTexture2D& st, CSize ds, int field, int mode, float yoffset);
 

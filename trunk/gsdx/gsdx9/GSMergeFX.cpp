@@ -35,7 +35,7 @@ bool GSMergeFX::Create(GSDevice* dev)
 	return true;
 }
 
-void GSMergeFX::Draw(GSTexture2D* st, D3DXVECTOR4* sr, GSTexture2D& dt, PSSelector sel, PSConstantBuffer& cb)
+void GSMergeFX::Draw(GSTexture2D* st, GSVector4* sr, GSTexture2D& dt, PSSelector sel, PSConstantBuffer& cb)
 {
 	HRESULT hr;
 
@@ -93,6 +93,8 @@ void GSMergeFX::Draw(GSTexture2D* st, D3DXVECTOR4* sr, GSTexture2D& dt, PSSelect
 	}
 	
 	(*m_dev)->SetPixelShader(ps);
+
+	(*m_dev)->SetPixelShaderConstantF(0, (const float*)&cb, sizeof(cb) / sizeof(GSVector4));
 
 	int w = dt.m_desc.Width;
 	int h = dt.m_desc.Height;

@@ -33,25 +33,31 @@ public:
 
 	struct VSConstantBuffer
 	{
-		D3DXVECTOR4 VertexScale;
-		D3DXVECTOR4 VertexOffset;
-		D3DXVECTOR2 TextureScale;
+		GSVector4 VertexScale;
+		GSVector4 VertexOffset;
+		GSVector2 TextureScale;
 		float _pad[2];
 	};
 
 	struct PSConstantBuffer
 	{
-		D3DXVECTOR4 FogColor;
-		D3DXVECTOR2 ClampMin;
-		D3DXVECTOR2 ClampMax;
+		GSVector4 FogColor;
+		float MINU;
+		float MAXU;
+		float MINV;
+		float MAXV;
+		DWORD UMSK;
+		DWORD UFIX;
+		DWORD VMSK;
+		DWORD VFIX;
 		float TA0;
 		float TA1;
 		float AREF;
 		float _pad[1];
-		D3DXVECTOR2 WH;
-		D3DXVECTOR2 rWrH;
-		D3DXVECTOR2 rWZ;
-		D3DXVECTOR2 ZrH;
+		GSVector2 WH;
+		GSVector2 rWrH;
+		GSVector2 rWZ;
+		GSVector2 ZrH;
 	};
 
 	union PSSelector
@@ -59,7 +65,8 @@ public:
 		struct
 		{
 			DWORD fst:1;
-			DWORD clamp:1;
+			DWORD wms:2;
+			DWORD wmt:2;
 			DWORD bpp:3;
 			DWORD aem:1;
 			DWORD tfx:3;
@@ -73,7 +80,7 @@ public:
 
 		DWORD dw;
 
-		operator DWORD() {return dw & 0x1ffff;}
+		operator DWORD() {return dw & 0xfffff;}
 	};
 
 	union PSSamplerSelector
@@ -136,11 +143,13 @@ private:
 	CComPtr<ID3DXConstantTable> m_vs_ct;
 	D3DXHANDLE m_vs_params;
 	CSimpleMap<DWORD, CComPtr<IDirect3DPixelShader9> > m_ps;
+	CAtlMap<DWORD, GSTexture2D> m_mskfix;
 
 public:
 	GSTextureFX();
 
 	bool Create(GSDevice* dev);
+	bool CreateMskFix(GSTexture2D& t, DWORD size, DWORD msk, DWORD fix);
 	
 	bool SetupVS(const VSConstantBuffer* cb);
 	bool SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel, IDirect3DTexture9* tex, IDirect3DTexture9* pal);

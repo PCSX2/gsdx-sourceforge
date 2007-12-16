@@ -1804,7 +1804,7 @@ void GSLocalMemory::ReadTextureNP2(const CRect& r, BYTE* dst, int dstpitch, GIFR
 template<typename T> 
 void GSLocalMemory::ReadTexture(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA, GIFRegCLAMP& CLAMP, readTexel rt, unSwizzleTexture st)
 {
-	// this function is not thread safe!
+	// TODO: this is a mess, make it more simple
 
 	DWORD wms = CLAMP.WMS, wmt = CLAMP.WMT;
 	DWORD minu = CLAMP.MINU, maxu = CLAMP.MAXU;
@@ -1815,7 +1815,7 @@ void GSLocalMemory::ReadTexture(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TE
 	int bsxm = bs.cx - 1;
 	int bsym = bs.cy - 1;
 
-	if(wms == 3 || wmt == 3) // TODO: do region repeat in pixel shader
+	if(wms == 3 || wmt == 3)
 	{
 		if(wms == 3 && wmt == 3)
 		{
