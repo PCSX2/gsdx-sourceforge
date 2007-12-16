@@ -89,7 +89,7 @@ void GSTextureCache::GSRenderTarget::Update()
 
 		texture->UnlockRect(0);
 
-		D3DXVECTOR4 dr(m_scale.x * r.left, m_scale.y * r.top, m_scale.x * r.right, m_scale.y * r.bottom);
+		GSVector4 dr(m_scale.x * r.left, m_scale.y * r.top, m_scale.x * r.right, m_scale.y * r.bottom);
 
 		m_tc->m_renderer->m_dev.StretchRect(texture, m_texture, dr);
 	}
@@ -121,8 +121,8 @@ void GSTextureCache::GSRenderTarget::Read(CRect r)
 	float right = m_scale.x * r.right / m_texture.m_desc.Width;
 	float bottom = m_scale.y * r.bottom / m_texture.m_desc.Height;
 
-	D3DXVECTOR4 src(left, top, right, bottom);
-	D3DXVECTOR4 dst(0, 0, r.Width(), r.Height());
+	GSVector4 src(left, top, right, bottom);
+	GSVector4 dst(0, 0, r.Width(), r.Height());
 	
 	GSTexture2D rt;
 

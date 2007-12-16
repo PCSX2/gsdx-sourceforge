@@ -335,7 +335,7 @@ if(s_dump)
 	{
 		m_dev.CreateRenderTarget(rt2, rt->m_texture.m_desc.Width, rt->m_texture.m_desc.Height, DXGI_FORMAT_R16G16B16A16_FLOAT);
 
-		D3DXVECTOR4 dr(0, 0, rt->m_texture.m_desc.Width, rt->m_texture.m_desc.Height);
+		GSVector4 dr(0, 0, rt->m_texture.m_desc.Width, rt->m_texture.m_desc.Height);
 
 		m_dev.StretchRect(rt->m_texture, rt2, dr, false);
 	}
@@ -378,9 +378,9 @@ if(s_dump)
 	float ox = (float)(int)m_context->XYOFFSET.OFX;
 	float oy = (float)(int)m_context->XYOFFSET.OFY;
 
-	vs_cb.VertexScale = D3DXVECTOR4(sx, -sy, 1.0f / UINT_MAX, 0);
-	vs_cb.VertexOffset = D3DXVECTOR4(ox * sx + 1, -(oy * sy + 1), 0, -1);
-	vs_cb.TextureScale = D3DXVECTOR2(1.0f, 1.0f);
+	vs_cb.VertexScale = GSVector4(sx, -sy, 1.0f / UINT_MAX, 0);
+	vs_cb.VertexOffset = GSVector4(ox * sx + 1, -(oy * sy + 1), 0, -1);
+	vs_cb.TextureScale = GSVector2(1.0f, 1.0f);
 
 	if(PRIM->TME && PRIM->FST)
 	{
@@ -437,9 +437,6 @@ if(s_dump)
 	ps_sel.fba = m_context->FBA.FBA;
 	ps_sel.aout = m_context->FRAME.PSM == PSM_PSMCT16 || m_context->FRAME.PSM == PSM_PSMCT16S || (m_context->FRAME.FBMSK & 0xff000000) == 0x7f000000 ? 1 : 0;
 
-//if(ps_sel.wms == 3) ps_sel.wms = 0;
-//if(ps_sel.wmt == 3) ps_sel.wmt = 0;
-
 	GSTextureFX::PSSamplerSelector ps_ssel;
 
 	ps_ssel.min = m_filter == 2 ? (m_context->TEX1.MMIN & 1) : m_filter;
@@ -451,7 +448,7 @@ if(s_dump)
 
 	memset(&ps_cb, 0, sizeof(ps_cb));
 
-	ps_cb.FogColor = D3DXVECTOR4((float)(int)m_env.FOGCOL.FCR / 255, (float)(int)m_env.FOGCOL.FCG / 255, (float)(int)m_env.FOGCOL.FCB / 255, 0);
+	ps_cb.FogColor = GSVector4((float)(int)m_env.FOGCOL.FCR / 255, (float)(int)m_env.FOGCOL.FCG / 255, (float)(int)m_env.FOGCOL.FCB / 255, 0);
 	ps_cb.TA0 = (float)(int)m_env.TEXA.TA0 / 255;
 	ps_cb.TA1 = (float)(int)m_env.TEXA.TA1 / 255;
 	ps_cb.AREF = (float)(int)m_context->TEST.AREF / 255;
@@ -464,9 +461,6 @@ if(s_dump)
 	{
 		ps_cb.AREF += 0.9f/256;
 	}
-
-	ID3D10ShaderResourceView* tex_view = NULL;
-	ID3D10ShaderResourceView* pal_view = NULL;
 
 	if(tex)
 	{
@@ -519,20 +513,19 @@ if(s_dump)
 		float w = (float)(int)tex->m_texture.m_desc.Width;
 		float h = (float)(int)tex->m_texture.m_desc.Height;
 
-		ps_cb.WH = D3DXVECTOR2(w, h);
-		ps_cb.rWrH = D3DXVECTOR2(1.0f / w, 1.0f / h);
-		ps_cb.rWZ = D3DXVECTOR2(1.0f / w, 0);
-		ps_cb.ZrH = D3DXVECTOR2(0, 1.0f / h);
+		ps_cb.WH = GSVector2(w, h);
+		ps_cb.rWrH = GSVector2(1.0f / w, 1.0f / h);
+		ps_cb.rWZ = GSVector2(1.0f / w, 0);
+		ps_cb.ZrH = GSVector2(0, 1.0f / h);
 
-		tex_view = tex->m_texture;
-		pal_view = tex->m_palette;
+		m_tfx.SetupPS(ps_sel, &ps_cb, ps_ssel, tex->m_texture, tex->m_palette);
 	}
 	else
 	{
 		ps_sel.tfx = 4;
-	}
 
-	m_tfx.SetupPS(ps_sel, &ps_cb, ps_ssel, tex_view, pal_view);
+		m_tfx.SetupPS(ps_sel, &ps_cb, ps_ssel, NULL, NULL);
+	}
 
 	// rs
 
@@ -558,7 +551,7 @@ if(s_dump)
 
 	if(m_context->TEST.DoSecondPass())
 	{
-		// ASSERT(!m_env.PABE.PABE);
+		ASSERT(!m_env.PABE.PABE);
 
 		static const DWORD iatst[] = {1, 0, 5, 6, 7, 2, 3, 4};
 
@@ -599,8 +592,8 @@ if(s_dump)
 /*
 	if(rt2)
 	{
-		D3DXVECTOR4 sr(0, 0, 1, 1);
-		D3DXVECTOR4 dr(0, 0, rt->m_texture.m_desc.Width, rt->m_texture.m_desc.Height);
+		GSVector4 sr(0, 0, 1, 1);
+		GSVector4 dr(0, 0, rt->m_texture.m_desc.Width, rt->m_texture.m_desc.Height);
 
 		m_dev.StretchRect(rt2, sr, rt->m_texture, dr, m_dev.m_convert.ps[4], false);
 
@@ -659,11 +652,11 @@ if(s_dump)
 	m_skip = 0;
 }
 
-void GSRendererHW::InvalidateTexture(const GIFRegBITBLTBUF& BITBLTBUF, CRect r)
+void GSRendererHW::InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r)
 {
-	TRACE(_T("[%d] InvalidateTexture %d,%d - %d,%d %05x\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.DBP);
+	TRACE(_T("[%d] InvalidateVideoMem %d,%d - %d,%d %05x\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.DBP);
 
-	m_tc.InvalidateTexture(BITBLTBUF, &r);
+	m_tc.InvalidateVideoMem(BITBLTBUF, &r);
 }
 
 void GSRendererHW::InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r)
@@ -697,8 +690,8 @@ void GSRendererHW::MinMaxUV(int w, int h, CRect& r)
 			}
 			else
 			{
-				uv.umin = uv.vmin = +1e10;
-				uv.umax = uv.vmax = -1e10;
+				uv.umin = uv.vmin = FLT_MAX;
+				uv.umax = uv.vmax = FLT_MIN;
 
 				for(int i = 0, j = m_count; i < j; i++)
 				{
@@ -759,6 +752,9 @@ void GSRendererHW::MinMaxUV(int w, int h, CRect& r)
 		r.right = r.left + (m_context->CLAMP.MINU + 1);
 	}
 
+	r.left = max(r.left & ~bsm.cx, 0);
+	r.right = min((r.right + bsm.cx + 1) & ~bsm.cx, w);
+
 	if(m_context->CLAMP.WMT != 3)
 	{
 		if(m_context->CLAMP.WMT == 0)
@@ -799,9 +795,6 @@ void GSRendererHW::MinMaxUV(int w, int h, CRect& r)
 		r.top = m_context->CLAMP.MAXV;
 		r.bottom = r.top + (m_context->CLAMP.MINV + 1);
 	}
-
-	r.left = max(r.left & ~bsm.cx, 0);
-	r.right = min((r.right + bsm.cx + 1) & ~bsm.cx, w);
 
 	r.top = max(r.top & ~bsm.cy, 0);
 	r.bottom = min((r.bottom + bsm.cy + 1) & ~bsm.cy, h);

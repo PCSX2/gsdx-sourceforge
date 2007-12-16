@@ -506,6 +506,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\GSVector.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\GSVertexList.cpp"
 				>
 			</File>
@@ -763,6 +767,10 @@
 			</File>
 			<File
 				RelativePath=".\GSUtil.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSVector.h"
 				>
 			</File>
 			<File

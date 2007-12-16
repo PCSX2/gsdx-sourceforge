@@ -32,15 +32,12 @@ protected:
 	int m_interlace;
 	int m_aspectratio;
 	int m_filter;
-	int m_options;
 	bool m_vsync;
 	bool m_osd;
 	int m_field;
-	int m_crc;
-	int m_frameskip;
 
 public:
-	GSRenderer(BYTE* base, bool mt, void (*irq)(), bool nloophack);
+	GSRenderer(BYTE* base, bool mt, void (*irq)(), int nloophack);
 	virtual ~GSRenderer();
 
 	virtual bool Create(LPCTSTR title);
@@ -51,9 +48,6 @@ public:
 	void OnClose();
 
 	void VSync(int field);
-	bool MakeSnapshot(char* path);
-	void SetGameCRC(int crc, int options);
-	void SetFrameSkip(int frameskip);
 
 	// TODO
 
@@ -63,7 +57,7 @@ public:
 	struct FlipInfo 
 	{
 		GSTexture2D t; 
-		GSScale s;
+		GSVector2 s;
 	};
 
 	virtual void Flip() = 0;

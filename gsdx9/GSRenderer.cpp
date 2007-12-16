@@ -27,13 +27,10 @@ BEGIN_MESSAGE_MAP(GSRenderer, CWnd)
 	ON_WM_CLOSE()
 END_MESSAGE_MAP()
 
-GSRenderer::GSRenderer(BYTE* base, bool mt, void (*irq)(), bool nloophack)
+GSRenderer::GSRenderer(BYTE* base, bool mt, void (*irq)(), int nloophack)
 	: GSState(base, mt, irq, nloophack)
 	, m_osd(true)
 	, m_field(0)
-	, m_crc(0)
-	, m_options(0)
-	, m_frameskip(0)
 {
 	m_interlace = AfxGetApp()->GetProfileInt(_T("Settings"), _T("interlace"), 0);
 	m_aspectratio = AfxGetApp()->GetProfileInt(_T("Settings"), _T("aspectratio"), 1);
@@ -151,61 +148,6 @@ void GSRenderer::VSync(int field)
 	Present();
 }
 
-bool GSRenderer::MakeSnapshot(char* path)
-{
-	CString fn;
-	fn.Format(_T("%sgsdx9_%s.bmp"), CString(path), CTime::GetCurrentTime().Format(_T("%Y%m%d%H%M%S")));
-	return m_dev.SaveCurrent(fn);
-}
-
-void GSRenderer::SetGameCRC(int crc, int options)
-{
-	m_crc = crc;
-	m_options = options;
-
-	if(AfxGetApp()->GetProfileInt(_T("Settings"), _T("nloophack"), 2) == 2)
-	{
-		switch(crc)
-		{
-		case 0xa39517ab: // ffx pal/eu
-		case 0xa39517ae: // ffx pal/fr
-		case 0x941bb7d9: // ffx pal/de
-		case 0xa39517a9: // ffx pal/it
-		case 0x941bb7de: // ffx pal/es
-		case 0xb4414ea1: // ffx pal/ru
-		case 0xbb3d833a: // ffx ntsc/us
-		case 0x6a4efe60: // ffx ntsc/j
-		case 0x3866ca7e: // ffx int. ntsc/asia (SLPM-67513, some kind of a asia version) 
-		case 0x658597e2: // ffx int. ntsc/j
-		case 0x9aac5309: // ffx-2 pal/e
-		case 0x9aac530c: // ffx-2 pal/fr
-		case 0x9aac530a: // ffx-2 pal/fr? (maybe belgium or luxembourg version)
-		case 0x9aac530d: // ffx-2 pal/de
-		case 0x9aac530b: // ffx-2 pal/it
-		case 0x48fe0c71: // ffx-2 ntsc/us
-		case 0xe1fd9a2d: // ffx-2 int+lm ntsc/j
-		case 0xf0a6d880: // harvest moon ntsc/us
-			m_nloophack = true;
-			break;
-		}
-	}
-}
-
-void GSRenderer::SetFrameSkip(int frameskip)
-{
-	if(m_frameskip != frameskip)
-	{
-		m_frameskip = frameskip;
-
-		if(frameskip)
-		{
-		}
-		else
-		{
-		}
-	}
-}
-
 // TODO
 
 void GSRenderer::FinishFlip(FlipInfo src[2])
@@ -280,7 +222,7 @@ void GSRenderer::Merge(FlipInfo src[2], GSTexture2D& dst)
 	r[0] = GetFrameRect(0);
 	r[1] = GetFrameRect(1);
 
-	D3DXVECTOR4 sr[2];
+	GSVector4 sr[2];
 
 	sr[0].x = src[0].s.x * r[0].left / src[0].t.m_desc.Width;
 	sr[1].x = src[1].s.x * r[1].left / src[1].t.m_desc.Width;
@@ -365,7 +307,7 @@ void GSRenderer::Present()
 
 		GSTexture2D st(m_dev.m_tex_current);
 		GSTexture2D dt(m_dev.m_backbuffer);
-		D3DXVECTOR4 dr(r.left, r.top, r.right, r.bottom);
+		GSVector4 dr(r.left, r.top, r.right, r.bottom);
 
 		m_dev.StretchRect(st, dt, dr);
 	}

@@ -13,8 +13,8 @@ struct PS_INPUT
 };
 
 #ifndef EN1
-#define EN1 0
-#define EN2 1
+#define EN1 1
+#define EN2 0
 #define SLBG 0
 #define MMOD 1
 #endif

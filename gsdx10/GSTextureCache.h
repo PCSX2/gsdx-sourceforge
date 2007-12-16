@@ -36,7 +36,7 @@ public:
 	public:
 		GSTexture2D m_texture;
 		GSTexture2D m_palette;
-		GSScale m_scale;
+		GSVector2 m_scale;
 		int m_age;
 		GSDirtyRectList m_dirty;
 		GIFRegTEX0 m_TEX0;
@@ -108,7 +108,7 @@ public:
 	GSDepthStencil* GetDepthStencil(const GIFRegTEX0& TEX0, int w, int h);
 	GSTexture* GetTexture();
 
-	void InvalidateTexture(const GIFRegBITBLTBUF& BITBLTBUF, const CRect& r);
+	void InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, const CRect& r);
 	void InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, const CRect& r);
 
 	void IncAge();

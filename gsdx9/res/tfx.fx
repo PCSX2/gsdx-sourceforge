@@ -45,19 +45,27 @@ VS_OUTPUT vs_main(VS_INPUT input)
 
 sampler Texture : register(s0);
 sampler1D Palette : register(s1);
+sampler1D UMSKFIX : register(s2);
+sampler1D VMSKFIX : register(s3);
 
-float4 ps_params[5];
+float4 ps_params[6];
 
 #define FogColor	ps_params[0]
-#define ClampMin	ps_params[1].xy
-#define ClampMax	ps_params[1].zw
-#define TA0			ps_params[2].x
-#define TA1			ps_params[2].y
-#define AREF		ps_params[2].z
-#define WH			ps_params[3].xy
-#define rWrH		ps_params[3].zw
-#define rWZ			ps_params[4].xy
-#define ZrH			ps_params[4].zw
+#define MINU		ps_params[1].x
+#define MAXU		ps_params[1].y
+#define MINV		ps_params[1].z
+#define MAXV		ps_params[1].w
+#define UMSK		ps_params[2].x
+#define UFIX		ps_params[2].y
+#define VMSK		ps_params[2].z
+#define VFIX		ps_params[2].w
+#define TA0			ps_params[3].x
+#define TA1			ps_params[3].y
+#define AREF		ps_params[3].z
+#define WH			ps_params[4].xy
+#define rWrH		ps_params[4].zw
+#define rWZ			ps_params[5].xy
+#define ZrH			ps_params[5].zw
 
 struct PS_INPUT
 {
@@ -69,17 +77,36 @@ struct PS_INPUT
 
 #ifndef FST
 #define FST 0
-#define CLAMP 0
+#define WMS 3
+#define WMT 3
 #define BPP 0
 #define AEM 0
 #define TFX 0
 #define TCC 1
-#define ATE 1
-#define ATST 7
+#define ATE 0
+#define ATST 0
 #define FOG 0
 #define CLR1 0
 #define RT 0
 #endif
+
+float repeatu(float tc, float size, float rsize)
+{
+	float f = frac(tc * size);
+	tc = tex1D(UMSKFIX, tc);
+	tc += f;
+	tc *= rsize;
+	return tc;
+}
+
+float repeatv(float tc, float size, float rsize)
+{	
+	float f = frac(tc * size);
+	tc = tex1D(VMSKFIX, tc);
+	tc += f;
+	tc *= rsize;
+	return tc;
+}
 
 float4 ps_main(PS_INPUT input) : COLOR
 {
@@ -90,9 +117,24 @@ float4 ps_main(PS_INPUT input) : COLOR
 		tc /= input.t.w;
 	}
 
-	if(CLAMP == 1)
+	if(WMS == 2)
 	{
-		tc = clamp(tc, ClampMin, ClampMax);
+		tc.x = clamp(tc.x, MINU, MAXU);
+	}
+	
+	if(WMS == 3)
+	{
+		tc.x = repeatu(tc.x, WH.x, rWrH.x);
+	}
+
+	if(WMT == 2)
+	{
+		tc.y = clamp(tc.y, MINV, MAXV);
+	}
+
+	if(WMT == 3)
+	{
+		tc.y = repeatv(tc.y, WH.y, rWrH.y);
 	}
 
 	float4 t;

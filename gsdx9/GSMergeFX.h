@@ -30,7 +30,7 @@ public:
 
 	struct PSConstantBuffer
 	{
-		D3DXVECTOR4 BGColor;
+		GSVector4 BGColor;
 	};
 
 	union PSSelector
@@ -59,5 +59,5 @@ public:
 
 	bool Create(GSDevice* dev);
 
-	void Draw(GSTexture2D* st, D3DXVECTOR4* sr, GSTexture2D& dt, PSSelector sel, PSConstantBuffer& cb);
+	void Draw(GSTexture2D* st, GSVector4* sr, GSTexture2D& dt, PSSelector sel, PSConstantBuffer& cb);
 };

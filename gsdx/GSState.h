@@ -30,7 +30,7 @@
 #include "GSUtil.h"
 #include "GSDirtyRect.h"
 #include "GSPerfMon.h"
-#include "GSScale.h"
+#include "GSVector.h"
 
 class GSState
 {
@@ -108,6 +108,7 @@ class GSState
 	bool m_mt;
 	void (*m_irq)();
 	bool m_path3hack;
+	int m_nloophack_org;
 
 	int m_x, m_y;
 	int m_bytes;
@@ -146,9 +147,12 @@ public:
 
 	GSPerfMon m_perfmon;
 	bool m_nloophack;
+	int m_crc;
+	int m_options;
+	int m_frameskip;
 
 public:
-	GSState(BYTE* base, bool mt, void (*irq)(), bool nloophack);
+	GSState(BYTE* base, bool mt, void (*irq)(), int nloophack);
 	virtual ~GSState();
 
 	void ResetHandlers();
@@ -173,18 +177,21 @@ public:
 	virtual void FlushPrim() = 0;
 	virtual void ResetPrim() = 0;
 	virtual void VertexKick(bool skip) = 0;
-	virtual void InvalidateTexture(const GIFRegBITBLTBUF& BITBLTBUF, CRect r) {}
+	virtual void InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r) {}
 	virtual void InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r) {}
 
 	void Move();
 	void Write(BYTE* mem, int len);
 	void Read(BYTE* mem, int len);
 
-	void WriteCSR(UINT32 csr);
+	void WriteCSR(UINT32 csr) {CSR->ai32[1] = csr;}
 	void ReadFIFO(BYTE* mem, int size);
 	void Transfer(BYTE* mem, int size, int index);
-	void GetLastTag(UINT32* tag) {*tag = m_path3hack; m_path3hack = 0;}
 	int Freeze(freezeData* fd, bool sizeonly);
 	int Defrost(const freezeData* fd);
+	void GetLastTag(UINT32* tag) {*tag = m_path3hack; m_path3hack = 0;}
+	void SetGameCRC(int crc, int options);
+	void SetFrameSkip(int frameskip);
+	bool MakeSnapshot(LPCTSTR path);
 };
 

@@ -43,7 +43,7 @@ protected:
 	void DrawingKick(bool skip);
 	void Draw();
 	void Flip();
-	void InvalidateTexture(const GIFRegBITBLTBUF& BITBLTBUF, CRect r);
+	void InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r);
 	void InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r);
 	void MinMaxUV(int w, int h, CRect& r);
 

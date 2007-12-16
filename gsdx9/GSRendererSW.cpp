@@ -358,7 +358,7 @@ void GSRendererSW<Vertex>::Flip()
 		}
 
 		src[i].t = m_texture[i];
-		src[i].s = GSScale(1, 1);
+		src[i].s = GSVector2(1, 1);
 	}
 
 	FinishFlip(src);
