@@ -189,7 +189,7 @@ EXPORT_C_(INT32) GSopen(void* dsp, char* title, int mt)
 
 	GSclose();
 
-	bool nloophack = AfxGetApp()->GetProfileInt(_T("Settings"), _T("nloophack"), 2) == 1;
+	int nloophack = AfxGetApp()->GetProfileInt(_T("Settings"), _T("nloophack"), 2);
 
 	switch(AfxGetApp()->GetProfileInt(_T("Settings"), _T("renderer"), 0))
 	{

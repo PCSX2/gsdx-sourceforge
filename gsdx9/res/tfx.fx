@@ -90,22 +90,72 @@ struct PS_INPUT
 #define RT 0
 #endif
 
-float repeatu(float tc, float size, float rsize)
+float repeatu(float tc)
 {
-	float f = frac(tc * size);
-	tc = tex1D(UMSKFIX, tc);
-	tc += f;
-	tc *= rsize;
-	return tc;
+	return WMS == 3 ? tex1D(UMSKFIX, tc) : tc;
 }
 
-float repeatv(float tc, float size, float rsize)
-{	
-	float f = frac(tc * size);
-	tc = tex1D(VMSKFIX, tc);
-	tc += f;
-	tc *= rsize;
-	return tc;
+float repeatv(float tc)
+{
+	return WMT == 3 ? tex1D(VMSKFIX, tc) : tc;
+}
+
+float4 sample(float2 tc)
+{
+	float4 t;
+	
+	if(WMS == 3 || WMT == 3)
+	{
+		float4 tc01;
+		
+		tc01.x = repeatu(tc.x); 
+		tc01.y = repeatv(tc.y);
+		tc01.z = repeatu(tc.x + rWrH.x); 
+		tc01.w = repeatv(tc.y + rWrH.y);
+
+		float4 t00 = tex2D(Texture, tc01.xy);
+		float4 t01 = tex2D(Texture, tc01.zy);
+		float4 t10 = tex2D(Texture, tc01.xw);
+		float4 t11 = tex2D(Texture, tc01.zw);
+	
+		float2 dd = frac(tc * WH); 
+
+		t = lerp(lerp(t00, t01, dd.x), lerp(t10, t11, dd.x), dd.y);
+	}
+	else
+	{
+		t = tex2D(Texture, tc);
+	}
+	
+	return t;
+}
+
+float4 sample8hp(float2 tc)
+{
+	// tc -= 0.5 * rWrH; // ?
+
+	float4 t;
+	
+	float4 tc01;
+	
+	tc01.x = repeatu(tc.x); 
+	tc01.y = repeatv(tc.y);
+	tc01.z = repeatu(tc.x + rWrH.x); 
+	tc01.w = repeatv(tc.y + rWrH.y);
+
+	t.x = tex2D(Texture, tc01.xy).a;
+	t.y = tex2D(Texture, tc01.zy).a;
+	t.z = tex2D(Texture, tc01.xw).a;
+	t.w = tex2D(Texture, tc01.zw).a;
+
+	float4 t00 = tex1D(Palette, t.x);
+	float4 t01 = tex1D(Palette, t.y);
+	float4 t10 = tex1D(Palette, t.z);
+	float4 t11 = tex1D(Palette, t.w);
+
+	float2 dd = frac(tc * WH); 
+
+	return lerp(lerp(t00, t01, dd.x), lerp(t10, t11, dd.x), dd.y);
 }
 
 float4 ps_main(PS_INPUT input) : COLOR
@@ -122,59 +172,34 @@ float4 ps_main(PS_INPUT input) : COLOR
 		tc.x = clamp(tc.x, MINU, MAXU);
 	}
 	
-	if(WMS == 3)
-	{
-		tc.x = repeatu(tc.x, WH.x, rWrH.x);
-	}
-
 	if(WMT == 2)
 	{
 		tc.y = clamp(tc.y, MINV, MAXV);
-	}
-
-	if(WMT == 3)
-	{
-		tc.y = repeatv(tc.y, WH.y, rWrH.y);
 	}
 
 	float4 t;
 
 	if(BPP == 0) // 32
 	{
-		t = tex2D(Texture, tc);
+		t = sample(tc);
 
 		if(RT == 1) t.a *= 0.5;
 	}
 	else if(BPP == 1) // 24
 	{
-		t = tex2D(Texture, tc);
+		t = sample(tc);
 
 		t.a = AEM == 0 || any(t.rgb) ? TA0 : 0;
 	}
 	else if(BPP == 2) // 16
 	{
-		t = tex2D(Texture, tc);
+		t = sample(tc);
 
 		t.a = t.a >= 0.5 ? TA1 : AEM == 0 || any(t.rgb) ? TA0 : 0; // a bit incompatible with up-scaling because the 1 bit alpha is interpolated
 	}
 	else if(BPP == 3) // 8HP ln
 	{
-		tc -= 0.5 * rWrH; // ?
-
-		float4 f = float4(
-			tex2D(Texture, tc).a,
-			tex2D(Texture, tc + rWZ).a,
-			tex2D(Texture, tc + ZrH).a,
-			tex2D(Texture, tc + rWrH).a) * 0.5 - EPSILON;
-
-		float4 t00 = tex1D(Palette, f.x);
-		float4 t01 = tex1D(Palette, f.y);
-		float4 t10 = tex1D(Palette, f.z);
-		float4 t11 = tex1D(Palette, f.w);
-
-		float2 dd = frac(tc * WH); 
-
-		t = lerp(lerp(t00, t01, dd.x), lerp(t10, t11, dd.x), dd.y);
+		t = sample8hp(tc);
 	}
 
 	float4 c = input.c;

@@ -37,7 +37,7 @@ protected:
 	int m_field;
 
 public:
-	GSRenderer(BYTE* base, bool mt, void (*irq)(), bool nloophack);
+	GSRenderer(BYTE* base, bool mt, void (*irq)(), int nloophack);
 	virtual ~GSRenderer();
 
 	virtual bool Create(LPCTSTR title);
@@ -127,7 +127,7 @@ protected:
 	virtual void Draw() = 0;
 
 public:
-	GSRendererT(BYTE* base, bool mt, void (*irq)(), bool nloophack)
+	GSRendererT(BYTE* base, bool mt, void (*irq)(), int nloophack)
 		: GSRenderer(base, mt, irq, nloophack)
 		, m_vertices(NULL)
 		, m_maxcount(0)

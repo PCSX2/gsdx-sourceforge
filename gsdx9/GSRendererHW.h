@@ -52,7 +52,7 @@ protected:
 	bool OverrideInput(int& prim, GSTextureCache::GSTexture* tex);	
 
 public:
-	GSRendererHW(BYTE* base, bool mt, void (*irq)(), bool nloophack);
+	GSRendererHW(BYTE* base, bool mt, void (*irq)(), int nloophack);
 
 	bool Create(LPCTSTR title);
 };

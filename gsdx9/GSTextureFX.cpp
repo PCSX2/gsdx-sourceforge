@@ -78,7 +78,7 @@ bool GSTextureFX::CreateMskFix(GSTexture2D& t, DWORD size, DWORD msk, DWORD fix)
 		{
 			for(DWORD i = 0; i < size; i++)
 			{
-				((float*)lr.pBits)[i] = (float)((i & msk) | fix);
+				((float*)lr.pBits)[i] = (float)((i & msk) | fix) / size;
 			}
 
 			t->UnlockRect(0);
@@ -121,6 +121,8 @@ bool GSTextureFX::SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerS
 	(*m_dev)->SetTexture(0, tex);
 	(*m_dev)->SetTexture(1, pal);
 
+#ifdef PS_REGION_REPEAT
+
 	if(tex)
 	{
 		if(sel.wms == 3)
@@ -151,6 +153,8 @@ bool GSTextureFX::SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerS
 			(*m_dev)->SetSamplerState(3, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
 		}
 	}
+
+#endif
 
 	UpdatePS(sel, ssel);
 
@@ -187,6 +191,13 @@ void GSTextureFX::UpdatePS(PSSelector sel, PSSamplerSelector ssel)
 #else
 
 	(*m_dev)->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
+
+#endif
+
+#ifndef PS_REGION_REPEAT
+
+	if(sel.wms == 3) sel.wms = 0;
+	if(sel.wmt == 3) sel.wmt = 0;
 
 #endif
 
@@ -236,7 +247,7 @@ void GSTextureFX::UpdatePS(PSSelector sel, PSSamplerSelector ssel)
 	(*m_dev)->SetSamplerState(0, D3DSAMP_ADDRESSU, ssel.tau ? D3DTADDRESS_WRAP : D3DTADDRESS_CLAMP);
 	(*m_dev)->SetSamplerState(0, D3DSAMP_ADDRESSV, ssel.tav ? D3DTADDRESS_WRAP : D3DTADDRESS_CLAMP);
 
-	if(sel.bpp >= 3) ssel.min = ssel.mag = 0;
+	if(sel.bpp >= 3 || sel.wms == 3 || sel.wmt == 3) ssel.min = ssel.mag = 0;
 
 	(*m_dev)->SetSamplerState(0, D3DSAMP_MINFILTER, ssel.min ? D3DTEXF_LINEAR : D3DTEXF_POINT);
 	(*m_dev)->SetSamplerState(0, D3DSAMP_MAGFILTER, ssel.mag ? D3DTEXF_LINEAR : D3DTEXF_POINT);

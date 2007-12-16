@@ -22,7 +22,7 @@
 #include "StdAfx.h"
 #include "GSRendererNull.h"
 
-GSRendererNull::GSRendererNull(BYTE* base, bool mt, void (*irq)(), bool nloophack)
+GSRendererNull::GSRendererNull(BYTE* base, bool mt, void (*irq)(), int nloophack)
 	: GSRendererT(base, mt, irq, nloophack)
 {
 }

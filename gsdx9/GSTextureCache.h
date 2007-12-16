@@ -75,6 +75,7 @@ public:
 		bool GetDirtyRect(CRect& r);
 
 	public:
+		GIFRegCLAMP m_CLAMP;
 		DWORD m_clut[256]; // *
 		CRect m_valid;
 		int m_bpp;

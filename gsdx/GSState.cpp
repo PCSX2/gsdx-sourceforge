@@ -1379,7 +1379,7 @@ bool GSState::MakeSnapshot(LPCTSTR path)
 	return false; // TODO: m_dev.SaveCurrent(fn);
 }
 
-bool GSState::DetectBadFrame(int crc, int& skip)
+bool GSState::DetectBadFrame(int& skip)
 {
 	DWORD FBP = m_context->FRAME.Block();
 	DWORD FPSM = m_context->FRAME.PSM;
@@ -1388,7 +1388,7 @@ bool GSState::DetectBadFrame(int crc, int& skip)
 	DWORD TBP0 = m_context->TEX0.TBP0;
 	DWORD TPSM = m_context->TEX0.PSM;
 
-	switch(crc)
+	switch(m_crc)
 	{
 	case 0x21068223: // okami ntsc/us
 	case 0x891f223f: // okami pal/fr

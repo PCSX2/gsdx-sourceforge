@@ -290,9 +290,7 @@ void GSTextureCache::GSTexture::Update()
 
 	BYTE* bits = buff + pitch * r.top + (r.left * m_bpp >> 3);
 
-	GSLocalMemory::readTexture rt = &GSLocalMemory::ReadTextureNP2;
-
-	(m_tc->m_renderer->m_mem.*rt)(r, bits, pitch, m_tc->m_renderer->m_context->TEX0, m_tc->m_renderer->m_env.TEXA, m_tc->m_renderer->m_context->CLAMP);
+	m_tc->m_renderer->m_mem.ReadTextureNP2(r, bits, pitch, m_tc->m_renderer->m_context->TEX0, m_tc->m_renderer->m_env.TEXA, m_tc->m_renderer->m_context->CLAMP);
 
 	D3D10_BOX box = {r.left, r.top, 0, r.right, r.bottom, 1};
 

@@ -27,7 +27,7 @@ BEGIN_MESSAGE_MAP(GSRenderer, CWnd)
 	ON_WM_CLOSE()
 END_MESSAGE_MAP()
 
-GSRenderer::GSRenderer(BYTE* base, bool mt, void (*irq)(), bool nloophack)
+GSRenderer::GSRenderer(BYTE* base, bool mt, void (*irq)(), int nloophack)
 	: GSState(base, mt, irq, nloophack)
 	, m_osd(true)
 	, m_field(0)

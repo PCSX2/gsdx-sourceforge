@@ -30,7 +30,7 @@ extern bool s_save;
 #pragma warning(disable: 4701)
 
 template <class Vertex> 
-GSRendererSW<Vertex>::GSRendererSW(BYTE* base, bool mt, void (*irq)(), bool nloophack)
+GSRendererSW<Vertex>::GSRendererSW(BYTE* base, bool mt, void (*irq)(), int nloophack)
 	: GSRendererT(base, mt, irq, nloophack)
 {
 	int i = SHRT_MIN;
@@ -991,7 +991,7 @@ void GSRendererSW<Vertex>::SetupTexture()
 // GSRendererSWFP
 //
 
-GSRendererSWFP::GSRendererSWFP(BYTE* base, bool mt, void (*irq)(), bool nloophack)
+GSRendererSWFP::GSRendererSWFP(BYTE* base, bool mt, void (*irq)(), int nloophack)
 	: GSRendererSW<GSVertexSWFP>(base, mt, irq, nloophack)
 {
 }

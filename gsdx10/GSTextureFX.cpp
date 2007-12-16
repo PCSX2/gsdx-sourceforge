@@ -239,7 +239,7 @@ void GSTextureFX::UpdatePS(PSSelector sel, PSSamplerSelector ssel)
 
 	if(sel.tfx != 4)
 	{
-		if(sel.bpp >= 3) ssel.min = ssel.mag = 0;
+		if(sel.bpp >= 3 || sel.wms == 3 || sel.wmt == 3) ssel.min = ssel.mag = 0;
 
 		if(!(ss = m_ps_ss.Lookup(ssel)))
 		{

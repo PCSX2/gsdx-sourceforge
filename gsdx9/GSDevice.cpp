@@ -641,9 +641,6 @@ HRESULT GSDevice::CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro, I
 
 	if(SUCCEEDED(hr))
 	{
-		DWORD* ptr = (DWORD*)shader->GetBufferPointer();
-		DWORD size = shader->GetBufferSize();
-
 		hr = m_dev->CreatePixelShader((DWORD*)shader->GetBufferPointer(), ps);
 
 		ASSERT(SUCCEEDED(hr));
