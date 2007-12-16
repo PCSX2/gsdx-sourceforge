@@ -24,8 +24,6 @@
 #include "GSVertexHW.h"
 #include "GSDevice.h"
 
-#define PS_ALPHA_TEST
-
 class GSTextureFX
 {
 public:

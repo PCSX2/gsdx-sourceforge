@@ -127,7 +127,7 @@ protected:
 	virtual void Draw() = 0;
 
 public:
-	GSRendererT(BYTE* base, bool mt, void (*irq)(), bool nloophack)
+	GSRendererT(BYTE* base, bool mt, void (*irq)(), int nloophack)
 		: GSRenderer(base, mt, irq, nloophack)
 		, m_vertices(NULL)
 		, m_maxcount(0)

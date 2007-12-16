@@ -21,6 +21,14 @@
 
 #pragma once
 
+// doesn't seems to make any difference in speed, but in the shader the implementation is closer to gsdx10
+
+#define PS_ALPHA_TEST
+
+// this can be painfully slow with ps 2.0/3.0, only helps in a few cases (soul calibur 2)
+
+// #define PS_REGION_REPEAT
+
 #include "GSTexture2D.h"
 
 struct VertexP

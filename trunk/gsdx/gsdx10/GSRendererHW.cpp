@@ -28,7 +28,7 @@ bool s_dump = false;
 bool s_save = true;
 bool s_savez = false;
 
-GSRendererHW::GSRendererHW(BYTE* base, bool mt, void (*irq)(), bool nloophack)
+GSRendererHW::GSRendererHW(BYTE* base, bool mt, void (*irq)(), int nloophack)
 	: GSRendererT(base, mt, irq, nloophack)
 	, m_tc(this)
 	, m_width(1024)
@@ -220,7 +220,7 @@ void GSRendererHW::DrawingKick(bool skip)
 
 void GSRendererHW::Draw()
 {
-	if(DetectBadFrame(m_crc, m_skip))
+	if(DetectBadFrame(m_skip))
 	{
 		return;
 	}

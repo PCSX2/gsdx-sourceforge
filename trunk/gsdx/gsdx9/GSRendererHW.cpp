@@ -28,7 +28,7 @@ bool s_dump = false;
 bool s_save = true;
 bool s_savez = false;
 
-GSRendererHW::GSRendererHW(BYTE* base, bool mt, void (*irq)(), bool nloophack)
+GSRendererHW::GSRendererHW(BYTE* base, bool mt, void (*irq)(), int nloophack)
 	: GSRendererT(base, mt, irq, nloophack)
 	, m_tc(this)
 	, m_width(1024)
@@ -215,7 +215,7 @@ void GSRendererHW::DrawingKick(bool skip)
 
 void GSRendererHW::Draw()
 {
-	if(DetectBadFrame(m_crc, m_skip))
+	if(DetectBadFrame(m_skip))
 	{
 		return;
 	}
@@ -680,8 +680,13 @@ void GSRendererHW::MinMaxUV(int w, int h, CRect& r)
 	}
 	else
 	{
+#ifdef PS_REGION_REPEAT
 		r.left = m_context->CLAMP.MAXU;
 		r.right = r.left + (m_context->CLAMP.MINU + 1);
+#else
+		r.left = 0;
+		r.right = w;
+#endif
 	}
 
 	r.left = max(r.left & ~bsm.cx, 0);
@@ -724,8 +729,13 @@ void GSRendererHW::MinMaxUV(int w, int h, CRect& r)
 	}
 	else
 	{
+#ifdef PS_REGION_REPEAT
 		r.top = m_context->CLAMP.MAXV;
 		r.bottom = r.top + (m_context->CLAMP.MINV + 1);
+#else
+		r.top = 0;
+		r.bottom = h;
+#endif
 	}
 
 	r.top = max(r.top & ~bsm.cy, 0);

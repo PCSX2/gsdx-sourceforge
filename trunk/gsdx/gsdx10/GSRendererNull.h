@@ -34,6 +34,6 @@ protected:
 	void Flip();
 
 public:
-	GSRendererNull(BYTE* base, bool mt, void (*irq)(), bool nloophack);
+	GSRendererNull(BYTE* base, bool mt, void (*irq)(), int nloophack);
 	virtual ~GSRendererNull();
 };

@@ -40,6 +40,7 @@ bool GSTextureCache::GSTexture::Create()
 	HRESULT hr;
 
 	m_TEX0 = m_tc->m_renderer->m_context->TEX0;
+	m_CLAMP = m_tc->m_renderer->m_context->CLAMP;
 
 	DWORD psm = m_TEX0.PSM;
 
@@ -96,6 +97,7 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 
 	m_scale = rt->m_scale;
 	m_TEX0 = m_tc->m_renderer->m_context->TEX0;
+	m_CLAMP = m_tc->m_renderer->m_context->CLAMP;
 	m_rendered = true;
 
 	int tw = 1 << m_TEX0.TW;
@@ -286,9 +288,11 @@ void GSTextureCache::GSTexture::Update()
 
 	if(SUCCEEDED(hr = m_texture->LockRect(0, &lr, &r, 0))) 
 	{
-		GSLocalMemory::readTexture rt = &GSLocalMemory::ReadTextureNP2;
-
-		(m_tc->m_renderer->m_mem.*rt)(r, (BYTE*)lr.pBits, lr.Pitch, m_tc->m_renderer->m_context->TEX0, m_tc->m_renderer->m_env.TEXA, m_tc->m_renderer->m_context->CLAMP);
+#ifdef PS_REGION_REPEAT
+		m_tc->m_renderer->m_mem.ReadTextureNP2(r, (BYTE*)lr.pBits, lr.Pitch, m_tc->m_renderer->m_context->TEX0, m_tc->m_renderer->m_env.TEXA, m_tc->m_renderer->m_context->CLAMP);
+#else
+		m_tc->m_renderer->m_mem.ReadTextureNP(r, (BYTE*)lr.pBits, lr.Pitch, m_tc->m_renderer->m_context->TEX0, m_tc->m_renderer->m_env.TEXA, m_tc->m_renderer->m_context->CLAMP);
+#endif
 
 		m_texture->UnlockRect(0);
 

@@ -70,7 +70,7 @@ protected:
 	BYTE* m_clamp;
 
 public:
-	GSRendererSW(BYTE* base, bool mt, void (*irq)(), bool nloophack);
+	GSRendererSW(BYTE* base, bool mt, void (*irq)(), int nloophack);
 	virtual ~GSRendererSW();
 };
 
@@ -80,5 +80,5 @@ protected:
 	void VertexKick(bool skip);
 
 public:
-	GSRendererSWFP(BYTE* base, bool mt, void (*irq)(), bool nloophack);
+	GSRendererSWFP(BYTE* base, bool mt, void (*irq)(), int nloophack);
 };
