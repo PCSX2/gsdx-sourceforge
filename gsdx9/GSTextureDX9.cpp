@@ -20,14 +20,14 @@
  */
 
 #include "stdafx.h"
-#include "GSTexture2D.h"
+#include "GSTextureDX9.h"
 
-GSTexture2D::GSTexture2D()
+GSTextureDX9::GSTextureDX9()
 {
 	memset(&m_desc, 0, sizeof(m_desc));
 }
 
-GSTexture2D::GSTexture2D(IDirect3DSurface9* surface)
+GSTextureDX9::GSTextureDX9(IDirect3DSurface9* surface)
 {
 	m_surface = surface;
 
@@ -41,7 +41,7 @@ GSTexture2D::GSTexture2D(IDirect3DSurface9* surface)
 	}
 }
 
-GSTexture2D::GSTexture2D(IDirect3DTexture9* texture)
+GSTextureDX9::GSTextureDX9(IDirect3DTexture9* texture)
 {
 	m_texture = texture;
 
@@ -50,41 +50,45 @@ GSTexture2D::GSTexture2D(IDirect3DTexture9* texture)
 	texture->GetSurfaceLevel(0, &m_surface);
 }
 
-GSTexture2D::~GSTexture2D()
+GSTextureDX9::~GSTextureDX9()
 {
 }
 
-GSTexture2D::operator bool()
+GSTextureDX9::operator bool()
 {
 	return !!m_surface;
 }
 
-bool GSTexture2D::IsManagedTexture() const
+DWORD GSTextureDX9::GetType() const
 {
-	return m_desc.Pool == D3DPOOL_MANAGED;
+	if(m_desc.Usage & D3DUSAGE_RENDERTARGET) return GSTexture::RenderTarget;
+	if(m_desc.Usage & D3DUSAGE_DEPTHSTENCIL) return GSTexture::DepthStencil;
+	if(m_desc.Pool == D3DPOOL_MANAGED) return GSTexture::Texture;
+	if(m_desc.Pool == D3DPOOL_SYSTEMMEM) return GSTexture::Offscreen;
+	return GSTexture::None;
 }
 
-bool GSTexture2D::IsOffscreenPlainTexture() const
+DWORD GSTextureDX9::GetWidth() const 
 {
-	return m_desc.Pool == D3DPOOL_SYSTEMMEM;
+	return m_desc.Width;
 }
 
-bool GSTexture2D::IsRenderTarget() const
+DWORD GSTextureDX9::GetHeight() const 
 {
-	return !!(m_desc.Usage & D3DUSAGE_RENDERTARGET);
+	return m_desc.Height;
 }
 
-bool GSTexture2D::IsDepthStencil() const
+DWORD GSTextureDX9::GetFormat() const 
 {
-	return !!(m_desc.Usage & D3DUSAGE_DEPTHSTENCIL);
+	return m_desc.Format;
 }
 
-IDirect3DTexture9* GSTexture2D::operator->()
+IDirect3DTexture9* GSTextureDX9::operator->()
 {
 	return m_texture;
 }
 
-GSTexture2D::operator IDirect3DSurface9*()
+GSTextureDX9::operator IDirect3DSurface9*()
 {
 	if(m_texture && !m_surface)
 	{
@@ -94,7 +98,7 @@ GSTexture2D::operator IDirect3DSurface9*()
 	return m_surface;
 }
 
-GSTexture2D::operator IDirect3DTexture9*()
+GSTextureDX9::operator IDirect3DTexture9*()
 {
 	if(m_surface && !m_texture)
 	{

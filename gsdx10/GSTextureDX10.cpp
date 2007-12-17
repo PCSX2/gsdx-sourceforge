@@ -20,14 +20,14 @@
  */
 
 #include "stdafx.h"
-#include "GSTexture2D.h"
+#include "GSTextureDX10.h"
 
-GSTexture2D::GSTexture2D()
+GSTextureDX10::GSTextureDX10()
 {
 	memset(&m_desc, 0, sizeof(m_desc));
 }
 
-GSTexture2D::GSTexture2D(ID3D10Texture2D* texture)
+GSTextureDX10::GSTextureDX10(ID3D10Texture2D* texture)
 	: m_texture(texture)
 {
 	ASSERT(m_texture);
@@ -36,41 +36,50 @@ GSTexture2D::GSTexture2D(ID3D10Texture2D* texture)
 	m_texture->GetDesc(&m_desc);
 }
 
-GSTexture2D::~GSTexture2D()
+GSTextureDX10::~GSTextureDX10()
 {
 }
 
-GSTexture2D::operator bool()
+GSTextureDX10::operator bool()
 {
 	return !!m_texture;
 }
 
-bool GSTexture2D::IsShaderResource() const 
+DWORD GSTextureDX10::GetType() const
 {
-	return !!(m_desc.BindFlags & D3D10_BIND_SHADER_RESOURCE);
+	if(m_desc.BindFlags & D3D10_BIND_RENDER_TARGET) return GSTexture::RenderTarget;
+	if(m_desc.BindFlags & D3D10_BIND_DEPTH_STENCIL) return GSTexture::DepthStencil;
+	if(m_desc.BindFlags & D3D10_BIND_SHADER_RESOURCE) return GSTexture::Texture;
+	if(m_desc.Usage == D3D10_USAGE_STAGING) return GSTexture::Offscreen;
+	return GSTexture::None;
 }
 
-bool GSTexture2D::IsRenderTarget() const
+DWORD GSTextureDX10::GetWidth() const 
 {
-	return !!(m_desc.BindFlags & D3D10_BIND_RENDER_TARGET);
+	return m_desc.Width;
 }
 
-bool GSTexture2D::IsDepthStencil() const 
+DWORD GSTextureDX10::GetHeight() const 
 {
-	return !!(m_desc.BindFlags & D3D10_BIND_DEPTH_STENCIL);
+	return m_desc.Height;
 }
 
-ID3D10Texture2D* GSTexture2D::operator->()
+DWORD GSTextureDX10::GetFormat() const 
+{
+	return m_desc.Format;
+}
+
+ID3D10Texture2D* GSTextureDX10::operator->()
 {
 	return m_texture;
 }
 
-GSTexture2D::operator ID3D10Texture2D*()
+GSTextureDX10::operator ID3D10Texture2D*()
 {
 	return m_texture;
 }
 
-GSTexture2D::operator ID3D10ShaderResourceView*()
+GSTextureDX10::operator ID3D10ShaderResourceView*()
 {
 	if(!m_srv && m_dev && m_texture)
 	{
@@ -80,7 +89,7 @@ GSTexture2D::operator ID3D10ShaderResourceView*()
 	return m_srv;
 }
 
-GSTexture2D::operator ID3D10RenderTargetView*()
+GSTextureDX10::operator ID3D10RenderTargetView*()
 {
 	ASSERT(m_dev);
 
@@ -92,7 +101,7 @@ GSTexture2D::operator ID3D10RenderTargetView*()
 	return m_rtv;
 }
 
-GSTexture2D::operator ID3D10DepthStencilView*()
+GSTextureDX10::operator ID3D10DepthStencilView*()
 {
 	if(!m_dsv && m_dev && m_texture)
 	{

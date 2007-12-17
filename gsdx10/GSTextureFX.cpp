@@ -32,7 +32,7 @@ GSTextureFX::GSTextureFX()
 	memset(&m_ps_cb_cache, 0, sizeof(m_ps_cb_cache));
 }
 
-bool GSTextureFX::Create(GSDevice* dev)
+bool GSTextureFX::Create(GSDeviceDX10* dev)
 {
 	m_dev = dev;
 

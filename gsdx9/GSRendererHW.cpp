@@ -810,7 +810,7 @@ void GSRendererHW::SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache:
 
 	// }
 
-	GSTexture2D tmp;
+	GSTextureDX9 tmp;
 
 	m_dev.CreateRenderTarget(tmp, rt->m_texture.m_desc.Width, rt->m_texture.m_desc.Height);
 

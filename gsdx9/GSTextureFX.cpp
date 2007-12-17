@@ -28,7 +28,7 @@ GSTextureFX::GSTextureFX()
 {
 }
 
-bool GSTextureFX::Create(GSDevice* dev)
+bool GSTextureFX::Create(GSDeviceDX9* dev)
 {
 	m_dev = dev;
 
@@ -62,7 +62,7 @@ bool GSTextureFX::Create(GSDevice* dev)
 	return true;
 }
 
-bool GSTextureFX::CreateMskFix(GSTexture2D& t, DWORD size, DWORD msk, DWORD fix)
+bool GSTextureFX::CreateMskFix(GSTextureDX9& t, DWORD size, DWORD msk, DWORD fix)
 {
 	DWORD hash = (size << 20) | (msk << 10) | fix;
 
@@ -131,7 +131,7 @@ bool GSTextureFX::SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerS
 			D3DSURFACE_DESC desc;
 			tex->GetLevelDesc(0, &desc);
 
-			GSTexture2D t;
+			GSTextureDX9 t;
 			CreateMskFix(t, desc.Width, cb->UMSK, cb->UFIX);			
 
 			(*m_dev)->SetTexture(2, t);
@@ -145,7 +145,7 @@ bool GSTextureFX::SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerS
 			D3DSURFACE_DESC desc;
 			tex->GetLevelDesc(0, &desc);
 
-			GSTexture2D t;
+			GSTextureDX9 t;
 			CreateMskFix(t, desc.Height, cb->VMSK, cb->VFIX);			
 
 			(*m_dev)->SetTexture(3, t);

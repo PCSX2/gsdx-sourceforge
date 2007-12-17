@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include "GSDevice.h"
+#include "GSDeviceDX9.h"
 
 class GSMergeFX
 {
@@ -51,13 +51,13 @@ public:
 	#pragma pack(pop)
 
 private:
-	GSDevice* m_dev;
+	GSDeviceDX9* m_dev;
 	CSimpleMap<DWORD, CComPtr<IDirect3DPixelShader9> > m_ps;
 
 public:
 	GSMergeFX();
 
-	bool Create(GSDevice* dev);
+	bool Create(GSDeviceDX9* dev);
 
-	void Draw(GSTexture2D* st, GSVector4* sr, GSTexture2D& dt, PSSelector sel, PSConstantBuffer& cb);
+	void Draw(GSTextureDX9* st, GSVector4* sr, GSTextureDX9& dt, PSSelector sel, PSConstantBuffer& cb);
 };

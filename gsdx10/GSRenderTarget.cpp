@@ -79,7 +79,7 @@ void GSTextureCache::GSRenderTarget::Update()
 	
 	// s->m_perfmon.Put(GSPerfMon::Unswizzle, w * h * 4);
 
-	GSTexture2D texture;
+	GSTextureDX10 texture;
 
 	if(m_tc->m_renderer->m_dev.CreateTexture(texture, w, h)) 
 	{
@@ -126,13 +126,13 @@ void GSTextureCache::GSRenderTarget::Read(CRect r)
 
 	int shader = m_TEX0.PSM == PSM_PSMCT16 || m_TEX0.PSM == PSM_PSMCT16S ? 1 : 0;
 
-	GSTexture2D rt;
+	GSTextureDX10 rt;
 
 	hr = m_tc->m_renderer->m_dev.CreateRenderTarget(rt, r.Width(), r.Height(), format);
 
 	m_tc->m_renderer->m_dev.StretchRect(m_texture, src, rt, dst, m_tc->m_renderer->m_dev.m_convert.ps[shader]);
 
-	GSTexture2D offscreen;
+	GSTextureDX10 offscreen;
 
 	m_tc->m_renderer->m_dev.CreateOffscreen(offscreen, r.Width(), r.Height(), format);
 

@@ -22,7 +22,7 @@
 #pragma once
 
 #include "GSVertexHW.h"
-#include "GSDevice.h"
+#include "GSDeviceDX9.h"
 
 class GSTextureFX
 {
@@ -135,19 +135,19 @@ public:
 	#pragma pack(pop)
 
 private:
-	GSDevice* m_dev;
+	GSDeviceDX9* m_dev;
 	CComPtr<IDirect3DVertexDeclaration9> m_vd;
 	CComPtr<IDirect3DVertexShader9> m_vs;
 	CComPtr<ID3DXConstantTable> m_vs_ct;
 	D3DXHANDLE m_vs_params;
 	CSimpleMap<DWORD, CComPtr<IDirect3DPixelShader9> > m_ps;
-	CAtlMap<DWORD, GSTexture2D> m_mskfix;
+	CAtlMap<DWORD, GSTextureDX9> m_mskfix;
 
 public:
 	GSTextureFX();
 
-	bool Create(GSDevice* dev);
-	bool CreateMskFix(GSTexture2D& t, DWORD size, DWORD msk, DWORD fix);
+	bool Create(GSDeviceDX9* dev);
+	bool CreateMskFix(GSTextureDX9& t, DWORD size, DWORD msk, DWORD fix);
 	
 	bool SetupVS(const VSConstantBuffer* cb);
 	bool SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel, IDirect3DTexture9* tex, IDirect3DTexture9* pal);

@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include "GSTexture2D.h"
+#include "GSTextureDX10.h"
 
 #pragma pack(push, 1)
 
@@ -47,7 +47,7 @@ struct VertexPT2
 
 #pragma pack(pop)
 
-class GSDevice : public GSDeviceT<GSTexture2D>
+class GSDeviceDX10 : public GSDevice<GSTextureDX10>
 {
 	// state cache
 
@@ -79,9 +79,9 @@ class GSDevice : public GSDeviceT<GSTexture2D>
 
 	//
 
-	bool Create(GSTexture2D& t, int w, int h, DXGI_FORMAT format, D3D10_USAGE usage, UINT bind);
+	void Interlace(GSTextureDX10& st, GSTextureDX10& dt, int shader, bool linear, float yoffset = 0);
 
-	void Interlace(GSTexture2D& st, GSTexture2D& dt, int shader, bool linear, float yoffset = 0);
+	bool Create(DWORD type, GSTextureDX10& t, DWORD w, DWORD h, DWORD format);
 
 public: // TODO
 	CComPtr<ID3D10Device> m_dev;
@@ -89,10 +89,10 @@ public: // TODO
 	CComPtr<ID3D10Texture2D> m_backbuffer;
 	CComPtr<ID3D10Texture2D> m_tex_current;
 
-	GSTexture2D m_tex_merge;
-	GSTexture2D m_tex_interlace;
-	GSTexture2D m_tex_deinterlace;
-	GSTexture2D m_tex_1x1;
+	GSTextureDX10 m_tex_merge;
+	GSTextureDX10 m_tex_interlace;
+	GSTextureDX10 m_tex_deinterlace;
+	GSTextureDX10 m_tex_1x1;
 
 	CComPtr<ID3D10SamplerState> m_ss_linear;
 	CComPtr<ID3D10SamplerState> m_ss_point;
@@ -116,15 +116,20 @@ public: // TODO
 	} m_interlace;
 
 public:
-	GSDevice();
-	virtual ~GSDevice();
+	GSDeviceDX10();
+	virtual ~GSDeviceDX10();
 
 	bool Create(HWND hWnd);
+	bool Reset(DWORD w, DWORD h, bool fs);
+
+	bool CreateRenderTarget(GSTextureDX10& t, DWORD w, DWORD h, DWORD format = DXGI_FORMAT_R8G8B8A8_UNORM);
+	bool CreateDepthStencil(GSTextureDX10& t, DWORD w, DWORD h, DWORD format = DXGI_FORMAT_D32_FLOAT_S8X24_UINT);
+	bool CreateTexture(GSTextureDX10& t, DWORD w, DWORD h, DWORD format = DXGI_FORMAT_R8G8B8A8_UNORM);
+	bool CreateOffscreen(GSTextureDX10& t, DWORD w, DWORD h, DWORD format = DXGI_FORMAT_R8G8B8A8_UNORM);
 
 	ID3D10Device* operator->() {return m_dev;}
 	operator ID3D10Device*() {return m_dev;}
 
-	void ResetDevice(int w, int h);
 	void EndScene();
 	void Present();
 
@@ -142,19 +147,14 @@ public:
 		IASet(vb, count, vertices, sizeof(T), layout, topology);
 	}
 
-	bool CreateRenderTarget(GSTexture2D& t, int w, int h, DWORD format = DXGI_FORMAT_R8G8B8A8_UNORM);
-	bool CreateDepthStencil(GSTexture2D& t, int w, int h, DWORD format = DXGI_FORMAT_D32_FLOAT_S8X24_UINT);
-	bool CreateTexture(GSTexture2D& t, int w, int h, DWORD format = DXGI_FORMAT_R8G8B8A8_UNORM);
-	bool CreateOffscreen(GSTexture2D& t, int w, int h, DWORD format = DXGI_FORMAT_R8G8B8A8_UNORM);
-
 	bool SaveCurrent(LPCTSTR fn);
 	bool SaveToFileD32S8X24(ID3D10Texture2D* ds, LPCTSTR fn);
 
-	void StretchRect(GSTexture2D& st, GSTexture2D& dt, const GSVector4& dr, bool linear = true);
-	void StretchRect(GSTexture2D& st, const GSVector4& sr, GSTexture2D& dt, const GSVector4& dr, bool linear = true);
-	void StretchRect(GSTexture2D& st, const GSVector4& sr, GSTexture2D& dt, const GSVector4& dr, ID3D10PixelShader* ps, bool linear = true);
+	void StretchRect(GSTextureDX10& st, GSTextureDX10& dt, const GSVector4& dr, bool linear = true);
+	void StretchRect(GSTextureDX10& st, const GSVector4& sr, GSTextureDX10& dt, const GSVector4& dr, bool linear = true);
+	void StretchRect(GSTextureDX10& st, const GSVector4& sr, GSTextureDX10& dt, const GSVector4& dr, ID3D10PixelShader* ps, bool linear = true);
 
-	ID3D10Texture2D* Interlace(GSTexture2D& st, CSize ds, int field, int mode, float yoffset);
+	ID3D10Texture2D* Interlace(GSTextureDX10& st, CSize ds, int field, int mode, float yoffset);
 
 	HRESULT CompileShader(ID3D10VertexShader** vs, UINT id, LPCSTR entry, D3D10_INPUT_ELEMENT_DESC* layout, int count, ID3D10InputLayout** pl, D3D10_SHADER_MACRO* macro = NULL);
 	HRESULT CompileShader(ID3D10GeometryShader** gs, UINT id, LPCSTR entry, D3D10_SHADER_MACRO* macro = NULL);

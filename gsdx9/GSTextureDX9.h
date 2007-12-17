@@ -21,47 +21,28 @@
 
 #pragma once
 
-#include "GSDeviceDX10.h"
-
-class GSMergeFX
+class GSTextureDX9 : public GSTexture
 {
 public:
-	#pragma pack(push, 1)
+	CComPtr<IDirect3DDevice9> m_dev;
+	CComPtr<IDirect3DSurface9> m_surface;
+	CComPtr<IDirect3DTexture9> m_texture; 
+	D3DSURFACE_DESC m_desc;
 
-	struct PSConstantBuffer
-	{
-		GSVector4 BGColor;
-	};
+	GSTextureDX9();
+	explicit GSTextureDX9(IDirect3DSurface9* texture);
+	explicit GSTextureDX9(IDirect3DTexture9* texture);
+	virtual ~GSTextureDX9();
 
-	union PSSelector
-	{
-		struct
-		{
-			DWORD en1:1;
-			DWORD en2:1;
-			DWORD slbg:1;
-			DWORD mmod:1;
-		};
+	operator bool();
 
-		DWORD dw;
+	DWORD GetType() const;
+	DWORD GetWidth() const;
+	DWORD GetHeight() const;
+	DWORD GetFormat() const;
 
-		operator DWORD() {return dw & 0xf;}
-	};
+	IDirect3DTexture9* operator->();
 
-	#pragma pack(pop)
-
-private:
-	GSDeviceDX10* m_dev;
-	CComPtr<ID3D10Buffer> m_vb;
-	CComPtr<ID3D10InputLayout> m_il;
-	CComPtr<ID3D10VertexShader> m_vs;
-	CSimpleMap<DWORD, CComPtr<ID3D10PixelShader> > m_ps;
-	CComPtr<ID3D10Buffer> m_ps_cb;
-
-public:
-	GSMergeFX();
-
-	bool Create(GSDeviceDX10* dev);
-
-	void Draw(GSTextureDX10* st, GSVector4* sr, GSTextureDX10& dt, PSSelector sel, PSConstantBuffer& cb);
+	operator IDirect3DSurface9*();
+	operator IDirect3DTexture9*();
 };

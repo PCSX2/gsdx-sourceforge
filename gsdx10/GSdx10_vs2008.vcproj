@@ -595,7 +595,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\GSDevice.cpp"
+				RelativePath=".\GSDeviceDX10.cpp"
 				>
 			</File>
 			<File
@@ -661,11 +661,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\GSTexture2D.cpp"
+				RelativePath=".\GSTextureCache.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\GSTextureCache.cpp"
+				RelativePath=".\GSTextureDX10.cpp"
 				>
 			</File>
 			<File
@@ -731,7 +731,7 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath=".\GSDevice.h"
+				RelativePath=".\GSDeviceDX10.h"
 				>
 			</File>
 			<File
@@ -763,11 +763,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\GSTexture2D.h"
+				RelativePath=".\GSTextureCache.h"
 				>
 			</File>
 			<File
-				RelativePath=".\GSTextureCache.h"
+				RelativePath=".\GSTextureDX10.h"
 				>
 			</File>
 			<File
