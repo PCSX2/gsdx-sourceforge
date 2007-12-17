@@ -158,7 +158,7 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 
 	// width/height conversion
 
-	if(w != rt->m_texture.m_desc.Width || h != rt->m_texture.m_desc.Height)
+	//if(w != rt->m_texture.m_desc.Width || h != rt->m_texture.m_desc.Height)
 	{
 		GSVector4 dst(0, 0, w, h);
 		
@@ -221,7 +221,7 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 
 	if(!m_texture)
 	{
-		m_tc->m_renderer->m_dev.CreateTexture(m_texture, rt->m_texture.m_desc.Width, rt->m_texture.m_desc.Height);
+		m_tc->m_renderer->m_dev.CreateRenderTarget(m_texture, rt->m_texture.m_desc.Width, rt->m_texture.m_desc.Height);
 
 		m_tc->m_renderer->m_dev->StretchRect(rt->m_texture, NULL, m_texture, NULL, D3DTEXF_POINT);
 	}
