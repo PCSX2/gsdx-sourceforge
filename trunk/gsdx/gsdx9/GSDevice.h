@@ -55,10 +55,8 @@ struct VertexPT2
 	float tu2, tv2;
 };
 
-class GSDevice
+class GSDevice : public GSDeviceT<GSTexture2D>
 {
-	CAtlList<GSTexture2D> m_pool;
-
 	void Interlace(GSTexture2D& st, GSTexture2D& dt, int shader, bool linear, float yoffset = 0);
 
 public: // TODO
@@ -94,12 +92,10 @@ public:
 	void Draw(LPCTSTR str);
 	void Present();
 
-	HRESULT CreateRenderTarget(GSTexture2D& t, int w, int h, D3DFORMAT format = D3DFMT_A8R8G8B8);
-	HRESULT CreateDepthStencil(GSTexture2D& t, int w, int h, D3DFORMAT format = D3DFMT_D24S8/*D3DFMT_D32F_LOCKABLE*/);
-	HRESULT CreateTexture(GSTexture2D& t, int w, int h, D3DFORMAT format = D3DFMT_A8R8G8B8);
-	HRESULT CreateOffscreenPlainSurface(GSTexture2D& t, int w, int h, D3DFORMAT format = D3DFMT_A8R8G8B8);
-
-	void Recycle(GSTexture2D& t);
+	bool CreateRenderTarget(GSTexture2D& t, int w, int h, DWORD format = D3DFMT_A8R8G8B8);
+	bool CreateDepthStencil(GSTexture2D& t, int w, int h, DWORD format = D3DFMT_D24S8/*D3DFMT_D32F_LOCKABLE*/);
+	bool CreateTexture(GSTexture2D& t, int w, int h, DWORD format = D3DFMT_A8R8G8B8);
+	bool CreateOffscreen(GSTexture2D& t, int w, int h, DWORD format = D3DFMT_A8R8G8B8);
 
 	bool SaveCurrent(LPCTSTR fn);
 	bool SaveToFileD24S8(IDirect3DSurface9* ds, LPCTSTR fn);

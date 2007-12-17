@@ -482,6 +482,10 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\GSDeviceT.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\GSDirtyRect.cpp"
 				>
 			</File>
@@ -731,6 +735,10 @@
 			>
 			<File
 				RelativePath=".\GS.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSDeviceT.h"
 				>
 			</File>
 			<File

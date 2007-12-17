@@ -279,7 +279,7 @@ void GSDevice::Present()
 	}
 }
 
-HRESULT GSDevice::CreateRenderTarget(GSTexture2D& t, int w, int h, D3DFORMAT format)
+bool GSDevice::CreateRenderTarget(GSTexture2D& t, int w, int h, DWORD format)
 {
 	HRESULT hr;
 
@@ -295,23 +295,25 @@ HRESULT GSDevice::CreateRenderTarget(GSTexture2D& t, int w, int h, D3DFORMAT for
 
 			m_pool.RemoveAt(pos);
 
-			return S_OK;
+			return true;
 		}
 	}
 
 	CComPtr<IDirect3DTexture9> texture;
 	
-	hr = m_dev->CreateTexture(w, h, 1, D3DUSAGE_RENDERTARGET, format, D3DPOOL_DEFAULT, &texture, NULL);
+	hr = m_dev->CreateTexture(w, h, 1, D3DUSAGE_RENDERTARGET, (D3DFORMAT)format, D3DPOOL_DEFAULT, &texture, NULL);
 
 	if(SUCCEEDED(hr))
 	{
 		t = GSTexture2D(texture);
+
+		return true;
 	}
 
-	return hr;
+	return false;
 }
 
-HRESULT GSDevice::CreateDepthStencil(GSTexture2D& t, int w, int h, D3DFORMAT format)
+bool GSDevice::CreateDepthStencil(GSTexture2D& t, int w, int h, DWORD format)
 {
 	HRESULT hr;
 
@@ -327,23 +329,25 @@ HRESULT GSDevice::CreateDepthStencil(GSTexture2D& t, int w, int h, D3DFORMAT for
 
 			m_pool.RemoveAt(pos);
 
-			return S_OK;
+			return true;
 		}
 	}
 
 	CComPtr<IDirect3DSurface9> surface;
 	
-	hr = m_dev->CreateDepthStencilSurface(w, h, format, D3DMULTISAMPLE_NONE, 0, FALSE, &surface, NULL);
+	hr = m_dev->CreateDepthStencilSurface(w, h, (D3DFORMAT)format, D3DMULTISAMPLE_NONE, 0, FALSE, &surface, NULL);
 
 	if(SUCCEEDED(hr))
 	{
 		t = GSTexture2D(surface);
+
+		return true;
 	}
 
-	return hr;
+	return false;
 }
 
-HRESULT GSDevice::CreateTexture(GSTexture2D& t, int w, int h, D3DFORMAT format)
+bool GSDevice::CreateTexture(GSTexture2D& t, int w, int h, DWORD format)
 {
 	HRESULT hr;
 
@@ -359,23 +363,25 @@ HRESULT GSDevice::CreateTexture(GSTexture2D& t, int w, int h, D3DFORMAT format)
 
 			m_pool.RemoveAt(pos);
 
-			return S_OK;
+			return true;
 		}
 	}
 
 	CComPtr<IDirect3DTexture9> texture;
 	
-	hr = m_dev->CreateTexture(w, h, 1, 0, format, D3DPOOL_MANAGED, &texture, NULL);
+	hr = m_dev->CreateTexture(w, h, 1, 0, (D3DFORMAT)format, D3DPOOL_MANAGED, &texture, NULL);
 
 	if(SUCCEEDED(hr))
 	{
 		t = GSTexture2D(texture);
+
+		return true;
 	}
 
-	return hr;
+	return false;
 }
 
-HRESULT GSDevice::CreateOffscreenPlainSurface(GSTexture2D& t, int w, int h, D3DFORMAT format)
+bool GSDevice::CreateOffscreen(GSTexture2D& t, int w, int h, DWORD format)
 {
 	HRESULT hr;
 
@@ -391,35 +397,22 @@ HRESULT GSDevice::CreateOffscreenPlainSurface(GSTexture2D& t, int w, int h, D3DF
 
 			m_pool.RemoveAt(pos);
 
-			return S_OK;
+			return true;
 		}
 	}
 
 	CComPtr<IDirect3DSurface9> surface;
 	
-	hr = m_dev->CreateOffscreenPlainSurface(w, h, format, D3DPOOL_SYSTEMMEM, &surface, NULL);
+	hr = m_dev->CreateOffscreenPlainSurface(w, h, (D3DFORMAT)format, D3DPOOL_SYSTEMMEM, &surface, NULL);
 
 	if(SUCCEEDED(hr))
 	{
 		t = GSTexture2D(surface);
+
+		return true;
 	}
 
-	return hr;
-}
-
-void GSDevice::Recycle(GSTexture2D& t)
-{
-	if(t.m_texture)
-	{
-		m_pool.AddHead(t);
-
-		while(m_pool.GetCount() > 200)
-		{
-			m_pool.RemoveTail();
-		}
-
-		t = GSTexture2D();
-	}
+	return false;
 }
 
 bool GSDevice::SaveCurrent(LPCTSTR fn)

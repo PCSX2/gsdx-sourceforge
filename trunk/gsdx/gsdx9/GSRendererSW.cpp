@@ -292,8 +292,6 @@ void GSRendererSW<Vertex>::Draw()
 template <class Vertex>
 void GSRendererSW<Vertex>::Flip()
 {
-	HRESULT hr;
-
 	FlipInfo src[2];
 
 	for(int i = 0; i < countof(src); i++)
@@ -313,11 +311,9 @@ void GSRendererSW<Vertex>::Flip()
 			m_texture[i] = GSTexture2D();
 		}
 
-		if(!m_texture[i])
+		if(!m_texture[i] && !m_dev.CreateTexture(m_texture[i], w, h)) 
 		{
-			hr = m_dev.CreateTexture(m_texture[i], w, h);
-
-			if(FAILED(hr)) continue;
+			continue;
 		}
 
 		GIFRegTEX0 TEX0;

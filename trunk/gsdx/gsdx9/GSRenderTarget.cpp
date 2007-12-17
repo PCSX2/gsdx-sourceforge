@@ -31,11 +31,10 @@ GSTextureCache::GSRenderTarget::GSRenderTarget(GSTextureCache* tc)
 
 bool GSTextureCache::GSRenderTarget::Create(int w, int h)
 {
-	HRESULT hr;
-
-	hr = m_tc->m_renderer->m_dev.CreateRenderTarget(m_texture, w, h);
-	
-	if(FAILED(hr)) return false;
+	if(!m_tc->m_renderer->m_dev.CreateRenderTarget(m_texture, w, h))
+	{
+		return false;
+	}
 
 	// TODO: clear
 
@@ -54,8 +53,6 @@ void GSTextureCache::GSRenderTarget::Update()
 
 	if(r.IsRectEmpty()) return;
 
-	HRESULT hr;
-
 	if(r.right > 1024) {ASSERT(0); r.right = 1024;}
 	if(r.bottom > 1024) {ASSERT(0); r.bottom = 1024;}
 
@@ -64,9 +61,8 @@ void GSTextureCache::GSRenderTarget::Update()
 
 	GSTexture2D texture;
 
-	hr = m_tc->m_renderer->m_dev.CreateTexture(texture, w, h);
-
-	if(FAILED(hr)) return;
+	if(!m_tc->m_renderer->m_dev.CreateTexture(texture, w, h)) 
+		return;
 
 	D3DLOCKED_RECT lr;
 
@@ -99,8 +95,6 @@ void GSTextureCache::GSRenderTarget::Update()
 
 void GSTextureCache::GSRenderTarget::Read(CRect r)
 {
-	HRESULT hr;
-
 	if(m_TEX0.PSM != PSM_PSMCT32 
 	&& m_TEX0.PSM != PSM_PSMCT24
 	&& m_TEX0.PSM != PSM_PSMCT16
@@ -126,15 +120,15 @@ void GSTextureCache::GSRenderTarget::Read(CRect r)
 	
 	GSTexture2D rt;
 
-	hr = m_tc->m_renderer->m_dev.CreateRenderTarget(rt, r.Width(), r.Height());
+	m_tc->m_renderer->m_dev.CreateRenderTarget(rt, r.Width(), r.Height());
 
 	m_tc->m_renderer->m_dev.StretchRect(m_texture, src, rt, dst, m_tc->m_renderer->m_dev.m_ps_convert[1]);
 
 	GSTexture2D offscreen;
 
-	hr = m_tc->m_renderer->m_dev.CreateOffscreenPlainSurface(offscreen, r.Width(), r.Height());
+	m_tc->m_renderer->m_dev.CreateOffscreen(offscreen, r.Width(), r.Height());
 
-	hr = m_tc->m_renderer->m_dev->GetRenderTargetData(rt, offscreen);
+	m_tc->m_renderer->m_dev->GetRenderTargetData(rt, offscreen);
 
 	m_tc->m_renderer->m_dev.Recycle(rt);
 

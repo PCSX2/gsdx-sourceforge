@@ -382,27 +382,27 @@ void GSDevice::OMSetRenderTargets(ID3D10RenderTargetView* rtv, ID3D10DepthStenci
 	}
 }
 
-HRESULT GSDevice::CreateRenderTarget(GSTexture2D& t, int w, int h, DXGI_FORMAT format)
+bool GSDevice::CreateRenderTarget(GSTexture2D& t, int w, int h, DWORD format)
 {
-	return Create(t, w, h, format, D3D10_USAGE_DEFAULT, D3D10_BIND_RENDER_TARGET | D3D10_BIND_SHADER_RESOURCE);
+	return Create(t, w, h, (DXGI_FORMAT)format, D3D10_USAGE_DEFAULT, D3D10_BIND_RENDER_TARGET | D3D10_BIND_SHADER_RESOURCE);
 }
 
-HRESULT GSDevice::CreateDepthStencil(GSTexture2D& t, int w, int h, DXGI_FORMAT format)
+bool GSDevice::CreateDepthStencil(GSTexture2D& t, int w, int h, DWORD format)
 {
-	return Create(t, w, h, format, D3D10_USAGE_DEFAULT, D3D10_BIND_DEPTH_STENCIL);
+	return Create(t, w, h, (DXGI_FORMAT)format, D3D10_USAGE_DEFAULT, D3D10_BIND_DEPTH_STENCIL);
 }
 
-HRESULT GSDevice::CreateTexture(GSTexture2D& t, int w, int h, DXGI_FORMAT format)
+bool GSDevice::CreateTexture(GSTexture2D& t, int w, int h, DWORD format)
 {
-	return Create(t, w, h, format, D3D10_USAGE_DEFAULT, D3D10_BIND_SHADER_RESOURCE);
+	return Create(t, w, h, (DXGI_FORMAT)format, D3D10_USAGE_DEFAULT, D3D10_BIND_SHADER_RESOURCE);
 }
 
-HRESULT GSDevice::CreateOffscreenPlainSurface(GSTexture2D& t, int w, int h, DXGI_FORMAT format)
+bool GSDevice::CreateOffscreen(GSTexture2D& t, int w, int h, DWORD format)
 {
-	return Create(t, w, h, format, D3D10_USAGE_STAGING, 0);
+	return Create(t, w, h, (DXGI_FORMAT)format, D3D10_USAGE_STAGING, 0);
 }
 
-HRESULT GSDevice::Create(GSTexture2D& t, int w, int h, DXGI_FORMAT format, D3D10_USAGE usage, UINT bindFlags)
+bool GSDevice::Create(GSTexture2D& t, int w, int h, DXGI_FORMAT format, D3D10_USAGE usage, UINT bindFlags)
 {
 	HRESULT hr;
 
@@ -418,7 +418,7 @@ HRESULT GSDevice::Create(GSTexture2D& t, int w, int h, DXGI_FORMAT format, D3D10
 
 			m_pool.RemoveAt(pos);
 
-			return S_OK;
+			return true;
 		}
 	}
 
@@ -449,26 +449,11 @@ HRESULT GSDevice::Create(GSTexture2D& t, int w, int h, DXGI_FORMAT format, D3D10
 		t.m_dev = m_dev;
 		t.m_texture = texture.Detach();
 		t.m_desc = desc;
+
+		return true;
 	}
 
-//_tprintf(_T("Create %d x %d (%d %d %d) => %08x (%d)\n"), w, h, usage, bindFlags, format, hr, m_pool.GetCount());
-
-	return hr;
-}
-
-void GSDevice::Recycle(GSTexture2D& t)
-{
-	if(t.m_texture)
-	{
-		m_pool.AddHead(t);
-
-		while(m_pool.GetCount() > 200)
-		{
-			m_pool.RemoveTail();
-		}
-
-		t = GSTexture2D();
-	}
+	return false;
 }
 
 bool GSDevice::SaveCurrent(LPCTSTR fn)

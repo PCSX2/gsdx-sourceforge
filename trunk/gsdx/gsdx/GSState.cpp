@@ -1522,7 +1522,7 @@ bool GSState::DetectBadFrame(int& skip)
 			}
 			else if(TME && FBP == 0x00800 && FPSM == PSM_PSMCT32 && TBP0 == 0x02800 && TPSM == PSM_PSMT8H)
 			{
-				skip = 56;
+				skip = 1;
 			}
 		}
 		else
