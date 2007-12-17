@@ -22,7 +22,7 @@
 #pragma once
 
 #include "GSVertexHW.h"
-#include "GSDevice.h"
+#include "GSDeviceDX10.h"
 
 class GSTextureFX
 {
@@ -148,7 +148,7 @@ public:
 	#pragma pack(pop)
 
 private:
-	GSDevice* m_dev;
+	GSDeviceDX10* m_dev;
 	CComPtr<ID3D10InputLayout> m_il;
 	CComPtr<ID3D10VertexShader> m_vs;
 	CComPtr<ID3D10Buffer> m_vs_cb;
@@ -169,7 +169,7 @@ private:
 public:
 	GSTextureFX();
 
-	bool Create(GSDevice* dev);
+	bool Create(GSDeviceDX10* dev);
 	
 	bool SetupIA(const GSVertexHW* vertices, UINT count, D3D10_PRIMITIVE_TOPOLOGY prim);
 	bool SetupVS(const VSConstantBuffer* cb);

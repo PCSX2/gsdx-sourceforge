@@ -329,7 +329,7 @@ if(s_dump)
 
 	// color wrap
 
-	GSTexture2D rt2;
+	GSTextureDX10 rt2;
 /*
 	if(m_env.COLCLAMP.CLAMP == 0) // color wrap is a crime against humanity!
 	{
@@ -878,7 +878,7 @@ void GSRendererHW::SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache:
 
 	// om
 
-	GSTexture2D tmp;
+	GSTextureDX10 tmp;
 
 	m_dev.CreateRenderTarget(tmp, rt->m_texture.m_desc.Width, rt->m_texture.m_desc.Height);
 

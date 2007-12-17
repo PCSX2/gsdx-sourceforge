@@ -330,7 +330,7 @@ void GSRendererSW<Vertex>::Flip()
 
 		if(m_texture[i].m_desc.Width != (UINT)w || m_texture[i].m_desc.Height != (UINT)h)
 		{
-			m_texture[i] = GSTexture2D();
+			m_texture[i] = GSTextureDX10();
 		}
 
 		if(!m_texture[i] && !m_dev.CreateTexture(m_texture[i], w, h))

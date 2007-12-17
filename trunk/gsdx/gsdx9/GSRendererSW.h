@@ -28,7 +28,7 @@ template <class Vertex>
 class GSRendererSW : public GSRendererT<Vertex>
 {
 protected:
-	GSTexture2D m_texture[2];
+	GSTextureDX9 m_texture[2];
 
 	void DrawingKick(bool skip);
 	void Draw();

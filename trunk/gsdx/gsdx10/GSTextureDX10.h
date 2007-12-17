@@ -21,47 +21,32 @@
 
 #pragma once
 
-#include "GSDeviceDX10.h"
-
-class GSMergeFX
+class GSTextureDX10 : public GSTexture
 {
-public:
-	#pragma pack(push, 1)
-
-	struct PSConstantBuffer
-	{
-		GSVector4 BGColor;
-	};
-
-	union PSSelector
-	{
-		struct
-		{
-			DWORD en1:1;
-			DWORD en2:1;
-			DWORD slbg:1;
-			DWORD mmod:1;
-		};
-
-		DWORD dw;
-
-		operator DWORD() {return dw & 0xf;}
-	};
-
-	#pragma pack(pop)
-
-private:
-	GSDeviceDX10* m_dev;
-	CComPtr<ID3D10Buffer> m_vb;
-	CComPtr<ID3D10InputLayout> m_il;
-	CComPtr<ID3D10VertexShader> m_vs;
-	CSimpleMap<DWORD, CComPtr<ID3D10PixelShader> > m_ps;
-	CComPtr<ID3D10Buffer> m_ps_cb;
+	CComPtr<ID3D10ShaderResourceView> m_srv;
+	CComPtr<ID3D10RenderTargetView> m_rtv;
+	CComPtr<ID3D10DepthStencilView> m_dsv;
 
 public:
-	GSMergeFX();
+	CComPtr<ID3D10Device> m_dev;
+	CComPtr<ID3D10Texture2D> m_texture;
+	D3D10_TEXTURE2D_DESC m_desc;
 
-	bool Create(GSDeviceDX10* dev);
+	GSTextureDX10();
+	explicit GSTextureDX10(ID3D10Texture2D* texture);
+	virtual ~GSTextureDX10();
 
-	void Draw(GSTextureDX10* st, GSVector4* sr, GSTextureDX10& dt, PSSelector sel, PSConstantBuffer& cb);
+	operator bool();
+
+	DWORD GetType() const;
+	DWORD GetWidth() const;
+	DWORD GetHeight() const;
+	DWORD GetFormat() const;
+
+	ID3D10Texture2D* operator->();
+
+	operator ID3D10Texture2D*();
+	operator ID3D10ShaderResourceView*();
+	operator ID3D10RenderTargetView*();
+	operator ID3D10DepthStencilView*();
 };

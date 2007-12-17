@@ -29,7 +29,7 @@
 
 // #define PS_REGION_REPEAT
 
-#include "GSTexture2D.h"
+#include "GSTextureDX9.h"
 
 struct VertexP
 {
@@ -55,9 +55,11 @@ struct VertexPT2
 	float tu2, tv2;
 };
 
-class GSDevice : public GSDeviceT<GSTexture2D>
+class GSDeviceDX9 : public GSDevice<GSTextureDX9>
 {
-	void Interlace(GSTexture2D& st, GSTexture2D& dt, int shader, bool linear, float yoffset = 0);
+	void Interlace(GSTextureDX9& st, GSTextureDX9& dt, int shader, bool linear, float yoffset = 0);
+
+	bool Create(DWORD type, GSTextureDX9& t, DWORD w, DWORD h, DWORD format);
 
 public: // TODO
 	HWND m_hWnd;
@@ -71,40 +73,40 @@ public: // TODO
 	CComPtr<IDirect3DTexture9> m_tex_current;
 	CComPtr<ID3DXFont> m_font;
 
-	GSTexture2D m_tex_merge;
-	GSTexture2D m_tex_interlace;
-	GSTexture2D m_tex_deinterlace;
-	GSTexture2D m_tex_1x1;
+	GSTextureDX9 m_tex_merge;
+	GSTextureDX9 m_tex_interlace;
+	GSTextureDX9 m_tex_deinterlace;
+	GSTextureDX9 m_tex_1x1;
 
 	CComPtr<IDirect3DPixelShader9> m_ps_convert[3];
 	CComPtr<IDirect3DPixelShader9> m_ps_interlace[4];
 
 public:
-	GSDevice();
-	virtual ~GSDevice();
+	GSDeviceDX9();
+	virtual ~GSDeviceDX9();
 
 	bool Create(HWND hWnd);
+	bool Reset(DWORD w, DWORD h, bool fs);
+
+	bool CreateRenderTarget(GSTextureDX9& t, DWORD w, DWORD h, DWORD format = D3DFMT_A8R8G8B8);
+	bool CreateDepthStencil(GSTextureDX9& t, DWORD w, DWORD h, DWORD format = D3DFMT_D24S8);
+	bool CreateTexture(GSTextureDX9& t, DWORD w, DWORD h, DWORD format = D3DFMT_A8R8G8B8);
+	bool CreateOffscreen(GSTextureDX9& t, DWORD w, DWORD h, DWORD format = D3DFMT_A8R8G8B8);
 
 	IDirect3DDevice9* operator->() {return m_dev;}
 	operator IDirect3DDevice9*() {return m_dev;}
 
-	bool ResetDevice(int w, int h, bool fs = false);
 	void Draw(LPCTSTR str);
 	void Present();
-
-	bool CreateRenderTarget(GSTexture2D& t, int w, int h, DWORD format = D3DFMT_A8R8G8B8);
-	bool CreateDepthStencil(GSTexture2D& t, int w, int h, DWORD format = D3DFMT_D24S8/*D3DFMT_D32F_LOCKABLE*/);
-	bool CreateTexture(GSTexture2D& t, int w, int h, DWORD format = D3DFMT_A8R8G8B8);
-	bool CreateOffscreen(GSTexture2D& t, int w, int h, DWORD format = D3DFMT_A8R8G8B8);
 
 	bool SaveCurrent(LPCTSTR fn);
 	bool SaveToFileD24S8(IDirect3DSurface9* ds, LPCTSTR fn);
 
-	void StretchRect(GSTexture2D& st, GSTexture2D& dt, const GSVector4& dr, bool linear = true);
-	void StretchRect(GSTexture2D& st, const GSVector4& sr, GSTexture2D& dt, const GSVector4& dr, bool linear = true);
-	void StretchRect(GSTexture2D& st, const GSVector4& sr, GSTexture2D& dt, const GSVector4& dr, IDirect3DPixelShader9* ps, bool linear = true);
+	void StretchRect(GSTextureDX9& st, GSTextureDX9& dt, const GSVector4& dr, bool linear = true);
+	void StretchRect(GSTextureDX9& st, const GSVector4& sr, GSTextureDX9& dt, const GSVector4& dr, bool linear = true);
+	void StretchRect(GSTextureDX9& st, const GSVector4& sr, GSTextureDX9& dt, const GSVector4& dr, IDirect3DPixelShader9* ps, bool linear = true);
 
-	IDirect3DTexture9* Interlace(GSTexture2D& st, CSize ds, int field, int mode, float yoffset);
+	IDirect3DTexture9* Interlace(GSTextureDX9& st, CSize ds, int field, int mode, float yoffset);
 
 	HRESULT CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro, IDirect3DVertexShader9** vs, ID3DXConstantTable** ct = NULL);
 	HRESULT CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro, IDirect3DPixelShader9** ps, ID3DXConstantTable** ct = NULL);

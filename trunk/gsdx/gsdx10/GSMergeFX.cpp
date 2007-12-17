@@ -28,7 +28,7 @@ GSMergeFX::GSMergeFX()
 {
 }
 
-bool GSMergeFX::Create(GSDevice* dev)
+bool GSMergeFX::Create(GSDeviceDX10* dev)
 {
 	m_dev = dev;
 
@@ -74,7 +74,7 @@ bool GSMergeFX::Create(GSDevice* dev)
 	return true;
 }
 
-void GSMergeFX::Draw(GSTexture2D* st, GSVector4* sr, GSTexture2D& dt, PSSelector sel, PSConstantBuffer& cb)
+void GSMergeFX::Draw(GSTextureDX10* st, GSVector4* sr, GSTextureDX10& dt, PSSelector sel, PSConstantBuffer& cb)
 {
 	HRESULT hr;
 

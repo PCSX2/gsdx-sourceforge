@@ -59,7 +59,7 @@ void GSTextureCache::GSRenderTarget::Update()
 	int w = r.Width();
 	int h = r.Height();
 
-	GSTexture2D texture;
+	GSTextureDX9 texture;
 
 	if(!m_tc->m_renderer->m_dev.CreateTexture(texture, w, h)) 
 		return;
@@ -118,13 +118,13 @@ void GSTextureCache::GSRenderTarget::Read(CRect r)
 	GSVector4 src(left, top, right, bottom);
 	GSVector4 dst(0, 0, r.Width(), r.Height());
 	
-	GSTexture2D rt;
+	GSTextureDX9 rt;
 
 	m_tc->m_renderer->m_dev.CreateRenderTarget(rt, r.Width(), r.Height());
 
 	m_tc->m_renderer->m_dev.StretchRect(m_texture, src, rt, dst, m_tc->m_renderer->m_dev.m_ps_convert[1]);
 
-	GSTexture2D offscreen;
+	GSTextureDX9 offscreen;
 
 	m_tc->m_renderer->m_dev.CreateOffscreen(offscreen, r.Width(), r.Height());
 

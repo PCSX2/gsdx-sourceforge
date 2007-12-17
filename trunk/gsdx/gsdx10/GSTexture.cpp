@@ -180,9 +180,9 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 
 		GSVector4 src(0, 0, w, h);
 
-		GSTexture2D* st;
-		GSTexture2D* dt;
-		GSTexture2D tmp;
+		GSTextureDX10* st;
+		GSTextureDX10* dt;
+		GSTextureDX10 tmp;
 
 		if(!m_texture)
 		{

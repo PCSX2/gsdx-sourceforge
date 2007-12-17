@@ -209,9 +209,9 @@ void GSRenderer::FinishFlip(FlipInfo src[2])
 	m_dev.m_tex_current = current;
 }
 
-void GSRenderer::Merge(FlipInfo src[2], GSTexture2D& dst)
+void GSRenderer::Merge(FlipInfo src[2], GSTextureDX9& dst)
 {
-	GSTexture2D st[2] = 
+	GSTextureDX9 st[2] = 
 	{
 		src[0].t ? src[0].t : m_dev.m_tex_1x1,
 		src[1].t ? src[1].t : m_dev.m_tex_1x1,
@@ -268,7 +268,7 @@ void GSRenderer::Present()
 	{
 		// TODO: ResetDevice();
 
-		m_dev.ResetDevice(cr.Width(), cr.Height());		
+		m_dev.Reset(cr.Width(), cr.Height(), false);		
 	}
 
 	m_dev->SetRenderTarget(0, m_dev.m_backbuffer);
@@ -305,8 +305,8 @@ void GSRenderer::Present()
 
 		r &= cr;
 
-		GSTexture2D st(m_dev.m_tex_current);
-		GSTexture2D dt(m_dev.m_backbuffer);
+		GSTextureDX9 st(m_dev.m_tex_current);
+		GSTextureDX9 dt(m_dev.m_backbuffer);
 		GSVector4 dr(r.left, r.top, r.right, r.bottom);
 
 		m_dev.StretchRect(st, dt, dr);

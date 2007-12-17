@@ -19,33 +19,5 @@
  *
  */
 
-#pragma once
-
-class GSTexture2D
-{
-	CComPtr<ID3D10ShaderResourceView> m_srv;
-	CComPtr<ID3D10RenderTargetView> m_rtv;
-	CComPtr<ID3D10DepthStencilView> m_dsv;
-
-public:
-	CComPtr<ID3D10Device> m_dev;
-	CComPtr<ID3D10Texture2D> m_texture;
-	D3D10_TEXTURE2D_DESC m_desc;
-
-	GSTexture2D();
-	explicit GSTexture2D(ID3D10Texture2D* texture);
-	virtual ~GSTexture2D();
-
-	operator bool();
-
-	bool IsShaderResource() const;
-	bool IsRenderTarget() const;
-	bool IsDepthStencil() const;
-
-	ID3D10Texture2D* operator->();
-
-	operator ID3D10Texture2D*();
-	operator ID3D10ShaderResourceView*();
-	operator ID3D10RenderTargetView*();
-	operator ID3D10DepthStencilView*();
-};
+#include "StdAfx.h"
+#include "GSTexture.h"

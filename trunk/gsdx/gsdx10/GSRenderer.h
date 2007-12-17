@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include "GSDevice.h"
+#include "GSDeviceDX10.h"
 #include "GSMergeFX.h"
 
 class GSRenderer : public CWnd, public GSState
@@ -51,19 +51,19 @@ public:
 
 	// TODO
 
-	GSDevice m_dev;
+	GSDeviceDX10 m_dev;
 	GSMergeFX m_merge;
 
 	struct FlipInfo 
 	{
-		GSTexture2D t; 
+		GSTextureDX10 t; 
 		GSVector2 s;
 	};
 
 	virtual void Flip() = 0;
 
 	void FinishFlip(FlipInfo src[2]);
-	void Merge(FlipInfo src[2], GSTexture2D& dst);
+	void Merge(FlipInfo src[2], GSTextureDX10& dst);
 	void Present();
 };
 

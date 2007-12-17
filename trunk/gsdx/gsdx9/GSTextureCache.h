@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include "GSTexture2D.h"
+#include "GSTextureDX9.h"
 
 class GSRendererHW;
 
@@ -34,8 +34,8 @@ public:
 		GSTextureCache* m_tc;
 
 	public:
-		GSTexture2D m_texture;
-		GSTexture2D m_palette;
+		GSTextureDX9 m_texture;
+		GSTextureDX9 m_palette;
 		GSVector2 m_scale;
 		int m_age;
 		GSDirtyRectList m_dirty;

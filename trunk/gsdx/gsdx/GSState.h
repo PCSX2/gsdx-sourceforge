@@ -31,7 +31,7 @@
 #include "GSDirtyRect.h"
 #include "GSPerfMon.h"
 #include "GSVector.h"
-#include "GSDeviceT.h"
+#include "GSDevice.h"
 
 class GSState
 {
