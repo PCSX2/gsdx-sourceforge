@@ -25,7 +25,7 @@
 
 int s_n = 0;
 bool s_dump = false;
-bool s_save = true;
+bool s_save = false;
 bool s_savez = false;
 
 GSRendererHW::GSRendererHW(BYTE* base, bool mt, void (*irq)(), int nloophack)
@@ -220,6 +220,19 @@ void GSRendererHW::Draw()
 		return;
 	}
 	
+TRACE(_T("[%d] FlushPrim f %05x (%d) z %05x (%d %d %d %d) t %05x %05x (%d)\n"), 
+	  (int)m_perfmon.GetFrame(), 
+	  (int)m_context->FRAME.Block(), 
+	  (int)m_context->FRAME.PSM, 
+	  (int)m_context->ZBUF.Block(), 
+	  (int)m_context->ZBUF.PSM, 
+	  m_context->TEST.ZTE, 
+	  m_context->TEST.ZTST, 
+	  m_context->ZBUF.ZMSK, 
+	  PRIM->TME ? (int)m_context->TEX0.TBP0 : 0xfffff, 
+	  PRIM->TME && m_context->TEX0.PSM > PSM_PSMCT16S ? (int)m_context->TEX0.CBP : 0xfffff, 
+	  PRIM->TME ? (int)m_context->TEX0.PSM : 0xff);
+
 	//
 
 	GIFRegTEX0 TEX0;
@@ -572,7 +585,7 @@ if(s_dump)
 	if(s_save) ::D3DXSaveTextureToFile(str, D3DXIFF_BMP, rt->m_texture, NULL);
 }
 
-// s_dump = m_perfmon.GetFrame() >= 5001;
+// s_dump = m_perfmon.GetFrame() >= 5330;
 		}
 
 	}
@@ -586,14 +599,14 @@ if(s_dump)
 
 void GSRendererHW::InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r)
 {
-	// TRACE(_T("[%d] InvalidateVideoMem %d,%d - %d,%d %05x (%d)\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.DBP, (int)BITBLTBUF.DPSM);
+	TRACE(_T("[%d] InvalidateVideoMem %d,%d - %d,%d %05x (%d)\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.DBP, (int)BITBLTBUF.DPSM);
 
 	m_tc.InvalidateVideoMem(BITBLTBUF, &r);
 }
 
 void GSRendererHW::InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r)
 {
-	// TRACE(_T("[%d] InvalidateLocalMem %d,%d - %d,%d %05x (%d)\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.SBP, (int)BITBLTBUF.SPSM);
+	TRACE(_T("[%d] InvalidateLocalMem %d,%d - %d,%d %05x (%d)\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.SBP, (int)BITBLTBUF.SPSM);
 
 	m_tc.InvalidateLocalMem(BITBLTBUF, &r);
 }

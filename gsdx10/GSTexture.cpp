@@ -158,7 +158,7 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 
 	// width/height conversion
 
-	if(w != rt->m_texture.m_desc.Width || h != rt->m_texture.m_desc.Height)
+	// if(w != rt->m_texture.m_desc.Width || h != rt->m_texture.m_desc.Height)
 	{
 		GSVector4 dst(0, 0, w, h);
 		

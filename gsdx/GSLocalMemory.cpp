@@ -465,6 +465,8 @@ bool GSLocalMemory::IsCLUTUpdating(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT)
 {
 	switch(TEX0.CLD)
 	{
+	case 0: 
+		return false;
 	case 1:
 	case 2:
 	case 3:
