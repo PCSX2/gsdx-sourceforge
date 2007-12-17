@@ -45,7 +45,7 @@ GSTextureDX10::operator bool()
 	return !!m_texture;
 }
 
-DWORD GSTextureDX10::GetType() const
+int GSTextureDX10::GetType() const
 {
 	if(m_desc.BindFlags & D3D10_BIND_RENDER_TARGET) return GSTexture::RenderTarget;
 	if(m_desc.BindFlags & D3D10_BIND_DEPTH_STENCIL) return GSTexture::DepthStencil;

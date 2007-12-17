@@ -108,7 +108,7 @@ bool GSDeviceDX10::Create(HWND hWnd)
 	bd.BindFlags = D3D10_BIND_VERTEX_BUFFER;
 	bd.CPUAccessFlags = 0;
 	bd.MiscFlags = 0;
-	bd.ByteWidth = 4 * sizeof(VertexPT1);
+	bd.ByteWidth = 4 * sizeof(GSVertexPT1);
 
 	hr = m_dev->CreateBuffer(&bd, NULL, &m_convert.vb);
 
@@ -223,7 +223,7 @@ bool GSDeviceDX10::Reset(DWORD w, DWORD h, bool fs)
 	return true;
 }
 
-bool GSDeviceDX10::Create(DWORD type, GSTextureDX10& t, DWORD w, DWORD h, DWORD format)
+bool GSDeviceDX10::Create(int type, GSTextureDX10& t, DWORD w, DWORD h, DWORD format)
 {
 	HRESULT hr;
 
@@ -534,12 +534,12 @@ void GSDeviceDX10::StretchRect(GSTextureDX10& st, const GSVector4& sr, GSTexture
 	float right = dr.z * 2 / dt.m_desc.Width - 1.0f;
 	float bottom = 1.0f - dr.w * 2 / dt.m_desc.Height;
 
-	VertexPT1 vertices[] =
+	GSVertexPT1 vertices[] =
 	{
-		{left, top, 0.5f, 1.0f, sr.x, sr.y},
-		{right, top, 0.5f, 1.0f, sr.z, sr.y},
-		{left, bottom, 0.5f, 1.0f, sr.x, sr.w},
-		{right, bottom, 0.5f, 1.0f, sr.z, sr.w},
+		{GSVector4(left, top), GSVector2(sr.x, sr.y)},
+		{GSVector4(right, top), GSVector2(sr.z, sr.y)},
+		{GSVector4(left, bottom), GSVector2(sr.x, sr.w)},
+		{GSVector4(right, bottom), GSVector2(sr.z, sr.w)},
 	};
 
 	IASet(m_convert.vb, 4, vertices, m_convert.il, D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);

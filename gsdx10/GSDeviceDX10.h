@@ -32,19 +32,6 @@ struct InterlaceCB
 	float _pad[1];
 };
 
-struct VertexPT1
-{
-	float x, y, z, w;
-	float tu, tv;
-};
-
-struct VertexPT2
-{
-	float x, y, z, w;
-	float tu1, tv1;
-	float tu2, tv2;
-};
-
 #pragma pack(pop)
 
 class GSDeviceDX10 : public GSDevice<GSTextureDX10>
@@ -81,7 +68,7 @@ class GSDeviceDX10 : public GSDevice<GSTextureDX10>
 
 	void Interlace(GSTextureDX10& st, GSTextureDX10& dt, int shader, bool linear, float yoffset = 0);
 
-	bool Create(DWORD type, GSTextureDX10& t, DWORD w, DWORD h, DWORD format);
+	bool Create(int type, GSTextureDX10& t, DWORD w, DWORD h, DWORD format);
 
 public: // TODO
 	CComPtr<ID3D10Device> m_dev;

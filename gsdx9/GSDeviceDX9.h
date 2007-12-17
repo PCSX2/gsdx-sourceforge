@@ -31,35 +31,11 @@
 
 #include "GSTextureDX9.h"
 
-struct VertexP
-{
-	float x, y, z, w;
-};
-
-struct VertexPC
-{
-	float x, y, z, w;
-	DWORD c;
-};
-
-struct VertexPT1
-{
-	float x, y, z, w;
-	float tu, tv;
-};
-
-struct VertexPT2
-{
-	float x, y, z, w;
-	float tu1, tv1;
-	float tu2, tv2;
-};
-
 class GSDeviceDX9 : public GSDevice<GSTextureDX9>
 {
 	void Interlace(GSTextureDX9& st, GSTextureDX9& dt, int shader, bool linear, float yoffset = 0);
 
-	bool Create(DWORD type, GSTextureDX9& t, DWORD w, DWORD h, DWORD format);
+	bool Create(int type, GSTextureDX9& t, DWORD w, DWORD h, DWORD format);
 
 public: // TODO
 	HWND m_hWnd;

@@ -30,7 +30,7 @@ public:
 	enum {None, RenderTarget, DepthStencil, Texture, Offscreen};
 
 	virtual operator bool() = 0;
-	virtual DWORD GetType() const = 0;
+	virtual int GetType() const = 0;
 	virtual DWORD GetWidth() const = 0;
 	virtual DWORD GetHeight() const = 0;
 	virtual DWORD GetFormat() const = 0;

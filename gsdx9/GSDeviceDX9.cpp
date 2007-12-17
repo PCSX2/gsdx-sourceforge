@@ -245,7 +245,7 @@ bool GSDeviceDX9::Reset(DWORD w, DWORD h, bool fs)
 	return true;
 }
 
-bool GSDeviceDX9::Create(DWORD type, GSTextureDX9& t, DWORD w, DWORD h, DWORD format)
+bool GSDeviceDX9::Create(int type, GSTextureDX9& t, DWORD w, DWORD h, DWORD format)
 {
 	HRESULT hr;
 
@@ -428,18 +428,18 @@ void GSDeviceDX9::StretchRect(GSTextureDX9& st, const GSVector4& sr, GSTextureDX
 	hr = m_dev->SetVertexShader(NULL);
 	hr = m_dev->SetPixelShader(ps);
 
-	VertexPT1 vertices[] =
+	GSVertexPT1 vertices[] =
 	{
-		{dr.x, dr.y, 0.5f, 1.0f, sr.x, sr.y},
-		{dr.z, dr.y, 0.5f, 1.0f, sr.z, sr.y},
-		{dr.z, dr.w, 0.5f, 1.0f, sr.z, sr.w},
-		{dr.x, dr.w, 0.5f, 1.0f, sr.x, sr.w},
+		{GSVector4(dr.x, dr.y), GSVector2(sr.x, sr.y)},
+		{GSVector4(dr.z, dr.y), GSVector2(sr.z, sr.y)},
+		{GSVector4(dr.z, dr.w), GSVector2(sr.z, sr.w)},
+		{GSVector4(dr.x, dr.w), GSVector2(sr.x, sr.w)},
 	};
 
 	for(int i = 0; i < countof(vertices); i++)
 	{
-		vertices[i].x -= 0.5f;
-		vertices[i].y -= 0.5f;
+		vertices[i].p.x -= 0.5f;
+		vertices[i].p.y -= 0.5f;
 	}
 
 	hr = m_dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX1);

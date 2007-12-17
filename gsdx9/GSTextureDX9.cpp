@@ -59,7 +59,7 @@ GSTextureDX9::operator bool()
 	return !!m_surface;
 }
 
-DWORD GSTextureDX9::GetType() const
+int GSTextureDX9::GetType() const
 {
 	if(m_desc.Usage & D3DUSAGE_RENDERTARGET) return GSTexture::RenderTarget;
 	if(m_desc.Usage & D3DUSAGE_DEPTHSTENCIL) return GSTexture::DepthStencil;

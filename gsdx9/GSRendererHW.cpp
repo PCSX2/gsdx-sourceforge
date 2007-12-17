@@ -842,12 +842,12 @@ void GSRendererHW::SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache:
 	m_dev->SetVertexShader(NULL);
 	m_dev->SetPixelShader(m_dev.m_ps_convert[0]);
 
-	VertexPT1 vertices[] =
+	GSVertexPT1 vertices[] =
 	{
-		{xmin * w, ymin * h, 0.5f, 1.0f, xmin, ymin},
-		{xmax * w, ymin * h, 0.5f, 1.0f, xmax, ymin},
-		{xmin * w, ymax * h, 0.5f, 1.0f, xmin, ymax},
-		{xmax * w, ymax * h, 0.5f, 1.0f, xmax, ymax},
+		{GSVector4(xmin * w, ymin * h), GSVector2(xmin, ymin)},
+		{GSVector4(xmax * w, ymin * h), GSVector2(xmax, ymin)},
+		{GSVector4(xmin * w, ymax * h), GSVector2(xmin, ymax)},
+		{GSVector4(xmax * w, ymax * h), GSVector2(xmax, ymax)},
 	};
 
 	m_dev->BeginScene();
@@ -884,12 +884,12 @@ void GSRendererHW::UpdateFBA(GSTextureCache::GSRenderTarget* rt)
 	int w = rt->m_texture.m_desc.Width;
 	int h = rt->m_texture.m_desc.Height;
 
-	VertexPC vertices[] =
+	GSVertexPC vertices[] =
 	{
-		{0, 0, 0.5f, 1.0f, 0xffffffff},
-		{(float)w, 0, 0.5f, 1.0f, 0xffffffff},
-		{0, (float)h, 0.5f, 1.0f, 0xffffffff},
-		{(float)w, (float)h, 0.5f, 1.0f, 0xffffffff},
+		{GSVector4(0, 0), 0xffffffff},
+		{GSVector4(w, 0), 0xffffffff},
+		{GSVector4(0, h), 0xffffffff},
+		{GSVector4(w, h), 0xffffffff},
 	};
 
 	hr = m_dev->BeginScene();

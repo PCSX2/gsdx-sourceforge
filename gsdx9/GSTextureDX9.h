@@ -36,7 +36,7 @@ public:
 
 	operator bool();
 
-	DWORD GetType() const;
+	int GetType() const;
 	DWORD GetWidth() const;
 	DWORD GetHeight() const;
 	DWORD GetFormat() const;
