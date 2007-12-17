@@ -22,6 +22,7 @@
 #pragma once
 
 #include "GS.h"
+#include "GSVector.h"
 
 #pragma pack(push, 1)
 
@@ -34,6 +35,29 @@ struct GSVertex
 	GIFRegFOG		FOG;
 
 	GSVertex() {memset(this, 0, sizeof(*this));}
+};
+
+struct GSVertexP
+{
+	GSVector4 p;
+};
+
+struct GSVertexPC
+{
+	GSVector4 p;
+	DWORD c;
+};
+
+struct GSVertexPT1
+{
+	GSVector4 p;
+	GSVector2 t;
+};
+
+struct GSVertexPT2
+{
+	GSVector4 p;
+	GSVector2 t[2];
 };
 
 #pragma pack(pop)

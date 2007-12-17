@@ -22,7 +22,7 @@ struct GSVector4
 {
 	union {struct {float x, y, z, w;}; struct {float r, g, b, a;};};
 	struct GSVector4() {x = y = z = w = 0;}
-	struct GSVector4(float x, float y, float z, float w) {this->x = x; this->y = y; this->z = z; this->w = w;}
+	struct GSVector4(float x, float y, float z = 0.5f, float w = 1.0f) {this->x = x; this->y = y; this->z = z; this->w = w;}
 	bool operator == (const GSVector4& v) const {return x == v.x && y == v.y && z == v.z && w == v.w;}
 };
 

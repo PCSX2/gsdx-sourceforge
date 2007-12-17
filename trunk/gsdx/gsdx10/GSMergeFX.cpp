@@ -65,7 +65,7 @@ bool GSMergeFX::Create(GSDeviceDX10* dev)
 	bd.BindFlags = D3D10_BIND_VERTEX_BUFFER;
 	bd.CPUAccessFlags = 0;
 	bd.MiscFlags = 0;
-	bd.ByteWidth = 4 * sizeof(VertexPT2);
+	bd.ByteWidth = 4 * sizeof(GSVertexPT2);
 
 	hr = (*m_dev)->CreateBuffer(&bd, NULL, &m_vb);
 
@@ -86,12 +86,12 @@ void GSMergeFX::Draw(GSTextureDX10* st, GSVector4* sr, GSTextureDX10& dt, PSSele
 
 	// ia
 
-	VertexPT2 vertices[] =
+	GSVertexPT2 vertices[] =
 	{
-		{-1, +1, 0.5f, 1.0f, sr[0].x, sr[0].y, sr[1].x, sr[1].y},
-		{+1, +1, 0.5f, 1.0f, sr[0].z, sr[0].y, sr[1].z, sr[1].y}, 
-		{-1, -1, 0.5f, 1.0f, sr[0].x, sr[0].w, sr[1].x, sr[1].w},
-		{+1, -1, 0.5f, 1.0f, sr[0].z, sr[0].w, sr[1].z, sr[1].w},
+		{GSVector4(-1, +1), GSVector2(sr[0].x, sr[0].y), GSVector2(sr[1].x, sr[1].y)},
+		{GSVector4(+1, +1), GSVector2(sr[0].z, sr[0].y), GSVector2(sr[1].z, sr[1].y)},
+		{GSVector4(-1, -1), GSVector2(sr[0].x, sr[0].w), GSVector2(sr[1].x, sr[1].w)},
+		{GSVector4(+1, -1), GSVector2(sr[0].z, sr[0].w), GSVector2(sr[1].z, sr[1].w)},
 	};
 
 	m_dev->IASet(m_vb, 4, vertices, m_il, D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);

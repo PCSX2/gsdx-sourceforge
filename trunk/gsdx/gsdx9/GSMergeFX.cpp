@@ -99,18 +99,18 @@ void GSMergeFX::Draw(GSTextureDX9* st, GSVector4* sr, GSTextureDX9& dt, PSSelect
 	int w = dt.m_desc.Width;
 	int h = dt.m_desc.Height;
 
-	VertexPT2 vertices[] =
+	GSVertexPT2 vertices[] =
 	{
-		{0, 0, 0.5f, 1.0f, sr[0].x, sr[0].y, sr[1].x, sr[1].y},
-		{w, 0, 0.5f, 1.0f, sr[0].z, sr[0].y, sr[1].z, sr[1].y}, 
-		{w, h, 0.5f, 1.0f, sr[0].z, sr[0].w, sr[1].z, sr[1].w},
-		{0, h, 0.5f, 1.0f, sr[0].x, sr[0].w, sr[1].x, sr[1].w},
+		{GSVector4(0, 0), GSVector2(sr[0].x, sr[0].y), GSVector2(sr[1].x, sr[1].y)},
+		{GSVector4(w, 0), GSVector2(sr[0].z, sr[0].y), GSVector2(sr[1].z, sr[1].y)},
+		{GSVector4(w, h), GSVector2(sr[0].z, sr[0].w), GSVector2(sr[1].z, sr[1].w)},
+		{GSVector4(0, h), GSVector2(sr[0].x, sr[0].w), GSVector2(sr[1].x, sr[1].w)},
 	};
 
 	for(int i = 0; i < countof(vertices); i++)
 	{
-		vertices[i].x -= 0.5f;
-		vertices[i].y -= 0.5f;
+		vertices[i].p.x -= 0.5f;
+		vertices[i].p.y -= 0.5f;
 	}
 
 	(*m_dev)->BeginScene();

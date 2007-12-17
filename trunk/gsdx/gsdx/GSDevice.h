@@ -28,7 +28,7 @@ template<class Texture> class GSDevice
 	CAtlList<Texture> m_pool;
 
 protected:
-	bool Fetch(DWORD type, Texture& t, DWORD w, DWORD h, DWORD format)
+	bool Fetch(int type, Texture& t, DWORD w, DWORD h, DWORD format)
 	{
 		Recycle(t);
 
@@ -49,7 +49,7 @@ protected:
 		return Create(type, t, w, h, format);
 	}
 
-	virtual bool Create(DWORD type, Texture& t, DWORD w, DWORD h, DWORD format) = 0;
+	virtual bool Create(int type, Texture& t, DWORD w, DWORD h, DWORD format) = 0;
 
 public:
 	GSDevice() 

@@ -890,12 +890,12 @@ void GSRendererHW::SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache:
 
 	// ia
 
-	VertexPT1 vertices[] =
+	GSVertexPT1 vertices[] =
 	{
-		{xmin, -ymin, 0.5f, 1.0f, umin, vmin},
-		{xmax, -ymin, 0.5f, 1.0f, umax, vmin},
-		{xmin, -ymax, 0.5f, 1.0f, umin, vmax},
-		{xmax, -ymax, 0.5f, 1.0f, umax, vmax},
+		{GSVector4(xmin, -ymin), GSVector2(umin, vmin)},
+		{GSVector4(xmax, -ymin), GSVector2(umax, vmin)},
+		{GSVector4(xmin, -ymax), GSVector2(umin, vmax)},
+		{GSVector4(xmax, -ymax), GSVector2(umax, vmax)},
 	};
 
 	m_dev.IASet(m_dev.m_convert.vb, 4, vertices, m_dev.m_convert.il, D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
