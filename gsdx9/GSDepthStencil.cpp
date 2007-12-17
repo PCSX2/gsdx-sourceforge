@@ -31,9 +31,10 @@ GSTextureCache::GSDepthStencil::GSDepthStencil(GSTextureCache* tc)
 
 bool GSTextureCache::GSDepthStencil::Create(int w, int h)
 {
-	HRESULT hr;
-
-	hr = m_tc->m_renderer->m_dev.CreateDepthStencil(m_texture, w, h);
+	if(!m_tc->m_renderer->m_dev.CreateDepthStencil(m_texture, w, h))
+	{
+		return false;
+	}
 
 	// FIXME: initial data should be unswizzled from local mem in Update() if dirty
 
@@ -44,7 +45,7 @@ bool GSTextureCache::GSDepthStencil::Create(int w, int h)
 	m_tc->m_renderer->m_dev->Clear(0, NULL, D3DCLEAR_ZBUFFER, 0, 0, 0);
 	m_tc->m_renderer->m_dev->SetDepthStencilSurface(surface);
 
-	return SUCCEEDED(hr);
+	return true;
 }
 
 void GSTextureCache::GSDepthStencil::Update()

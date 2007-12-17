@@ -47,12 +47,8 @@ struct VertexPT2
 
 #pragma pack(pop)
 
-class GSDevice
+class GSDevice : public GSDeviceT<GSTexture2D>
 {
-	// texture cache
-
-	CAtlList<GSTexture2D> m_pool;
-
 	// state cache
 
 	ID3D10Buffer* m_vb;
@@ -82,6 +78,8 @@ class GSDevice
 	ID3D10DepthStencilView* m_dsv;
 
 	//
+
+	bool Create(GSTexture2D& t, int w, int h, DXGI_FORMAT format, D3D10_USAGE usage, UINT bind);
 
 	void Interlace(GSTexture2D& st, GSTexture2D& dt, int shader, bool linear, float yoffset = 0);
 
@@ -144,13 +142,10 @@ public:
 		IASet(vb, count, vertices, sizeof(T), layout, topology);
 	}
 
-	HRESULT CreateRenderTarget(GSTexture2D& t, int w, int h, DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM);
-	HRESULT CreateDepthStencil(GSTexture2D& t, int w, int h, DXGI_FORMAT format = DXGI_FORMAT_D32_FLOAT_S8X24_UINT);
-	HRESULT CreateTexture(GSTexture2D& t, int w, int h, DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM);
-	HRESULT CreateOffscreenPlainSurface(GSTexture2D& t, int w, int h, DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM);
-	HRESULT Create(GSTexture2D& t, int w, int h, DXGI_FORMAT format, D3D10_USAGE usage, UINT bind);	
-
-	void Recycle(GSTexture2D& t);
+	bool CreateRenderTarget(GSTexture2D& t, int w, int h, DWORD format = DXGI_FORMAT_R8G8B8A8_UNORM);
+	bool CreateDepthStencil(GSTexture2D& t, int w, int h, DWORD format = DXGI_FORMAT_D32_FLOAT_S8X24_UINT);
+	bool CreateTexture(GSTexture2D& t, int w, int h, DWORD format = DXGI_FORMAT_R8G8B8A8_UNORM);
+	bool CreateOffscreen(GSTexture2D& t, int w, int h, DWORD format = DXGI_FORMAT_R8G8B8A8_UNORM);
 
 	bool SaveCurrent(LPCTSTR fn);
 	bool SaveToFileD32S8X24(ID3D10Texture2D* ds, LPCTSTR fn);

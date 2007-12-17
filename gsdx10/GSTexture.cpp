@@ -37,8 +37,6 @@ bool GSTextureCache::GSTexture::Create()
 {
 	// m_tc->m_renderer->m_perfmon.Put(GSPerfMon::WriteTexture, 1);
 
-	HRESULT hr;
-
 	m_TEX0 = m_tc->m_renderer->m_context->TEX0;
 
 	DWORD psm = m_TEX0.PSM;
@@ -81,9 +79,7 @@ bool GSTextureCache::GSTexture::Create()
 	int w = 1 << m_TEX0.TW;
 	int h = 1 << m_TEX0.TH;
 
-	hr = m_tc->m_renderer->m_dev.CreateTexture(m_texture, w, h, format);
-
-	return SUCCEEDED(hr);
+	return m_tc->m_renderer->m_dev.CreateTexture(m_texture, w, h, format);
 }
 
 bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
@@ -91,8 +87,6 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 	rt->Update();
 
 	// m_tc->m_renderer->m_perfmon.Put(GSPerfMon::ConvertRT2T, 1);
-
-	HRESULT hr;
 
 	m_scale = rt->m_scale;
 	m_TEX0 = m_tc->m_renderer->m_context->TEX0;
@@ -113,7 +107,7 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 
 		// ASSERT(rt->m_TEX0.TBW > m_TEX0.TBW); // otherwise scale.x need to be reduced to make the larger texture fit (TODO)
 
-		hr = m_tc->m_renderer->m_dev.CreateRenderTarget(m_texture, rt->m_texture.m_desc.Width, rt->m_texture.m_desc.Height);
+		m_tc->m_renderer->m_dev.CreateRenderTarget(m_texture, rt->m_texture.m_desc.Width, rt->m_texture.m_desc.Height);
 
 		int bw = 64;
 		int bh = m_TEX0.PSM == PSM_PSMCT32 || m_TEX0.PSM == PSM_PSMCT24 ? 32 : 64;
@@ -201,7 +195,7 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 			dt = &tmp;
 		}
 
-		hr = m_tc->m_renderer->m_dev.CreateRenderTarget(*dt, w, h);
+		m_tc->m_renderer->m_dev.CreateRenderTarget(*dt, w, h);
 
 		if(src == dst)
 		{
@@ -227,7 +221,7 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 
 	if(!m_texture)
 	{
-		hr = m_tc->m_renderer->m_dev.CreateTexture(m_texture, rt->m_texture.m_desc.Width, rt->m_texture.m_desc.Height);
+		m_tc->m_renderer->m_dev.CreateTexture(m_texture, rt->m_texture.m_desc.Width, rt->m_texture.m_desc.Height);
 
 		m_tc->m_renderer->m_dev->CopyResource(m_texture, rt->m_texture);
 	}
@@ -246,7 +240,7 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 		break;
 	case PSM_PSMT8H:
 		m_bpp2 = 4;
-		hr = m_tc->m_renderer->m_dev.CreateTexture(m_palette, 256, 1, m_TEX0.CPSM == PSM_PSMCT32 ? DXGI_FORMAT_R8G8B8A8_UNORM : DXGI_FORMAT_R16_UNORM); // 
+		m_tc->m_renderer->m_dev.CreateTexture(m_palette, 256, 1, m_TEX0.CPSM == PSM_PSMCT32 ? DXGI_FORMAT_R8G8B8A8_UNORM : DXGI_FORMAT_R16_UNORM); // 
 		break;
 	case PSM_PSMT4HL:
 	case PSM_PSMT4HH:

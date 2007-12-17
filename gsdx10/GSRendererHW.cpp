@@ -224,7 +224,7 @@ void GSRendererHW::Draw()
 	{
 		return;
 	}
-/*
+
 TRACE(_T("[%d] FlushPrim f %05x (%d) z %05x (%d %d %d %d) t %05x %05x (%d)\n"), 
 	  (int)m_perfmon.GetFrame(), 
 	  (int)m_context->FRAME.Block(), 
@@ -237,7 +237,7 @@ TRACE(_T("[%d] FlushPrim f %05x (%d) z %05x (%d %d %d %d) t %05x %05x (%d)\n"),
 	  PRIM->TME ? (int)m_context->TEX0.TBP0 : 0xfffff, 
 	  PRIM->TME && m_context->TEX0.PSM > PSM_PSMCT16S ? (int)m_context->TEX0.CBP : 0xfffff, 
 	  PRIM->TME ? (int)m_context->TEX0.PSM : 0xff);
-*/
+
 
 if(s_n >= 600)
 {
@@ -654,14 +654,14 @@ if(s_dump)
 
 void GSRendererHW::InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r)
 {
-	TRACE(_T("[%d] InvalidateVideoMem %d,%d - %d,%d %05x\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.DBP);
+	TRACE(_T("[%d] InvalidateVideoMem %d,%d - %d,%d %05x (%d)\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.DBP, (int)BITBLTBUF.DPSM);
 
 	m_tc.InvalidateVideoMem(BITBLTBUF, &r);
 }
 
 void GSRendererHW::InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r)
 {
-	TRACE(_T("[%d] InvalidateLocalMem %d,%d - %d,%d %05x\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.SBP);
+	TRACE(_T("[%d] InvalidateLocalMem %d,%d - %d,%d %05x (%d)\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.SBP, (int)BITBLTBUF.SPSM);
 
 	m_tc.InvalidateLocalMem(BITBLTBUF, &r);
 }

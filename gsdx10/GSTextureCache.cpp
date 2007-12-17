@@ -517,12 +517,23 @@ void GSTextureCache::InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, const 
 
 	while(pos)
 	{
+		POSITION cur = pos;
+
 		GSRenderTarget* rt = m_rt.GetNext(pos);
 
 		if(HasSharedBits(BITBLTBUF.SBP, BITBLTBUF.SPSM, rt->m_TEX0.TBP0, rt->m_TEX0.PSM))
 		{
-			rt->Read(r);
-			return;
+			if(HasCompatibleBits(BITBLTBUF.SPSM, rt->m_TEX0.PSM))
+			{
+				rt->Read(r);
+				return;
+			}
+			else
+			{
+				m_rt.RemoveAt(cur);
+				delete rt;
+				continue;
+			}
 		}
 	}
 

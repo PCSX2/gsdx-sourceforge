@@ -68,9 +68,10 @@ bool GSTextureFX::CreateMskFix(GSTexture2D& t, DWORD size, DWORD msk, DWORD fix)
 
 	if(!m_mskfix.Lookup(hash, t))
 	{
-		HRESULT hr = m_dev->CreateTexture(t, size, 1, D3DFMT_R32F);
-
-		if(FAILED(hr)) return false;
+		if(!m_dev->CreateTexture(t, size, 1, D3DFMT_R32F))
+		{
+			return false;
+		}
 
 		D3DLOCKED_RECT lr;
 		

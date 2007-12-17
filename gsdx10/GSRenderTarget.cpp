@@ -31,11 +31,10 @@ GSTextureCache::GSRenderTarget::GSRenderTarget(GSTextureCache* tc)
 
 bool GSTextureCache::GSRenderTarget::Create(int w, int h)
 {
-	HRESULT hr;
-
-	hr = m_tc->m_renderer->m_dev.CreateRenderTarget(m_texture, w, h);
-	
-	if(FAILED(hr)) return false;
+	if(!m_tc->m_renderer->m_dev.CreateRenderTarget(m_texture, w, h))
+	{
+		return false;
+	}
 
 	float color[4] = {0, 0, 0, 0};
 
@@ -55,8 +54,6 @@ void GSTextureCache::GSRenderTarget::Update()
 	m_dirty.RemoveAll();
 
 	if(r.IsRectEmpty()) return;
-
-	HRESULT hr;
 
 	if(r.right > 1024) {ASSERT(0); r.right = 1024;}
 	if(r.bottom > 1024) {ASSERT(0); r.bottom = 1024;}
@@ -84,19 +81,18 @@ void GSTextureCache::GSRenderTarget::Update()
 
 	GSTexture2D texture;
 
-	hr = m_tc->m_renderer->m_dev.CreateTexture(texture, w, h);
+	if(m_tc->m_renderer->m_dev.CreateTexture(texture, w, h)) 
+	{
+		D3D10_BOX box = {0, 0, 0, w, h, 1};
 
-	if(FAILED(hr)) return;
+		m_tc->m_renderer->m_dev->UpdateSubresource(texture, 0, &box, buff, pitch, 0);
 
-	D3D10_BOX box = {0, 0, 0, w, h, 1};
+		GSVector4 dr(m_scale.x * r.left, m_scale.y * r.top, m_scale.x * r.right, m_scale.y * r.bottom);
 
-	m_tc->m_renderer->m_dev->UpdateSubresource(texture, 0, &box, buff, pitch, 0);
+		m_tc->m_renderer->m_dev.StretchRect(texture, m_texture, dr);
 
-	GSVector4 dr(m_scale.x * r.left, m_scale.y * r.top, m_scale.x * r.right, m_scale.y * r.bottom);
-
-	m_tc->m_renderer->m_dev.StretchRect(texture, m_texture, dr);
-
-	m_tc->m_renderer->m_dev.Recycle(texture);
+		m_tc->m_renderer->m_dev.Recycle(texture);
+	}
 }
 
 void GSTextureCache::GSRenderTarget::Read(CRect r)
@@ -138,7 +134,7 @@ void GSTextureCache::GSRenderTarget::Read(CRect r)
 
 	GSTexture2D offscreen;
 
-	hr = m_tc->m_renderer->m_dev.CreateOffscreenPlainSurface(offscreen, r.Width(), r.Height(), format);
+	m_tc->m_renderer->m_dev.CreateOffscreen(offscreen, r.Width(), r.Height(), format);
 
 	m_tc->m_renderer->m_dev->CopyResource(offscreen, rt);
 
