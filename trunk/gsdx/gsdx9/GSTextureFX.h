@@ -136,11 +136,13 @@ public:
 
 private:
 	GSDeviceDX9* m_dev;
-	CComPtr<IDirect3DVertexDeclaration9> m_vd;
+	CComPtr<IDirect3DVertexDeclaration9> m_il;
 	CComPtr<IDirect3DVertexShader9> m_vs;
-	CComPtr<ID3DXConstantTable> m_vs_ct;
 	D3DXHANDLE m_vs_params;
 	CSimpleMap<DWORD, CComPtr<IDirect3DPixelShader9> > m_ps;
+	CSimpleMap<DWORD, Direct3DSamplerState9* > m_ps_ss;
+	CSimpleMap<DWORD, Direct3DDepthStencilState9* > m_om_dss;	
+	CSimpleMap<DWORD, Direct3DBlendState9* > m_om_bs;	
 	CAtlMap<DWORD, GSTextureDX9> m_mskfix;
 
 public:
@@ -149,10 +151,11 @@ public:
 	bool Create(GSDeviceDX9* dev);
 	bool CreateMskFix(GSTextureDX9& t, DWORD size, DWORD msk, DWORD fix);
 	
+	bool SetupIA(); // const GSVertexHW* vertices, UINT count, D3D10_PRIMITIVE_TOPOLOGY prim
 	bool SetupVS(const VSConstantBuffer* cb);
 	bool SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel, IDirect3DTexture9* tex, IDirect3DTexture9* pal);
-	void UpdatePS(PSSelector sel, PSSamplerSelector ssel);
-	void SetupRS(const RECT& scissor);
+	void UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel);
+	void SetupRS(int w, int h, const RECT& scissor);
 	void SetupOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, BYTE bf, IDirect3DSurface9* rt, IDirect3DSurface9* ds);
 	void UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, BYTE bf);
 };

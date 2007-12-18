@@ -41,7 +41,7 @@ bool GSMergeFX::Create(GSDeviceDX10* dev)
 		{"TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D10_INPUT_PER_VERTEX_DATA, 0},
 	};
 
-	hr = m_dev->CompileShader(&m_vs, IDR_MERGE_FX, "vs_main", il, countof(il), &m_il);
+	hr = m_dev->CompileShader(IDR_MERGE_FX, "vs_main", NULL, &m_vs, il, countof(il), &m_il);
 
 	if(FAILED(hr)) return false;
 
@@ -80,9 +80,9 @@ void GSMergeFX::Draw(GSTextureDX10* st, GSVector4* sr, GSTextureDX10& dt, PSSele
 
 	// om
 
+	m_dev->OMSetDepthStencilState(m_dev->m_convert.dss, 0);
+	m_dev->OMSetBlendState(m_dev->m_convert.bs, 0);
 	m_dev->OMSetRenderTargets(dt, NULL);
-
-	m_dev->OMSet(m_dev->m_convert.dss, 0, m_dev->m_convert.bs, 0);
 
 	// ia
 
@@ -94,23 +94,19 @@ void GSMergeFX::Draw(GSTextureDX10* st, GSVector4* sr, GSTextureDX10& dt, PSSele
 		{GSVector4(+1, -1), GSVector2(sr[0].z, sr[0].w), GSVector2(sr[1].z, sr[1].w)},
 	};
 
-	m_dev->IASet(m_vb, 4, vertices, m_il, D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	m_dev->IASetVertexBuffer(m_vb, 4, vertices);
+	m_dev->IASetInputLayout(m_il);
+	m_dev->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
 	// vs
 
-	m_dev->VSSet(m_vs, NULL);
+	m_dev->VSSetShader(m_vs, NULL);
 
 	// gs
 
-	m_dev->GSSet(NULL);
+	m_dev->GSSetShader(NULL);
 
 	// ps
-
-	(*m_dev)->UpdateSubresource(m_ps_cb, 0, NULL, &cb, 0, 0);
-	
-	(*m_dev)->PSSetConstantBuffers(0, 1, &m_ps_cb.p);
-
-	m_dev->PSSetShaderResources(st[0], st[1]);
 
 	CComPtr<ID3D10PixelShader> ps;
 
@@ -132,14 +128,18 @@ void GSMergeFX::Draw(GSTextureDX10* st, GSVector4* sr, GSTextureDX10& dt, PSSele
 			{NULL, NULL},
 		};
 
-		hr = m_dev->CompileShader(&ps, IDR_MERGE_FX, "ps_main", macro);
+		hr = m_dev->CompileShader(IDR_MERGE_FX, "ps_main", macro, &ps);
 
 		ASSERT(SUCCEEDED(hr));
 
 		m_ps.Add(sel, ps);
 	}
 
-	m_dev->PSSet(ps, m_dev->m_ss_linear);
+	(*m_dev)->UpdateSubresource(m_ps_cb, 0, NULL, &cb, 0, 0);
+
+	m_dev->PSSetShader(ps, m_ps_cb);
+	m_dev->PSSetSamplerState(m_dev->m_convert.ln);
+	m_dev->PSSetShaderResources(st[0], st[1]);
 
 	// rs
 

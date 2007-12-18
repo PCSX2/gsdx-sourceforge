@@ -39,32 +39,36 @@ void GSMergeFX::Draw(GSTextureDX9* st, GSVector4* sr, GSTextureDX9& dt, PSSelect
 {
 	HRESULT hr;
 
-	hr = (*m_dev)->SetRenderTarget(0, dt);
-	hr = (*m_dev)->SetDepthStencilSurface(NULL);
+	m_dev->BeginScene();
 
-	hr = (*m_dev)->SetTexture(0, st[0]);
-	hr = (*m_dev)->SetTexture(1, st[1]);
+	// om
 
-    hr = (*m_dev)->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
-    hr = (*m_dev)->SetRenderState(D3DRS_LIGHTING, FALSE);
-	hr = (*m_dev)->SetRenderState(D3DRS_ZENABLE, FALSE);
-	hr = (*m_dev)->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
-	hr = (*m_dev)->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE); 
-	hr = (*m_dev)->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
-	hr = (*m_dev)->SetRenderState(D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_RGBA);
+	m_dev->OMSetDepthStencilState(&m_dev->m_convert.dss, 0);
+	m_dev->OMSetBlendState(&m_dev->m_convert.bs, 0);
+	m_dev->OMSetRenderTargets(dt, NULL);
+/*
+	// ia
 
-	hr = (*m_dev)->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
-	hr = (*m_dev)->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
-	hr = (*m_dev)->SetSamplerState(1, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
-	hr = (*m_dev)->SetSamplerState(1, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
+	GSVertexPT2 vertices[] =
+	{
+		{GSVector4(-1, +1), GSVector2(sr[0].x, sr[0].y), GSVector2(sr[1].x, sr[1].y)},
+		{GSVector4(+1, +1), GSVector2(sr[0].z, sr[0].y), GSVector2(sr[1].z, sr[1].y)},
+		{GSVector4(-1, -1), GSVector2(sr[0].x, sr[0].w), GSVector2(sr[1].x, sr[1].w)},
+		{GSVector4(+1, -1), GSVector2(sr[0].z, sr[0].w), GSVector2(sr[1].z, sr[1].w)},
+	};
 
-	hr = (*m_dev)->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
-	hr = (*m_dev)->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
-	hr = (*m_dev)->SetSamplerState(1, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
-	hr = (*m_dev)->SetSamplerState(1, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+	m_dev->IASetVertexBuffer(m_vb, 4, vertices);
+	m_dev->IASetInputLayout(m_il);
+	m_dev->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
-	hr = (*m_dev)->SetVertexShader(NULL);
-	
+	// vs
+
+	m_dev->VSSetShader(m_vs, NULL);
+*/
+	m_dev->VSSetShader(NULL, NULL, 0); // TODO
+
+	// ps
+
 	CComPtr<IDirect3DPixelShader9> ps;
 
 	if(!(ps = m_ps.Lookup(sel)))
@@ -91,13 +95,19 @@ void GSMergeFX::Draw(GSTextureDX9* st, GSVector4* sr, GSTextureDX9& dt, PSSelect
 
 		m_ps.Add(sel, ps);
 	}
-	
-	(*m_dev)->SetPixelShader(ps);
 
-	(*m_dev)->SetPixelShaderConstantF(0, (const float*)&cb, sizeof(cb) / sizeof(GSVector4));
+	m_dev->PSSetShader(ps, (const float*)&cb, sizeof(cb) / sizeof(GSVector4));
+	m_dev->PSSetSamplerState(&m_dev->m_convert.ln);
+	m_dev->PSSetShaderResources(st[0], st[1]);
 
-	int w = dt.m_desc.Width;
-	int h = dt.m_desc.Height;
+	// rs
+
+	m_dev->RSSet(dt.m_desc.Width, dt.m_desc.Height);
+
+	//
+
+	float w = (float)dt.m_desc.Width;
+	float h = (float)dt.m_desc.Height;
 
 	GSVertexPT2 vertices[] =
 	{
@@ -113,8 +123,11 @@ void GSMergeFX::Draw(GSTextureDX9* st, GSVector4* sr, GSTextureDX9& dt, PSSelect
 		vertices[i].p.y -= 0.5f;
 	}
 
-	(*m_dev)->BeginScene();
 	(*m_dev)->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX2);
+
 	(*m_dev)->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 2, vertices, sizeof(vertices[0]));
-	(*m_dev)->EndScene();
+
+	//
+
+	m_dev->EndScene();
 }

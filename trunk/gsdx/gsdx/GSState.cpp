@@ -1372,13 +1372,6 @@ void GSState::SetFrameSkip(int frameskip)
 	}
 }
 
-bool GSState::MakeSnapshot(LPCTSTR path)
-{
-	CString fn;
-	fn.Format(_T("%s_%s.bmp"), path, CTime::GetCurrentTime().Format(_T("%Y%m%d%H%M%S")));
-	return false; // TODO: m_dev.SaveCurrent(fn);
-}
-
 bool GSState::DetectBadFrame(int& skip)
 {
 	DWORD FBP = m_context->FRAME.Block();

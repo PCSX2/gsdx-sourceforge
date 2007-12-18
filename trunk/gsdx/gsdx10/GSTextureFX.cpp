@@ -48,7 +48,7 @@ bool GSTextureFX::Create(GSDeviceDX10* dev)
 		{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D10_INPUT_PER_VERTEX_DATA, 0},
 	};
 
-	hr = m_dev->CompileShader(&m_vs, IDR_TFX_FX, "vs_main", il, countof(il), &m_il);
+	hr = m_dev->CompileShader(IDR_TFX_FX, "vs_main", NULL, &m_vs, il, countof(il), &m_il);
 
 	if(FAILED(hr)) return false;
 
@@ -116,7 +116,9 @@ bool GSTextureFX::SetupIA(const GSVertexHW* vertices, UINT count, D3D10_PRIMITIV
 		if(FAILED(hr)) return false;
 	}
 
-	m_dev->IASet(m_vb[i], count, vertices, m_il, prim);
+	m_dev->IASetVertexBuffer(m_vb[i], count, vertices);
+	m_dev->IASetInputLayout(m_il);
+	m_dev->IASetPrimitiveTopology(prim);
 
 	return true;
 }
@@ -130,7 +132,7 @@ bool GSTextureFX::SetupVS(const VSConstantBuffer* cb)
 		memcpy(&m_vs_cb_cache, cb, sizeof(*cb));
 	}
 
-	m_dev->VSSet(m_vs, m_vs_cb);
+	m_dev->VSSetShader(m_vs, m_vs_cb);
 
 	return true;
 }
@@ -157,36 +159,27 @@ bool GSTextureFX::SetupGS(GSSelector sel)
 				{NULL, NULL},
 			};
 
-			hr = m_dev->CompileShader(&gs, IDR_TFX_FX, "gs_main", macro);
+			hr = m_dev->CompileShader(IDR_TFX_FX, "gs_main", macro, &gs);
 
 			m_gs.Add(sel, gs);
 		}
 	}
 
-	m_dev->GSSet(gs);
+	m_dev->GSSetShader(gs);
 
 	return true;
 }
 
-bool GSTextureFX::SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel, ID3D10ShaderResourceView* srv, ID3D10ShaderResourceView* pal)
+bool GSTextureFX::SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel, ID3D10ShaderResourceView* tex, ID3D10ShaderResourceView* pal)
 {
-	if(memcmp(&m_ps_cb_cache, cb, sizeof(*cb)))
-	{
-		(*m_dev)->UpdateSubresource(m_ps_cb, 0, NULL, cb, 0, 0);
+	m_dev->PSSetShaderResources(tex, pal);
 
-		memcpy(&m_ps_cb_cache, cb, sizeof(*cb));
-	}
-
-	(*m_dev)->PSSetConstantBuffers(0, 1, &m_ps_cb.p);
-
-	m_dev->PSSetShaderResources(srv, pal);
-
-	UpdatePS(sel, ssel);
+	UpdatePS(sel, cb, ssel);
 
 	return true;
 }
 
-void GSTextureFX::UpdatePS(PSSelector sel, PSSamplerSelector ssel)
+void GSTextureFX::UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel)
 {
 	HRESULT hr;
 
@@ -228,12 +221,19 @@ void GSTextureFX::UpdatePS(PSSelector sel, PSSamplerSelector ssel)
 			{NULL, NULL},
 		};
 
-		hr = m_dev->CompileShader(&ps, IDR_TFX_FX, "ps_main", macro);
-
-		ASSERT(SUCCEEDED(hr));
+		hr = m_dev->CompileShader(IDR_TFX_FX, "ps_main", macro, &ps);
 
 		m_ps.Add(sel, ps);
 	}
+
+	if(memcmp(&m_ps_cb_cache, cb, sizeof(*cb)))
+	{
+		(*m_dev)->UpdateSubresource(m_ps_cb, 0, NULL, cb, 0, 0);
+
+		memcpy(&m_ps_cb_cache, cb, sizeof(*cb));
+	}
+
+	m_dev->PSSetShader(ps, m_ps_cb);
 
 	CComPtr<ID3D10SamplerState> ss;
 
@@ -247,15 +247,15 @@ void GSTextureFX::UpdatePS(PSSelector sel, PSSamplerSelector ssel)
 
 			memset(&sd, 0, sizeof(sd));
 
-			sd.AddressU = ssel.tau ? D3D10_TEXTURE_ADDRESS_WRAP : D3D10_TEXTURE_ADDRESS_CLAMP;
-			sd.AddressV = ssel.tav ? D3D10_TEXTURE_ADDRESS_WRAP : D3D10_TEXTURE_ADDRESS_CLAMP;
-			sd.AddressW = D3D10_TEXTURE_ADDRESS_CLAMP;
-
 			sd.Filter = D3D10_ENCODE_BASIC_FILTER(
 				(ssel.min ? D3D10_FILTER_TYPE_LINEAR : D3D10_FILTER_TYPE_POINT),
 				(ssel.mag ? D3D10_FILTER_TYPE_LINEAR : D3D10_FILTER_TYPE_POINT),
 				D3D10_FILTER_TYPE_POINT,
 				false);
+
+			sd.AddressU = ssel.tau ? D3D10_TEXTURE_ADDRESS_WRAP : D3D10_TEXTURE_ADDRESS_CLAMP;
+			sd.AddressV = ssel.tav ? D3D10_TEXTURE_ADDRESS_WRAP : D3D10_TEXTURE_ADDRESS_CLAMP;
+			sd.AddressW = D3D10_TEXTURE_ADDRESS_CLAMP;
 
 			sd.MaxLOD = FLT_MAX;
 			sd.MaxAnisotropy = 16; 
@@ -267,7 +267,7 @@ void GSTextureFX::UpdatePS(PSSelector sel, PSSamplerSelector ssel)
 		}
 	}
 
-	m_dev->PSSet(ps, ss);
+	m_dev->PSSetSamplerState(ss);
 }
 
 void GSTextureFX::SetupRS(UINT w, UINT h, const RECT& scissor)
@@ -328,6 +328,8 @@ void GSTextureFX::UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, f
 
 		m_om_dss.Add(dssel, dss);
 	}
+
+	m_dev->OMSetDepthStencilState(dss, 1);
 
 	CComPtr<ID3D10BlendState> bs;
 
@@ -469,5 +471,5 @@ void GSTextureFX::UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, f
 		m_om_bs.Add(bsel, bs);
 	}
 
-	m_dev->OMSet(dss, 1, bs, bf);
+	m_dev->OMSetBlendState(bs, bf);
 }

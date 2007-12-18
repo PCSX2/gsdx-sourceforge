@@ -34,7 +34,6 @@ protected:
 	int m_width;
 	int m_height;
 	int m_skip;
-	bool m_fba;
 
 	GSTextureCache m_tc;
 	GSTextureFX m_tfx;
@@ -47,6 +46,19 @@ protected:
 	void InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r);
 	void MinMaxUV(int w, int h, CRect& r);
 
+	struct
+	{
+		Direct3DDepthStencilState9 dss;
+		Direct3DBlendState9 bs;
+	} m_date;
+
+	struct
+	{
+		bool enabled;
+		Direct3DDepthStencilState9 dss;
+		Direct3DBlendState9 bs;
+	} m_fba;
+
 	void SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache::GSDepthStencil* ds);
 	void UpdateFBA(GSTextureCache::GSRenderTarget* rt);
 	bool OverrideInput(int& prim, GSTextureCache::GSTexture* tex);	
@@ -55,4 +67,5 @@ public:
 	GSRendererHW(BYTE* base, bool mt, void (*irq)(), int nloophack);
 
 	bool Create(LPCTSTR title);
+	void ResetDevice() {m_tc.RemoveAll();}
 };

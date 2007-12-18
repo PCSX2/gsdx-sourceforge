@@ -37,9 +37,9 @@ public:
 	operator bool();
 
 	int GetType() const;
-	DWORD GetWidth() const;
-	DWORD GetHeight() const;
-	DWORD GetFormat() const;
+	int GetWidth() const;
+	int GetHeight() const;
+	int GetFormat() const;
 
 	IDirect3DTexture9* operator->();
 

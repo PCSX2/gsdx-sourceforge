@@ -72,6 +72,8 @@ protected:
 public:
 	GSRendererSW(BYTE* base, bool mt, void (*irq)(), int nloophack);
 	virtual ~GSRendererSW();
+
+	void ResetDevice() {m_texture[0] = m_texture[1] = GSTextureDX9();}
 };
 
 class GSRendererSWFP : public GSRendererSW<GSVertexSWFP>

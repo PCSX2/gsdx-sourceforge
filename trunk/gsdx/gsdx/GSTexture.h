@@ -31,7 +31,7 @@ public:
 
 	virtual operator bool() = 0;
 	virtual int GetType() const = 0;
-	virtual DWORD GetWidth() const = 0;
-	virtual DWORD GetHeight() const = 0;
-	virtual DWORD GetFormat() const = 0;
+	virtual int GetWidth() const = 0;
+	virtual int GetHeight() const = 0;
+	virtual int GetFormat() const = 0;
 };

@@ -138,7 +138,56 @@ void GSRenderer::VSync(int field)
 
 	Flip();
 
-	Present();
+	m_perfmon.Put(GSPerfMon::Frame);
+
+	// osd
+
+	static UINT64 s_frame = 0;
+	static CString s_stats;
+
+	if(m_perfmon.GetFrame() - s_frame >= 30)
+	{
+		m_perfmon.Update();
+
+		s_frame = m_perfmon.GetFrame();
+
+		double fps = 1000.0f / m_perfmon.Get(GSPerfMon::Frame);
+		
+		s_stats.Format(
+			_T("%I64d | %d x %d | %.2f fps (%d%%) | %s - %s | %s | %d/%d | %d%% CPU | %.2f | %.2f/%.2f | %.2f"), 
+			m_perfmon.GetFrame(), GetDisplaySize().cx, GetDisplaySize().cy, fps, (int)(100.0 * fps / GetFPS()),
+			SMODE2->INT ? (CString(_T("Interlaced ")) + (SMODE2->FFMD ? _T("(frame)") : _T("(field)"))) : _T("Progressive"),
+			g_interlace[m_interlace].name,
+			g_aspectratio[m_aspectratio].name,
+			(int)m_perfmon.Get(GSPerfMon::Prim),
+			(int)m_perfmon.Get(GSPerfMon::Draw),
+			m_perfmon.CPU(),
+			m_perfmon.Get(GSPerfMon::Swizzle) / 1024,
+			m_perfmon.Get(GSPerfMon::Unswizzle) / 1024,
+			m_perfmon.Get(GSPerfMon::Unswizzle2) / 1024,
+			m_perfmon.Get(GSPerfMon::Texture) / 1024
+			);
+
+		if(m_osd) // && m_d3dpp.Windowed
+		{
+			SetWindowText(s_stats);
+		}
+
+		if(m_perfmon.Get(GSPerfMon::COLCLAMP)) _tprintf(_T("*** NOT SUPPORTED: color wrap ***\n"));
+		if(m_perfmon.Get(GSPerfMon::PABE)) _tprintf(_T("*** NOT SUPPORTED: per pixel alpha blend ***\n"));
+		if(m_perfmon.Get(GSPerfMon::DATE)) _tprintf(_T("*** PERFORMANCE WARNING: destination alpha test used ***\n"));
+		if(m_perfmon.Get(GSPerfMon::ABE)) _tprintf(_T("*** NOT SUPPORTED: alpha blending mode ***\n"));
+		if(m_perfmon.Get(GSPerfMon::DepthTexture)) _tprintf(_T("*** NOT SUPPORTED: depth texture ***\n"));		
+	}
+
+	//
+
+	static int ar[][2] = {{0, 0}, {4, 3}, {16, 9}};
+
+	int arx = ar[m_aspectratio][0];
+	int ary = ar[m_aspectratio][1];
+
+	m_dev.Present(arx, ary);
 }
 
 // TODO
@@ -187,16 +236,17 @@ void GSRenderer::FinishFlip(FlipInfo src[2])
 
 	Merge(src, m_dev.m_tex_merge);
 
-	ID3D10Texture2D* current = m_dev.m_tex_merge;
+	GSTextureDX10 current = m_dev.m_tex_merge;
 
 	if(SMODE2->INT && m_interlace > 0)
 	{
 		int field = 1 - ((m_interlace - 1) & 1);
 		int mode = (m_interlace - 1) >> 1;
 
-		current = m_dev.Interlace(m_dev.m_tex_merge, ds, m_field ^ field, mode, src[1].s.y);
-
-		if(!current) return;
+		if(!m_dev.Interlace(m_dev.m_tex_merge, current, ds, m_field ^ field, mode, src[1].s.y))
+		{
+			return;
+		}
 	}
 
 	m_dev.m_tex_current = current;
@@ -241,140 +291,4 @@ void GSRenderer::Merge(FlipInfo src[2], GSTextureDX10& dst)
 	cb.BGColor.w = (float)PMODE->ALP / 255;
 
 	m_merge.Draw(st, sr, dst, sel, cb);
-}
-
-void GSRenderer::Present()
-{
-	m_perfmon.Put(GSPerfMon::Frame);
-
-	HRESULT hr;
-
-	CRect cr;
-
-	GetClientRect(&cr);
-
-	D3D10_TEXTURE2D_DESC desc;
-
-	memset(&desc, 0, sizeof(desc));
-
-	m_dev.m_backbuffer->GetDesc(&desc);
-
-	if(desc.Width != cr.Width() || desc.Height != cr.Height())
-	{
-		// TODO: ResetDevice();
-
-		m_dev.Reset(cr.Width(), cr.Height(), true);		
-	}
-
-	CComPtr<ID3D10RenderTargetView> rtv;
-
-	hr = m_dev->CreateRenderTargetView(m_dev.m_backbuffer, NULL, &rtv.p);
-
-	float color[4] = {0, 0, 0, 0};
-
-	m_dev->ClearRenderTargetView(rtv, color);
-
-	if(m_dev.m_tex_current)
-	{
-		static int ar[][2] = {{0, 0}, {4, 3}, {16, 9}};
-
-		int arx = ar[m_aspectratio][0];
-		int ary = ar[m_aspectratio][1];
-
-		CRect r = cr;
-
-		if(arx > 0 && ary > 0)
-		{
-			if(r.Width() * ary > r.Height() * arx)
-			{
-				int w = r.Height() * arx / ary;
-				r.left = r.CenterPoint().x - w / 2;
-				if(r.left & 1) r.left++;
-				r.right = r.left + w;
-			}
-			else
-			{
-				int h = r.Width() * ary / arx;
-				r.top = r.CenterPoint().y - h / 2;
-				if(r.top & 1) r.top++;
-				r.bottom = r.top + h;
-			}
-		}
-
-		r &= cr;
-
-		GSTextureDX10 st(m_dev.m_tex_current);
-		GSTextureDX10 dt(m_dev.m_backbuffer);
-		GSVector4 dr(r.left, r.top, r.right, r.bottom);
-
-		m_dev.StretchRect(st, dt, dr);
-	}
-
-	// osd
-
-	static UINT64 s_frame = 0;
-	static CString s_stats;
-
-	if(m_perfmon.GetFrame() - s_frame >= 30)
-	{
-		m_perfmon.Update();
-
-		s_frame = m_perfmon.GetFrame();
-
-		double fps = 1000.0f / m_perfmon.Get(GSPerfMon::Frame);
-		
-		s_stats.Format(
-			_T("%I64d | %d x %d | %.2f fps (%d%%) | %s - %s | %s | %d/%d | %d%% CPU | %.2f | %.2f/%.2f | %.2f"), 
-			m_perfmon.GetFrame(), GetDisplaySize().cx, GetDisplaySize().cy, fps, (int)(100.0 * fps / GetFPS()),
-			SMODE2->INT ? (CString(_T("Interlaced ")) + (SMODE2->FFMD ? _T("(frame)") : _T("(field)"))) : _T("Progressive"),
-			g_interlace[m_interlace].name,
-			g_aspectratio[m_aspectratio].name,
-			(int)m_perfmon.Get(GSPerfMon::Prim),
-			(int)m_perfmon.Get(GSPerfMon::Draw),
-			m_perfmon.CPU(),
-			m_perfmon.Get(GSPerfMon::Swizzle) / 1024,
-			m_perfmon.Get(GSPerfMon::Unswizzle) / 1024,
-			m_perfmon.Get(GSPerfMon::Unswizzle2) / 1024,
-			m_perfmon.Get(GSPerfMon::Texture) / 1024
-			);
-
-		if(m_osd) // && m_d3dpp.Windowed
-		{
-			SetWindowText(s_stats);
-		}
-
-		if(m_perfmon.Get(GSPerfMon::COLCLAMP)) _tprintf(_T("*** NOT SUPPORTED: color wrap ***\n"));
-		if(m_perfmon.Get(GSPerfMon::PABE)) _tprintf(_T("*** NOT SUPPORTED: per pixel alpha blend ***\n"));
-		if(m_perfmon.Get(GSPerfMon::DATE)) _tprintf(_T("*** PERFORMANCE WARNING: destination alpha test used ***\n"));
-		if(m_perfmon.Get(GSPerfMon::ABE)) _tprintf(_T("*** NOT SUPPORTED: alpha blending mode ***\n"));
-		if(m_perfmon.Get(GSPerfMon::DepthTexture)) _tprintf(_T("*** NOT SUPPORTED: depth texture ***\n"));		
-	}
-
-/*
-	if(m_osd && !m_d3dpp.Windowed)
-	{
-		hr = m_dev->BeginScene();
-
-		hr = m_dev->SetRenderTarget(0, pBackBuffer);
-		hr = m_dev->SetDepthStencilSurface(NULL);
-
-		CRect r;
-		
-		GetClientRect(r);
-
-		D3DCOLOR c = D3DCOLOR_ARGB(255, 0, 255, 0);
-
-		CString str = s_stats;
-
-		str += _T("\n\nF5: interlace mode\nF6: aspect ratio\nF7: OSD");
-
-		if(m_pD3DXFont->DrawText(NULL, str, -1, &r, DT_CALCRECT|DT_LEFT|DT_WORDBREAK, c))
-		{
-			m_pD3DXFont->DrawText(NULL, str, -1, &r, DT_LEFT|DT_WORDBREAK, c);
-		}
-
-		hr = m_dev->EndScene();
-	}
-*/
-	m_dev.Present();
 }
