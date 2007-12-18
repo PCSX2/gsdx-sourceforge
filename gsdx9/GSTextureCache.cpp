@@ -601,7 +601,7 @@ template<class T> void GSTextureCache::RecycleByAge(CAtlList<T*>& l, int maxage)
 
 		T* t = l.GetNext(pos);
 
-		if(++t->m_age >= maxage)
+		if(++t->m_age > maxage)
 		{
 			l.RemoveAt(cur);
 
