@@ -289,16 +289,16 @@ void GSTextureFX::UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, B
 		(*m_dev)->SetRenderState(D3DRS_STENCILENABLE, FALSE);
 	}
 
-	static const DWORD ztst[] = 
-	{
-		D3DCMP_NEVER, 
-		D3DCMP_ALWAYS, 
-		D3DCMP_GREATEREQUAL, 
-		D3DCMP_GREATER
-	};
-
 	if(!(dssel.zte && dssel.ztst == 1 && !dssel.zwe))
 	{
+		static const DWORD ztst[] = 
+		{
+			D3DCMP_NEVER, 
+			D3DCMP_ALWAYS, 
+			D3DCMP_GREATEREQUAL, 
+			D3DCMP_GREATER
+		};
+
 		(*m_dev)->SetRenderState(D3DRS_ZENABLE, dssel.zte);
 		(*m_dev)->SetRenderState(D3DRS_ZWRITEENABLE, dssel.zwe);
 		(*m_dev)->SetRenderState(D3DRS_ZFUNC, ztst[dssel.ztst]);
