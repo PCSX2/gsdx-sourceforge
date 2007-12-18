@@ -35,7 +35,7 @@ GSRendererHW::GSRendererHW(BYTE* base, bool mt, void (*irq)(), int nloophack)
 	, m_height(1024)
 	, m_skip(0)
 {
-	m_fba = !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("fba"), TRUE);
+	m_fba.enabled = !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("fba"), TRUE);
 
 	if(!AfxGetApp()->GetProfileInt(_T("Settings"), _T("nativeres"), FALSE))
 	{
@@ -51,6 +51,36 @@ bool GSRendererHW::Create(LPCTSTR title)
 
 	if(!m_tfx.Create(&m_dev))
 		return false;
+
+	//
+
+	memset(&m_date.dss, 0, sizeof(m_date.dss));
+
+	m_date.dss.StencilEnable = true;
+	m_date.dss.StencilReadMask = 1;
+	m_date.dss.StencilWriteMask = 1;
+	m_date.dss.StencilFunc = D3DCMP_ALWAYS;
+	m_date.dss.StencilPassOp = D3DSTENCILOP_REPLACE;
+
+	memset(&m_date.bs, 0, sizeof(m_date.bs));
+
+	//
+
+	memset(&m_fba.dss, 0, sizeof(m_fba.dss));
+
+	m_fba.dss.StencilEnable = true;
+	m_fba.dss.StencilReadMask = 2;
+	m_fba.dss.StencilWriteMask = 2;
+	m_fba.dss.StencilFunc = D3DCMP_EQUAL;
+	m_fba.dss.StencilPassOp = D3DSTENCILOP_ZERO;
+	m_fba.dss.StencilFailOp = D3DSTENCILOP_ZERO;
+	m_fba.dss.StencilDepthFailOp = D3DSTENCILOP_ZERO;
+
+	memset(&m_fba.bs, 0, sizeof(m_fba.bs));
+
+	m_fba.bs.RenderTargetWriteMask = D3DCOLORWRITEENABLE_ALPHA;
+
+	//
 
 	return true;
 }
@@ -318,9 +348,9 @@ if(s_dump)
 
 	HRESULT hr;
 
-	hr = m_dev->BeginScene();
+	m_dev.BeginScene();
 
-	hr = m_dev->SetRenderState(D3DRS_SHADEMODE, PRIM->IIP ? D3DSHADE_GOURAUD : D3DSHADE_FLAT);
+	hr = m_dev->SetRenderState(D3DRS_SHADEMODE, PRIM->IIP ? D3DSHADE_GOURAUD : D3DSHADE_FLAT); // TODO
 
 	// om
 
@@ -330,7 +360,7 @@ if(s_dump)
 	om_dssel.ztst = m_context->TEST.ZTST;
 	om_dssel.zwe = !m_context->ZBUF.ZMSK;
 	om_dssel.date = m_context->TEST.DATE;
-	om_dssel.fba = m_fba ? m_context->FBA.FBA : 0;
+	om_dssel.fba = m_fba.enabled ? m_context->FBA.FBA : 0;
 
 	GSTextureFX::OMBlendSelector om_bsel;
 
@@ -347,6 +377,10 @@ if(s_dump)
 	BYTE bf = m_context->ALPHA.FIX;
 
 	m_tfx.SetupOM(om_dssel, om_bsel, bf, rt->m_texture, ds->m_texture);
+
+	// ia
+
+	m_tfx.SetupIA();
 
 	// vs
 
@@ -400,8 +434,6 @@ if(s_dump)
 	ps_cb.TA1 = (float)(int)m_env.TEXA.TA1 / 255;
 	ps_cb.AREF = (float)(int)m_context->TEST.AREF / 255;
 
-#ifdef PS_ALPHA_TEST
-
 	if(m_context->TEST.ATST == 2 || m_context->TEST.ATST == 5)
 	{
 		ps_cb.AREF -= 0.9f/256;
@@ -410,8 +442,6 @@ if(s_dump)
 	{
 		ps_cb.AREF += 0.9f/256;
 	}
-
-#endif
 
 	if(tex)
 	{
@@ -491,7 +521,7 @@ if(s_dump)
 
 	scissor &= CRect(0, 0, w, h);
 
-	m_tfx.SetupRS(scissor);
+	m_tfx.SetupRS(w, h, scissor);
 
 	// draw
 
@@ -508,7 +538,7 @@ if(s_dump)
 
 		ps_sel.atst = iatst[ps_sel.atst];
 
-		m_tfx.UpdatePS(ps_sel, ps_ssel);
+		m_tfx.UpdatePS(ps_sel, &ps_cb, ps_ssel);
 
 		bool z = om_dssel.zwe;
 		bool r = om_bsel.wr;
@@ -539,11 +569,9 @@ if(s_dump)
 		}
 	}
 
-	hr = m_dev->EndScene();
+	m_dev.EndScene();
 
 	if(om_dssel.fba) UpdateFBA(rt);
-
-	hr = m_dev->SetRenderState(D3DRS_STENCILENABLE, FALSE);
 
 if(s_dump)
 {
@@ -823,37 +851,49 @@ void GSRendererHW::SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache:
 
 	// }
 
+	m_dev.BeginScene();
+
 	GSTextureDX9 tmp;
 
 	m_dev.CreateRenderTarget(tmp, rt->m_texture.m_desc.Width, rt->m_texture.m_desc.Height);
 
-	m_dev->SetRenderTarget(0, tmp);
-	m_dev->SetDepthStencilSurface(ds->m_texture);
+	m_dev.OMSetRenderTargets(tmp, ds->m_texture);
+	m_dev.OMSetDepthStencilState(&m_date.dss, 1);
+	m_dev.OMSetBlendState(&m_date.bs, 0);
 
 	m_dev->Clear(0, NULL, D3DCLEAR_STENCIL, 0, 0, 0);
+/*
+	// ia
 
-	m_dev->SetTexture(0, rt->m_texture);
-	
-	m_dev->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
-	m_dev->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_POINT);
+	GSVertexPT1 vertices[] =
+	{
+		{GSVector4(xmin, -ymin), GSVector2(umin, vmin)},
+		{GSVector4(xmax, -ymin), GSVector2(umax, vmin)},
+		{GSVector4(xmin, -ymax), GSVector2(umin, vmax)},
+		{GSVector4(xmax, -ymax), GSVector2(umax, vmax)},
+	};
 
-	m_dev->SetRenderState(D3DRS_ZENABLE, FALSE);
-	m_dev->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
-	m_dev->SetRenderState(D3DRS_STENCILENABLE, TRUE);
-	m_dev->SetRenderState(D3DRS_STENCILREF, 1);
-	m_dev->SetRenderState(D3DRS_STENCILMASK, 1);
-	m_dev->SetRenderState(D3DRS_STENCILWRITEMASK, 1);	
-	m_dev->SetRenderState(D3DRS_STENCILFUNC, D3DCMP_ALWAYS);
-	m_dev->SetRenderState(D3DRS_STENCILPASS, D3DSTENCILOP_REPLACE);
-	m_dev->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
-	m_dev->SetRenderState(D3DRS_ALPHAFUNC, m_context->TEST.DATM ? D3DCMP_EQUAL : D3DCMP_LESS);
-	m_dev->SetRenderState(D3DRS_ALPHAREF, 0xff);
-	m_dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
-	m_dev->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
-	m_dev->SetRenderState(D3DRS_COLORWRITEENABLE, 0);
+	m_dev.IASetVertexBuffer(m_dev.m_convert.vb, 4, vertices);
+	m_dev.IASetInputLayout(m_dev.m_convert.il);
+	m_dev.IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
-	m_dev->SetVertexShader(NULL);
-	m_dev->SetPixelShader(m_dev.m_ps_convert[0]);
+	// vs
+
+	m_dev.VSSetShader(m_dev.m_convert.vs, NULL);
+*/
+	m_dev.VSSetShader(NULL, NULL, 0);
+
+	// ps
+
+	m_dev.PSSetShaderResources(rt->m_texture, NULL);
+	m_dev.PSSetShader(m_dev.m_convert.ps[m_context->TEST.DATM ? 2 : 3], NULL, 0);
+	m_dev.PSSetSamplerState(&m_dev.m_convert.pt);
+
+	// rs
+
+	m_dev.RSSet(tmp.m_desc.Width, tmp.m_desc.Height);
+
+	//
 
 	GSVertexPT1 vertices[] =
 	{
@@ -863,52 +903,52 @@ void GSRendererHW::SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache:
 		{GSVector4(xmax * w, ymax * h), GSVector2(xmax, ymax)},
 	};
 
-	m_dev->BeginScene();
 	m_dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX1);
+
 	m_dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(vertices[0]));
-	m_dev->EndScene();
+
+	m_dev.EndScene();
 
 	m_dev.Recycle(tmp);
 }
 
 void GSRendererHW::UpdateFBA(GSTextureCache::GSRenderTarget* rt)
 {
-	HRESULT hr;
-	
-	hr = m_dev->SetTexture(0, NULL);
-	hr = m_dev->SetRenderState(D3DRS_ZENABLE, FALSE);
-	hr = m_dev->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
-	hr = m_dev->SetRenderState(D3DRS_STENCILENABLE, TRUE);
-	hr = m_dev->SetRenderState(D3DRS_STENCILFUNC, D3DCMP_EQUAL);
-	hr = m_dev->SetRenderState(D3DRS_STENCILPASS, D3DSTENCILOP_ZERO);
-	hr = m_dev->SetRenderState(D3DRS_STENCILFAIL, D3DSTENCILOP_ZERO);
-	hr = m_dev->SetRenderState(D3DRS_STENCILZFAIL, D3DSTENCILOP_ZERO);
-	hr = m_dev->SetRenderState(D3DRS_STENCILREF, 2);
-	hr = m_dev->SetRenderState(D3DRS_STENCILMASK, 2);
-	hr = m_dev->SetRenderState(D3DRS_STENCILWRITEMASK, 2);	
-	hr = m_dev->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
-	hr = m_dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
-	hr = m_dev->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
-	hr = m_dev->SetRenderState(D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_ALPHA);
+	m_dev.BeginScene();
 
-	hr = m_dev->SetVertexShader(NULL);
-	hr = m_dev->SetPixelShader(NULL);
+	// om
+
+	m_dev.OMSetDepthStencilState(&m_fba.dss, 2);
+	m_dev.OMSetBlendState(&m_fba.bs, 0);
+
+	// vs
+
+	m_dev.VSSetShader(NULL, NULL, 0);
+
+	// ps
+
+	m_dev.PSSetShader(m_dev.m_convert.ps[4], NULL, 0);
+
+	//
 
 	int w = rt->m_texture.m_desc.Width;
 	int h = rt->m_texture.m_desc.Height;
 
-	GSVertexPC vertices[] =
+	GSVertexP vertices[] =
 	{
-		{GSVector4(0, 0), 0xffffffff},
-		{GSVector4(w, 0), 0xffffffff},
-		{GSVector4(0, h), 0xffffffff},
-		{GSVector4(w, h), 0xffffffff},
+		{GSVector4(0, 0)},
+		{GSVector4(w, 0)},
+		{GSVector4(0, h)},
+		{GSVector4(w, h)},
 	};
 
-	hr = m_dev->BeginScene();
-	hr = m_dev->SetFVF(D3DFVF_XYZRHW);
-	hr = m_dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(vertices[0]));
-	hr = m_dev->EndScene();
+	m_dev->SetFVF(D3DFVF_XYZRHW);
+	
+	m_dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(vertices[0]));
+
+	// 
+
+	m_dev.EndScene();
 }
 
 bool GSRendererHW::OverrideInput(int& prim, GSTextureCache::GSTexture* tex)

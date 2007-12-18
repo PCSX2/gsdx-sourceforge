@@ -54,17 +54,17 @@ int GSTextureDX10::GetType() const
 	return GSTexture::None;
 }
 
-DWORD GSTextureDX10::GetWidth() const 
+int GSTextureDX10::GetWidth() const 
 {
 	return m_desc.Width;
 }
 
-DWORD GSTextureDX10::GetHeight() const 
+int GSTextureDX10::GetHeight() const 
 {
 	return m_desc.Height;
 }
 
-DWORD GSTextureDX10::GetFormat() const 
+int GSTextureDX10::GetFormat() const 
 {
 	return m_desc.Format;
 }

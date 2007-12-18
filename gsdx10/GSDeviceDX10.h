@@ -40,23 +40,17 @@ class GSDeviceDX10 : public GSDevice<GSTextureDX10>
 
 	ID3D10Buffer* m_vb;
 	UINT m_vb_stride;
-
 	ID3D10InputLayout* m_layout;
 	D3D10_PRIMITIVE_TOPOLOGY m_topology;
-
 	ID3D10VertexShader* m_vs;
 	ID3D10Buffer* m_vs_cb;
-
 	ID3D10GeometryShader* m_gs;
-
 	ID3D10ShaderResourceView* m_ps_srvs[2];
-
 	ID3D10PixelShader* m_ps;
+	ID3D10Buffer* m_ps_cb;
 	ID3D10SamplerState* m_ps_ss;
-
 	CSize m_viewport;
 	CRect m_scissor;
-
 	ID3D10DepthStencilState* m_dss;
 	UINT m_sref;
 	ID3D10BlendState* m_bs;
@@ -66,23 +60,19 @@ class GSDeviceDX10 : public GSDevice<GSTextureDX10>
 
 	//
 
-	void Interlace(GSTextureDX10& st, GSTextureDX10& dt, int shader, bool linear, float yoffset = 0);
+	bool Create(int type, GSTextureDX10& t, int w, int h, int format);
+	void Deinterlace(GSTextureDX10& st, GSTextureDX10& dt, int shader, bool linear, float yoffset = 0);
 
-	bool Create(int type, GSTextureDX10& t, DWORD w, DWORD h, DWORD format);
-
-public: // TODO
+private:
+	HWND m_hWnd;
 	CComPtr<ID3D10Device> m_dev;
 	CComPtr<IDXGISwapChain> m_swapchain;
-	CComPtr<ID3D10Texture2D> m_backbuffer;
-	CComPtr<ID3D10Texture2D> m_tex_current;
+	GSTextureDX10 m_backbuffer;
 
+public: // TODO
+	GSTextureDX10 m_tex_current;
 	GSTextureDX10 m_tex_merge;
-	GSTextureDX10 m_tex_interlace;
-	GSTextureDX10 m_tex_deinterlace;
 	GSTextureDX10 m_tex_1x1;
-
-	CComPtr<ID3D10SamplerState> m_ss_linear;
-	CComPtr<ID3D10SamplerState> m_ss_point;
 
 	CComPtr<ID3D10RasterizerState> m_rs;
 
@@ -92,6 +82,8 @@ public: // TODO
 		CComPtr<ID3D10InputLayout> il;
 		CComPtr<ID3D10VertexShader> vs;
 		CComPtr<ID3D10PixelShader> ps[5];
+		CComPtr<ID3D10SamplerState> ln;
+		CComPtr<ID3D10SamplerState> pt;
 		CComPtr<ID3D10DepthStencilState> dss;
 		CComPtr<ID3D10BlendState> bs;
 	} m_convert;
@@ -107,31 +99,36 @@ public:
 	virtual ~GSDeviceDX10();
 
 	bool Create(HWND hWnd);
-	bool Reset(DWORD w, DWORD h, bool fs);
+	bool Reset(int w, int h, bool fs);
+	bool IsLost() {return false;}
+	void Present(int arx, int ary);
+	void BeginScene();
+	void EndScene();
 
-	bool CreateRenderTarget(GSTextureDX10& t, DWORD w, DWORD h, DWORD format = DXGI_FORMAT_R8G8B8A8_UNORM);
-	bool CreateDepthStencil(GSTextureDX10& t, DWORD w, DWORD h, DWORD format = DXGI_FORMAT_D32_FLOAT_S8X24_UINT);
-	bool CreateTexture(GSTextureDX10& t, DWORD w, DWORD h, DWORD format = DXGI_FORMAT_R8G8B8A8_UNORM);
-	bool CreateOffscreen(GSTextureDX10& t, DWORD w, DWORD h, DWORD format = DXGI_FORMAT_R8G8B8A8_UNORM);
+	bool CreateRenderTarget(GSTextureDX10& t, int w, int h, int format = 0);
+	bool CreateDepthStencil(GSTextureDX10& t, int w, int h, int format = 0);
+	bool CreateTexture(GSTextureDX10& t, int w, int h, int format = 0);
+	bool CreateOffscreen(GSTextureDX10& t, int w, int h, int format = 0);
 
 	ID3D10Device* operator->() {return m_dev;}
 	operator ID3D10Device*() {return m_dev;}
 
-	void EndScene();
-	void Present();
-
-	void IASet(ID3D10Buffer* vb, UINT count, const void* vertices, UINT stride, ID3D10InputLayout* layout, D3D10_PRIMITIVE_TOPOLOGY topology);
-	void VSSet(ID3D10VertexShader* vs, ID3D10Buffer* vs_cb);
-	void GSSet(ID3D10GeometryShader* gs);
+	void IASetVertexBuffer(ID3D10Buffer* vb, UINT count, const void* vertices, UINT stride);
+	void IASetInputLayout(ID3D10InputLayout* layout);
+	void IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY topology);
+	void VSSetShader(ID3D10VertexShader* vs, ID3D10Buffer* vs_cb);
+	void GSSetShader(ID3D10GeometryShader* gs);
 	void PSSetShaderResources(ID3D10ShaderResourceView* srv0, ID3D10ShaderResourceView* srv1);
-	void PSSet(ID3D10PixelShader* ps, ID3D10SamplerState* ss);
+	void PSSetShader(ID3D10PixelShader* ps, ID3D10Buffer* ps_cb);
+	void PSSetSamplerState(ID3D10SamplerState* ss);
 	void RSSet(int width, int height, const RECT* scissor = NULL);
-	void OMSet(ID3D10DepthStencilState* dss, UINT sref, ID3D10BlendState* bs, float bf);
+	void OMSetDepthStencilState(ID3D10DepthStencilState* dss, UINT sref);
+	void OMSetBlendState(ID3D10BlendState* bs, float bf);
 	void OMSetRenderTargets(ID3D10RenderTargetView* rtv, ID3D10DepthStencilView* dsv);
 
-	template<class T> void IASet(ID3D10Buffer* vb, UINT count, T* vertices, ID3D10InputLayout* layout, D3D10_PRIMITIVE_TOPOLOGY topology)
+	template<class T> void IASetVertexBuffer(ID3D10Buffer* vb, UINT count, T* vertices)
 	{
-		IASet(vb, count, vertices, sizeof(T), layout, topology);
+		IASetVertexBuffer(vb, count, vertices, sizeof(T));
 	}
 
 	bool SaveCurrent(LPCTSTR fn);
@@ -140,10 +137,9 @@ public:
 	void StretchRect(GSTextureDX10& st, GSTextureDX10& dt, const GSVector4& dr, bool linear = true);
 	void StretchRect(GSTextureDX10& st, const GSVector4& sr, GSTextureDX10& dt, const GSVector4& dr, bool linear = true);
 	void StretchRect(GSTextureDX10& st, const GSVector4& sr, GSTextureDX10& dt, const GSVector4& dr, ID3D10PixelShader* ps, bool linear = true);
+	void StretchRect(GSTextureDX10& st, const GSVector4& sr, GSTextureDX10& dt, const GSVector4& dr, ID3D10PixelShader* ps, ID3D10Buffer* ps_cb, bool linear = true);
 
-	ID3D10Texture2D* Interlace(GSTextureDX10& st, CSize ds, int field, int mode, float yoffset);
-
-	HRESULT CompileShader(ID3D10VertexShader** vs, UINT id, LPCSTR entry, D3D10_INPUT_ELEMENT_DESC* layout, int count, ID3D10InputLayout** pl, D3D10_SHADER_MACRO* macro = NULL);
-	HRESULT CompileShader(ID3D10GeometryShader** gs, UINT id, LPCSTR entry, D3D10_SHADER_MACRO* macro = NULL);
-	HRESULT CompileShader(ID3D10PixelShader** ps, UINT id, LPCSTR entry, D3D10_SHADER_MACRO* macro = NULL);
+	HRESULT CompileShader(UINT id, LPCSTR entry, D3D10_SHADER_MACRO* macro, ID3D10VertexShader** vs, D3D10_INPUT_ELEMENT_DESC* layout, int count, ID3D10InputLayout** pl);
+	HRESULT CompileShader(UINT id, LPCSTR entry, D3D10_SHADER_MACRO* macro, ID3D10GeometryShader** gs);
+	HRESULT CompileShader(UINT id, LPCSTR entry, D3D10_SHADER_MACRO* macro, ID3D10PixelShader** ps);
 };

@@ -122,7 +122,7 @@ void GSTextureCache::GSRenderTarget::Read(CRect r)
 
 	m_tc->m_renderer->m_dev.CreateRenderTarget(rt, r.Width(), r.Height());
 
-	m_tc->m_renderer->m_dev.StretchRect(m_texture, src, rt, dst, m_tc->m_renderer->m_dev.m_ps_convert[1]);
+	m_tc->m_renderer->m_dev.StretchRect(m_texture, src, rt, dst, m_tc->m_renderer->m_dev.m_convert.ps[1], NULL, 0);
 
 	GSTextureDX9 offscreen;
 

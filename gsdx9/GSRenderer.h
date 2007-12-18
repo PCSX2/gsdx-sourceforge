@@ -41,6 +41,7 @@ public:
 	virtual ~GSRenderer();
 
 	virtual bool Create(LPCTSTR title);
+	virtual void ResetDevice() {}
 
 	void Show();
 	void Hide();
@@ -64,7 +65,13 @@ public:
 
 	void FinishFlip(FlipInfo src[2]);
 	void Merge(FlipInfo src[2], GSTextureDX9& dst);
-	void Present();
+
+	bool MakeSnapshot(LPCTSTR path)
+	{
+		CString fn;
+		fn.Format(_T("%s_%s.bmp"), path, CTime::GetCurrentTime().Format(_T("%Y%m%d%H%M%S")));
+		return m_dev.SaveCurrent(fn);
+	}
 };
 
 template <class Vertex> class GSRendererT : public GSRenderer

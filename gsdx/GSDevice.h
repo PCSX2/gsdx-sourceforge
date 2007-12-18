@@ -27,8 +27,11 @@ template<class Texture> class GSDevice
 {
 	CAtlList<Texture> m_pool;
 
+	Texture m_weavebob;
+	Texture m_blend;
+
 protected:
-	bool Fetch(int type, Texture& t, DWORD w, DWORD h, DWORD format)
+	bool Fetch(int type, Texture& t, int w, int h, int format)
 	{
 		Recycle(t);
 
@@ -49,7 +52,9 @@ protected:
 		return Create(type, t, w, h, format);
 	}
 
-	virtual bool Create(int type, Texture& t, DWORD w, DWORD h, DWORD format) = 0;
+	virtual bool Create(int type, Texture& t, int w, int h, int format) = 0;
+
+	virtual void Deinterlace(Texture& st, Texture& dt, int shader, bool linear, float yoffset) = 0;
 
 public:
 	GSDevice() 
@@ -65,29 +70,39 @@ public:
 		return true;
 	}
 	
-	virtual bool Reset(DWORD w, DWORD h, bool fs)
+	virtual bool Reset(int w, int h, bool fs)
 	{
 		m_pool.RemoveAll();
+		m_weavebob = Texture();
+		m_blend = Texture();
 
 		return true;
 	}
 
-	bool CreateRenderTarget(Texture& t, DWORD w, DWORD h, DWORD format)
+	virtual bool IsLost() = 0;
+
+	virtual void Present(int arx, int ary) = 0;
+
+	virtual void BeginScene() = 0;
+
+	virtual void EndScene() = 0;
+
+	virtual bool CreateRenderTarget(Texture& t, int w, int h, int format = 0)
 	{
 		return Fetch(GSTexture::RenderTarget, t, w, h, format);
 	}
 
-	bool CreateDepthStencil(Texture& t, DWORD w, DWORD h, DWORD format)
+	virtual bool CreateDepthStencil(Texture& t, int w, int h, int format = 0)
 	{
 		return Fetch(GSTexture::DepthStencil, t, w, h, format);
 	}
 
-	bool CreateTexture(Texture& t, DWORD w, DWORD h, DWORD format)
+	virtual bool CreateTexture(Texture& t, int w, int h, int format = 0)
 	{
 		return Fetch(GSTexture::Texture, t, w, h, format);
 	}
 
-	bool CreateOffscreen(Texture& t, DWORD w, DWORD h, DWORD format)
+	virtual bool CreateOffscreen(Texture& t, int w, int h, int format = 0)
 	{
 		return Fetch(GSTexture::Offscreen, t, w, h, format);
 	}
@@ -105,5 +120,50 @@ public:
 
 			t = Texture();
 		}
+	}
+
+	bool Interlace(Texture& st, Texture& dt, CSize ds, int field, int mode, float yoffset)
+	{
+		dt = st;
+
+		if(!m_weavebob || m_weavebob.GetWidth() != ds.cx || m_weavebob.GetHeight() != ds.cy)
+		{
+			CreateRenderTarget(m_weavebob, ds.cx, ds.cy);
+		}
+
+		if(mode == 0 || mode == 2) // weave or blend
+		{
+			// weave first
+
+			Deinterlace(st, m_weavebob, field, false, 0);
+
+			if(mode == 2)
+			{
+				// blend
+
+				if(!m_blend || m_blend.GetWidth() != ds.cx || m_blend.GetHeight() != ds.cy)
+				{
+					CreateRenderTarget(m_blend, ds.cx, ds.cy);
+				}
+
+				if(field == 0) return false;
+
+				Deinterlace(m_weavebob, m_blend, 2, false, 0);
+
+				dt = m_blend;
+			}
+			else
+			{
+				dt = m_weavebob;
+			}
+		}
+		else if(mode == 1) // bob
+		{
+			Deinterlace(st, m_weavebob, 3, true, yoffset * field);
+
+			dt = m_weavebob;
+		}
+
+		return true;
 	}
 };

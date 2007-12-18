@@ -543,20 +543,20 @@ bool GSLocalMemory::WriteCLUT(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT)
 	{
 		readPixel rp = m_psm[TEX0.CPSM].rp;
 
-		int nPaletteEntries = m_psm[TEX0.PSM].pal;
+		int pal = m_psm[TEX0.PSM].pal;
 
-		ASSERT(nPaletteEntries == 0 || TEX0.CPSM == PSM_PSMCT16); // this is the only allowed format for CSM2, but we implement all of them, just in case...
+		ASSERT(pal == 0 || TEX0.CPSM == PSM_PSMCT16); // this is the only allowed format for CSM2, but we implement all of them, just in case...
 
 		if(TEX0.CPSM == PSM_PSMCT16 || TEX0.CPSM == PSM_PSMCT16S)
 		{
-			for(int i = 0; i < nPaletteEntries; i++)
+			for(int i = 0; i < pal; i++)
 			{
 				pCLUT[i] = (WORD)(this->*rp)((TEXCLUT.COU<<4) + i, TEXCLUT.COV, bp, bw);
 			}
 		}
 		else if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 		{
-			for(int i = 0; i < nPaletteEntries; i++)
+			for(int i = 0; i < pal; i++)
 			{
 				DWORD dw = (this->*rp)((TEXCLUT.COU<<4) + i, TEXCLUT.COV, bp, bw);
 				pCLUT[i] = (WORD)(dw & 0xffff);

@@ -557,7 +557,7 @@ if(s_dump)
 
 		ps_sel.atst = iatst[ps_sel.atst];
 
-		m_tfx.UpdatePS(ps_sel, ps_ssel);
+		m_tfx.UpdatePS(ps_sel, &ps_cb, ps_ssel);
 
 		bool z = om_dssel.zwe;
 		bool r = om_bsel.wr;
@@ -885,8 +885,8 @@ void GSRendererHW::SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache:
 	m_dev->ClearDepthStencilView(ds->m_texture, D3D10_CLEAR_STENCIL, 0, 0);
 
 	m_dev.OMSetRenderTargets(tmp, ds->m_texture);
-
-	m_dev.OMSet(m_date.dss, 1, m_date.bs, 0);
+	m_dev.OMSetDepthStencilState(m_date.dss, 1);
+	m_dev.OMSetBlendState(m_date.bs, 0);
 
 	// ia
 
@@ -898,21 +898,23 @@ void GSRendererHW::SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache:
 		{GSVector4(xmax, -ymax), GSVector2(umax, vmax)},
 	};
 
-	m_dev.IASet(m_dev.m_convert.vb, 4, vertices, m_dev.m_convert.il, D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	m_dev.IASetVertexBuffer(m_dev.m_convert.vb, 4, vertices);
+	m_dev.IASetInputLayout(m_dev.m_convert.il);
+	m_dev.IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
 	// vs
 
-	m_dev.VSSet(m_dev.m_convert.vs, NULL);
+	m_dev.VSSetShader(m_dev.m_convert.vs, NULL);
 
 	// gs
 
-	m_dev.GSSet(NULL);
+	m_dev.GSSetShader(NULL);
 
 	// ps
 
 	m_dev.PSSetShaderResources(rt->m_texture, NULL);
-
-	m_dev.PSSet(m_dev.m_convert.ps[m_context->TEST.DATM ? 2 : 3], m_dev.m_ss_point);
+	m_dev.PSSetShader(m_dev.m_convert.ps[m_context->TEST.DATM ? 2 : 3], NULL);
+	m_dev.PSSetSamplerState(m_dev.m_convert.pt);
 
 	// rs
 

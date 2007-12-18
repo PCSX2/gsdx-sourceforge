@@ -39,9 +39,9 @@ public:
 	operator bool();
 
 	int GetType() const;
-	DWORD GetWidth() const;
-	DWORD GetHeight() const;
-	DWORD GetFormat() const;
+	int GetWidth() const;
+	int GetHeight() const;
+	int GetFormat() const;
 
 	ID3D10Texture2D* operator->();
 
