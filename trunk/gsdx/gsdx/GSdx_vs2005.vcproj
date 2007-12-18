@@ -487,6 +487,10 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\GSDevice.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\GSDirtyRect.cpp"
 				>
 			</File>
@@ -504,6 +508,10 @@
 			</File>
 			<File
 				RelativePath=".\GSTables.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GSTexture.cpp"
 				>
 			</File>
 			<File
@@ -735,6 +743,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\GSDevice.h"
+				>
+			</File>
+			<File
 				RelativePath=".\GSDirtyRect.h"
 				>
 			</File>
@@ -764,6 +776,10 @@
 			</File>
 			<File
 				RelativePath=".\GSTables.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSTexture.h"
 				>
 			</File>
 			<File

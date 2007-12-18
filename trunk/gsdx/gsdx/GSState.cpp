@@ -1205,7 +1205,7 @@ void GSState::Transfer(BYTE* mem, int size, int index)
 					Write(mem, len*16);
 					break;
 				case 1: 
-					Read(mem, len*16); // TODO: writing access violation with aqtime
+					Read(mem, len*16);
 					break;
 				case 2: 
 					Move();
