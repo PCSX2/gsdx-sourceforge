@@ -134,7 +134,7 @@ bool GSDeviceDX10::Create(HWND hWnd)
 
 	memset(&bd, 0, sizeof(bd));
 
-    bd.ByteWidth = sizeof(InterlaceCB);
+    bd.ByteWidth = sizeof(InterlaceConstantBuffer);
     bd.Usage = D3D10_USAGE_DEFAULT;
     bd.BindFlags = D3D10_BIND_CONSTANT_BUFFER;
     bd.CPUAccessFlags = 0;
@@ -380,7 +380,7 @@ void GSDeviceDX10::DoInterlace(GSTextureDX10& st, GSTextureDX10& dt, int shader,
 	GSVector4 sr(0, 0, 1, 1);
 	GSVector4 dr(0, yoffset, (float)dt.GetWidth(), (float)dt.GetHeight() + yoffset);
 
-	InterlaceCB cb;
+	InterlaceConstantBuffer cb;
 
 	cb.ZrH = GSVector2(0, 1.0f / dt.GetHeight());
 	cb.hH = (float)dt.GetHeight() / 2;

@@ -26,11 +26,13 @@
 
 #pragma pack(push, 1)
 
-struct InterlaceCB
+struct InterlaceConstantBuffer
 {
 	GSVector2 ZrH;
 	float hH;
 	float _pad[1];
+
+	struct InterlaceConstantBuffer() {memset(this, 0, sizeof(*this));}
 };
 
 #pragma pack(pop)
