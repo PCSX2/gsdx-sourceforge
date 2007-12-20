@@ -34,6 +34,8 @@ public:
 		GSVector4 VertexOffset;
 		GSVector2 TextureScale;
 		float _pad[2];
+
+		struct VSConstantBuffer() {memset(this, 0, sizeof(*this));}
 	};
 
 	struct PSConstantBuffer
@@ -55,6 +57,8 @@ public:
 		GSVector2 rWrH;
 		GSVector2 rWZ;
 		GSVector2 ZrH;
+
+		struct PSConstantBuffer() {memset(this, 0, sizeof(*this));}
 	};
 
 	union PSSelector
