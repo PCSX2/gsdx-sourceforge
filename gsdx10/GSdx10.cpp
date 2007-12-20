@@ -22,8 +22,6 @@
 #include "stdafx.h"
 #include "GSdx10.h"
 #include "GSRendererHW.h"
-#include "GSRendererSW.h"
-#include "GSRendererNull.h"
 #include "GSSettingsDlg.h"
 
 #ifdef _DEBUG
@@ -190,12 +188,16 @@ EXPORT_C_(INT32) GSopen(void* dsp, char* title, int mt)
 	GSclose();
 
 	int nloophack = AfxGetApp()->GetProfileInt(_T("Settings"), _T("nloophack"), 2);
+	int interlace = AfxGetApp()->GetProfileInt(_T("Settings"), _T("interlace"), 0);
+	int aspectratio = AfxGetApp()->GetProfileInt(_T("Settings"), _T("aspectratio"), 1);
+	int filter = AfxGetApp()->GetProfileInt(_T("Settings"), _T("filter"), 1);
+	bool vsync = !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("vsync"), FALSE);
 
 	switch(AfxGetApp()->GetProfileInt(_T("Settings"), _T("renderer"), 0))
 	{
-	case 0: s_gs = new GSRendererHW(s_basemem, !!mt, s_irq, nloophack); break;
-	case 1: s_gs = new GSRendererSWFP(s_basemem, !!mt, s_irq, nloophack); break;
-	case 2: s_gs = new GSRendererNull(s_basemem, !!mt, s_irq, nloophack); break;
+	case 0: s_gs = new GSRendererHWDX10(s_basemem, !!mt, s_irq, nloophack, interlace, aspectratio, filter, vsync); break;
+	case 1: s_gs = new GSRendererSWFP<GSDeviceDX10>(s_basemem, !!mt, s_irq, nloophack, interlace, aspectratio, filter, vsync); break;
+	case 2: s_gs = new GSRendererNull<GSDeviceDX10>(s_basemem, !!mt, s_irq, nloophack, interlace, aspectratio, filter, vsync); break;
 	default: return -1;
 	}
 

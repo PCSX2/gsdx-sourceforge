@@ -83,6 +83,48 @@ int GSTextureDX9::GetFormat() const
 	return m_desc.Format;
 }
 
+bool GSTextureDX9::Update(CRect r, const void* data, int pitch)
+{
+	if(CComPtr<IDirect3DSurface9> surface = *this)
+	{
+		D3DLOCKED_RECT lr;
+
+		if(SUCCEEDED(surface->LockRect(&lr, r, 0)))
+		{
+			BYTE* src = (BYTE*)data;
+			BYTE* dst = (BYTE*)lr.pBits;
+
+			int bytes = min(pitch, lr.Pitch);
+
+			for(int i = 0, j = r.Height(); i < j; i++, src += pitch, dst += lr.Pitch)
+			{
+				memcpy(dst, src, bytes);
+			}
+
+			surface->UnlockRect();
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool GSTextureDX9::Save(CString fn, bool dds)
+{
+	if(CComPtr<IDirect3DTexture9> texture = *this)
+	{
+		return SUCCEEDED(D3DXSaveTextureToFile(fn, dds ? D3DXIFF_DDS : D3DXIFF_BMP, texture, NULL));
+	}
+
+	if(CComPtr<IDirect3DSurface9> surface = *this)
+	{
+		return SUCCEEDED(D3DXSaveSurfaceToFile(fn, dds ? D3DXIFF_DDS : D3DXIFF_BMP, surface, NULL, NULL));
+	}
+
+	return false;
+}
+
 IDirect3DTexture9* GSTextureDX9::operator->()
 {
 	return m_texture;

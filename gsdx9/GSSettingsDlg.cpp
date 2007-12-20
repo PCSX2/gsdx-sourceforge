@@ -41,24 +41,6 @@ GSSetting g_psversion[] =
 	//{D3DPS_VERSION(0, 0), _T("Fixed Pipeline (bogus)"), NULL},
 };
 
-GSSetting g_interlace[] =
-{
-	{0, _T("None"), NULL},
-	{1, _T("Weave tff"), _T("saw-tooth")},
-	{2, _T("Weave bff"), _T("saw-tooth")},
-	{3, _T("Bob tff"), _T("use blend if shaking")},
-	{4, _T("Bob bff"), _T("use blend if shaking")},
-	{5, _T("Blend tff"), _T("slight blur, 1/2 fps")},
-	{6, _T("Blend bff"), _T("slight blur, 1/2 fps")},
-};
-
-GSSetting g_aspectratio[] =
-{
-	{0, _T("Stretch"), NULL},
-	{1, _T("4:3"), NULL},
-	{2, _T("16:9"), NULL},
-};
-
 IMPLEMENT_DYNAMIC(GSSettingsDlg, CDialog)
 GSSettingsDlg::GSSettingsDlg(CWnd* pParent /*=NULL*/)
 	: CDialog(GSSettingsDlg::IDD, pParent)

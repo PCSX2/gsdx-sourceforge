@@ -22,15 +22,9 @@
 #pragma once
 
 #include "resource.h"
-#include "afxwin.h"
-#include "afxcmn.h"
-
-struct GSSetting {DWORD id; const TCHAR* name; const TCHAR* note;};
 
 extern GSSetting g_renderers[]; 
 extern GSSetting g_psversion[];
-extern GSSetting g_interlace[];
-extern GSSetting g_aspectratio[];
 
 class GSSettingsDlg : public CDialog
 {

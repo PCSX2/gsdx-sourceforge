@@ -40,6 +40,8 @@ public:
 	int GetWidth() const;
 	int GetHeight() const;
 	int GetFormat() const;
+	bool Update(CRect r, const void* data, int pitch);
+	bool Save(CString fn, bool dds = false);
 
 	IDirect3DTexture9* operator->();
 

@@ -24,7 +24,7 @@
 #include "GSRendererHW.h"
 #include "resource.h"
 
-GSTextureCache::GSTextureCache(GSRendererHW* renderer)
+GSTextureCache::GSTextureCache(GSRendererHWDX9* renderer)
 	: m_renderer(renderer)
 {
 	m_nativeres = !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("nativeres"), FALSE);
@@ -366,16 +366,9 @@ GSTextureCache::GSTexture* GSTextureCache::GetTexture()
 
 			if(sum != 0) 
 			{
-				D3DLOCKED_RECT r;
+				t->m_palette.Update(CRect(0, 0, pal, 1), t->m_clut, size);
 
-				if(SUCCEEDED(t->m_palette->LockRect(0, &r, NULL, 0)))
-				{
-					memcpy(r.pBits, t->m_clut, size);
-
-					t->m_palette->UnlockRect(0);
-
-					m_renderer->m_perfmon.Put(GSPerfMon::Texture, size);
-				}
+				m_renderer->m_perfmon.Put(GSPerfMon::Texture, size);
 			}
 		}
 		else
@@ -617,7 +610,7 @@ GSTextureCache::GSSurface::GSSurface(GSTextureCache* tc)
 	, m_scale(1, 1)
 	, m_age(0)
 {
-	m_TEX0.TBP0 = ~0;
+	m_TEX0.TBP0 = (UINT64)~0;
 }
 
 GSTextureCache::GSSurface::~GSSurface()

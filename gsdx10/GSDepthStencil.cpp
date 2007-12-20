@@ -31,22 +31,15 @@ GSTextureCache::GSDepthStencil::GSDepthStencil(GSTextureCache* tc)
 
 bool GSTextureCache::GSDepthStencil::Create(int w, int h)
 {
-	if(!m_tc->m_renderer->m_dev.CreateDepthStencil(m_texture, w, h))
-	{
-		return false;
-	}
-
 	// FIXME: initial data should be unswizzled from local mem in Update() if dirty
 
-	m_tc->m_renderer->m_dev->ClearDepthStencilView(m_texture, D3D10_CLEAR_DEPTH, 0, 0);
-
-	return true;
+	return m_tc->m_renderer->m_dev.CreateDepthStencil(m_texture, w, h);
 }
 
 void GSTextureCache::GSDepthStencil::Update()
 {
 	__super::Update();
 
-	// TODO: dx 10.1 could update ds directly
+	// TODO
 }
 

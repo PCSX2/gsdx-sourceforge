@@ -21,7 +21,9 @@
 
 #pragma once
 
-#include "GSDeviceDX9.h"
+// FIXME
+class GSDeviceDX9;
+class GSTextureDX9;
 
 class GSMergeFX
 {
@@ -58,6 +60,5 @@ public:
 	GSMergeFX();
 
 	bool Create(GSDeviceDX9* dev);
-
 	void Draw(GSTextureDX9* st, GSVector4* sr, GSTextureDX9& dt, PSSelector sel, PSConstantBuffer& cb);
 };

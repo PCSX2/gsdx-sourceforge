@@ -498,6 +498,26 @@
 				>
 			</File>
 			<File
+				RelativePath=".\GSRenderer.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GSRendererHW.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GSRendererNull.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GSRendererSW.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GSSetting.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\GSState.cpp"
 				>
 			</File>
@@ -519,6 +539,10 @@
 			</File>
 			<File
 				RelativePath=".\GSVertexList.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GSWnd.cpp"
 				>
 			</File>
 			<File
@@ -766,7 +790,27 @@
 				>
 			</File>
 			<File
+				RelativePath=".\GSRenderer.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSRendererHW.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSRendererNull.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSRendererSW.h"
+				>
+			</File>
+			<File
 				RelativePath=".\GSScale.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSSetting.h"
 				>
 			</File>
 			<File
@@ -794,7 +838,19 @@
 				>
 			</File>
 			<File
+				RelativePath=".\GSVertexHW.h"
+				>
+			</File>
+			<File
 				RelativePath=".\GSVertexList.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSVertexSW.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSWnd.h"
 				>
 			</File>
 			<File

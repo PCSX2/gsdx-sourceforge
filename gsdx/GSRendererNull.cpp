@@ -19,26 +19,5 @@
  *
  */
 
-#pragma once
-
-#pragma pack(push, 1)
-
-__declspec(align(16)) union GSVertexHW
-{
-	struct
-	{
-		float x, y, z, w;
-		union {struct {BYTE r, g, b, a;}; DWORD c0;};
-		union {struct {BYTE ta0, ta1, res, f;}; DWORD c1;};
-		float u, v;
-	};
-	
-	struct {__m128i m128i[2];};
-	struct {__m128 m128[2];};
-
-#if _M_IX86_FP >= 2 || defined(_M_AMD64)
-	GSVertexHW& operator = (GSVertexHW& v) {m128i[0] = v.m128i[0]; m128i[1] = v.m128i[1]; return *this;}
-#endif
-};
-
-#pragma pack(pop)
+#include "StdAfx.h"
+#include "GSRendererNull.h"

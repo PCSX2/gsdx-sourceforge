@@ -39,16 +39,6 @@
 #include <atlpath.h>
 #include <xmmintrin.h>
 #include <emmintrin.h>
+#include <math.h>
 
 #define countof(a) (sizeof(a)/sizeof(a[0]))
-
-#ifndef RESTRICT
-	#ifdef __INTEL_COMPILER
-		#define RESTRICT restrict
-	#elif _MSC_VER >= 1400
-		#define RESTRICT __restrict
-	#else
-		#define RESTRICT
-	#endif
-#endif
-

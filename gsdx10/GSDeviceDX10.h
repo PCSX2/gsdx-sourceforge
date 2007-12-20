@@ -22,6 +22,7 @@
 #pragma once
 
 #include "GSTextureDX10.h"
+#include "GSMergeFX.h"
 
 #pragma pack(push, 1)
 
@@ -61,19 +62,17 @@ class GSDeviceDX10 : public GSDevice<GSTextureDX10>
 	//
 
 	bool Create(int type, GSTextureDX10& t, int w, int h, int format);
-	void Deinterlace(GSTextureDX10& st, GSTextureDX10& dt, int shader, bool linear, float yoffset = 0);
+	void DoMerge(GSTextureDX10* st, GSVector4* sr, GSTextureDX10& dt, bool en1, bool en2, bool slbg, bool mmod, GSVector4& c);
+	void DoInterlace(GSTextureDX10& st, GSTextureDX10& dt, int shader, bool linear, float yoffset = 0);
 
 private:
 	HWND m_hWnd;
 	CComPtr<ID3D10Device> m_dev;
 	CComPtr<IDXGISwapChain> m_swapchain;
 	GSTextureDX10 m_backbuffer;
+	GSMergeFX m_mergefx;
 
 public: // TODO
-	GSTextureDX10 m_tex_current;
-	GSTextureDX10 m_tex_merge;
-	GSTextureDX10 m_tex_1x1;
-
 	CComPtr<ID3D10RasterizerState> m_rs;
 
 	struct
@@ -93,6 +92,8 @@ public: // TODO
 		CComPtr<ID3D10PixelShader> ps[4];
 		CComPtr<ID3D10Buffer> cb;
 	} m_interlace;
+
+	typedef GSTextureDX10 Texture;
 
 public:
 	GSDeviceDX10();
@@ -131,15 +132,14 @@ public:
 		IASetVertexBuffer(vb, count, vertices, sizeof(T));
 	}
 
-	bool SaveCurrent(LPCTSTR fn);
-	bool SaveToFileD32S8X24(ID3D10Texture2D* ds, LPCTSTR fn);
-
 	void StretchRect(GSTextureDX10& st, GSTextureDX10& dt, const GSVector4& dr, bool linear = true);
 	void StretchRect(GSTextureDX10& st, const GSVector4& sr, GSTextureDX10& dt, const GSVector4& dr, bool linear = true);
-	void StretchRect(GSTextureDX10& st, const GSVector4& sr, GSTextureDX10& dt, const GSVector4& dr, ID3D10PixelShader* ps, bool linear = true);
 	void StretchRect(GSTextureDX10& st, const GSVector4& sr, GSTextureDX10& dt, const GSVector4& dr, ID3D10PixelShader* ps, ID3D10Buffer* ps_cb, bool linear = true);
 
 	HRESULT CompileShader(UINT id, LPCSTR entry, D3D10_SHADER_MACRO* macro, ID3D10VertexShader** vs, D3D10_INPUT_ELEMENT_DESC* layout, int count, ID3D10InputLayout** pl);
 	HRESULT CompileShader(UINT id, LPCSTR entry, D3D10_SHADER_MACRO* macro, ID3D10GeometryShader** gs);
 	HRESULT CompileShader(UINT id, LPCSTR entry, D3D10_SHADER_MACRO* macro, ID3D10PixelShader** ps);
+
+	// TODO
+	bool SaveToFileD32S8X24(ID3D10Texture2D* ds, LPCTSTR fn);
 };

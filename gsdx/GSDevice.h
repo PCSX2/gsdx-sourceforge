@@ -22,15 +22,19 @@
 #pragma once
 
 #include "GSTexture.h"
+#include "GSVector.h"
 
 template<class Texture> class GSDevice
 {
 	CAtlList<Texture> m_pool;
 
+protected:
+	Texture m_merge;
 	Texture m_weavebob;
 	Texture m_blend;
+	Texture m_1x1;
+	Texture m_current;
 
-protected:
 	bool Fetch(int type, Texture& t, int w, int h, int format)
 	{
 		Recycle(t);
@@ -53,8 +57,8 @@ protected:
 	}
 
 	virtual bool Create(int type, Texture& t, int w, int h, int format) = 0;
-
-	virtual void Deinterlace(Texture& st, Texture& dt, int shader, bool linear, float yoffset) = 0;
+	virtual void DoMerge(Texture* st, GSVector4* sr, Texture& dt, bool en1, bool en2, bool slbg, bool mmod, GSVector4& c) = 0;
+	virtual void DoInterlace(Texture& st, Texture& dt, int shader, bool linear, float yoffset) = 0;
 
 public:
 	GSDevice() 
@@ -73,8 +77,11 @@ public:
 	virtual bool Reset(int w, int h, bool fs)
 	{
 		m_pool.RemoveAll();
+		m_merge = Texture();
 		m_weavebob = Texture();
 		m_blend = Texture();
+		m_1x1 = Texture();
+		m_current = Texture();
 
 		return true;
 	}
@@ -122,10 +129,27 @@ public:
 		}
 	}
 
-	bool Interlace(Texture& st, Texture& dt, CSize ds, int field, int mode, float yoffset)
+	bool SaveCurrent(LPCTSTR fn)
 	{
-		dt = st;
+		return m_current.Save(fn);
+	}
 
+	void Merge(Texture* st, GSVector4* sr, CSize fs, bool en1, bool en2, bool slbg, bool mmod, GSVector4& c)
+	{
+		if(!m_merge || m_merge.GetWidth() != fs.cx || m_merge.GetHeight() != fs.cy)
+		{
+			CreateRenderTarget(m_merge, fs.cx, fs.cy);
+		}
+
+		// TODO: m_1x1
+
+		DoMerge(st, sr, m_merge, en1, en2, slbg, mmod, c);
+
+		m_current = m_merge;
+	}
+
+	bool Interlace(CSize ds, int field, int mode, float yoffset)
+	{
 		if(!m_weavebob || m_weavebob.GetWidth() != ds.cx || m_weavebob.GetHeight() != ds.cy)
 		{
 			CreateRenderTarget(m_weavebob, ds.cx, ds.cy);
@@ -135,10 +159,12 @@ public:
 		{
 			// weave first
 
-			Deinterlace(st, m_weavebob, field, false, 0);
+			DoInterlace(m_merge, m_weavebob, field, false, 0);
 
 			if(mode == 2)
 			{
+				if(field == 0) return false;
+
 				// blend
 
 				if(!m_blend || m_blend.GetWidth() != ds.cx || m_blend.GetHeight() != ds.cy)
@@ -146,22 +172,24 @@ public:
 					CreateRenderTarget(m_blend, ds.cx, ds.cy);
 				}
 
-				if(field == 0) return false;
+				DoInterlace(m_weavebob, m_blend, 2, false, 0);
 
-				Deinterlace(m_weavebob, m_blend, 2, false, 0);
-
-				dt = m_blend;
+				m_current = m_blend;
 			}
 			else
 			{
-				dt = m_weavebob;
+				m_current = m_weavebob;
 			}
 		}
 		else if(mode == 1) // bob
 		{
-			Deinterlace(st, m_weavebob, 3, true, yoffset * field);
+			DoInterlace(m_merge, m_weavebob, 3, true, yoffset * field);
 
-			dt = m_weavebob;
+			m_current = m_weavebob;
+		}
+		else
+		{
+			m_current = m_merge;
 		}
 
 		return true;

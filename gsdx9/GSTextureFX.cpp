@@ -205,7 +205,9 @@ void GSTextureFX::UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSampler
 	{
 		if(sel.bpp >= 3 || sel.wms == 3 || sel.wmt == 3) ssel.min = ssel.mag = 0;
 
-		if(!(ss = m_ps_ss.Lookup(ssel)))
+		ss = m_ps_ss.Lookup(ssel);
+
+		if(!ss)
 		{
 			ss = new Direct3DSamplerState9();
 
@@ -240,9 +242,9 @@ void GSTextureFX::SetupOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, BY
 
 void GSTextureFX::UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, BYTE bf)
 {
-	Direct3DDepthStencilState9* dss = NULL;
+	Direct3DDepthStencilState9* dss = m_om_dss.Lookup(dssel);
 
-	if(!(dss = m_om_dss.Lookup(dssel)))
+	if(!dss)
 	{
 		dss = new Direct3DDepthStencilState9();
 
@@ -279,9 +281,9 @@ void GSTextureFX::UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, B
 
 	m_dev->OMSetDepthStencilState(dss, 3);
 
-	Direct3DBlendState9* bs = NULL;
+	Direct3DBlendState9* bs = m_om_bs.Lookup(bsel);
 
-	if(!(bs = m_om_bs.Lookup(bsel)))
+	if(!bs)
 	{
 		bs = new Direct3DBlendState9();
 

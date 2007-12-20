@@ -19,21 +19,5 @@
  *
  */
 
-#pragma once
-
-#include "GSRenderer.h"
-
-struct VertexNull {};
-
-class GSRendererNull : public GSRendererT<VertexNull>
-{
-protected:
-	void VertexKick(bool skip);
-	void DrawingKick(bool skip);
-	void Draw() {}
-	void Flip();
-
-public:
-	GSRendererNull(BYTE* base, bool mt, void (*irq)(), int nloophack);
-	virtual ~GSRendererNull();
-};
+#include "stdafx.h"
+#include "GSRendererHW.h"

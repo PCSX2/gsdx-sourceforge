@@ -21,6 +21,7 @@
 
 #include "stdafx.h"
 #include "GSMergeFX.h"
+#include "GSDeviceDX10.h"
 #include "resource.h"
 
 GSMergeFX::GSMergeFX()
@@ -77,6 +78,8 @@ bool GSMergeFX::Create(GSDeviceDX10* dev)
 void GSMergeFX::Draw(GSTextureDX10* st, GSVector4* sr, GSTextureDX10& dt, PSSelector sel, PSConstantBuffer& cb)
 {
 	HRESULT hr;
+
+	m_dev->BeginScene();
 
 	// om
 
@@ -143,7 +146,7 @@ void GSMergeFX::Draw(GSTextureDX10* st, GSVector4* sr, GSTextureDX10& dt, PSSele
 
 	// rs
 
-	m_dev->RSSet(dt.m_desc.Width, dt.m_desc.Height);
+	m_dev->RSSet(dt.GetWidth(), dt.GetHeight());
 
 	//
 

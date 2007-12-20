@@ -674,10 +674,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\GSRenderer.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\GSRendererHW.cpp"
 				>
 				<FileConfiguration
@@ -696,14 +692,6 @@
 						GeneratePreprocessedFile="0"
 					/>
 				</FileConfiguration>
-			</File>
-			<File
-				RelativePath=".\GSRendererNull.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\GSRendererSW.cpp"
-				>
 			</File>
 			<File
 				RelativePath=".\GSRenderTarget.cpp"
@@ -816,19 +804,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\GSRenderer.h"
-				>
-			</File>
-			<File
 				RelativePath=".\GSRendererHW.h"
-				>
-			</File>
-			<File
-				RelativePath=".\GSRendererNull.h"
-				>
-			</File>
-			<File
-				RelativePath=".\GSRendererSW.h"
 				>
 			</File>
 			<File
@@ -845,14 +821,6 @@
 			</File>
 			<File
 				RelativePath=".\GSTextureFX.h"
-				>
-			</File>
-			<File
-				RelativePath=".\GSVertexHW.h"
-				>
-			</File>
-			<File
-				RelativePath=".\GSVertexSW.h"
 				>
 			</File>
 			<File

@@ -19,21 +19,23 @@
  *
  */
 
-#pragma once
-
+#include "StdAfx.h"
 #include "GSRenderer.h"
 
-struct VertexNull {};
-
-class GSRendererNull : public GSRendererT<VertexNull>
+GSSetting g_interlace[] =
 {
-protected:
-	void VertexKick(bool skip);
-	void DrawingKick(bool skip);
-	void Draw() {}
-	void Flip();
+	{0, _T("None"), NULL},
+	{1, _T("Weave tff"), _T("saw-tooth")},
+	{2, _T("Weave bff"), _T("saw-tooth")},
+	{3, _T("Bob tff"), _T("use blend if shaking")},
+	{4, _T("Bob bff"), _T("use blend if shaking")},
+	{5, _T("Blend tff"), _T("slight blur, 1/2 fps")},
+	{6, _T("Blend bff"), _T("slight blur, 1/2 fps")},
+};
 
-public:
-	GSRendererNull(BYTE* base, bool mt, void (*irq)(), int nloophack);
-	virtual ~GSRendererNull();
+GSSetting g_aspectratio[] =
+{
+	{0, _T("Stretch"), NULL},
+	{1, _T("4:3"), NULL},
+	{2, _T("16:9"), NULL},
 };

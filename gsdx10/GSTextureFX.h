@@ -21,7 +21,6 @@
 
 #pragma once
 
-#include "GSVertexHW.h"
 #include "GSDeviceDX10.h"
 
 class GSTextureFX
@@ -159,9 +158,8 @@ private:
 	CSimpleMap<DWORD, CComPtr<ID3D10DepthStencilState> > m_om_dss;	
 	CSimpleMap<DWORD, CComPtr<ID3D10BlendState> > m_om_bs;	
 
-	CComPtr<ID3D10Buffer> m_vb[1];
-	int m_vb_max[1];
-	int m_vb_cur;
+	CComPtr<ID3D10Buffer> m_vb;
+	int m_vb_max;
 
 	VSConstantBuffer m_vs_cb_cache;
 	PSConstantBuffer m_ps_cb_cache;
@@ -171,7 +169,7 @@ public:
 
 	bool Create(GSDeviceDX10* dev);
 	
-	bool SetupIA(const GSVertexHW* vertices, UINT count, D3D10_PRIMITIVE_TOPOLOGY prim);
+	bool SetupIA(const GSVertexHW* vertices, int count, D3D10_PRIMITIVE_TOPOLOGY prim);
 	bool SetupVS(const VSConstantBuffer* cb);
 	bool SetupGS(GSSelector sel);
 	bool SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel, ID3D10ShaderResourceView* tex, ID3D10ShaderResourceView* pal);

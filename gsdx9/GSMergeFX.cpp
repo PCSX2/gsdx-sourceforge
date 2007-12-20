@@ -21,6 +21,7 @@
 
 #include "stdafx.h"
 #include "GSMergeFX.h"
+#include "GSDeviceDX9.h"
 #include "resource.h"
 
 GSMergeFX::GSMergeFX()
@@ -102,12 +103,12 @@ void GSMergeFX::Draw(GSTextureDX9* st, GSVector4* sr, GSTextureDX9& dt, PSSelect
 
 	// rs
 
-	m_dev->RSSet(dt.m_desc.Width, dt.m_desc.Height);
+	m_dev->RSSet(dt.GetWidth(), dt.GetHeight());
 
 	//
 
-	float w = (float)dt.m_desc.Width;
-	float h = (float)dt.m_desc.Height;
+	float w = (float)dt.GetWidth();
+	float h = (float)dt.GetHeight();
 
 	GSVertexPT2 vertices[] =
 	{
