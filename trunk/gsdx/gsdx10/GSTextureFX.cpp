@@ -25,9 +25,8 @@
 
 GSTextureFX::GSTextureFX()
 	: m_dev(NULL)
+	, m_vb_max(0)
 {
-	memset(m_vb_max, 0, sizeof(m_vb_max));
-	m_vb_cur = 0;
 	memset(&m_vs_cb_cache, 0, sizeof(m_vs_cb_cache));
 	memset(&m_ps_cb_cache, 0, sizeof(m_ps_cb_cache));
 }
@@ -79,44 +78,40 @@ bool GSTextureFX::Create(GSDeviceDX10* dev)
 	return true;
 }
 
-bool GSTextureFX::SetupIA(const GSVertexHW* vertices, UINT count, D3D10_PRIMITIVE_TOPOLOGY prim)
+bool GSTextureFX::SetupIA(const GSVertexHW* vertices, int count, D3D10_PRIMITIVE_TOPOLOGY prim)
 {
 	HRESULT hr;
 
-	int i = m_vb_cur;
-
-	m_vb_cur = (m_vb_cur + 1) % countof(m_vb);
-
-	if(m_vb[i])
+	if(m_vb)
 	{
-		if(m_vb_max[i] < max(count, 100000))
+		if(m_vb_max < max(count, 100000))
 		{
 			(*m_dev)->Flush();
 
-			m_vb[i] = NULL;
+			m_vb = NULL;
 		}
 	}
 
-	if(!m_vb[i])
+	if(!m_vb)
 	{
-		m_vb_max[i] = max(count, 100000);
+		m_vb_max = max(count, 100000);
 
 		D3D10_BUFFER_DESC bd;
 
 		memset(&bd, 0, sizeof(bd));
 
 		bd.Usage = D3D10_USAGE_DEFAULT;
-		bd.ByteWidth = m_vb_max[i] * sizeof(GSVertexHW);
+		bd.ByteWidth = m_vb_max * sizeof(GSVertexHW);
 		bd.BindFlags = D3D10_BIND_VERTEX_BUFFER;
 		bd.CPUAccessFlags = 0;
 		bd.MiscFlags = 0;
 
-		hr = (*m_dev)->CreateBuffer(&bd, NULL, &m_vb[i]);
+		hr = (*m_dev)->CreateBuffer(&bd, NULL, &m_vb);
 
 		if(FAILED(hr)) return false;
 	}
 
-	m_dev->IASetVertexBuffer(m_vb[i], count, vertices);
+	m_dev->IASetVertexBuffer(m_vb, count, vertices);
 	m_dev->IASetInputLayout(m_il);
 	m_dev->IASetPrimitiveTopology(prim);
 

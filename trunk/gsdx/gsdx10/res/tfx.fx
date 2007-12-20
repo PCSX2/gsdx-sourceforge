@@ -220,6 +220,46 @@ float4 sample(float2 tc)
 	return t;
 }
 
+float4 sample8hp(float2 tc)
+{
+	float4 t;
+	
+	float4 tc01;
+	
+	if(WMS == 3 || WMT == 3)
+	{
+		int2 itc = tc * WH;
+		
+		tc01.x = repeatu(itc.x);
+		tc01.y = repeatv(itc.y);
+		tc01.z = repeatu(itc.x + 1);
+		tc01.w = repeatv(itc.y + 1);
+
+		tc01 *= rWrH.xyxy;
+	}
+	else
+	{
+		tc01.x = tc.x; 
+		tc01.y = tc.y;
+		tc01.z = tc.x + rWrH.x; 
+		tc01.w = tc.y + rWrH.y;
+	}
+
+	t.x = Texture.Sample(Sampler, tc01.xy).a;
+	t.y = Texture.Sample(Sampler, tc01.zy).a;
+	t.z = Texture.Sample(Sampler, tc01.xw).a;
+	t.w = Texture.Sample(Sampler, tc01.zw).a;
+
+	float4 t00 = Palette.Sample(Sampler, t.x);
+	float4 t01 = Palette.Sample(Sampler, t.y);
+	float4 t10 = Palette.Sample(Sampler, t.z);
+	float4 t11 = Palette.Sample(Sampler, t.w);
+
+	float2 dd = frac(tc * WH); 
+
+	return lerp(lerp(t00, t01, dd.x), lerp(t10, t11, dd.x), dd.y);
+}
+
 float4 sample16p(float2 tc)
 {
 	float4 t;
@@ -262,46 +302,6 @@ float4 sample16p(float2 tc)
 	return Normalize16(lerp(lerp(t00, t01, dd.x), lerp(t10, t11, dd.x), dd.y));
 }
 
-float4 sample8hp(float2 tc)
-{
-	float4 t;
-	
-	float4 tc01;
-	
-	if(WMS == 3 || WMT == 3)
-	{
-		int2 itc = tc * WH;
-		
-		tc01.x = repeatu(itc.x);
-		tc01.y = repeatv(itc.y);
-		tc01.z = repeatu(itc.x + 1);
-		tc01.w = repeatv(itc.y + 1);
-
-		tc01 *= rWrH.xyxy;
-	}
-	else
-	{
-		tc01.x = tc.x; 
-		tc01.y = tc.y;
-		tc01.z = tc.x + rWrH.x; 
-		tc01.w = tc.y + rWrH.y;
-	}
-
-	t.x = Texture.Sample(Sampler, tc01.xy).a;
-	t.y = Texture.Sample(Sampler, tc01.zy).a;
-	t.z = Texture.Sample(Sampler, tc01.xw).a;
-	t.w = Texture.Sample(Sampler, tc01.zw).a;
-
-	float4 t00 = Palette.Sample(Sampler, t.x);
-	float4 t01 = Palette.Sample(Sampler, t.y);
-	float4 t10 = Palette.Sample(Sampler, t.z);
-	float4 t11 = Palette.Sample(Sampler, t.w);
-
-	float2 dd = frac(tc * WH); 
-
-	return lerp(lerp(t00, t01, dd.x), lerp(t10, t11, dd.x), dd.y);
-}
-
 PS_OUTPUT ps_main(PS_INPUT input)
 {
 	float2 tc = input.t.xy;
@@ -339,19 +339,19 @@ PS_OUTPUT ps_main(PS_INPUT input)
 
 		t.a = t.a >= 0.5 ? TA1 : AEM == 0 || any(t.rgb) ? TA0 : 0; // a bit incompatible with up-scaling because the 1 bit alpha is interpolated
 	}
-	else if(BPP == 3) // 16P
+	else if(BPP == 3) // 8HP / 32-bit palette
+	{
+		t = sample8hp(tc);
+	}
+	else if(BPP == 4) // 8HP / 16-bit palette
+	{
+		// TODO: yuck, just pre-convert the palette to 32-bit
+	}
+	else if(BPP == 5) // 16P
 	{
 		t = sample16p(tc);
 
 		t.a = t.a >= 0.5 ? TA1 : AEM == 0 || any(t.rgb) ? TA0 : 0; // a bit incompatible with up-scaling because the 1 bit alpha is interpolated
-	}
-	else if(BPP == 4) // 8HP / 32-bit palette
-	{
-		t = sample8hp(tc);
-	}
-	else if(BPP == 5) // 8HP / 16-bit palette
-	{
-		// TODO: yuck, just pre-convert the palette to 32-bit
 	}
 
 	float4 c = input.c;

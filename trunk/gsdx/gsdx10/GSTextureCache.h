@@ -23,7 +23,7 @@
 
 #include "GSTextureDX10.h"
 
-class GSRendererHW;
+class GSRendererHWDX10;
 
 class GSTextureCache
 {
@@ -90,7 +90,7 @@ public:
 	};
 
 protected:
-	GSRendererHW* m_renderer;
+	GSRendererHWDX10* m_renderer;
 	CAtlList<GSRenderTarget*> m_rt;
 	CAtlList<GSDepthStencil*> m_ds;
 	CAtlList<GSTexture*> m_tex;
@@ -99,7 +99,7 @@ protected:
 	template<class T> void RecycleByAge(CAtlList<T*>& l, int maxage = 10);
 
 public:
-	GSTextureCache(GSRendererHW* renderer);
+	GSTextureCache(GSRendererHWDX10* renderer);
 	virtual ~GSTextureCache();
 
 	void RemoveAll();

@@ -21,12 +21,10 @@
 
 #pragma once
 
-#include "GSRenderer.h"
 #include "GSTextureCache.h"
 #include "GSTextureFX.h"
-#include "GSVertexHW.h"
 
-class GSRendererHW : public GSRendererT<GSVertexHW>
+class GSRendererHWDX9 : public GSRendererHW<GSDeviceDX9>
 {
 	friend class GSTextureCache;
 
@@ -38,10 +36,10 @@ protected:
 	GSTextureCache m_tc;
 	GSTextureFX m_tfx;
 
-	void VertexKick(bool skip);
+	void VSync(int field);
+	bool GetOutput(int i, GSTextureDX9& t, GSVector2& s);
 	void DrawingKick(bool skip);
 	void Draw();
-	void Flip();
 	void InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r);
 	void InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r);
 	void MinMaxUV(int w, int h, CRect& r);
@@ -64,7 +62,7 @@ protected:
 	bool OverrideInput(int& prim, GSTextureCache::GSTexture* tex);	
 
 public:
-	GSRendererHW(BYTE* base, bool mt, void (*irq)(), int nloophack);
+	GSRendererHWDX9(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync);
 
 	bool Create(LPCTSTR title);
 	void ResetDevice() {m_tc.RemoveAll();}

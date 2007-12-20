@@ -71,7 +71,7 @@ bool GSTextureCache::GSTexture::Create()
 	case PSM_PSMCT16:
 	case PSM_PSMCT16S:
 		m_bpp = 16;
-		m_bpp2 = 3;
+		m_bpp2 = 5;
 		format = DXGI_FORMAT_R16_UNORM;
 		break;
 	}
@@ -107,7 +107,7 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 
 		// ASSERT(rt->m_TEX0.TBW > m_TEX0.TBW); // otherwise scale.x need to be reduced to make the larger texture fit (TODO)
 
-		m_tc->m_renderer->m_dev.CreateRenderTarget(m_texture, rt->m_texture.m_desc.Width, rt->m_texture.m_desc.Height);
+		m_tc->m_renderer->m_dev.CreateRenderTarget(m_texture, rt->m_texture.GetWidth(), rt->m_texture.GetHeight());
 
 		int bw = 64;
 		int bh = m_TEX0.PSM == PSM_PSMCT32 || m_TEX0.PSM == PSM_PSMCT24 ? 32 : 64;
@@ -128,10 +128,10 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 
 				GSVector4 src, dst;
 
-				src.x = m_scale.x * sx / rt->m_texture.m_desc.Width;
-				src.y = m_scale.y * sy / rt->m_texture.m_desc.Height;
-				src.z = m_scale.x * (sx + bw) / rt->m_texture.m_desc.Width;
-				src.w = m_scale.y * (sy + bh) / rt->m_texture.m_desc.Height;
+				src.x = m_scale.x * sx / rt->m_texture.GetWidth();
+				src.y = m_scale.y * sy / rt->m_texture.GetHeight();
+				src.z = m_scale.x * (sx + bw) / rt->m_texture.GetWidth();
+				src.w = m_scale.y * (sy + bh) / rt->m_texture.GetHeight();
 
 				dst.x = m_scale.x * dx;
 				dst.y = m_scale.y * dy;
@@ -152,30 +152,28 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 		{
 			return false;
 		}
-
-		// TODO
 	}
 
 	// width/height conversion
 
-	// if(w != rt->m_texture.m_desc.Width || h != rt->m_texture.m_desc.Height)
+	// if(w != rt->m_texture.GetWidth() || h != rt->m_texture.GetHeight())
 	{
 		GSVector4 dst(0, 0, w, h);
 		
-		if(w > rt->m_texture.m_desc.Width) 
+		if(w > rt->m_texture.GetWidth()) 
 		{
 			float scale = m_scale.x;
-			m_scale.x = (float)rt->m_texture.m_desc.Width / tw;
-			dst.z = (float)rt->m_texture.m_desc.Width * m_scale.x / scale;
-			w = rt->m_texture.m_desc.Width;
+			m_scale.x = (float)rt->m_texture.GetWidth() / tw;
+			dst.z = (float)rt->m_texture.GetWidth() * m_scale.x / scale;
+			w = rt->m_texture.GetWidth();
 		}
 		
-		if(h > rt->m_texture.m_desc.Height) 
+		if(h > rt->m_texture.GetHeight()) 
 		{
 			float scale = m_scale.y;
-			m_scale.y = (float)rt->m_texture.m_desc.Height / th;
-			dst.w = (float)rt->m_texture.m_desc.Height * m_scale.y / scale;
-			h = rt->m_texture.m_desc.Height;
+			m_scale.y = (float)rt->m_texture.GetHeight() / th;
+			dst.w = (float)rt->m_texture.GetHeight() * m_scale.y / scale;
+			h = rt->m_texture.GetHeight();
 		}
 
 		GSVector4 src(0, 0, w, h);
@@ -205,8 +203,8 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 		}
 		else
 		{
-			src.z /= st->m_desc.Width;
-			src.w /= st->m_desc.Height;
+			src.z /= st->GetWidth();
+			src.w /= st->GetHeight();
 
 			m_tc->m_renderer->m_dev.StretchRect(*st, src, *dt, dst);
 		}
@@ -221,7 +219,7 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 
 	if(!m_texture)
 	{
-		m_tc->m_renderer->m_dev.CreateTexture(m_texture, rt->m_texture.m_desc.Width, rt->m_texture.m_desc.Height);
+		m_tc->m_renderer->m_dev.CreateTexture(m_texture, rt->m_texture.GetWidth(), rt->m_texture.GetHeight());
 
 		m_tc->m_renderer->m_dev->CopyResource(m_texture, rt->m_texture);
 	}
@@ -239,7 +237,7 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 		m_bpp2 = 2;
 		break;
 	case PSM_PSMT8H:
-		m_bpp2 = 4;
+		m_bpp2 = 3;
 		m_tc->m_renderer->m_dev.CreateTexture(m_palette, 256, 1, m_TEX0.CPSM == PSM_PSMCT32 ? DXGI_FORMAT_R8G8B8A8_UNORM : DXGI_FORMAT_R16_UNORM); // 
 		break;
 	case PSM_PSMT4HL:
@@ -286,9 +284,7 @@ void GSTextureCache::GSTexture::Update()
 
 	m_tc->m_renderer->m_mem.ReadTextureNP2(r, bits, pitch, m_tc->m_renderer->m_context->TEX0, m_tc->m_renderer->m_env.TEXA, m_tc->m_renderer->m_context->CLAMP);
 
-	D3D10_BOX box = {r.left, r.top, 0, r.right, r.bottom, 1};
-
-	m_tc->m_renderer->m_dev->UpdateSubresource(m_texture, 0, &box, bits, pitch, 0); 
+	m_texture.Update(r, bits, pitch);
 
 	m_tc->m_renderer->m_perfmon.Put(GSPerfMon::Unswizzle, r.Width() * r.Height() * m_bpp >> 3);
 
@@ -317,7 +313,7 @@ bool GSTextureCache::GSTexture::GetDirtyRect(CRect& r)
 	CRect dirty = m_dirty.GetDirtyRect(m_TEX0);
 	CRect valid = m_valid;
 
-	dirty &= CRect(0, 0, m_texture.m_desc.Width, m_texture.m_desc.Height);
+	dirty &= CRect(0, 0, m_texture.GetWidth(), m_texture.GetHeight());
 
 	if(IsRectInRect(r, valid))
 	{

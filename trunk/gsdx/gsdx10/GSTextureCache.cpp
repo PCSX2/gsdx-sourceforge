@@ -24,7 +24,7 @@
 #include "GSRendererHW.h"
 #include "resource.h"
 
-GSTextureCache::GSTextureCache(GSRendererHW* renderer)
+GSTextureCache::GSTextureCache(GSRendererHWDX10* renderer)
 	: m_renderer(renderer)
 {
 	m_nativeres = !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("nativeres"), FALSE);
@@ -361,9 +361,7 @@ GSTextureCache::GSTexture* GSTextureCache::GetTexture()
 
 			if(sum != 0) 
 			{
-				D3D10_BOX box = {0, 0, 0, pal, 1, 1};
-
-				m_renderer->m_dev->UpdateSubresource(t->m_palette, 0, &box, t->m_clut, size, 0);
+				t->m_palette.Update(CRect(0, 0, pal, 1), t->m_clut, size);
 
 				m_renderer->m_perfmon.Put(GSPerfMon::Texture, size);
 			}
@@ -595,8 +593,6 @@ template<class T> void GSTextureCache::RecycleByAge(CAtlList<T*>& l, int maxage)
 		{
 			l.RemoveAt(cur);
 
-			TRACE(_T("RecycleByAge %05x (%d)\n"), (int)t->m_TEX0.TBP0, (int)t->m_TEX0.PSM);
-
 			delete t;
 		}
 	}
@@ -609,7 +605,7 @@ GSTextureCache::GSSurface::GSSurface(GSTextureCache* tc)
 	, m_scale(1, 1)
 	, m_age(0)
 {
-	m_TEX0.TBP0 = ~0;
+	m_TEX0.TBP0 = (UINT64)~0;
 }
 
 GSTextureCache::GSSurface::~GSSurface()

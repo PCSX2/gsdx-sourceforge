@@ -19,50 +19,52 @@
  *
  */
 
-#pragma once
+#include "StdAfx.h"
+#include "GSWnd.h"
 
-// FIXME
-class GSDeviceDX10;
-class GSTextureDX10;
+BEGIN_MESSAGE_MAP(GSWnd, CWnd)
+	ON_WM_CLOSE()
+END_MESSAGE_MAP()
 
-class GSMergeFX
+GSWnd::GSWnd()
 {
-public:
-	#pragma pack(push, 1)
+}
 
-	struct PSConstantBuffer
-	{
-		GSVector4 BGColor;
-	};
+GSWnd::~GSWnd()
+{
+	DestroyWindow();
+}
 
-	union PSSelector
-	{
-		struct
-		{
-			DWORD en1:1;
-			DWORD en2:1;
-			DWORD slbg:1;
-			DWORD mmod:1;
-		};
+bool GSWnd::Create(LPCTSTR title)
+{
+	CRect r;
 
-		DWORD dw;
+	GetDesktopWindow()->GetWindowRect(r);
 
-		operator DWORD() {return dw & 0xf;}
-	};
+	CSize s(r.Width() / 3, r.Width() / 4);
 
-	#pragma pack(pop)
+	r = CRect(r.CenterPoint() - CSize(s.cx / 2, s.cy / 2), s);
 
-private:
-	GSDeviceDX10* m_dev;
-	CComPtr<ID3D10Buffer> m_vb;
-	CComPtr<ID3D10InputLayout> m_il;
-	CComPtr<ID3D10VertexShader> m_vs;
-	CSimpleMap<DWORD, CComPtr<ID3D10PixelShader> > m_ps;
-	CComPtr<ID3D10Buffer> m_ps_cb;
+	LPCTSTR wc = AfxRegisterWndClass(CS_VREDRAW|CS_HREDRAW|CS_DBLCLKS, AfxGetApp()->LoadStandardCursor(IDC_ARROW), 0, 0);
 
-public:
-	GSMergeFX();
+	return !!CreateEx(0, wc, title, WS_OVERLAPPEDWINDOW, r, NULL, 0);
+}
 
-	bool Create(GSDeviceDX10* dev);
-	void Draw(GSTextureDX10* st, GSVector4* sr, GSTextureDX10& dt, PSSelector sel, PSConstantBuffer& cb);
-};
+void GSWnd::Show()
+{
+	SetWindowPos(&wndTop, 0, 0, 0, 0, SWP_NOMOVE|SWP_NOSIZE);
+	SetForegroundWindow();
+	ShowWindow(SW_SHOWNORMAL);
+}
+
+void GSWnd::Hide()
+{
+	ShowWindow(SW_HIDE);
+}
+
+void GSWnd::OnClose()
+{
+	Hide();
+
+	PostMessage(WM_QUIT);
+}

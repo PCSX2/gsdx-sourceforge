@@ -46,19 +46,11 @@
 #include <xmmintrin.h>
 #include <emmintrin.h>
 
-#include "../GSdx/GSState.h"
+#include "../GSdx/GSRendererHW.h"
+#include "../GSdx/GSRendererSW.h"
+#include "../GSdx/GSRendererNull.h"
 
 #define countof(a) (sizeof(a)/sizeof(a[0]))
-
-#ifndef RESTRICT
-	#ifdef __INTEL_COMPILER
-		#define RESTRICT restrict
-	#elif _MSC_VER >= 1400
-		#define RESTRICT __restrict
-	#else
-		#define RESTRICT
-	#endif
-#endif
 
 #define EXPORT_C extern "C" __declspec(dllexport) void __stdcall
 #define EXPORT_C_(type) extern "C" __declspec(dllexport) type __stdcall

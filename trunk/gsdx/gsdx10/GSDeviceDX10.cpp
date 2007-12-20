@@ -192,6 +192,13 @@ bool GSDeviceDX10::Create(HWND hWnd)
 
 	//
 
+	if(!m_mergefx.Create(this))
+	{
+		return false;
+	}
+
+	//
+
 	return true;
 }
 
@@ -202,12 +209,6 @@ bool GSDeviceDX10::Reset(int w, int h, bool fs)
 
 	m_backbuffer = GSTextureDX10();
 
-	m_tex_current = GSTextureDX10();
-	m_tex_merge = GSTextureDX10();
-	m_tex_1x1 = GSTextureDX10();
-
-	//
-
 	DXGI_SWAP_CHAIN_DESC scd;
 	memset(&scd, 0, sizeof(scd));
 	m_swapchain->GetDesc(&scd);
@@ -216,10 +217,6 @@ bool GSDeviceDX10::Reset(int w, int h, bool fs)
 	CComPtr<ID3D10Texture2D> backbuffer;
 	m_swapchain->GetBuffer(0, __uuidof(ID3D10Texture2D), (void**)&backbuffer);
 	m_backbuffer = GSTextureDX10(backbuffer);
-
-	//
-
-	CreateTexture(m_tex_1x1, 1, 1);
 
 	return true;
 }
@@ -239,7 +236,7 @@ void GSDeviceDX10::Present(int arx, int ary)
 
 	m_dev->ClearRenderTargetView(m_backbuffer, color);
 
-	if(m_tex_current)
+	if(m_current)
 	{
 		CRect r = cr;
 
@@ -263,9 +260,7 @@ void GSDeviceDX10::Present(int arx, int ary)
 
 		r &= cr;
 
-		GSVector4 dr(r.left, r.top, r.right, r.bottom);
-
-		StretchRect(m_tex_current, m_backbuffer, dr);
+		StretchRect(m_current, m_backbuffer, GSVector4(r));
 	}
 
 	m_swapchain->Present(0, 0);
@@ -326,6 +321,18 @@ bool GSDeviceDX10::Create(int type, GSTextureDX10& t, int w, int h, int format)
 		t.m_texture = texture.Detach();
 		t.m_desc = desc;
 
+		float color[4] = {0, 0, 0, 0};
+
+		switch(type)
+		{
+		case GSTexture::RenderTarget:
+			m_dev->ClearRenderTargetView(t, color);
+			break;
+		case GSTexture::DepthStencil:
+			m_dev->ClearDepthStencilView(t, D3D10_CLEAR_DEPTH, 0, 0);
+			break;
+		}
+
 		return true;
 	}
 
@@ -352,15 +359,31 @@ bool GSDeviceDX10::CreateOffscreen(GSTextureDX10& t, int w, int h, int format)
 	return __super::CreateOffscreen(t, w, h, format ? format : DXGI_FORMAT_R8G8B8A8_UNORM);
 }
 
-void GSDeviceDX10::Deinterlace(GSTextureDX10& st, GSTextureDX10& dt, int shader, bool linear, float yoffset)
+void GSDeviceDX10::DoMerge(GSTextureDX10* st, GSVector4* sr, GSTextureDX10& dt, bool en1, bool en2, bool slbg, bool mmod, GSVector4& c)
+{
+	GSMergeFX::PSSelector sel;
+
+	sel.en1 = en1;
+	sel.en2 = en2;
+	sel.slbg = slbg;
+	sel.mmod = mmod;
+
+	GSMergeFX::PSConstantBuffer cb;
+
+	cb.BGColor = c;
+
+	m_mergefx.Draw(st, sr, dt, sel, cb);
+}
+
+void GSDeviceDX10::DoInterlace(GSTextureDX10& st, GSTextureDX10& dt, int shader, bool linear, float yoffset)
 {
 	GSVector4 sr(0, 0, 1, 1);
-	GSVector4 dr(0, yoffset, (float)dt.m_desc.Width, (float)dt.m_desc.Height + yoffset);
+	GSVector4 dr(0, yoffset, (float)dt.GetWidth(), (float)dt.GetHeight() + yoffset);
 
 	InterlaceCB cb;
 
-	cb.ZrH = GSVector2(0, 1.0f / dt.m_desc.Height);
-	cb.hH = (float)dt.m_desc.Height / 2;
+	cb.ZrH = GSVector2(0, 1.0f / dt.GetHeight());
+	cb.hH = (float)dt.GetHeight() / 2;
 
 	m_dev->UpdateSubresource(m_interlace.cb, 0, NULL, &cb, 0, 0);
 
@@ -536,58 +559,6 @@ void GSDeviceDX10::OMSetRenderTargets(ID3D10RenderTargetView* rtv, ID3D10DepthSt
 	}
 }
 
-bool GSDeviceDX10::SaveCurrent(LPCTSTR fn)
-{
-	return SUCCEEDED(D3DX10SaveTextureToFile(m_tex_current, D3DX10_IFF_BMP, fn));
-}
-
-bool GSDeviceDX10::SaveToFileD32S8X24(ID3D10Texture2D* ds, LPCTSTR fn)
-{
-	HRESULT hr;
-
-	D3D10_TEXTURE2D_DESC desc;
-
-	memset(&desc, 0, sizeof(desc));
-
-	ds->GetDesc(&desc);
-
-	desc.Usage = D3D10_USAGE_STAGING;
-	desc.BindFlags = 0;
-	desc.CPUAccessFlags = D3D10_CPU_ACCESS_READ;
-
-	CComPtr<ID3D10Texture2D> src, dst;
-
-	hr = m_dev->CreateTexture2D(&desc, NULL, &src);
-
-	m_dev->CopyResource(src, ds);
-
-	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	desc.CPUAccessFlags = D3D10_CPU_ACCESS_WRITE;
-
-	hr = m_dev->CreateTexture2D(&desc, NULL, &dst);
-
-	D3D10_MAPPED_TEXTURE2D sm, dm;
-
-	hr = src->Map(0, D3D10_MAP_READ, 0, &sm);
-	hr = dst->Map(0, D3D10_MAP_WRITE, 0, &dm);
-
-	BYTE* s = (BYTE*)sm.pData;
-	BYTE* d = (BYTE*)dm.pData;
-
-	for(int y = 0; y < desc.Height; y++, s += sm.RowPitch, d += dm.RowPitch)
-	{
-		for(int x = 0; x < desc.Width; x++)
-		{
-			((float*)d)[x] = ((float*)s)[x*2];
-		}
-	}
-
-	src->Unmap(0);
-	dst->Unmap(0);
-
-	return SUCCEEDED(D3DX10SaveTextureToFile(dst, D3DX10_IFF_BMP, fn));
-}
-
 void GSDeviceDX10::StretchRect(GSTextureDX10& st, GSTextureDX10& dt, const GSVector4& dr, bool linear)
 {
 	StretchRect(st, GSVector4(0, 0, 1, 1), dt, dr, m_convert.ps[0], NULL, linear);
@@ -598,13 +569,10 @@ void GSDeviceDX10::StretchRect(GSTextureDX10& st, const GSVector4& sr, GSTexture
 	StretchRect(st, sr, dt, dr, m_convert.ps[0], NULL, linear);
 }
 
-void GSDeviceDX10::StretchRect(GSTextureDX10& st, const GSVector4& sr, GSTextureDX10& dt, const GSVector4& dr, ID3D10PixelShader* ps, bool linear)
-{
-	StretchRect(st, sr, dt, dr, ps, NULL, linear);
-}
-
 void GSDeviceDX10::StretchRect(GSTextureDX10& st, const GSVector4& sr, GSTextureDX10& dt, const GSVector4& dr, ID3D10PixelShader* ps, ID3D10Buffer* ps_cb, bool linear)
 {
+	BeginScene();
+
 	// om
 
 	OMSetDepthStencilState(m_convert.dss, 0);
@@ -613,10 +581,10 @@ void GSDeviceDX10::StretchRect(GSTextureDX10& st, const GSVector4& sr, GSTexture
 
 	// ia
 
-	float left = dr.x * 2 / dt.m_desc.Width - 1.0f;
-	float top = 1.0f - dr.y * 2 / dt.m_desc.Height;
-	float right = dr.z * 2 / dt.m_desc.Width - 1.0f;
-	float bottom = 1.0f - dr.w * 2 / dt.m_desc.Height;
+	float left = dr.x * 2 / dt.GetWidth() - 1.0f;
+	float top = 1.0f - dr.y * 2 / dt.GetHeight();
+	float right = dr.z * 2 / dt.GetWidth() - 1.0f;
+	float bottom = 1.0f - dr.w * 2 / dt.GetHeight();
 
 	GSVertexPT1 vertices[] =
 	{
@@ -646,7 +614,7 @@ void GSDeviceDX10::StretchRect(GSTextureDX10& st, const GSVector4& sr, GSTexture
 
 	// rs
 
-	RSSet(dt.m_desc.Width, dt.m_desc.Height);
+	RSSet(dt.GetWidth(), dt.GetHeight());
 
 	//
 
@@ -744,4 +712,51 @@ HRESULT GSDeviceDX10::CompileShader(UINT id, LPCSTR entry, D3D10_SHADER_MACRO* m
 	}
 
 	return hr;
+}
+
+bool GSDeviceDX10::SaveToFileD32S8X24(ID3D10Texture2D* ds, LPCTSTR fn)
+{
+	HRESULT hr;
+
+	D3D10_TEXTURE2D_DESC desc;
+
+	memset(&desc, 0, sizeof(desc));
+
+	ds->GetDesc(&desc);
+
+	desc.Usage = D3D10_USAGE_STAGING;
+	desc.BindFlags = 0;
+	desc.CPUAccessFlags = D3D10_CPU_ACCESS_READ;
+
+	CComPtr<ID3D10Texture2D> src, dst;
+
+	hr = m_dev->CreateTexture2D(&desc, NULL, &src);
+
+	m_dev->CopyResource(src, ds);
+
+	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.CPUAccessFlags = D3D10_CPU_ACCESS_WRITE;
+
+	hr = m_dev->CreateTexture2D(&desc, NULL, &dst);
+
+	D3D10_MAPPED_TEXTURE2D sm, dm;
+
+	hr = src->Map(0, D3D10_MAP_READ, 0, &sm);
+	hr = dst->Map(0, D3D10_MAP_WRITE, 0, &dm);
+
+	BYTE* s = (BYTE*)sm.pData;
+	BYTE* d = (BYTE*)dm.pData;
+
+	for(int y = 0; y < desc.Height; y++, s += sm.RowPitch, d += dm.RowPitch)
+	{
+		for(int x = 0; x < desc.Width; x++)
+		{
+			((float*)d)[x] = ((float*)s)[x*2];
+		}
+	}
+
+	src->Unmap(0);
+	dst->Unmap(0);
+
+	return SUCCEEDED(D3DX10SaveTextureToFile(dst, D3DX10_IFF_BMP, fn));
 }

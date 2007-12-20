@@ -31,14 +31,9 @@ GSTextureCache::GSRenderTarget::GSRenderTarget(GSTextureCache* tc)
 
 bool GSTextureCache::GSRenderTarget::Create(int w, int h)
 {
-	if(!m_tc->m_renderer->m_dev.CreateRenderTarget(m_texture, w, h))
-	{
-		return false;
-	}
+	// FIXME: initial data should be unswizzled from local mem in Update() if dirty
 
-	// TODO: clear
-
-	return true;
+	return m_tc->m_renderer->m_dev.CreateRenderTarget(m_texture, w, h);
 }
 
 void GSTextureCache::GSRenderTarget::Update()
@@ -110,10 +105,10 @@ void GSTextureCache::GSRenderTarget::Read(CRect r)
 
 	//
 
-	float left = m_scale.x * r.left / m_texture.m_desc.Width;
-	float top = m_scale.y * r.top / m_texture.m_desc.Height;
-	float right = m_scale.x * r.right / m_texture.m_desc.Width;
-	float bottom = m_scale.y * r.bottom / m_texture.m_desc.Height;
+	float left = m_scale.x * r.left / m_texture.GetWidth();
+	float top = m_scale.y * r.top / m_texture.GetHeight();
+	float right = m_scale.x * r.right / m_texture.GetWidth();
+	float bottom = m_scale.y * r.bottom / m_texture.GetHeight();
 
 	GSVector4 src(left, top, right, bottom);
 	GSVector4 dst(0, 0, r.Width(), r.Height());

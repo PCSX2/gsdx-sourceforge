@@ -59,7 +59,9 @@
 #include <xmmintrin.h>
 #include <emmintrin.h>
 
-#include "../GSdx/GSState.h"
+#include "../GSdx/GSRendererHW.h"
+#include "../GSdx/GSRendererSW.h"
+#include "../GSdx/GSRendererNull.h"
 
 #define countof(a) (sizeof(a)/sizeof(a[0]))
 
@@ -67,16 +69,6 @@
 #define EXPORT_C_(type) extern "C" __declspec(dllexport) type __stdcall
 
 #pragma warning(disable : 4995 4324)
-
-#ifndef RESTRICT
-	#ifdef __INTEL_COMPILER
-		#define RESTRICT restrict
-	#elif _MSC_VER >= 1400
-		#define RESTRICT __restrict
-	#else
-		#define RESTRICT
-	#endif
-#endif
 
 #define D3DCOLORWRITEENABLE_RGB (D3DCOLORWRITEENABLE_RED|D3DCOLORWRITEENABLE_GREEN|D3DCOLORWRITEENABLE_BLUE)
 #define D3DCOLORWRITEENABLE_RGBA (D3DCOLORWRITEENABLE_RGB|D3DCOLORWRITEENABLE_ALPHA)

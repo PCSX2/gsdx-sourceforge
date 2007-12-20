@@ -26,6 +26,7 @@
 // #define PS_REGION_REPEAT
 
 #include "GSTextureDX9.h"
+#include "GSMergeFX.h"
 
 struct Direct3DSamplerState9
 {
@@ -87,7 +88,8 @@ class GSDeviceDX9 : public GSDevice<GSTextureDX9>
 	//
 
 	bool Create(int type, GSTextureDX9& t, int w, int h, int format);
-	void Deinterlace(GSTextureDX9& st, GSTextureDX9& dt, int shader, bool linear, float yoffset = 0);
+	void DoMerge(GSTextureDX9* st, GSVector4* sr, GSTextureDX9& dt, bool en1, bool en2, bool slbg, bool mmod, GSVector4& c);
+	void DoInterlace(GSTextureDX9& st, GSTextureDX9& dt, int shader, bool linear, float yoffset = 0);
 
 private:
 	HWND m_hWnd;
@@ -97,14 +99,11 @@ private:
 	CComPtr<IDirect3DDevice9> m_dev;
 	CComPtr<IDirect3DSwapChain9> m_swapchain;
 	GSTextureDX9 m_backbuffer;
+	GSMergeFX m_mergefx;
 
 public: // TODO
 	D3DPRESENT_PARAMETERS m_pp;
 	CComPtr<ID3DXFont> m_font;
-
-	GSTextureDX9 m_tex_current;
-	GSTextureDX9 m_tex_merge;
-	GSTextureDX9 m_tex_1x1;
 
 	struct
 	{
@@ -119,6 +118,8 @@ public: // TODO
 	{
 		CComPtr<IDirect3DPixelShader9> ps[4];
 	} m_interlace;
+
+	typedef GSTextureDX9 Texture;
 
 public:
 	GSDeviceDX9();
@@ -151,15 +152,14 @@ public:
 	void OMSetBlendState(Direct3DBlendState9* bs, DWORD bf);
 	void OMSetRenderTargets(IDirect3DSurface9* rtv, IDirect3DSurface9* dsv);
 
-	void Draw(LPCTSTR str);
-
-	bool SaveCurrent(LPCTSTR fn);
-	bool SaveToFileD24S8(IDirect3DSurface9* ds, LPCTSTR fn);
-
 	void StretchRect(GSTextureDX9& st, GSTextureDX9& dt, const GSVector4& dr, bool linear = true);
 	void StretchRect(GSTextureDX9& st, const GSVector4& sr, GSTextureDX9& dt, const GSVector4& dr, bool linear = true);
 	void StretchRect(GSTextureDX9& st, const GSVector4& sr, GSTextureDX9& dt, const GSVector4& dr, IDirect3DPixelShader9* ps, const float* ps_cb, int ps_cb_len, bool linear = true);
 
 	HRESULT CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro, IDirect3DVertexShader9** vs, ID3DXConstantTable** ct = NULL);
 	HRESULT CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro, IDirect3DPixelShader9** ps, ID3DXConstantTable** ct = NULL);
+
+	// TODO
+	void Draw(LPCTSTR str);
+	bool SaveToFileD24S8(IDirect3DSurface9* ds, LPCTSTR fn);
 };

@@ -28,23 +28,23 @@ bool s_dump = false;
 bool s_save = false;
 bool s_savez = false;
 
-GSRendererHW::GSRendererHW(BYTE* base, bool mt, void (*irq)(), int nloophack)
-	: GSRendererT(base, mt, irq, nloophack)
+GSRendererHWDX9::GSRendererHWDX9(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync)
+	: GSRendererHW<GSDeviceDX9>(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync)
 	, m_tc(this)
 	, m_width(1024)
 	, m_height(1024)
 	, m_skip(0)
 {
-	m_fba.enabled = !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("fba"), TRUE);
-
 	if(!AfxGetApp()->GetProfileInt(_T("Settings"), _T("nativeres"), FALSE))
 	{
 		m_width = AfxGetApp()->GetProfileInt(_T("Settings"), _T("resx"), 1024);
 		m_height = AfxGetApp()->GetProfileInt(_T("Settings"), _T("resy"), 1024);
 	}
+
+	m_fba.enabled = !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("fba"), TRUE);
 }
 
-bool GSRendererHW::Create(LPCTSTR title)
+bool GSRendererHWDX9::Create(LPCTSTR title)
 {
 	if(!__super::Create(title))
 		return false;
@@ -85,44 +85,44 @@ bool GSRendererHW::Create(LPCTSTR title)
 	return true;
 }
 
-void GSRendererHW::VertexKick(bool skip)
+void GSRendererHWDX9::VSync(int field)
 {
-	GSVertexHW& v = m_vl.AddTail();
+	__super::VSync(field);
 
-	v.x = (float)m_v.XYZ.X;
-	v.y = (float)m_v.XYZ.Y;
-	v.z = (float)m_v.XYZ.Z;
+	m_tc.IncAge();
 
-	v.c0 = m_v.RGBAQ.ai32[0];
-
-	v.c1 = m_v.FOG.ai32[1];
-
-	if(PRIM->TME)
-	{
-		if(PRIM->FST)
-		{
-			v.w = 1.0f;
-			v.u = (float)(int)m_v.UV.U;
-			v.v = (float)(int)m_v.UV.V;
-		}
-		else
-		{
-			v.w = m_v.RGBAQ.Q;
-			v.u = m_v.ST.S;
-			v.v = m_v.ST.T;
-		}
-	}
-	else
-	{
-		v.w = 1.0f;
-		v.u = 0;
-		v.v = 0;
-	}
-
-	__super::VertexKick(skip);
+	m_skip = 0;
 }
 
-void GSRendererHW::DrawingKick(bool skip)
+bool GSRendererHWDX9::GetOutput(int i, GSTextureDX9& t, GSVector2& s)
+{
+	GIFRegTEX0 TEX0;
+
+	TEX0.TBP0 = DISPFB[i]->Block();
+	TEX0.TBW = DISPFB[i]->FBW;
+	TEX0.PSM = DISPFB[i]->PSM;
+
+	if(GSTextureCache::GSRenderTarget* rt = m_tc.GetRenderTarget(TEX0, m_width, m_height, true))
+	{
+		t = rt->m_texture;
+		s = rt->m_scale;
+
+		return true;
+
+if(s_dump)
+{
+	CString str;
+	str.Format(_T("c:\\temp2\\_%05d_f%I64d_fr%d_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), i, (int)TEX0.TBP0, (int)TEX0.PSM);
+	if(s_save) rt->m_texture.Save(str);
+}
+
+// s_dump = m_perfmon.GetFrame() >= 5330;
+	}
+
+	return false;
+}
+
+void GSRendererHWDX9::DrawingKick(bool skip)
 {
 	GSVertexHW* v = &m_vertices[m_count];
 	int nv = 0;
@@ -243,25 +243,12 @@ void GSRendererHW::DrawingKick(bool skip)
 	m_count += nv;
 }
 
-void GSRendererHW::Draw()
+void GSRendererHWDX9::Draw()
 {
 	if(DetectBadFrame(m_skip))
 	{
 		return;
 	}
-	
-TRACE(_T("[%d] FlushPrim f %05x (%d) z %05x (%d %d %d %d) t %05x %05x (%d)\n"), 
-	  (int)m_perfmon.GetFrame(), 
-	  (int)m_context->FRAME.Block(), 
-	  (int)m_context->FRAME.PSM, 
-	  (int)m_context->ZBUF.Block(), 
-	  (int)m_context->ZBUF.PSM, 
-	  m_context->TEST.ZTE, 
-	  m_context->TEST.ZTST, 
-	  m_context->ZBUF.ZMSK, 
-	  PRIM->TME ? (int)m_context->TEX0.TBP0 : 0xfffff, 
-	  PRIM->TME && m_context->TEX0.PSM > PSM_PSMCT16S ? (int)m_context->TEX0.CBP : 0xfffff, 
-	  PRIM->TME ? (int)m_context->TEX0.PSM : 0xff);
 
 	//
 
@@ -298,11 +285,11 @@ if(s_dump)
 {
 	CString str;
 	str.Format(_T("c:\\temp2\\_%05d_f%I64d_tex_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), (int)m_context->TEX0.TBP0, (int)m_context->TEX0.PSM);
-	if(PRIM->TME) if(s_save) ::D3DXSaveTextureToFile(str, D3DXIFF_BMP, tex->m_texture, NULL);
+	if(PRIM->TME) if(s_save) tex->m_texture.Save(str);
 	str.Format(_T("c:\\temp2\\_%05d_f%I64d_rt0_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), m_context->FRAME.Block(), m_context->FRAME.PSM);
-	if(s_save) ::D3DXSaveTextureToFile(str, D3DXIFF_BMP, rt->m_texture, NULL);
+	if(s_save) rt->m_texture.Save(str);
 	str.Format(_T("c:\\temp2\\_%05d_f%I64d_rz0_%05x_%d.bmp"), s_n-1, m_perfmon.GetFrame(), m_context->ZBUF.Block(), m_context->ZBUF.PSM);
-	if(s_savez) m_dev.SaveToFileD24S8(ds->m_texture, str);
+	if(s_savez) m_dev.SaveToFileD24S8(ds->m_texture, str); // TODO
 }
 
 	int prim = PRIM->PRIM;
@@ -346,11 +333,9 @@ if(s_dump)
 
 	//
 
-	HRESULT hr;
-
 	m_dev.BeginScene();
 
-	hr = m_dev->SetRenderState(D3DRS_SHADEMODE, PRIM->IIP ? D3DSHADE_GOURAUD : D3DSHADE_FLAT); // TODO
+	m_dev->SetRenderState(D3DRS_SHADEMODE, PRIM->IIP ? D3DSHADE_GOURAUD : D3DSHADE_FLAT); // TODO
 
 	// om
 
@@ -374,9 +359,9 @@ if(s_dump)
 	om_bsel.wb = (m_context->FRAME.FBMSK & 0x00ff0000) != 0x00ff0000;
 	om_bsel.wa = (m_context->FRAME.FBMSK & 0xff000000) != 0xff000000;
 
-	BYTE bf = m_context->ALPHA.FIX;
+	BYTE factor = m_context->ALPHA.FIX;
 
-	m_tfx.SetupOM(om_dssel, om_bsel, bf, rt->m_texture, ds->m_texture);
+	m_tfx.SetupOM(om_dssel, om_bsel, factor, rt->m_texture, ds->m_texture);
 
 	// ia
 
@@ -386,8 +371,8 @@ if(s_dump)
 
 	GSTextureFX::VSConstantBuffer vs_cb;
 
-	float sx = 2.0f * rt->m_scale.x / (rt->m_texture.m_desc.Width * 16);
-	float sy = 2.0f * rt->m_scale.y / (rt->m_texture.m_desc.Height * 16);
+	float sx = 2.0f * rt->m_scale.x / (rt->m_texture.GetWidth() * 16);
+	float sy = 2.0f * rt->m_scale.y / (rt->m_texture.GetHeight() * 16);
 	float ox = (float)(int)m_context->XYOFFSET.OFX;
 	float oy = (float)(int)m_context->XYOFFSET.OFY;
 
@@ -491,8 +476,8 @@ if(s_dump)
 			__assume(0);
 		}
 
-		float w = (float)(int)tex->m_texture.m_desc.Width;
-		float h = (float)(int)tex->m_texture.m_desc.Height;
+		float w = (float)tex->m_texture.GetWidth();
+		float h = (float)tex->m_texture.GetHeight();
 
 		ps_cb.WH = GSVector2(w, h);
 		ps_cb.rWrH = GSVector2(1.0f / w, 1.0f / h);
@@ -510,8 +495,8 @@ if(s_dump)
 
 	// rs
 
-	UINT w = rt->m_texture.m_desc.Width;
-	UINT h = rt->m_texture.m_desc.Height;
+	int w = rt->m_texture.GetWidth();
+	int h = rt->m_texture.GetHeight();
 
 	CRect scissor(
 		(int)(rt->m_scale.x * (m_context->SCISSOR.SCAX0)),
@@ -563,7 +548,7 @@ if(s_dump)
 			om_bsel.wb = b;
 			om_bsel.wa = a;
 
-			m_tfx.UpdateOM(om_dssel, om_bsel, bf);
+			m_tfx.UpdateOM(om_dssel, om_bsel, factor);
 
 			m_dev->DrawPrimitiveUP(topology, prims, m_vertices, sizeof(m_vertices[0]));
 		}
@@ -577,69 +562,28 @@ if(s_dump)
 {
 	CString str;
 	str.Format(_T("c:\\temp2\\_%05d_f%I64d_rt1_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), m_context->FRAME.Block(), m_context->FRAME.PSM);
-	if(s_save) ::D3DXSaveTextureToFile(str, D3DXIFF_BMP, rt->m_texture, NULL);
+	if(s_save) rt->m_texture.Save(str);
 	str.Format(_T("c:\\temp2\\_%05d_f%I64d_rz1_%05x_%d.bmp"), s_n-1, m_perfmon.GetFrame(), m_context->ZBUF.Block(), m_context->ZBUF.PSM);
-	if(s_savez) m_dev.SaveToFileD24S8(ds->m_texture, str);
+	if(s_savez) m_dev.SaveToFileD24S8(ds->m_texture, str); // TODO
 }
 
 }
 
-void GSRendererHW::Flip()
-{
-	FlipInfo src[2];
-
-	for(int i = 0; i < countof(src); i++)
-	{
-		if(!IsEnabled(i))
-		{
-			continue;
-		}
-
-		GIFRegTEX0 TEX0;
-
-		TEX0.TBP0 = DISPFB[i]->Block();
-		TEX0.TBW = DISPFB[i]->FBW;
-		TEX0.PSM = DISPFB[i]->PSM;
-
-		if(GSTextureCache::GSRenderTarget* rt = m_tc.GetRenderTarget(TEX0, m_width, m_height, true))
-		{
-			src[i].t = rt->m_texture;
-			src[i].s = rt->m_scale;
-
-if(s_dump)
-{
-	CString str;
-	str.Format(_T("c:\\temp2\\_%05d_f%I64d_fr%d_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), i, (int)TEX0.TBP0, (int)TEX0.PSM);
-	if(s_save) ::D3DXSaveTextureToFile(str, D3DXIFF_BMP, rt->m_texture, NULL);
-}
-
-// s_dump = m_perfmon.GetFrame() >= 5330;
-		}
-
-	}
-
-	FinishFlip(src);
-
-	m_tc.IncAge();
-
-	m_skip = 0;
-}
-
-void GSRendererHW::InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r)
+void GSRendererHWDX9::InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r)
 {
 	TRACE(_T("[%d] InvalidateVideoMem %d,%d - %d,%d %05x (%d)\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.DBP, (int)BITBLTBUF.DPSM);
 
 	m_tc.InvalidateVideoMem(BITBLTBUF, &r);
 }
 
-void GSRendererHW::InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r)
+void GSRendererHWDX9::InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r)
 {
 	TRACE(_T("[%d] InvalidateLocalMem %d,%d - %d,%d %05x (%d)\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.SBP, (int)BITBLTBUF.SPSM);
 
 	m_tc.InvalidateLocalMem(BITBLTBUF, &r);
 }
 
-void GSRendererHW::MinMaxUV(int w, int h, CRect& r)
+void GSRendererHWDX9::MinMaxUV(int w, int h, CRect& r)
 {
 	r.SetRect(0, 0, w, h);
 
@@ -783,7 +727,7 @@ void GSRendererHW::MinMaxUV(int w, int h, CRect& r)
 	r.bottom = min((r.bottom + bsm.cy + 1) & ~bsm.cy, h);
 }
 
-void GSRendererHW::SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache::GSDepthStencil* ds)
+void GSRendererHWDX9::SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache::GSDepthStencil* ds)
 {
 	if(!m_context->TEST.DATE) return; // || (::GetAsyncKeyState(VK_CONTROL)&0x80000000)
 
@@ -830,8 +774,8 @@ void GSRendererHW::SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache:
 
 #endif
 
-	int w = rt->m_texture.m_desc.Width;
-	int h = rt->m_texture.m_desc.Height;
+	int w = rt->m_texture.GetWidth();
+	int h = rt->m_texture.GetHeight();
 
 	float sx = rt->m_scale.x / (w * 16);
 	float sy = rt->m_scale.y / (h * 16);
@@ -853,9 +797,11 @@ void GSRendererHW::SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache:
 
 	m_dev.BeginScene();
 
+	// om
+
 	GSTextureDX9 tmp;
 
-	m_dev.CreateRenderTarget(tmp, rt->m_texture.m_desc.Width, rt->m_texture.m_desc.Height);
+	m_dev.CreateRenderTarget(tmp, rt->m_texture.GetWidth(), rt->m_texture.GetHeight());
 
 	m_dev.OMSetRenderTargets(tmp, ds->m_texture);
 	m_dev.OMSetDepthStencilState(&m_date.dss, 1);
@@ -891,7 +837,7 @@ void GSRendererHW::SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache:
 
 	// rs
 
-	m_dev.RSSet(tmp.m_desc.Width, tmp.m_desc.Height);
+	m_dev.RSSet(tmp.GetWidth(), tmp.GetHeight());
 
 	//
 
@@ -912,7 +858,7 @@ void GSRendererHW::SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache:
 	m_dev.Recycle(tmp);
 }
 
-void GSRendererHW::UpdateFBA(GSTextureCache::GSRenderTarget* rt)
+void GSRendererHWDX9::UpdateFBA(GSTextureCache::GSRenderTarget* rt)
 {
 	m_dev.BeginScene();
 
@@ -931,8 +877,8 @@ void GSRendererHW::UpdateFBA(GSTextureCache::GSRenderTarget* rt)
 
 	//
 
-	int w = rt->m_texture.m_desc.Width;
-	int h = rt->m_texture.m_desc.Height;
+	int w = rt->m_texture.GetWidth();
+	int h = rt->m_texture.GetHeight();
 
 	GSVertexP vertices[] =
 	{
@@ -951,7 +897,7 @@ void GSRendererHW::UpdateFBA(GSTextureCache::GSRenderTarget* rt)
 	m_dev.EndScene();
 }
 
-bool GSRendererHW::OverrideInput(int& prim, GSTextureCache::GSTexture* tex)
+bool GSRendererHWDX9::OverrideInput(int& prim, GSTextureCache::GSTexture* tex)
 {
 	#pragma region ffxii pal video conversion
 
@@ -995,19 +941,7 @@ bool GSRendererHW::OverrideInput(int& prim, GSTextureCache::GSTexture* tex)
 
 			m_dev.CreateTexture(tex->m_texture, 512, 512);
 
-			D3DLOCKED_RECT lr;
-			
-			if(SUCCEEDED(tex->m_texture->LockRect(0, &lr, NULL, 0)))
-			{
-				BYTE* bits = (BYTE*)lr.pBits;
-
-				for(int i = 0; i < 512; i++, bits += lr.Pitch)
-				{
-					memcpy(bits, &video[i*512], 448*4);
-				}
-
-				tex->m_texture->UnlockRect(0);
-			}
+			tex->m_texture.Update(CRect(0, 0, 448, 512), video, 512*4);
 
 			m_vertices[0] = m_vertices[0];
 			m_vertices[1] = m_vertices[1];

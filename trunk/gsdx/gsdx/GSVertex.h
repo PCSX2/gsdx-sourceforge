@@ -23,6 +23,8 @@
 
 #include "GS.h"
 #include "GSVector.h"
+#include "GSVertexHW.h"
+#include "GSVertexSW.h"
 
 #pragma pack(push, 1)
 
@@ -58,6 +60,10 @@ struct GSVertexPT2
 {
 	GSVector4 p;
 	GSVector2 t[2];
+};
+
+struct GSVertexNull 
+{
 };
 
 #pragma pack(pop)

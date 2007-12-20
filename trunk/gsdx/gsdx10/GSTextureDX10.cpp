@@ -69,6 +69,25 @@ int GSTextureDX10::GetFormat() const
 	return m_desc.Format;
 }
 
+bool GSTextureDX10::Update(CRect r, const void* data, int pitch)
+{
+	if(m_dev && m_texture)
+	{
+		D3D10_BOX box = {r.left, r.top, 0, r.right, r.bottom, 1};
+		
+		m_dev->UpdateSubresource(m_texture, 0, &box, data, pitch, 0);
+
+		return true;
+	}
+
+	return false;
+}
+
+bool GSTextureDX10::Save(CString fn, bool dds)
+{
+	return SUCCEEDED(D3DX10SaveTextureToFile(m_texture, dds ? D3DX10_IFF_DDS : D3DX10_IFF_BMP, fn));
+}
+
 ID3D10Texture2D* GSTextureDX10::operator->()
 {
 	return m_texture;
