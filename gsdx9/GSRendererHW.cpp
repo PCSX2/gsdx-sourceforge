@@ -92,6 +92,8 @@ void GSRendererHWDX9::VSync(int field)
 	m_tc.IncAge();
 
 	m_skip = 0;
+
+// s_dump = m_perfmon.GetFrame() >= 5002;
 }
 
 bool GSRendererHWDX9::GetOutput(int i, GSTextureDX9& t, GSVector2& s)
@@ -107,8 +109,6 @@ bool GSRendererHWDX9::GetOutput(int i, GSTextureDX9& t, GSVector2& s)
 		t = rt->m_texture;
 		s = rt->m_scale;
 
-		return true;
-
 if(s_dump)
 {
 	CString str;
@@ -116,7 +116,7 @@ if(s_dump)
 	if(s_save) rt->m_texture.Save(str);
 }
 
-// s_dump = m_perfmon.GetFrame() >= 5330;
+		return true;
 	}
 
 	return false;
@@ -165,15 +165,15 @@ void GSRendererHWDX9::DrawingKick(bool skip)
 		m_vl.RemoveAt(0, v[0]);
 		m_vl.RemoveAt(0, v[1]);
 		// ASSERT(v[0].z == v[1].z);
-		v[0].z = v[1].z;
-		v[0].w = v[1].w;
+		v[0].p.z = v[1].p.z;
+		v[0].p.w = v[1].p.w;
 		v[0].f = v[1].f;
 		v[2] = v[1];
 		v[3] = v[1];
-		v[1].y = v[0].y;
-		v[1].v = v[0].v;
-		v[2].x = v[0].x;
-		v[2].u = v[0].u;
+		v[1].p.y = v[0].p.y;
+		v[1].t.y = v[0].t.y;
+		v[2].p.x = v[0].p.x;
+		v[2].t.x = v[0].t.x;
 		v[4] = v[1];
 		v[5] = v[2];
 		nv = 6;
@@ -197,31 +197,31 @@ void GSRendererHWDX9::DrawingKick(bool skip)
 	switch(nv)
 	{
 	case 1:
-		if(v[0].x < sx0
-		|| v[0].x > sx1
-		|| v[0].y < sy0
-		|| v[0].y > sy1)
+		if(v[0].p.x < sx0
+		|| v[0].p.x > sx1
+		|| v[0].p.y < sy0
+		|| v[0].p.y > sy1)
 			return;
 		break;
 	case 2:
-		if(v[0].x < sx0 && v[1].x < sx0
-		|| v[0].x > sx1 && v[1].x > sx1
-		|| v[0].y < sy0 && v[1].y < sy0
-		|| v[0].y > sy1 && v[1].y > sy1)
+		if(v[0].p.x < sx0 && v[1].p.x < sx0
+		|| v[0].p.x > sx1 && v[1].p.x > sx1
+		|| v[0].p.y < sy0 && v[1].p.y < sy0
+		|| v[0].p.y > sy1 && v[1].p.y > sy1)
 			return;
 		break;
 	case 3:
-		if(v[0].x < sx0 && v[1].x < sx0 && v[2].x < sx0
-		|| v[0].x > sx1 && v[1].x > sx1 && v[2].x > sx1
-		|| v[0].y < sy0 && v[1].y < sy0 && v[2].y < sy0
-		|| v[0].y > sy1 && v[1].y > sy1 && v[2].y > sy1)
+		if(v[0].p.x < sx0 && v[1].p.x < sx0 && v[2].p.x < sx0
+		|| v[0].p.x > sx1 && v[1].p.x > sx1 && v[2].p.x > sx1
+		|| v[0].p.y < sy0 && v[1].p.y < sy0 && v[2].p.y < sy0
+		|| v[0].p.y > sy1 && v[1].p.y > sy1 && v[2].p.y > sy1)
 			return;
 		break;
 	case 6:
-		if(v[0].x < sx0 && v[3].x < sx0
-		|| v[0].x > sx1 && v[3].x > sx1
-		|| v[0].y < sy0 && v[3].y < sy0
-		|| v[0].y > sy1 && v[3].y > sy1)
+		if(v[0].p.x < sx0 && v[3].p.x < sx0
+		|| v[0].p.x > sx1 && v[3].p.x > sx1
+		|| v[0].p.y < sy0 && v[3].p.y < sy0
+		|| v[0].p.y > sy1 && v[3].p.y > sy1)
 			return;
 		break;
 	default:
@@ -249,6 +249,11 @@ void GSRendererHWDX9::Draw()
 	{
 		return;
 	}
+
+if(s_n >= 2021)
+{
+	s_save = true;
+}
 
 	//
 
@@ -359,13 +364,13 @@ if(s_dump)
 	om_bsel.wb = (m_context->FRAME.FBMSK & 0x00ff0000) != 0x00ff0000;
 	om_bsel.wa = (m_context->FRAME.FBMSK & 0xff000000) != 0xff000000;
 
-	BYTE factor = m_context->ALPHA.FIX;
+	BYTE factor = m_context->ALPHA.FIX >= 0x80 ? 0xff : m_context->ALPHA.FIX * 2;
 
 	m_tfx.SetupOM(om_dssel, om_bsel, factor, rt->m_texture, ds->m_texture);
 
 	// ia
 
-	m_tfx.SetupIA();
+	m_tfx.SetupIA(m_vertices, m_count, topology);
 
 	// vs
 
@@ -414,7 +419,7 @@ if(s_dump)
 
 	GSTextureFX::PSConstantBuffer ps_cb;
 
-	ps_cb.FogColor = GSVector4((float)(int)m_env.FOGCOL.FCB / 255, (float)(int)m_env.FOGCOL.FCG / 255, (float)(int)m_env.FOGCOL.FCR / 255, 0);
+	ps_cb.FogColor = GSVector4((float)(int)m_env.FOGCOL.FCR / 255, (float)(int)m_env.FOGCOL.FCG / 255, (float)(int)m_env.FOGCOL.FCB / 255, 0);
 	ps_cb.TA0 = (float)(int)m_env.TEXA.TA0 / 255;
 	ps_cb.TA1 = (float)(int)m_env.TEXA.TA1 / 255;
 	ps_cb.AREF = (float)(int)m_context->TEST.AREF / 255;
@@ -441,8 +446,8 @@ if(s_dump)
 			ps_ssel.tau = 0; 
 			break;
 		case 2: 
-			ps_cb.MINU = (float)(int)m_context->CLAMP.MINU / (1 << m_context->TEX0.TW);
-			ps_cb.MAXU = (float)(int)m_context->CLAMP.MAXU / (1 << m_context->TEX0.TW);
+			ps_cb.MINU = ((float)(int)m_context->CLAMP.MINU + 0.5f) / (1 << m_context->TEX0.TW);
+			ps_cb.MAXU = ((float)(int)m_context->CLAMP.MAXU) / (1 << m_context->TEX0.TW);
 			ps_ssel.tau = 0; 
 			break;
 		case 3: 
@@ -463,8 +468,8 @@ if(s_dump)
 			ps_ssel.tav = 0; 
 			break;
 		case 2: 
-			ps_cb.MINV = (float)(int)m_context->CLAMP.MINV / (1 << m_context->TEX0.TH);
-			ps_cb.MAXV = (float)(int)m_context->CLAMP.MAXV / (1 << m_context->TEX0.TH);
+			ps_cb.MINV = ((float)(int)m_context->CLAMP.MINV + 0.5f) / (1 << m_context->TEX0.TH);
+			ps_cb.MAXV = ((float)(int)m_context->CLAMP.MAXV) / (1 << m_context->TEX0.TH);
 			ps_ssel.tav = 0; 
 			break;
 		case 3: 
@@ -481,8 +486,6 @@ if(s_dump)
 
 		ps_cb.WH = GSVector2(w, h);
 		ps_cb.rWrH = GSVector2(1.0f / w, 1.0f / h);
-		ps_cb.rWZ = GSVector2(1.0f / w, 0);
-		ps_cb.ZrH = GSVector2(0, 1.0f / h);
 
 		m_tfx.SetupPS(ps_sel, &ps_cb, ps_ssel, tex->m_texture, tex->m_palette);
 	}
@@ -512,7 +515,7 @@ if(s_dump)
 
 	if(m_context->TEST.DoFirstPass())
 	{
-		m_dev->DrawPrimitiveUP(topology, prims, m_vertices, sizeof(m_vertices[0]));
+		m_dev.DrawPrimitive();
 	}
 
 	if(m_context->TEST.DoSecondPass())
@@ -550,7 +553,7 @@ if(s_dump)
 
 			m_tfx.UpdateOM(om_dssel, om_bsel, factor);
 
-			m_dev->DrawPrimitiveUP(topology, prims, m_vertices, sizeof(m_vertices[0]));
+			m_dev.DrawPrimitive();
 		}
 	}
 
@@ -587,81 +590,50 @@ void GSRendererHWDX9::MinMaxUV(int w, int h, CRect& r)
 {
 	r.SetRect(0, 0, w, h);
 
-	uvmm_t uv;
+	GSVector4 mm(0, 0, 1, 1);
 
-	uv.umin = uv.vmin = 0;
-	uv.umax = uv.vmax = 1;
-
-	if(m_context->CLAMP.WMS < 3 || m_context->CLAMP.WMT < 3)
+	if((m_context->CLAMP.WMS < 3 || m_context->CLAMP.WMT < 3) && m_count < 100)
 	{
-		if(m_count < 100) 
-		{
-			if(PRIM->FST)
-			{
-				UVMinMax(m_count, (vertex_t*)m_vertices, &uv);
-
-				uv.umin *= 1.0f / (16 << m_context->TEX0.TW);
-				uv.umax *= 1.0f / (16 << m_context->TEX0.TW);
-				uv.vmin *= 1.0f / (16 << m_context->TEX0.TH);
-				uv.vmax *= 1.0f / (16 << m_context->TEX0.TH);
-			}
-			else
-			{
-				uv.umin = uv.vmin = FLT_MAX;
-				uv.umax = uv.vmax = FLT_MIN;
-
-				for(int i = 0, j = m_count; i < j; i++)
-				{
-					float w = 1.0f / m_vertices[i].w;
-					float u = m_vertices[i].u * w;
-					if(uv.umax < u) uv.umax = u;
-					if(uv.umin > u) uv.umin = u;
-					float v = m_vertices[i].v * w;
-					if(uv.vmax < v) uv.vmax = v;
-					if(uv.vmin > v) uv.vmin = v;
-				}
-			}
-		}
+		__super::MinMaxUV(mm);
 	}
 
 	CSize bs = GSLocalMemory::m_psm[m_context->TEX0.PSM].bs;
-
 	CSize bsm(bs.cx - 1, bs.cy - 1);
 
 	if(m_context->CLAMP.WMS != 3)
 	{
 		if(m_context->CLAMP.WMS == 0)
 		{
-			float fmin = floor(uv.umin);
-			float fmax = floor(uv.umax);
+			float fmin = floor(mm.x);
+			float fmax = floor(mm.z);
 
-			if(fmin != fmax) {uv.umin = 0; uv.umax = 1.0f;}
-			else {uv.umin -= fmin; uv.umax -= fmax;}
+			if(fmin != fmax) {mm.x = 0; mm.z = 1.0f;}
+			else {mm.x -= fmin; mm.z -= fmax;}
 
 			// FIXME: 
-			if(uv.umin == 0 && uv.umax != 1.0f) uv.umax = 1.0f;
+			if(mm.x == 0 && mm.z != 1.0f) mm.z = 1.0f;
 		}
 		else if(m_context->CLAMP.WMS == 1)
 		{
-			if(uv.umin < 0) uv.umin = 0;
-			else if(uv.umin > 1.0f) uv.umin = 1.0f;
-			if(uv.umax < 0) uv.umax = 0;
-			else if(uv.umax > 1.0f) uv.umax = 1.0f;
-			if(uv.umin > uv.umax) uv.umin = uv.umax;
+			if(mm.x < 0) mm.x = 0;
+			else if(mm.x > 1.0f) mm.x = 1.0f;
+			if(mm.z < 0) mm.z = 0;
+			else if(mm.z > 1.0f) mm.z = 1.0f;
+			if(mm.x > mm.z) mm.x = mm.z;
 		}
 		else if(m_context->CLAMP.WMS == 2)
 		{
 			float minu = 1.0f * m_context->CLAMP.MINU / w;
 			float maxu = 1.0f * m_context->CLAMP.MAXU / w;
-			if(uv.umin < minu) uv.umin = minu;
-			else if(uv.umin > maxu) uv.umin = maxu;
-			if(uv.umax < minu) uv.umax = minu;
-			else if(uv.umax > maxu) uv.umax = maxu;
-			if(uv.umin > uv.umax) uv.umin = uv.umax;
+			if(mm.x < minu) mm.x = minu;
+			else if(mm.x > maxu) mm.x = maxu;
+			if(mm.z < minu) mm.z = minu;
+			else if(mm.z > maxu) mm.z = maxu;
+			if(mm.x > mm.z) mm.x = mm.z;
 		}
 
-		r.left = (int)(uv.umin * w);
-		r.right = (int)(uv.umax * w);
+		r.left = (int)(mm.x * w);
+		r.right = (int)(mm.z * w);
 	}
 	else
 	{
@@ -681,36 +653,36 @@ void GSRendererHWDX9::MinMaxUV(int w, int h, CRect& r)
 	{
 		if(m_context->CLAMP.WMT == 0)
 		{
-			float fmin = floor(uv.vmin);
-			float fmax = floor(uv.vmax);
+			float fmin = floor(mm.y);
+			float fmax = floor(mm.w);
 
-			if(fmin != fmax) {uv.vmin = 0; uv.vmax = 1.0f;}
-			else {uv.vmin -= fmin; uv.vmax -= fmax;}
+			if(fmin != fmax) {mm.y = 0; mm.w = 1.0f;}
+			else {mm.y -= fmin; mm.w -= fmax;}
 
 			// FIXME: 
-			if(uv.vmin == 0 && uv.vmax != 1.0f) uv.vmax = 1.0f;
+			if(mm.y == 0 && mm.w != 1.0f) mm.w = 1.0f;
 		}
 		else if(m_context->CLAMP.WMT == 1)
 		{
-			if(uv.vmin < 0) uv.vmin = 0;
-			else if(uv.vmin > 1.0f) uv.vmin = 1.0f;
-			if(uv.vmax < 0) uv.vmax = 0;
-			else if(uv.vmax > 1.0f) uv.vmax = 1.0f;
-			if(uv.vmin > uv.vmax) uv.vmin = uv.vmax;
+			if(mm.y < 0) mm.y = 0;
+			else if(mm.y > 1.0f) mm.y = 1.0f;
+			if(mm.w < 0) mm.w = 0;
+			else if(mm.w > 1.0f) mm.w = 1.0f;
+			if(mm.y > mm.w) mm.y = mm.w;
 		}
 		else if(m_context->CLAMP.WMT == 2)
 		{
 			float minv = 1.0f * m_context->CLAMP.MINV / h;
 			float maxv = 1.0f * m_context->CLAMP.MAXV / h;
-			if(uv.vmin < minv) uv.vmin = minv;
-			else if(uv.vmin > maxv) uv.vmin = maxv;
-			if(uv.vmax < minv) uv.vmax = minv;
-			else if(uv.vmax > maxv) uv.vmax = maxv;
-			if(uv.vmin > uv.vmax) uv.vmin = uv.vmax;
+			if(mm.y < minv) mm.y = minv;
+			else if(mm.y > maxv) mm.y = maxv;
+			if(mm.w < minv) mm.w = minv;
+			else if(mm.w > maxv) mm.w = maxv;
+			if(mm.y > mm.w) mm.y = mm.w;
 		}
 
-		r.top = (int)(uv.vmin * h);
-		r.bottom = (int)(uv.vmax * h);
+		r.top = (int)(mm.y * h);
+		r.bottom = (int)(mm.w * h);
 	}
 	else
 	{
@@ -733,67 +705,37 @@ void GSRendererHWDX9::SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCac
 
 	// sfex3 (after the capcom logo), vf4 (first menu fading in), ffxii shadows, rumble roses shadows
 
-	float xmin = 0, xmax = 1;
-	float ymin = 0, ymax = 1;
-
-	// if(m_count < 1000) {
-
-#if _M_IX86_FP >= 2 || defined(_M_AMD64)
-		
-	__m128 xymin = _mm_set1_ps(+1e10);
-	__m128 xymax = _mm_set1_ps(-1e10);
-
-	for(int i = 0, j = m_count; i < j; i++)
-	{
-		xymin = _mm_min_ps(m_vertices[i].m128[0], xymin);
-		xymax = _mm_max_ps(m_vertices[i].m128[0], xymax);
-	}
-
-	xmin = xymin.m128_f32[0];
-	ymin = xymin.m128_f32[1];
-	xmax = xymax.m128_f32[0];
-	ymax = xymax.m128_f32[1];
-
-#else	
-
-	xmin = ymin = +1e10;
-	xmax = ymax = -1e10;
-
-	for(int i = 0, j = m_count; i < j; i++)
-	{
-		float x = m_vertices[i].x;
-
-		if(x < xmin) xmin = x;
-		if(x > xmax) xmax = x;
-		
-		float y = m_vertices[i].y;
-
-		if(y < ymin) ymin = y;
-		if(y > ymax) ymax = y;
-	}
-
-#endif
-
 	int w = rt->m_texture.GetWidth();
 	int h = rt->m_texture.GetHeight();
 
-	float sx = rt->m_scale.x / (w * 16);
-	float sy = rt->m_scale.y / (h * 16);
-
+	float sx = 2.0f * rt->m_scale.x / (w * 16);
+	float sy = 2.0f * rt->m_scale.y / (h * 16);
+	
 	float ox = (float)(int)m_context->XYOFFSET.OFX;
 	float oy = (float)(int)m_context->XYOFFSET.OFY;
 
-	xmin = (xmin - ox) * sx;
-	xmax = (xmax - ox) * sx;
-	ymin = (ymin - oy) * sy;
-	ymax = (ymax - oy) * sy;
+	GSVector4 mm;
 
-	if(xmin < 0) xmin = 0;
-	if(xmax > 1) xmax = 1;
-	if(ymin < 0) ymin = 0;
-	if(ymax > 1) ymax = 1;
+	MinMaxXY(mm);
 
-	// }
+	mm.x = (mm.x - ox) * sx - 1;
+	mm.y = (mm.y - oy) * sy - 1;
+	mm.z = (mm.z - ox) * sx - 1;
+	mm.w = (mm.w - oy) * sy - 1;
+
+	if(mm.x < -1) mm.x = -1;
+	if(mm.y < -1) mm.y = -1;
+	if(mm.z > +1) mm.z = +1;
+	if(mm.w > +1) mm.w = +1;
+
+	GSVector4 uv;
+
+	uv.x = (mm.x + 1) / 2;
+	uv.y = (mm.y + 1) / 2;
+	uv.z = (mm.z + 1) / 2;
+	uv.w = (mm.w + 1) / 2;
+
+	//
 
 	m_dev.BeginScene();
 
@@ -808,26 +750,24 @@ void GSRendererHWDX9::SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCac
 	m_dev.OMSetBlendState(&m_date.bs, 0);
 
 	m_dev->Clear(0, NULL, D3DCLEAR_STENCIL, 0, 0, 0);
-/*
+
 	// ia
 
 	GSVertexPT1 vertices[] =
 	{
-		{GSVector4(xmin, -ymin), GSVector2(umin, vmin)},
-		{GSVector4(xmax, -ymin), GSVector2(umax, vmin)},
-		{GSVector4(xmin, -ymax), GSVector2(umin, vmax)},
-		{GSVector4(xmax, -ymax), GSVector2(umax, vmax)},
+		{GSVector4(mm.x, -mm.y), GSVector2(uv.x, uv.y)},
+		{GSVector4(mm.z, -mm.y), GSVector2(uv.z, uv.y)},
+		{GSVector4(mm.x, -mm.w), GSVector2(uv.x, uv.w)},
+		{GSVector4(mm.z, -mm.w), GSVector2(uv.z, uv.w)},
 	};
 
-	m_dev.IASetVertexBuffer(m_dev.m_convert.vb, 4, vertices);
+	m_dev.IASetVertexBuffer(4, vertices);
 	m_dev.IASetInputLayout(m_dev.m_convert.il);
-	m_dev.IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	m_dev.IASetPrimitiveTopology(D3DPT_TRIANGLESTRIP);
 
 	// vs
 
-	m_dev.VSSetShader(m_dev.m_convert.vs, NULL);
-*/
-	m_dev.VSSetShader(NULL, NULL, 0);
+	m_dev.VSSetShader(m_dev.m_convert.vs, NULL, 0);
 
 	// ps
 
@@ -841,17 +781,9 @@ void GSRendererHWDX9::SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCac
 
 	//
 
-	GSVertexPT1 vertices[] =
-	{
-		{GSVector4(xmin * w, ymin * h), GSVector2(xmin, ymin)},
-		{GSVector4(xmax * w, ymin * h), GSVector2(xmax, ymin)},
-		{GSVector4(xmin * w, ymax * h), GSVector2(xmin, ymax)},
-		{GSVector4(xmax * w, ymax * h), GSVector2(xmax, ymax)},
-	};
+	m_dev.DrawPrimitive();
 
-	m_dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX1);
-
-	m_dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(vertices[0]));
+	//
 
 	m_dev.EndScene();
 

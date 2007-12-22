@@ -156,72 +156,62 @@ bool GSTextureCache::GSTexture::Create(GSRenderTarget* rt)
 
 	// width/height conversion
 
-	// if(w != rt->m_texture.GetWidth() || h != rt->m_texture.GetHeight())
+	GSVector4 dst(0, 0, w, h);
+	
+	if(w > rt->m_texture.GetWidth()) 
 	{
-		GSVector4 dst(0, 0, w, h);
-		
-		if(w > rt->m_texture.GetWidth()) 
-		{
-			float scale = m_scale.x;
-			m_scale.x = (float)rt->m_texture.GetWidth() / tw;
-			dst.z = (float)rt->m_texture.GetWidth() * m_scale.x / scale;
-			w = rt->m_texture.GetWidth();
-		}
-		
-		if(h > rt->m_texture.GetHeight()) 
-		{
-			float scale = m_scale.y;
-			m_scale.y = (float)rt->m_texture.GetHeight() / th;
-			dst.w = (float)rt->m_texture.GetHeight() * m_scale.y / scale;
-			h = rt->m_texture.GetHeight();
-		}
-
-		GSVector4 src(0, 0, w, h);
-
-		GSTextureDX10* st;
-		GSTextureDX10* dt;
-		GSTextureDX10 tmp;
-
-		if(!m_texture)
-		{
-			st = &rt->m_texture;
-			dt = &m_texture;
-		}
-		else
-		{
-			st = &m_texture;
-			dt = &tmp;
-		}
-
-		m_tc->m_renderer->m_dev.CreateRenderTarget(*dt, w, h);
-
-		if(src == dst)
-		{
-			D3D10_BOX box = {0, 0, 0, w, h, 1};
-
-			m_tc->m_renderer->m_dev->CopySubresourceRegion(*dt, 0, 0, 0, 0, *st, 0, &box);
-		}
-		else
-		{
-			src.z /= st->GetWidth();
-			src.w /= st->GetHeight();
-
-			m_tc->m_renderer->m_dev.StretchRect(*st, src, *dt, dst);
-		}
-
-		if(tmp)
-		{
-			m_tc->m_renderer->m_dev.Recycle(m_texture);
-
-			m_texture = tmp;
-		}
+		float scale = m_scale.x;
+		m_scale.x = (float)rt->m_texture.GetWidth() / tw;
+		dst.z = (float)rt->m_texture.GetWidth() * m_scale.x / scale;
+		w = rt->m_texture.GetWidth();
 	}
+	
+	if(h > rt->m_texture.GetHeight()) 
+	{
+		float scale = m_scale.y;
+		m_scale.y = (float)rt->m_texture.GetHeight() / th;
+		dst.w = (float)rt->m_texture.GetHeight() * m_scale.y / scale;
+		h = rt->m_texture.GetHeight();
+	}
+
+	GSVector4 src(0, 0, w, h);
+
+	GSTextureDX10* st;
+	GSTextureDX10* dt;
+	GSTextureDX10 tmp;
 
 	if(!m_texture)
 	{
-		m_tc->m_renderer->m_dev.CreateTexture(m_texture, rt->m_texture.GetWidth(), rt->m_texture.GetHeight());
+		st = &rt->m_texture;
+		dt = &m_texture;
+	}
+	else
+	{
+		st = &m_texture;
+		dt = &tmp;
+	}
 
-		m_tc->m_renderer->m_dev->CopyResource(m_texture, rt->m_texture);
+	m_tc->m_renderer->m_dev.CreateRenderTarget(*dt, w, h);
+
+	if(src == dst)
+	{
+		D3D10_BOX box = {0, 0, 0, w, h, 1};
+
+		m_tc->m_renderer->m_dev->CopySubresourceRegion(*dt, 0, 0, 0, 0, *st, 0, &box);
+	}
+	else
+	{
+		src.z /= st->GetWidth();
+		src.w /= st->GetHeight();
+
+		m_tc->m_renderer->m_dev.StretchRect(*st, src, *dt, dst);
+	}
+
+	if(tmp)
+	{
+		m_tc->m_renderer->m_dev.Recycle(m_texture);
+
+		m_texture = tmp;
 	}
 
 	switch(m_TEX0.PSM)

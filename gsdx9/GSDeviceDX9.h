@@ -67,8 +67,11 @@ class GSDeviceDX9 : public GSDevice<GSTextureDX9>
 	// state cache
 
 	IDirect3DVertexBuffer9* m_vb;
+	UINT m_vb_count;
+	const void* m_vb_vertices;
 	UINT m_vb_stride;
 	IDirect3DVertexDeclaration9* m_layout;
+	D3DPRIMITIVETYPE m_topology;
 	IDirect3DVertexShader9* m_vs;
 	float* m_vs_cb;
 	int m_vs_cb_len;
@@ -107,6 +110,8 @@ public: // TODO
 
 	struct
 	{
+		CComPtr<IDirect3DVertexShader9> vs;
+		CComPtr<IDirect3DVertexDeclaration9> il;
 		CComPtr<IDirect3DPixelShader9> ps[5];
 		Direct3DSamplerState9 ln;
 		Direct3DSamplerState9 pt;
@@ -140,9 +145,10 @@ public:
 	IDirect3DDevice9* operator->() {return m_dev;}
 	operator IDirect3DDevice9*() {return m_dev;}
 
-	void IASetVertexBuffer(IDirect3DVertexBuffer9* vb, UINT count, const void* vertices, UINT stride);
+	// TODO: void IASetVertexBuffer(IDirect3DVertexBuffer9* vb, UINT count, const void* vertices, UINT stride);
+	void IASetVertexBuffer(UINT count, const void* vertices, UINT stride);
 	void IASetInputLayout(IDirect3DVertexDeclaration9* layout);
-	// void IASetPrimitiveTopology(D3DPRIMITIVETYPE topology);
+	void IASetPrimitiveTopology(D3DPRIMITIVETYPE topology);
 	void VSSetShader(IDirect3DVertexShader9* vs, const float* vs_cb, int vs_cb_len);
 	void PSSetShaderResources(IDirect3DTexture9* srv0, IDirect3DTexture9* srv1);
 	void PSSetShader(IDirect3DPixelShader9* ps, const float* ps_cb, int ps_cb_len);
@@ -151,13 +157,19 @@ public:
 	void OMSetDepthStencilState(Direct3DDepthStencilState9* dss, UINT sref);
 	void OMSetBlendState(Direct3DBlendState9* bs, DWORD bf);
 	void OMSetRenderTargets(IDirect3DSurface9* rtv, IDirect3DSurface9* dsv);
+	void DrawPrimitive();
+
+	template<class T> void IASetVertexBuffer(UINT count, T* vertices)
+	{
+		IASetVertexBuffer(count, vertices, sizeof(T));
+	}
 
 	void StretchRect(GSTextureDX9& st, GSTextureDX9& dt, const GSVector4& dr, bool linear = true);
 	void StretchRect(GSTextureDX9& st, const GSVector4& sr, GSTextureDX9& dt, const GSVector4& dr, bool linear = true);
 	void StretchRect(GSTextureDX9& st, const GSVector4& sr, GSTextureDX9& dt, const GSVector4& dr, IDirect3DPixelShader9* ps, const float* ps_cb, int ps_cb_len, bool linear = true);
 
-	HRESULT CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro, IDirect3DVertexShader9** vs, ID3DXConstantTable** ct = NULL);
-	HRESULT CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro, IDirect3DPixelShader9** ps, ID3DXConstantTable** ct = NULL);
+	HRESULT CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro, IDirect3DVertexShader9** vs, const D3DVERTEXELEMENT9* layout, int count, IDirect3DVertexDeclaration9** il);
+	HRESULT CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro, IDirect3DPixelShader9** ps);
 
 	// TODO
 	void Draw(LPCTSTR str);

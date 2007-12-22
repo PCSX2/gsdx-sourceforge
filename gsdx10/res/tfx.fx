@@ -8,16 +8,16 @@ cbuffer cb0
 struct VS_INPUT
 {
 	float4 p : POSITION; 
+	float2 t : TEXCOORD0;
 	float4 c : COLOR0;
 	float4 f : COLOR1;
-	float2 t : TEXCOORD0;
 };
 
 struct VS_OUTPUT
 {
 	float4 p : SV_Position;
-	float4 c : COLOR0;
 	float4 t : TEXCOORD0;
+	float4 c : COLOR0;
 };
 
 VS_OUTPUT vs_main(VS_INPUT input)
@@ -26,11 +26,11 @@ VS_OUTPUT vs_main(VS_INPUT input)
 
 	output.p = input.p * VertexScale - VertexOffset;
 
-	output.c = input.c;
-
 	output.t.xy = input.t * TextureScale;
 	output.t.z = input.f.a;
 	output.t.w = input.p.w < 0 ? 1 : input.p.w; // FIXME: <= takes small but not 0 numbers as 0
+
+	output.c = input.c;
 
 	return output;
 }
@@ -54,8 +54,8 @@ void gs_main(point VS_OUTPUT input[1], inout PointStream<VS_OUTPUT> stream)
 void gs_main(line VS_OUTPUT input[2], inout LineStream<VS_OUTPUT> stream)
 {
 	#if IIP == 0
-	input[0].c = input[1].c;
 	input[0].t.z = input[1].t.z;
+	input[0].c = input[1].c;
 	#endif
 
 	stream.Append(input[0]);
@@ -68,10 +68,10 @@ void gs_main(line VS_OUTPUT input[2], inout LineStream<VS_OUTPUT> stream)
 void gs_main(triangle VS_OUTPUT input[3], inout TriangleStream<VS_OUTPUT> stream)
 {
 	#if IIP == 0
-	input[0].c = input[2].c;
 	input[0].t.z = input[2].t.z;
-	input[1].c = input[2].c;
+	input[0].c = input[2].c;
 	input[1].t.z = input[2].t.z;
+	input[1].c = input[2].c;
 	#endif
 
 	stream.Append(input[0]);
@@ -126,15 +126,13 @@ cbuffer cb1
 	float _pad;
 	float2 WH;
 	float2 rWrH;
-	float2 rWZ;
-	float2 ZrH;
 };
 
 struct PS_INPUT
 {
 	float4 p : SV_Position;
-	float4 c : COLOR0;
 	float4 t : TEXCOORD0;
+	float4 c : COLOR0;
 };
 
 struct PS_OUTPUT
@@ -190,25 +188,26 @@ float4 sample(float2 tc)
 {
 	float4 t;
 	
-	if(WMS == 3 || WMT == 3)
+	// if(WMS >= 2 || WMT >= 2)
+	if(WMS >= 3 || WMT >= 3)
 	{
-		int2 itc = tc * WH;
+		int4 itc = tc.xyxy * WH.xyxy + float4(-0.5f, -0.5f, 0.5f, 0.5f);
 		
 		float4 tc01;
 		
 		tc01.x = repeatu(itc.x);
 		tc01.y = repeatv(itc.y);
-		tc01.z = repeatu(itc.x + 1);
-		tc01.w = repeatv(itc.y + 1);
-
+		tc01.z = repeatu(itc.z);
+		tc01.w = repeatv(itc.w);
+		
 		tc01 *= rWrH.xyxy;
 
 		float4 t00 = Texture.Sample(Sampler, tc01.xy);
 		float4 t01 = Texture.Sample(Sampler, tc01.zy);
 		float4 t10 = Texture.Sample(Sampler, tc01.xw);
 		float4 t11 = Texture.Sample(Sampler, tc01.zw);
-	
-		float2 dd = frac(tc * WH); 
+
+		float2 dd = frac(tc * WH - 0.5f); 
 
 		t = lerp(lerp(t00, t01, dd.x), lerp(t10, t11, dd.x), dd.y);
 	}
@@ -222,29 +221,30 @@ float4 sample(float2 tc)
 
 float4 sample8hp(float2 tc)
 {
-	float4 t;
-	
 	float4 tc01;
 	
-	if(WMS == 3 || WMT == 3)
+	// if(WMS >= 2 || WMT >= 2)
+	if(WMS >= 3 || WMT >= 3)
 	{
-		int2 itc = tc * WH;
+		int4 itc = tc.xyxy * WH.xyxy + float4(-0.5f, -0.5f, 0.5f, 0.5f);
 		
 		tc01.x = repeatu(itc.x);
 		tc01.y = repeatv(itc.y);
-		tc01.z = repeatu(itc.x + 1);
-		tc01.w = repeatv(itc.y + 1);
+		tc01.z = repeatu(itc.z);
+		tc01.w = repeatv(itc.w);
 
 		tc01 *= rWrH.xyxy;
 	}
 	else
 	{
-		tc01.x = tc.x; 
-		tc01.y = tc.y;
-		tc01.z = tc.x + rWrH.x; 
-		tc01.w = tc.y + rWrH.y;
+		tc01.x = tc.x - rWrH.x * 0.5f; 
+		tc01.y = tc.y - rWrH.y * 0.5f;
+		tc01.z = tc.x + rWrH.x * 0.5f; 
+		tc01.w = tc.y + rWrH.y * 0.5f;
 	}
 
+	float4 t;
+	
 	t.x = Texture.Sample(Sampler, tc01.xy).a;
 	t.y = Texture.Sample(Sampler, tc01.zy).a;
 	t.z = Texture.Sample(Sampler, tc01.xw).a;
@@ -255,7 +255,7 @@ float4 sample8hp(float2 tc)
 	float4 t10 = Palette.Sample(Sampler, t.z);
 	float4 t11 = Palette.Sample(Sampler, t.w);
 
-	float2 dd = frac(tc * WH); 
+	float2 dd = frac(tc * WH - 0.5f); 
 
 	return lerp(lerp(t00, t01, dd.x), lerp(t10, t11, dd.x), dd.y);
 }
@@ -266,23 +266,24 @@ float4 sample16p(float2 tc)
 	
 	float4 tc01;
 	
-	if(WMS == 3 || WMT == 3)
+	// if(WMS >= 2 || WMT >= 2)
+	if(WMS >= 3 || WMT >= 3)
 	{
-		int2 itc = tc * WH;
+		int4 itc = tc.xyxy * WH.xyxy + float4(-0.5f, -0.5f, 0.5f, 0.5f);
 		
 		tc01.x = repeatu(itc.x);
 		tc01.y = repeatv(itc.y);
-		tc01.z = repeatu(itc.x + 1);
-		tc01.w = repeatv(itc.y + 1);
+		tc01.z = repeatu(itc.z);
+		tc01.w = repeatv(itc.w);
 
 		tc01 *= rWrH.xyxy;
 	}
 	else
 	{
-		tc01.x = tc.x; 
-		tc01.y = tc.y;
-		tc01.z = tc.x + rWrH.x; 
-		tc01.w = tc.y + rWrH.y;
+		tc01.x = tc.x - rWrH.x * 0.5f; 
+		tc01.y = tc.y - rWrH.y * 0.5f;
+		tc01.z = tc.x + rWrH.x * 0.5f; 
+		tc01.w = tc.y + rWrH.y * 0.5f;
 	}
 
 	t.x = Texture.Sample(Sampler, tc01.xy).r;
@@ -297,7 +298,7 @@ float4 sample16p(float2 tc)
 	float4 t10 = Extract16(i.z);
 	float4 t11 = Extract16(i.w);
 
-	float2 dd = frac(tc * WH); 
+	float2 dd = frac(tc * WH - 0.5f); 
 
 	return Normalize16(lerp(lerp(t00, t01, dd.x), lerp(t10, t11, dd.x), dd.y));
 }

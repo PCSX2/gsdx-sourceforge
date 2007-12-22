@@ -1,3 +1,25 @@
+struct VS_INPUT
+{
+	float4 p : POSITION; 
+	float2 t : TEXCOORD0;
+};
+
+struct VS_OUTPUT
+{
+	float4 p : POSITION;
+	float2 t : TEXCOORD0;
+};
+
+VS_OUTPUT vs_main(VS_INPUT input)
+{
+	VS_OUTPUT output;
+
+	output.p = input.p;
+	output.t = input.t;
+
+	return output;
+}
+
 sampler Texture : register(s0);
 
 float4 ps_main0(float2 t : TEXCOORD0) : COLOR

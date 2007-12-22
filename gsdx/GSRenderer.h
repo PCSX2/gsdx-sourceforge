@@ -169,6 +169,10 @@ protected:
 
 	bool Merge()
 	{
+		// TODO: 
+		// - the two readouts can have different destination rect (dmc1)
+		// - gsuser_e.pdf doesn't define how alpha blending should be done for the non-overlapping areas
+
 		CSize fs(0, 0);
 		CSize ds(0, 0);
 
@@ -213,23 +217,26 @@ protected:
 		bool slbg = PMODE->SLBG;
 		bool mmod = PMODE->MMOD;
 
-		GSVector4 c;
-
-		c.r = (float)BGCOLOR->R / 255;
-		c.g = (float)BGCOLOR->G / 255;
-		c.b = (float)BGCOLOR->B / 255;
-		c.a = (float)PMODE->ALP / 255;
-
-		m_dev.Merge(st, sr, fs, en1, en2, slbg, mmod, c);
-
-		if(SMODE2->INT && m_interlace > 0)
+		if(en1 || en2)
 		{
-			int field = 1 - ((m_interlace - 1) & 1);
-			int mode = (m_interlace - 1) >> 1;
+			GSVector4 c;
 
-			if(!m_dev.Interlace(ds, m_field ^ field, mode, ss[1].y)) // ss[1].y?
+			c.r = (float)BGCOLOR->R / 255;
+			c.g = (float)BGCOLOR->G / 255;
+			c.b = (float)BGCOLOR->B / 255;
+			c.a = (float)PMODE->ALP / 255;
+
+			m_dev.Merge(st, sr, fs, en1, en2, slbg, mmod, c);
+
+			if(SMODE2->INT && m_interlace > 0)
 			{
-				return false;
+				int field = 1 - ((m_interlace - 1) & 1);
+				int mode = (m_interlace - 1) >> 1;
+
+				if(!m_dev.Interlace(ds, m_field ^ field, mode, ss[1].y)) // ss[1].y?
+				{
+					return false;
+				}
 			}
 		}
 

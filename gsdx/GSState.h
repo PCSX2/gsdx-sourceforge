@@ -193,6 +193,5 @@ public:
 	void GetLastTag(UINT32* tag) {*tag = m_path3hack; m_path3hack = 0;}
 	void SetGameCRC(int crc, int options);
 	void SetFrameSkip(int frameskip);
-	bool MakeSnapshot(LPCTSTR path);
 };
 

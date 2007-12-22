@@ -44,12 +44,6 @@ struct GSVertexP
 	GSVector4 p;
 };
 
-struct GSVertexPC
-{
-	GSVector4 p;
-	DWORD c;
-};
-
 struct GSVertexPT1
 {
 	GSVector4 p;

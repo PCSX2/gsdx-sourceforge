@@ -42,6 +42,7 @@ class GSDeviceDX10 : public GSDevice<GSTextureDX10>
 	// state cache
 
 	ID3D10Buffer* m_vb;
+	UINT m_vb_count;
 	UINT m_vb_stride;
 	ID3D10InputLayout* m_layout;
 	D3D10_PRIMITIVE_TOPOLOGY m_topology;
@@ -128,6 +129,7 @@ public:
 	void OMSetDepthStencilState(ID3D10DepthStencilState* dss, UINT sref);
 	void OMSetBlendState(ID3D10BlendState* bs, float bf);
 	void OMSetRenderTargets(ID3D10RenderTargetView* rtv, ID3D10DepthStencilView* dsv);
+	void DrawPrimitive();
 
 	template<class T> void IASetVertexBuffer(ID3D10Buffer* vb, UINT count, T* vertices)
 	{
@@ -138,7 +140,7 @@ public:
 	void StretchRect(GSTextureDX10& st, const GSVector4& sr, GSTextureDX10& dt, const GSVector4& dr, bool linear = true);
 	void StretchRect(GSTextureDX10& st, const GSVector4& sr, GSTextureDX10& dt, const GSVector4& dr, ID3D10PixelShader* ps, ID3D10Buffer* ps_cb, bool linear = true);
 
-	HRESULT CompileShader(UINT id, LPCSTR entry, D3D10_SHADER_MACRO* macro, ID3D10VertexShader** vs, D3D10_INPUT_ELEMENT_DESC* layout, int count, ID3D10InputLayout** pl);
+	HRESULT CompileShader(UINT id, LPCSTR entry, D3D10_SHADER_MACRO* macro, ID3D10VertexShader** vs, D3D10_INPUT_ELEMENT_DESC* layout, int count, ID3D10InputLayout** il);
 	HRESULT CompileShader(UINT id, LPCSTR entry, D3D10_SHADER_MACRO* macro, ID3D10GeometryShader** gs);
 	HRESULT CompileShader(UINT id, LPCSTR entry, D3D10_SHADER_MACRO* macro, ID3D10PixelShader** ps);
 

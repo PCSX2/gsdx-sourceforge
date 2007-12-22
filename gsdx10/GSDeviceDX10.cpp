@@ -26,6 +26,7 @@
 GSDeviceDX10::GSDeviceDX10()
 	: m_hWnd(NULL)
 	, m_vb(NULL)
+	, m_vb_count(0)
 	, m_vb_stride(0)
 	, m_layout(NULL)
 	, m_topology(D3D10_PRIMITIVE_TOPOLOGY_UNDEFINED)
@@ -317,9 +318,7 @@ bool GSDeviceDX10::Create(int type, GSTextureDX10& t, int w, int h, int format)
 
 	if(SUCCEEDED(hr))
 	{
-		t.m_dev = m_dev;
-		t.m_texture = texture.Detach();
-		t.m_desc = desc;
+		t = GSTextureDX10(texture);
 
 		float color[4] = {0, 0, 0, 0};
 
@@ -405,6 +404,8 @@ void GSDeviceDX10::IASetVertexBuffer(ID3D10Buffer* vb, UINT count, const void* v
 		m_vb = vb;
 		m_vb_stride = stride;
 	}
+
+	m_vb_count = count;
 }
 
 void GSDeviceDX10::IASetInputLayout(ID3D10InputLayout* layout)
@@ -559,6 +560,11 @@ void GSDeviceDX10::OMSetRenderTargets(ID3D10RenderTargetView* rtv, ID3D10DepthSt
 	}
 }
 
+void GSDeviceDX10::DrawPrimitive()
+{
+	m_dev->Draw(m_vb_count, 0);
+}
+
 void GSDeviceDX10::StretchRect(GSTextureDX10& st, GSTextureDX10& dt, const GSVector4& dr, bool linear)
 {
 	StretchRect(st, GSVector4(0, 0, 1, 1), dt, dr, m_convert.ps[0], NULL, linear);
@@ -618,12 +624,14 @@ void GSDeviceDX10::StretchRect(GSTextureDX10& st, const GSVector4& sr, GSTexture
 
 	//
 
-	m_dev->Draw(4, 0);
+	DrawPrimitive();
+
+	//
 
 	EndScene();
 }
 
-HRESULT GSDeviceDX10::CompileShader(UINT id, LPCSTR entry, D3D10_SHADER_MACRO* macro, ID3D10VertexShader** ps, D3D10_INPUT_ELEMENT_DESC* layout, int count, ID3D10InputLayout** pl)
+HRESULT GSDeviceDX10::CompileShader(UINT id, LPCSTR entry, D3D10_SHADER_MACRO* macro, ID3D10VertexShader** ps, D3D10_INPUT_ELEMENT_DESC* layout, int count, ID3D10InputLayout** il)
 {
 	HRESULT hr;
 
@@ -648,7 +656,7 @@ HRESULT GSDeviceDX10::CompileShader(UINT id, LPCSTR entry, D3D10_SHADER_MACRO* m
 		return hr;
 	}
 
-	hr = m_dev->CreateInputLayout(layout, count, shader->GetBufferPointer(), shader->GetBufferSize(), pl);
+	hr = m_dev->CreateInputLayout(layout, count, shader->GetBufferPointer(), shader->GetBufferSize(), il);
 
 	if(FAILED(hr))
 	{

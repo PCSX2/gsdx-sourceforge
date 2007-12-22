@@ -23,14 +23,14 @@
 
 class GSTextureDX9 : public GSTexture
 {
-public:
 	CComPtr<IDirect3DDevice9> m_dev;
 	CComPtr<IDirect3DSurface9> m_surface;
 	CComPtr<IDirect3DTexture9> m_texture; 
 	D3DSURFACE_DESC m_desc;
 
+public:
 	GSTextureDX9();
-	explicit GSTextureDX9(IDirect3DSurface9* texture);
+	explicit GSTextureDX9(IDirect3DSurface9* surface);
 	explicit GSTextureDX9(IDirect3DTexture9* texture);
 	virtual ~GSTextureDX9();
 
@@ -43,7 +43,7 @@ public:
 	bool Update(CRect r, const void* data, int pitch);
 	bool Save(CString fn, bool dds = false);
 
-	IDirect3DTexture9* operator->();
+	IDirect3DTexture9* operator->(); // TODO: remove direct access
 
 	operator IDirect3DSurface9*();
 	operator IDirect3DTexture9*();

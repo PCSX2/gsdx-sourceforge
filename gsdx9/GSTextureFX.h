@@ -53,8 +53,6 @@ public:
 		float _pad[1];
 		GSVector2 WH;
 		GSVector2 rWrH;
-		GSVector2 rWZ;
-		GSVector2 ZrH;
 	};
 
 	union PSSelector
@@ -150,7 +148,7 @@ public:
 	bool Create(GSDeviceDX9* dev);
 	bool CreateMskFix(GSTextureDX9& t, DWORD size, DWORD msk, DWORD fix);
 	
-	bool SetupIA(); // const GSVertexHW* vertices, int count, D3D10_PRIMITIVE_TOPOLOGY prim
+	bool SetupIA(const GSVertexHW* vertices, UINT count, D3DPRIMITIVETYPE prim);
 	bool SetupVS(const VSConstantBuffer* cb);
 	bool SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel, IDirect3DTexture9* tex, IDirect3DTexture9* pal);
 	void UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel);

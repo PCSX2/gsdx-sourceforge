@@ -182,8 +182,6 @@ extern void __fastcall ReadCLUT32_T16_I4_c(WORD* src, DWORD* dst);
 #define ExpandBlock16 ExpandBlock16_sse2
 #define Expand16 Expand16_sse2
 
-#define UVMinMax UVMinMax_sse2
-
 #define WriteCLUT_T16_I8_CSM1 WriteCLUT_T16_I8_CSM1_sse2
 #define WriteCLUT_T32_I8_CSM1 WriteCLUT_T32_I8_CSM1_sse2
 #define WriteCLUT_T16_I4_CSM1 WriteCLUT_T16_I4_CSM1_sse2
@@ -223,8 +221,6 @@ extern void __fastcall ReadCLUT32_T16_I4_c(WORD* src, DWORD* dst);
 #define ExpandBlock24 ExpandBlock24_c
 #define ExpandBlock16 ExpandBlock16_c
 #define Expand16 Expand16_c
-
-#define UVMinMax UVMinMax_c
 
 #define WriteCLUT_T16_I8_CSM1 WriteCLUT_T16_I8_CSM1_c
 #define WriteCLUT_T32_I8_CSM1 WriteCLUT_T32_I8_CSM1_c
