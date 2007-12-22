@@ -50,13 +50,13 @@ bool GSMergeFX::Create(GSDeviceDX10* dev)
 
 	memset(&bd, 0, sizeof(bd));
 
-    bd.ByteWidth = sizeof(PSConstantBuffer);
-    bd.Usage = D3D10_USAGE_DEFAULT;
-    bd.BindFlags = D3D10_BIND_CONSTANT_BUFFER;
-    bd.CPUAccessFlags = 0;
-    bd.MiscFlags = 0;
+	bd.ByteWidth = sizeof(PSConstantBuffer);
+	bd.Usage = D3D10_USAGE_DEFAULT;
+	bd.BindFlags = D3D10_BIND_CONSTANT_BUFFER;
+	bd.CPUAccessFlags = 0;
+	bd.MiscFlags = 0;
 
-    hr = (*m_dev)->CreateBuffer(&bd, NULL, &m_ps_cb);
+	hr = (*m_dev)->CreateBuffer(&bd, NULL, &m_ps_cb);
 
 	if(FAILED(hr)) return false;
 
@@ -150,7 +150,7 @@ void GSMergeFX::Draw(GSTextureDX10* st, GSVector4* sr, GSTextureDX10& dt, PSSele
 
 	//
 
-	(*m_dev)->Draw(4, 0);
+	m_dev->DrawPrimitive();
 
 	//
 

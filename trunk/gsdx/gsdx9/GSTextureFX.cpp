@@ -37,15 +37,11 @@ bool GSTextureFX::Create(GSDeviceDX9* dev)
 	static const D3DVERTEXELEMENT9 il[] =
 	{
 		{0, 0,  D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
-		{0, 16, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR, 0},
-		{0, 20, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR, 1},
-		{0, 24, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
+		{0, 16, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
+		{0, 24, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR, 0},
+		{0, 28, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR, 1},
 		D3DDECL_END()
 	};
-
-	hr = (*m_dev)->CreateVertexDeclaration(il, &m_il);
-
-	if(FAILED(hr)) return false;
 
 	D3DXMACRO macro[] =
 	{
@@ -53,7 +49,7 @@ bool GSTextureFX::Create(GSDeviceDX9* dev)
 		{NULL, NULL},
 	};
 
-	hr = m_dev->CompileShader(IDR_TFX_FX, "vs_main", macro, &m_vs);
+	hr = m_dev->CompileShader(IDR_TFX_FX, "vs_main", macro, &m_vs, il, countof(il), &m_il);
 
 	if(FAILED(hr)) return false;
 
@@ -91,11 +87,11 @@ bool GSTextureFX::CreateMskFix(GSTextureDX9& t, DWORD size, DWORD msk, DWORD fix
 	return true;
 }
 
-bool GSTextureFX::SetupIA() // const GSVertexHW* vertices, UINT count, D3D10_PRIMITIVE_TOPOLOGY prim
+bool GSTextureFX::SetupIA(const GSVertexHW* vertices, UINT count, D3DPRIMITIVETYPE prim)
 {
-	// m_dev->IASetVertexBuffer(m_vb[i], count, vertices);
+	m_dev->IASetVertexBuffer(count, vertices);
 	m_dev->IASetInputLayout(m_il);
-	// m_dev->IASetPrimitiveTopology(prim);
+	m_dev->IASetPrimitiveTopology(prim);
 
 	return true;
 }
@@ -203,7 +199,10 @@ void GSTextureFX::UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSampler
 
 	if(sel.tfx != 4)
 	{
-		if(sel.bpp >= 3 || sel.wms == 3 || sel.wmt == 3) ssel.min = ssel.mag = 0;
+		if(sel.bpp >= 3 || sel.wms >= 3 || sel.wmt >= 3) 
+		{
+			ssel.min = ssel.mag = 0;
+		}
 
 		ss = m_ps_ss.Lookup(ssel);
 
@@ -419,5 +418,5 @@ void GSTextureFX::UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, B
 		m_om_bs.Add(bsel, bs);
 	}
 
-	m_dev->OMSetBlendState(bs, 0x010101 * (bf >= 0x80 ? 0xff : bf*2));
+	m_dev->OMSetBlendState(bs, 0x010101 * bf);
 }

@@ -129,7 +129,7 @@ EXPORT_C_(UINT32) PS2EgetLibVersion2(UINT32 type)
 {
 	const UINT32 revision = 0;
 	const UINT32 build = 1;
-	const UINT32 minor = 4;
+	const UINT32 minor = 5;
 
 	return (build << 0) | (revision << 8) | (PS2E_GS_VERSION << 16) | (minor << 24);
 }

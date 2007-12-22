@@ -1,3 +1,27 @@
+struct VS_INPUT
+{
+	float4 p : POSITION; 
+	float2 t0 : TEXCOORD0;
+	float2 t1 : TEXCOORD1;
+};
+
+struct VS_OUTPUT
+{
+	float4 p : POSITION;
+	float2 t0 : TEXCOORD0;
+	float2 t1 : TEXCOORD1;
+};
+
+VS_OUTPUT vs_main(VS_INPUT input)
+{
+	VS_OUTPUT output;
+
+	output.p = input.p;
+	output.t0 = input.t0;
+	output.t1 = input.t1;
+
+	return output;
+}
 
 sampler RAO1 : register(s0);
 sampler RAO2 : register(s1);

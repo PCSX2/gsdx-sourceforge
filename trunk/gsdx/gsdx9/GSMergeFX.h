@@ -54,6 +54,8 @@ public:
 
 private:
 	GSDeviceDX9* m_dev;
+	CComPtr<IDirect3DVertexDeclaration9> m_il;
+	CComPtr<IDirect3DVertexShader9> m_vs;
 	CSimpleMap<DWORD, CComPtr<IDirect3DPixelShader9> > m_ps;
 
 public:

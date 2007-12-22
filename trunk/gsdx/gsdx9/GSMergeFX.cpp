@@ -33,6 +33,20 @@ bool GSMergeFX::Create(GSDeviceDX9* dev)
 {
 	m_dev = dev;
 
+	HRESULT hr;
+
+	static const D3DVERTEXELEMENT9 il[] =
+	{
+		{0, 0,  D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+		{0, 16, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
+		{0, 24, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 1},
+		D3DDECL_END()
+	};
+
+	hr = m_dev->CompileShader(IDR_MERGE_FX, "vs_main", NULL, &m_vs, il, countof(il), &m_il);
+
+	if(FAILED(hr)) return false;
+
 	return true;
 }
 
@@ -47,7 +61,7 @@ void GSMergeFX::Draw(GSTextureDX9* st, GSVector4* sr, GSTextureDX9& dt, PSSelect
 	m_dev->OMSetDepthStencilState(&m_dev->m_convert.dss, 0);
 	m_dev->OMSetBlendState(&m_dev->m_convert.bs, 0);
 	m_dev->OMSetRenderTargets(dt, NULL);
-/*
+
 	// ia
 
 	GSVertexPT2 vertices[] =
@@ -58,15 +72,19 @@ void GSMergeFX::Draw(GSTextureDX9* st, GSVector4* sr, GSTextureDX9& dt, PSSelect
 		{GSVector4(+1, -1), GSVector2(sr[0].z, sr[0].w), GSVector2(sr[1].z, sr[1].w)},
 	};
 
-	m_dev->IASetVertexBuffer(m_vb, 4, vertices);
+	for(int i = 0; i < countof(vertices); i++)
+	{
+		vertices[i].p.x -= 0.5f / (2 * dt.GetWidth());
+		vertices[i].p.y -= 0.5f / (2 * dt.GetHeight());
+	}
+
+	m_dev->IASetVertexBuffer(4, vertices);
 	m_dev->IASetInputLayout(m_il);
-	m_dev->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	m_dev->IASetPrimitiveTopology(D3DPT_TRIANGLESTRIP);
 
 	// vs
 
-	m_dev->VSSetShader(m_vs, NULL);
-*/
-	m_dev->VSSetShader(NULL, NULL, 0); // TODO
+	m_dev->VSSetShader(m_vs, NULL, 0);
 
 	// ps
 
@@ -107,26 +125,7 @@ void GSMergeFX::Draw(GSTextureDX9* st, GSVector4* sr, GSTextureDX9& dt, PSSelect
 
 	//
 
-	float w = (float)dt.GetWidth();
-	float h = (float)dt.GetHeight();
-
-	GSVertexPT2 vertices[] =
-	{
-		{GSVector4(0, 0), GSVector2(sr[0].x, sr[0].y), GSVector2(sr[1].x, sr[1].y)},
-		{GSVector4(w, 0), GSVector2(sr[0].z, sr[0].y), GSVector2(sr[1].z, sr[1].y)},
-		{GSVector4(w, h), GSVector2(sr[0].z, sr[0].w), GSVector2(sr[1].z, sr[1].w)},
-		{GSVector4(0, h), GSVector2(sr[0].x, sr[0].w), GSVector2(sr[1].x, sr[1].w)},
-	};
-
-	for(int i = 0; i < countof(vertices); i++)
-	{
-		vertices[i].p.x -= 0.5f;
-		vertices[i].p.y -= 0.5f;
-	}
-
-	(*m_dev)->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX2);
-
-	(*m_dev)->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 2, vertices, sizeof(vertices[0]));
+	m_dev->DrawPrimitive();
 
 	//
 

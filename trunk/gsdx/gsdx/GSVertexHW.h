@@ -21,16 +21,18 @@
 
 #pragma once
 
+#include "GSVector.h"
+
 #pragma pack(push, 1)
 
 __declspec(align(16)) union GSVertexHW
 {
 	struct
 	{
-		float x, y, z, w;
+		GSVector4 p;
+		GSVector2 t;
 		union {struct {BYTE r, g, b, a;}; DWORD c0;};
 		union {struct {BYTE ta0, ta1, res, f;}; DWORD c1;};
-		float u, v;
 	};
 	
 	struct {__m128i m128i[2];};

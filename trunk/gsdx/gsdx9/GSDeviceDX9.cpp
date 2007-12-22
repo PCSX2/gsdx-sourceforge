@@ -4,8 +4,11 @@
 
 GSDeviceDX9::GSDeviceDX9() 
 	: m_vb(NULL)
+	, m_vb_count(0)
+	, m_vb_vertices(NULL)
 	, m_vb_stride(0)
 	, m_layout(NULL)
+	, m_topology((D3DPRIMITIVETYPE)0)
 	, m_vs(NULL)
 	, m_vs_cb(NULL)
 	, m_vs_cb_len(0)
@@ -17,7 +20,7 @@ GSDeviceDX9::GSDeviceDX9()
 	, m_dss(NULL)
 	, m_sref(0)
 	, m_bs(NULL)
-	, m_bf(-1)
+	, m_bf(~0)
 	, m_rtv(NULL)
 	, m_dsv(NULL)
 {
@@ -101,18 +104,27 @@ bool GSDeviceDX9::Create(HWND hWnd)
 	m_d3dcaps.PixelShaderVersion = min(psver, m_d3dcaps.PixelShaderVersion);
 	m_d3dcaps.VertexShaderVersion = m_d3dcaps.PixelShaderVersion & ~0x10000;
 
-	for(int i = 0; i < countof(m_interlace.ps); i++)
+	static const D3DVERTEXELEMENT9 il_convert[] =
 	{
-		CStringA main;
-		main.Format("ps_main%d", i);
-		CompileShader(IDR_INTERLACE_FX, main, NULL, &m_interlace.ps[i]);
-	}
+		{0, 0,  D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+		{0, 16, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
+		D3DDECL_END()
+	};
+
+	CompileShader(IDR_CONVERT_FX, "vs_main", NULL, &m_convert.vs, il_convert, countof(il_convert), &m_convert.il);
 
 	for(int i = 0; i < countof(m_convert.ps); i++)
 	{
 		CStringA main;
 		main.Format("ps_main%d", i);
 		CompileShader(IDR_CONVERT_FX, main, NULL, &m_convert.ps[i]);
+	}
+
+	for(int i = 0; i < countof(m_interlace.ps); i++)
+	{
+		CStringA main;
+		main.Format("ps_main%d", i);
+		CompileShader(IDR_INTERLACE_FX, main, NULL, &m_interlace.ps[i]);
 	}
 
 	m_convert.dss.DepthEnable = false;
@@ -467,7 +479,7 @@ void GSDeviceDX9::DoInterlace(GSTextureDX9& st, GSTextureDX9& dt, int shader, bo
 
 	StretchRect(st, sr, dt, dr, m_interlace.ps[shader], cb, 1, linear);
 }
-
+/*
 void GSDeviceDX9::IASetVertexBuffer(IDirect3DVertexBuffer9* vb, UINT count, const void* vertices, UINT stride)
 {
 	void* data = NULL;
@@ -487,6 +499,13 @@ void GSDeviceDX9::IASetVertexBuffer(IDirect3DVertexBuffer9* vb, UINT count, cons
 		m_vb_stride = stride;
 	}
 }
+*/
+void GSDeviceDX9::IASetVertexBuffer(UINT count, const void* vertices, UINT stride)
+{
+	m_vb_count = count;
+	m_vb_vertices = vertices;
+	m_vb_stride = stride;
+}
 
 void GSDeviceDX9::IASetInputLayout(IDirect3DVertexDeclaration9* layout)
 {
@@ -496,6 +515,11 @@ void GSDeviceDX9::IASetInputLayout(IDirect3DVertexDeclaration9* layout)
 
 		// m_layout = layout;
 	}
+}
+
+void GSDeviceDX9::IASetPrimitiveTopology(D3DPRIMITIVETYPE topology)
+{
+	m_topology = topology;
 }
 
 void GSDeviceDX9::VSSetShader(IDirect3DVertexShader9* vs, const float* vs_cb, int vs_cb_len)
@@ -676,6 +700,33 @@ void GSDeviceDX9::OMSetRenderTargets(IDirect3DSurface9* rtv, IDirect3DSurface9* 
 	}
 }
 
+void GSDeviceDX9::DrawPrimitive()
+{
+	int prims = 0;
+
+	switch(m_topology)
+	{
+    case D3DPT_POINTLIST:
+		prims = m_vb_count;
+		break;
+    case D3DPT_LINELIST:
+		prims = m_vb_count / 2;
+		break;
+    case D3DPT_LINESTRIP:
+		prims = m_vb_count - 1;
+		break;
+    case D3DPT_TRIANGLELIST:
+		prims = m_vb_count / 3;
+		break;
+    case D3DPT_TRIANGLESTRIP:
+    case D3DPT_TRIANGLEFAN:
+		prims = m_vb_count - 2;
+		break;
+	}
+
+	m_dev->DrawPrimitiveUP(m_topology, prims, m_vb_vertices, m_vb_stride);
+}
+
 void GSDeviceDX9::Draw(LPCTSTR str)
 {
 	if(!m_pp.Windowed)
@@ -755,7 +806,7 @@ void GSDeviceDX9::StretchRect(GSTextureDX9& st, const GSVector4& sr, GSTextureDX
 	OMSetRenderTargets(dt, NULL);
 
 	// ia
-/*
+
 	float left = dr.x * 2 / dt.GetWidth() - 1.0f;
 	float top = 1.0f - dr.y * 2 / dt.GetHeight();
 	float right = dr.z * 2 / dt.GetWidth() - 1.0f;
@@ -769,13 +820,19 @@ void GSDeviceDX9::StretchRect(GSTextureDX9& st, const GSVector4& sr, GSTextureDX
 		{GSVector4(right, bottom), GSVector2(sr.z, sr.w)},
 	};
 
+	for(int i = 0; i < countof(vertices); i++)
+	{
+		vertices[i].p.x -= 0.5f / (2 * dt.GetWidth());
+		vertices[i].p.y -= 0.5f / (2 * dt.GetHeight());
+	}
+
+	IASetVertexBuffer(4, vertices);
 	IASetInputLayout(m_convert.il);
+	IASetPrimitiveTopology(D3DPT_TRIANGLESTRIP);
 
 	// vs
 
-	VSSetShader(m_convert.vs, NULL);
-*/
-	VSSetShader(NULL, NULL, 0); // TODO
+	VSSetShader(m_convert.vs, NULL, 0);
 
 	// ps
 
@@ -789,30 +846,14 @@ void GSDeviceDX9::StretchRect(GSTextureDX9& st, const GSVector4& sr, GSTextureDX
 
 	//
 
-	GSVertexPT1 vertices[] =
-	{
-		{GSVector4(dr.x, dr.y), GSVector2(sr.x, sr.y)},
-		{GSVector4(dr.z, dr.y), GSVector2(sr.z, sr.y)},
-		{GSVector4(dr.z, dr.w), GSVector2(sr.z, sr.w)},
-		{GSVector4(dr.x, dr.w), GSVector2(sr.x, sr.w)},
-	};
-
-	for(int i = 0; i < countof(vertices); i++)
-	{
-		vertices[i].p.x -= 0.5f;
-		vertices[i].p.y -= 0.5f;
-	}
-
-	m_dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX1);
-
-	m_dev->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 2, vertices, sizeof(vertices[0]));
+	DrawPrimitive();
 
 	//
 
 	EndScene();
 }
 
-HRESULT GSDeviceDX9::CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro, IDirect3DVertexShader9** vs, ID3DXConstantTable** ct)
+HRESULT GSDeviceDX9::CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro, IDirect3DVertexShader9** vs, const D3DVERTEXELEMENT9* layout, int count, IDirect3DVertexDeclaration9** il)
 {
 	LPCSTR target;
 
@@ -831,7 +872,7 @@ HRESULT GSDeviceDX9::CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro
 
 	CComPtr<ID3DXBuffer> shader, error;
 
-	HRESULT hr = D3DXCompileShaderFromResource(AfxGetResourceHandle(), MAKEINTRESOURCE(id), macro, NULL, entry, target, 0, &shader, &error, ct);
+	HRESULT hr = D3DXCompileShaderFromResource(AfxGetResourceHandle(), MAKEINTRESOURCE(id), macro, NULL, entry, target, 0, &shader, &error, NULL);
 
 	if(SUCCEEDED(hr))
 	{
@@ -846,10 +887,22 @@ HRESULT GSDeviceDX9::CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro
 
 	ASSERT(SUCCEEDED(hr));
 
-	return hr;
+	if(FAILED(hr))
+	{
+		return hr;
+	}
+
+	hr = m_dev->CreateVertexDeclaration(layout, il);
+
+	if(FAILED(hr))
+	{
+		return hr;
+	}
+
+	return S_OK;
 }
 
-HRESULT GSDeviceDX9::CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro, IDirect3DPixelShader9** ps, ID3DXConstantTable** ct)
+HRESULT GSDeviceDX9::CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro, IDirect3DPixelShader9** ps)
 {
 	LPCSTR target = NULL;
 	UINT flags = 0;
@@ -870,7 +923,7 @@ HRESULT GSDeviceDX9::CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro
 
 	CComPtr<ID3DXBuffer> shader, error;
 
-	HRESULT hr = D3DXCompileShaderFromResource(AfxGetResourceHandle(), MAKEINTRESOURCE(id), macro, NULL, entry, target, flags, &shader, &error, ct);
+	HRESULT hr = D3DXCompileShaderFromResource(AfxGetResourceHandle(), MAKEINTRESOURCE(id), macro, NULL, entry, target, flags, &shader, &error, NULL);
 
 	if(SUCCEEDED(hr))
 	{
@@ -887,5 +940,10 @@ HRESULT GSDeviceDX9::CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro
 
 	ASSERT(SUCCEEDED(hr));
 
-	return hr;
+	if(FAILED(hr))
+	{
+		return hr;
+	}
+
+	return S_OK;
 }

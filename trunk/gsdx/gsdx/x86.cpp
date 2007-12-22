@@ -501,68 +501,6 @@ void __fastcall Expand16_c(WORD* src, DWORD* dst, int w, GIFRegTEXA* pTEXA)
 
 #if defined(_M_AMD64) || _M_IX86_FP >= 2
 
-static __m128 s_uvmin = _mm_set1_ps(+1e10);
-static __m128 s_uvmax = _mm_set1_ps(-1e10);
-
-void __fastcall UVMinMax_sse2(int nVertices, vertex_t* pVertices, uvmm_t* uv)
-{
-	__m128 uvmin = s_uvmin;
-	__m128 uvmax = s_uvmax;
-
-	__m128* p = (__m128*)pVertices + 1;
-
-	int i = 0;
-
-	nVertices -= 5;
-
-	for(; i < nVertices; i += 6) // 6 regs for loading, 2 regs for min/max
-	{
-		uvmin = _mm_min_ps(uvmin, p[(i+0)*2]);
-		uvmax = _mm_max_ps(uvmax, p[(i+0)*2]);
-		uvmin = _mm_min_ps(uvmin, p[(i+1)*2]);
-		uvmax = _mm_max_ps(uvmax, p[(i+1)*2]);
-		uvmin = _mm_min_ps(uvmin, p[(i+2)*2]);
-		uvmax = _mm_max_ps(uvmax, p[(i+2)*2]);
-		uvmin = _mm_min_ps(uvmin, p[(i+3)*2]);
-		uvmax = _mm_max_ps(uvmax, p[(i+3)*2]);
-		uvmin = _mm_min_ps(uvmin, p[(i+4)*2]);
-		uvmax = _mm_max_ps(uvmax, p[(i+4)*2]);
-		uvmin = _mm_min_ps(uvmin, p[(i+5)*2]);
-		uvmax = _mm_max_ps(uvmax, p[(i+5)*2]);
-	}
-
-	nVertices += 5;
-
-	for(; i < nVertices; i++)
-	{
-		uvmin = _mm_min_ps(uvmin, p[i*2]);
-		uvmax = _mm_max_ps(uvmax, p[i*2]);
-	}
-
-	_mm_storeh_pi((__m64*)uv, uvmin);
-	_mm_storeh_pi((__m64*)uv + 1, uvmax);
-}
-
-#endif
-
-void __fastcall UVMinMax_c(int nVertices, vertex_t* pVertices, uvmm_t* uv)
-{
-	uv->umin = uv->vmin = +1e10;
-	uv->umax = uv->vmax = -1e10;
-
-	for(; nVertices-- > 0; pVertices++)
-	{
-		float u = pVertices->u;
-		if(uv->umax < u) uv->umax = u;
-		if(uv->umin > u) uv->umin = u;
-		float v = pVertices->v;
-		if(uv->vmax < v) uv->vmax = v;
-		if(uv->vmin > v) uv->vmin = v;
-	}
-}
-
-#if defined(_M_AMD64) || _M_IX86_FP >= 2
-
 static __m128i s_clut[64];
 
 void __fastcall WriteCLUT_T16_I8_CSM1_sse2(WORD* vm, WORD* clut)

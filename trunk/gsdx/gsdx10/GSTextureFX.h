@@ -55,8 +55,6 @@ public:
 		float _pad[1];
 		GSVector2 WH;
 		GSVector2 rWrH;
-		GSVector2 rWZ;
-		GSVector2 ZrH;
 
 		struct PSConstantBuffer() {memset(this, 0, sizeof(*this));}
 	};

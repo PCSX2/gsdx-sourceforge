@@ -1,16 +1,16 @@
 struct VS_INPUT
 {
 	float4 p : POSITION; 
+	float2 t : TEXCOORD0;
 	float4 c : COLOR0;
 	float4 f : COLOR1;
-	float2 t : TEXCOORD0;
 };
 
 struct VS_OUTPUT
 {
 	float4 p : POSITION;
-	float4 c : COLOR0;
 	float4 t : TEXCOORD0;
+	float4 c : COLOR0;
 };
 
 float4 vs_params[3];
@@ -43,14 +43,9 @@ VS_OUTPUT vs_main(VS_INPUT input)
 	return output;
 }
 
-sampler Texture : register(s0);
-sampler1D Palette : register(s1);
-sampler1D UMSKFIX : register(s2);
-sampler1D VMSKFIX : register(s3);
+float4 ps_params[5];
 
-float4 ps_params[6];
-
-#define FogColor	ps_params[0]
+#define FogColor	ps_params[0].bgra
 #define MINU		ps_params[1].x
 #define MAXU		ps_params[1].y
 #define MINV		ps_params[1].z
@@ -64,16 +59,12 @@ float4 ps_params[6];
 #define AREF		ps_params[3].z
 #define WH			ps_params[4].xy
 #define rWrH		ps_params[4].zw
-#define rWZ			ps_params[5].xy
-#define ZrH			ps_params[5].zw
 
 struct PS_INPUT
 {
-	float4 c : COLOR0;
 	float4 t : TEXCOORD0;
+	float4 c : COLOR0;
 };
-
-#define EPSILON (0.001/256)
 
 #ifndef FST
 #define FST 0
@@ -90,6 +81,11 @@ struct PS_INPUT
 #define RT 0
 #endif
 
+sampler Texture : register(s0);
+sampler1D Palette : register(s1);
+sampler1D UMSKFIX : register(s2);
+sampler1D VMSKFIX : register(s3);
+
 float repeatu(float tc)
 {
 	return WMS == 3 ? tex1D(UMSKFIX, tc) : tc;
@@ -104,21 +100,26 @@ float4 sample(float2 tc)
 {
 	float4 t;
 	
-	if(WMS == 3 || WMT == 3)
+	// if(WMS >= 2 || WMT >= 2)
+	if(WMS >= 3 || WMT >= 3)
 	{
+		int4 itc = tc.xyxy * WH.xyxy + float4(-0.5f, -0.5f, 0.5f, 0.5f);
+		
 		float4 tc01;
 		
-		tc01.x = repeatu(tc.x); 
-		tc01.y = repeatv(tc.y);
-		tc01.z = repeatu(tc.x + rWrH.x); 
-		tc01.w = repeatv(tc.y + rWrH.y);
+		tc01.x = repeatu(itc.x);
+		tc01.y = repeatv(itc.y);
+		tc01.z = repeatu(itc.z);
+		tc01.w = repeatv(itc.w);
+	
+		tc01 *= rWrH.xyxy;
 
 		float4 t00 = tex2D(Texture, tc01.xy);
 		float4 t01 = tex2D(Texture, tc01.zy);
 		float4 t10 = tex2D(Texture, tc01.xw);
 		float4 t11 = tex2D(Texture, tc01.zw);
 	
-		float2 dd = frac(tc * WH); 
+		float2 dd = frac(tc * WH - 0.5f); 
 
 		t = lerp(lerp(t00, t01, dd.x), lerp(t10, t11, dd.x), dd.y);
 	}
@@ -132,30 +133,30 @@ float4 sample(float2 tc)
 
 float4 sample8hp(float2 tc)
 {
-	// tc -= 0.5 * rWrH; // ?
-
-	float4 t;
-	
 	float4 tc01;
 	
-	tc01.x = repeatu(tc.x); 
-	tc01.y = repeatv(tc.y);
-	tc01.z = repeatu(tc.x + rWrH.x); 
-	tc01.w = repeatv(tc.y + rWrH.y);
+	tc01.x = tc.x - rWrH.x * 0.5f; 
+	tc01.y = tc.y - rWrH.y * 0.5f;
+	tc01.z = tc.x + rWrH.x * 0.5f; 
+	tc01.w = tc.y + rWrH.y * 0.5f;
+
+	float4 t;
 
 	t.x = tex2D(Texture, tc01.xy).a;
 	t.y = tex2D(Texture, tc01.zy).a;
 	t.z = tex2D(Texture, tc01.xw).a;
 	t.w = tex2D(Texture, tc01.zw).a;
 
+	if(RT == 1) t *= 0.5;
+
 	float4 t00 = tex1D(Palette, t.x);
 	float4 t01 = tex1D(Palette, t.y);
 	float4 t10 = tex1D(Palette, t.z);
 	float4 t11 = tex1D(Palette, t.w);
 
-	float2 dd = frac(tc * WH); 
+	float2 dd = frac(tc * WH - 0.5f); 
 
-	return lerp(lerp(t00, t01, dd.x), lerp(t10, t11, dd.x), dd.y);
+	return lerp(lerp(t00, t01, dd.x), lerp(t10, t11, dd.x), dd.y).bgra; // .bgra? ("fixes" dbzbt3)
 }
 
 float4 ps_main(PS_INPUT input) : COLOR

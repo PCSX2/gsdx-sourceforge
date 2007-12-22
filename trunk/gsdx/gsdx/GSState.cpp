@@ -1544,6 +1544,18 @@ bool GSState::DetectBadFrame(int& skip)
 		}
 
 		break;
+
+	case 0x428113C2: // dbz bt3 ntsc/us
+
+		if(skip == 0)
+		{
+			if(TME && FBP == 0x01c00 && FPSM == PSM_PSMCT32 && TPSM == PSM_PSMT8H)
+			{
+				skip = 24;
+			}
+		}
+
+		break;
 	}
 
 	if(skip == 0)

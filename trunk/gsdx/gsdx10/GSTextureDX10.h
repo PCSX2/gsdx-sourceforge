@@ -23,15 +23,14 @@
 
 class GSTextureDX10 : public GSTexture
 {
+	CComPtr<ID3D10Device> m_dev;
+	CComPtr<ID3D10Texture2D> m_texture;
+	D3D10_TEXTURE2D_DESC m_desc;
 	CComPtr<ID3D10ShaderResourceView> m_srv;
 	CComPtr<ID3D10RenderTargetView> m_rtv;
 	CComPtr<ID3D10DepthStencilView> m_dsv;
 
 public:
-	CComPtr<ID3D10Device> m_dev;
-	CComPtr<ID3D10Texture2D> m_texture;
-	D3D10_TEXTURE2D_DESC m_desc;
-
 	GSTextureDX10();
 	explicit GSTextureDX10(ID3D10Texture2D* texture);
 	virtual ~GSTextureDX10();
@@ -45,7 +44,7 @@ public:
 	bool Update(CRect r, const void* data, int pitch);
 	bool Save(CString fn, bool dds = false);
 
-	ID3D10Texture2D* operator->();
+	ID3D10Texture2D* operator->(); // TODO: remove direct access
 
 	operator ID3D10Texture2D*();
 	operator ID3D10ShaderResourceView*();
