@@ -19,5 +19,19 @@
  *
  */
 
-#include "StdAfx.h"
-#include "GSRenderer.h"
+#pragma once
+
+#ifndef __AFXWIN_H__
+	#error include 'stdafx.h' before including this file for PCH
+#endif
+
+class GSdxApp : public CWinApp
+{
+public:
+	GSdxApp();
+
+public:
+	virtual BOOL InitInstance();
+
+	DECLARE_MESSAGE_MAP()
+};

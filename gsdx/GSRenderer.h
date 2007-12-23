@@ -24,10 +24,7 @@
 #include "GSWnd.h"
 #include "GSState.h"
 #include "GSVertexList.h"
-#include "GSSetting.h"
-
-extern GSSetting g_interlace[7];
-extern GSSetting g_aspectratio[3];
+#include "GSSettingsDlg.h"
 
 class GSRendererBase :  public GSWnd, public GSState
 {

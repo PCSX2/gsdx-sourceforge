@@ -22,7 +22,7 @@
 #pragma once
 
 #include "GSTexture.h"
-#include "GSVector.h"
+#include "GSVertex.h"
 
 template<class Texture> class GSDevice
 {

@@ -19,5 +19,52 @@
  *
  */
 
-#include "StdAfx.h"
-#include "GSRenderer.h"
+#pragma once
+
+#include "GSVector.h"
+
+// FIXME
+class GSDevice10;
+class GSTexture10;
+
+class GSMergeFX10
+{
+public:
+	#pragma pack(push, 1)
+
+	struct PSConstantBuffer
+	{
+		GSVector4 BGColor;
+	};
+
+	union PSSelector
+	{
+		struct
+		{
+			DWORD en1:1;
+			DWORD en2:1;
+			DWORD slbg:1;
+			DWORD mmod:1;
+		};
+
+		DWORD dw;
+
+		operator DWORD() {return dw & 0xf;}
+	};
+
+	#pragma pack(pop)
+
+private:
+	GSDevice10* m_dev;
+	CComPtr<ID3D10Buffer> m_vb;
+	CComPtr<ID3D10InputLayout> m_il;
+	CComPtr<ID3D10VertexShader> m_vs;
+	CSimpleMap<DWORD, CComPtr<ID3D10PixelShader> > m_ps;
+	CComPtr<ID3D10Buffer> m_ps_cb;
+
+public:
+	GSMergeFX10();
+
+	bool Create(GSDevice10* dev);
+	void Draw(GSTexture10* st, GSVector4* sr, GSTexture10& dt, PSSelector sel, PSConstantBuffer& cb);
+};

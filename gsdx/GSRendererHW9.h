@@ -19,5 +19,38 @@
  *
  */
 
-#include "StdAfx.h"
-#include "GSRenderer.h"
+#pragma once
+
+#include "GSRendererHW.h"
+#include "GSTextureFX9.h"
+
+class GSRendererHW9 : public GSRendererHW<GSDevice9>
+{
+protected:
+	GSTextureFX9 m_tfx;
+
+	void DrawingKick(bool skip);
+	void Draw();
+
+	struct
+	{
+		Direct3DDepthStencilState9 dss;
+		Direct3DBlendState9 bs;
+	} m_date;
+
+	struct
+	{
+		bool enabled;
+		Direct3DDepthStencilState9 dss;
+		Direct3DBlendState9 bs;
+	} m_fba;
+
+	void SetupDATE(GSTextureCache<GSDevice9>::GSRenderTarget* rt, GSTextureCache<GSDevice9>::GSDepthStencil* ds);
+	void UpdateFBA(GSTextureCache<GSDevice9>::GSRenderTarget* rt);
+	bool OverrideInput(int& prim, GSTextureCache<GSDevice9>::GSTexture* tex);	
+
+public:
+	GSRendererHW9(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync);
+
+	bool Create(LPCTSTR title);
+};

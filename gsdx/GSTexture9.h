@@ -19,5 +19,36 @@
  *
  */
 
-#include "StdAfx.h"
-#include "GSRenderer.h"
+#pragma once
+
+#include "GSTexture.h"
+
+class GSTexture9 : public GSTexture
+{
+	CComPtr<IDirect3DDevice9> m_dev;
+	CComPtr<IDirect3DSurface9> m_surface;
+	CComPtr<IDirect3DTexture9> m_texture; 
+	D3DSURFACE_DESC m_desc;
+
+public:
+	GSTexture9();
+	explicit GSTexture9(IDirect3DSurface9* surface);
+	explicit GSTexture9(IDirect3DTexture9* texture);
+	virtual ~GSTexture9();
+
+	operator bool();
+
+	int GetType() const;
+	int GetWidth() const;
+	int GetHeight() const;
+	int GetFormat() const;
+	bool Update(CRect r, const void* data, int pitch);
+	bool Map(BYTE** bits, int& pitch, const RECT* r = NULL);
+	void Unmap();
+	bool Save(CString fn, bool dds = false);
+
+	IDirect3DTexture9* operator->(); // TODO: remove direct access
+
+	operator IDirect3DSurface9*();
+	operator IDirect3DTexture9*();
+};
