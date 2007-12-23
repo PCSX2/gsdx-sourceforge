@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="windows-1250"?>
+<VisualStudioPropertySheet
+	ProjectType="Visual C++"
+	Version="8.00"
+	Name="common"
+	OutputDirectory="$(PlatformName)\$(ConfigurationName)"
+	IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
+	>
+	<Tool
+		Name="VCCLCompilerTool"
+		EnableIntrinsicFunctions="true"
+		PreprocessorDefinitions="WIN32;_WINDOWS"
+		FloatingPointModel="2"
+		RuntimeTypeInfo="false"
+		WarningLevel="4"
+		DebugInformationFormat="3"
+		DisableSpecificWarnings="4995;4324"
+	/>
+	<Tool
+		Name="VCLinkerTool"
+		GenerateDebugInformation="true"
+		SubSystem="2"
+		RandomizedBaseAddress="1"
+	/>
+</VisualStudioPropertySheet>
