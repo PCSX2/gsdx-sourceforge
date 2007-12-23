@@ -21,67 +21,31 @@
 
 #pragma once
 
-#include "GSTextureDX10.h"
+#include "GSDeviceDX10.h"
 
-class GSRendererHWDX10;
-
-class GSTextureCache
+class GSTextureCacheHWDX10 : public GSTextureCache<GSDeviceDX10>
 {
-public:
-	class GSSurface
-	{
-	protected:
-		GSTextureCache* m_tc;
-
-	public:
-		GSTextureDX10 m_texture;
-		GSTextureDX10 m_palette;
-		GSVector2 m_scale;
-		int m_age;
-		GSDirtyRectList m_dirty;
-		GIFRegTEX0 m_TEX0;
-
-		explicit GSSurface(GSTextureCache* tc);
-		virtual ~GSSurface();
-
-		void Update();
-	};
-
-	class GSRenderTarget : public GSSurface
+	class GSRenderTargetHWDX10 : public GSRenderTarget
 	{
 	public:
-		bool m_used;
+		explicit GSRenderTargetHWDX10(GSRenderer<GSDeviceDX10>* renderer) : GSRenderTarget(renderer) {}
 
-		explicit GSRenderTarget(GSTextureCache* tc);
-
-		bool Create(int w, int h);
 		void Update();
 		void Read(CRect r);
 	};
 
-	class GSDepthStencil : public GSSurface
+	class GSDepthStencilHWDX10 : public GSDepthStencil
 	{
 	public:
-		bool m_used;
+		explicit GSDepthStencilHWDX10(GSRenderer<GSDeviceDX10>* renderer) : GSDepthStencil(renderer) {}
 
-		explicit GSDepthStencil(GSTextureCache* tc);
-
-		bool Create(int w, int h);
 		void Update();
 	};
 
-	class GSTexture : public GSSurface
+	class GSTextureHWDX10 : public GSTexture
 	{
-		bool GetDirtyRect(CRect& r);
-
 	public:
-		DWORD m_clut[256]; // *
-		CRect m_valid;
-		int m_bpp;
-		int m_bpp2;
-		bool m_rendered;
-
-		explicit GSTexture(GSTextureCache* tc);
+		explicit GSTextureHWDX10(GSRenderer<GSDeviceDX10>* renderer) : GSTexture(renderer) {}
 
 		bool Create();
 		bool Create(GSRenderTarget* rt);
@@ -90,26 +54,10 @@ public:
 	};
 
 protected:
-	GSRendererHWDX10* m_renderer;
-	CAtlList<GSRenderTarget*> m_rt;
-	CAtlList<GSDepthStencil*> m_ds;
-	CAtlList<GSTexture*> m_tex;
-	bool m_nativeres;
-
-	template<class T> void RecycleByAge(CAtlList<T*>& l, int maxage = 10);
+	GSRenderTarget* CreateRenderTarget() {return new GSRenderTargetHWDX10(m_renderer);}
+	GSDepthStencil* CreateDepthStencil() {return new GSDepthStencilHWDX10(m_renderer);}
+	GSTexture* CreateTexture() {return new GSTextureHWDX10(m_renderer);}
 
 public:
-	GSTextureCache(GSRendererHWDX10* renderer);
-	virtual ~GSTextureCache();
-
-	void RemoveAll();
-
-	GSRenderTarget* GetRenderTarget(const GIFRegTEX0& TEX0, int w, int h, bool fb = false);
-	GSDepthStencil* GetDepthStencil(const GIFRegTEX0& TEX0, int w, int h);
-	GSTexture* GetTexture();
-
-	void InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, const CRect& r);
-	void InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, const CRect& r);
-
-	void IncAge();
+	GSTextureCacheHWDX10(GSRenderer<GSDeviceDX10>* renderer, bool nativeres);
 };

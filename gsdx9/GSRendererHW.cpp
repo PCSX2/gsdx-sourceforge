@@ -30,11 +30,9 @@ bool s_savez = false;
 
 GSRendererHWDX9::GSRendererHWDX9(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync)
 	: GSRendererHW<GSDeviceDX9>(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync)
-	, m_tc(this)
-	, m_width(1024)
-	, m_height(1024)
-	, m_skip(0)
 {
+	m_tc = new GSTextureCacheHWDX9(this, !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("nativeres"), FALSE));
+
 	if(!AfxGetApp()->GetProfileInt(_T("Settings"), _T("nativeres"), FALSE))
 	{
 		m_width = AfxGetApp()->GetProfileInt(_T("Settings"), _T("resx"), 1024);
@@ -83,43 +81,6 @@ bool GSRendererHWDX9::Create(LPCTSTR title)
 	//
 
 	return true;
-}
-
-void GSRendererHWDX9::VSync(int field)
-{
-	__super::VSync(field);
-
-	m_tc.IncAge();
-
-	m_skip = 0;
-
-// s_dump = m_perfmon.GetFrame() >= 5002;
-}
-
-bool GSRendererHWDX9::GetOutput(int i, GSTextureDX9& t, GSVector2& s)
-{
-	GIFRegTEX0 TEX0;
-
-	TEX0.TBP0 = DISPFB[i]->Block();
-	TEX0.TBW = DISPFB[i]->FBW;
-	TEX0.PSM = DISPFB[i]->PSM;
-
-	if(GSTextureCache::GSRenderTarget* rt = m_tc.GetRenderTarget(TEX0, m_width, m_height, true))
-	{
-		t = rt->m_texture;
-		s = rt->m_scale;
-
-if(s_dump)
-{
-	CString str;
-	str.Format(_T("c:\\temp2\\_%05d_f%I64d_fr%d_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), i, (int)TEX0.TBP0, (int)TEX0.PSM);
-	if(s_save) rt->m_texture.Save(str);
-}
-
-		return true;
-	}
-
-	return false;
 }
 
 void GSRendererHWDX9::DrawingKick(bool skip)
@@ -250,11 +211,6 @@ void GSRendererHWDX9::Draw()
 		return;
 	}
 
-if(s_n >= 2021)
-{
-	s_save = true;
-}
-
 	//
 
 	GIFRegTEX0 TEX0;
@@ -265,7 +221,7 @@ if(s_n >= 2021)
 	TEX0.TBW = m_context->FRAME.FBW;
 	TEX0.PSM = m_context->FRAME.PSM;
 
-	GSTextureCache::GSRenderTarget* rt = m_tc.GetRenderTarget(TEX0, m_width, m_height);
+	GSTextureCache<GSDeviceDX9>::GSRenderTarget* rt = m_tc->GetRenderTarget(TEX0, m_width, m_height);
 
 	// ds
 
@@ -273,15 +229,15 @@ if(s_n >= 2021)
 	TEX0.TBW = m_context->FRAME.FBW;
 	TEX0.PSM = m_context->ZBUF.PSM;
 
-	GSTextureCache::GSDepthStencil* ds = m_tc.GetDepthStencil(TEX0, m_width, m_height);
+	GSTextureCache<GSDeviceDX9>::GSDepthStencil* ds = m_tc->GetDepthStencil(TEX0, m_width, m_height);
 
 	// tex
 
-	GSTextureCache::GSTexture* tex = NULL;
+	GSTextureCache<GSDeviceDX9>::GSTexture* tex = NULL;
 
 	if(PRIM->TME)
 	{
-		tex = m_tc.GetTexture();
+		tex = m_tc->GetTexture();
 
 		if(!tex) return;
 	}
@@ -572,134 +528,7 @@ if(s_dump)
 
 }
 
-void GSRendererHWDX9::InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r)
-{
-	TRACE(_T("[%d] InvalidateVideoMem %d,%d - %d,%d %05x (%d)\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.DBP, (int)BITBLTBUF.DPSM);
-
-	m_tc.InvalidateVideoMem(BITBLTBUF, &r);
-}
-
-void GSRendererHWDX9::InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r)
-{
-	TRACE(_T("[%d] InvalidateLocalMem %d,%d - %d,%d %05x (%d)\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.SBP, (int)BITBLTBUF.SPSM);
-
-	m_tc.InvalidateLocalMem(BITBLTBUF, &r);
-}
-
-void GSRendererHWDX9::MinMaxUV(int w, int h, CRect& r)
-{
-	r.SetRect(0, 0, w, h);
-
-	GSVector4 mm(0, 0, 1, 1);
-
-	if((m_context->CLAMP.WMS < 3 || m_context->CLAMP.WMT < 3) && m_count < 100)
-	{
-		__super::MinMaxUV(mm);
-	}
-
-	CSize bs = GSLocalMemory::m_psm[m_context->TEX0.PSM].bs;
-	CSize bsm(bs.cx - 1, bs.cy - 1);
-
-	if(m_context->CLAMP.WMS != 3)
-	{
-		if(m_context->CLAMP.WMS == 0)
-		{
-			float fmin = floor(mm.x);
-			float fmax = floor(mm.z);
-
-			if(fmin != fmax) {mm.x = 0; mm.z = 1.0f;}
-			else {mm.x -= fmin; mm.z -= fmax;}
-
-			// FIXME: 
-			if(mm.x == 0 && mm.z != 1.0f) mm.z = 1.0f;
-		}
-		else if(m_context->CLAMP.WMS == 1)
-		{
-			if(mm.x < 0) mm.x = 0;
-			else if(mm.x > 1.0f) mm.x = 1.0f;
-			if(mm.z < 0) mm.z = 0;
-			else if(mm.z > 1.0f) mm.z = 1.0f;
-			if(mm.x > mm.z) mm.x = mm.z;
-		}
-		else if(m_context->CLAMP.WMS == 2)
-		{
-			float minu = 1.0f * m_context->CLAMP.MINU / w;
-			float maxu = 1.0f * m_context->CLAMP.MAXU / w;
-			if(mm.x < minu) mm.x = minu;
-			else if(mm.x > maxu) mm.x = maxu;
-			if(mm.z < minu) mm.z = minu;
-			else if(mm.z > maxu) mm.z = maxu;
-			if(mm.x > mm.z) mm.x = mm.z;
-		}
-
-		r.left = (int)(mm.x * w);
-		r.right = (int)(mm.z * w);
-	}
-	else
-	{
-#ifdef PS_REGION_REPEAT
-		r.left = m_context->CLAMP.MAXU;
-		r.right = r.left + (m_context->CLAMP.MINU + 1);
-#else
-		r.left = 0;
-		r.right = w;
-#endif
-	}
-
-	r.left = max(r.left & ~bsm.cx, 0);
-	r.right = min((r.right + bsm.cx + 1) & ~bsm.cx, w);
-
-	if(m_context->CLAMP.WMT != 3)
-	{
-		if(m_context->CLAMP.WMT == 0)
-		{
-			float fmin = floor(mm.y);
-			float fmax = floor(mm.w);
-
-			if(fmin != fmax) {mm.y = 0; mm.w = 1.0f;}
-			else {mm.y -= fmin; mm.w -= fmax;}
-
-			// FIXME: 
-			if(mm.y == 0 && mm.w != 1.0f) mm.w = 1.0f;
-		}
-		else if(m_context->CLAMP.WMT == 1)
-		{
-			if(mm.y < 0) mm.y = 0;
-			else if(mm.y > 1.0f) mm.y = 1.0f;
-			if(mm.w < 0) mm.w = 0;
-			else if(mm.w > 1.0f) mm.w = 1.0f;
-			if(mm.y > mm.w) mm.y = mm.w;
-		}
-		else if(m_context->CLAMP.WMT == 2)
-		{
-			float minv = 1.0f * m_context->CLAMP.MINV / h;
-			float maxv = 1.0f * m_context->CLAMP.MAXV / h;
-			if(mm.y < minv) mm.y = minv;
-			else if(mm.y > maxv) mm.y = maxv;
-			if(mm.w < minv) mm.w = minv;
-			else if(mm.w > maxv) mm.w = maxv;
-			if(mm.y > mm.w) mm.y = mm.w;
-		}
-
-		r.top = (int)(mm.y * h);
-		r.bottom = (int)(mm.w * h);
-	}
-	else
-	{
-#ifdef PS_REGION_REPEAT
-		r.top = m_context->CLAMP.MAXV;
-		r.bottom = r.top + (m_context->CLAMP.MINV + 1);
-#else
-		r.top = 0;
-		r.bottom = h;
-#endif
-	}
-
-	r.top = max(r.top & ~bsm.cy, 0);
-	r.bottom = min((r.bottom + bsm.cy + 1) & ~bsm.cy, h);
-}
-
-void GSRendererHWDX9::SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache::GSDepthStencil* ds)
+void GSRendererHWDX9::SetupDATE(GSTextureCache<GSDeviceDX9>::GSRenderTarget* rt, GSTextureCache<GSDeviceDX9>::GSDepthStencil* ds)
 {
 	if(!m_context->TEST.DATE) return; // || (::GetAsyncKeyState(VK_CONTROL)&0x80000000)
 
@@ -790,7 +619,7 @@ void GSRendererHWDX9::SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCac
 	m_dev.Recycle(tmp);
 }
 
-void GSRendererHWDX9::UpdateFBA(GSTextureCache::GSRenderTarget* rt)
+void GSRendererHWDX9::UpdateFBA(GSTextureCache<GSDeviceDX9>::GSRenderTarget* rt)
 {
 	m_dev.BeginScene();
 
@@ -829,7 +658,7 @@ void GSRendererHWDX9::UpdateFBA(GSTextureCache::GSRenderTarget* rt)
 	m_dev.EndScene();
 }
 
-bool GSRendererHWDX9::OverrideInput(int& prim, GSTextureCache::GSTexture* tex)
+bool GSRendererHWDX9::OverrideInput(int& prim, GSTextureCache<GSDeviceDX9>::GSTexture* tex)
 {
 	#pragma region ffxii pal video conversion
 

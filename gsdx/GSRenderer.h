@@ -29,7 +29,7 @@
 extern GSSetting g_interlace[7];
 extern GSSetting g_aspectratio[3];
 
-class GSRenderer :  public GSWnd, public GSState
+class GSRendererBase :  public GSWnd, public GSState
 {
 protected:
 	int m_interlace;
@@ -38,97 +38,6 @@ protected:
 	bool m_vsync;
 	bool m_osd;
 	int m_field;
-
-public:
-	GSRenderer(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync)
-		: GSState(base, mt, irq, nloophack)
-		, m_interlace(interlace)
-		, m_aspectratio(aspectratio)
-		, m_filter(filter)
-		, m_vsync(vsync)
-		, m_osd(true)
-		, m_field(0)
-	{
-	};
-
-	virtual void VSync(int field) = 0;
-	virtual bool MakeSnapshot(LPCTSTR path) = 0;
-};
-
-template<class Device, class Vertex> class GSRendererT : public GSRenderer
-{
-protected:
-	typedef typename Device::Texture Texture;
-
-	Vertex* m_vertices;
-	int m_count;
-	int m_maxcount;
-	GSVertexList<Vertex> m_vl;
-
-	void Reset()
-	{
-		m_count = 0;
-		m_vl.RemoveAll();
-
-		__super::Reset();
-	}
-
-	void VertexKick(bool skip)
-	{
-		while(m_vl.GetCount() >= primVertexCount[PRIM->PRIM])
-		{
-			if(m_count + 6 > m_maxcount)
-			{
-				m_maxcount = max(10000, m_maxcount * 3/2);
-
-				Vertex* vertices = (Vertex*)_aligned_malloc(sizeof(Vertex) * m_maxcount, 16);
-
-				if(m_vertices)
-				{
-					memcpy(vertices, m_vertices, sizeof(Vertex) * m_count);
-
-					_aligned_free(m_vertices);
-				}
-
-				m_vertices = vertices;
-			}
-
-			DrawingKick(skip);
-		}
-	}
-
-	void ResetPrim()
-	{
-		m_vl.RemoveAll();
-	}
-
-	void FlushPrim() 
-	{
-		if(m_count > 0)
-		{
-			TRACE(_T("[%d] Draw f %05x (%d) z %05x (%d %d %d %d) t %05x %05x (%d)\n"), 
-				  (int)m_perfmon.GetFrame(), 
-				  (int)m_context->FRAME.Block(), 
-				  (int)m_context->FRAME.PSM, 
-				  (int)m_context->ZBUF.Block(), 
-				  (int)m_context->ZBUF.PSM, 
-				  m_context->TEST.ZTE, 
-				  m_context->TEST.ZTST, 
-				  m_context->ZBUF.ZMSK, 
-				  PRIM->TME ? (int)m_context->TEX0.TBP0 : 0xfffff, 
-				  PRIM->TME && m_context->TEX0.PSM > PSM_PSMCT16S ? (int)m_context->TEX0.CBP : 0xfffff, 
-				  PRIM->TME ? (int)m_context->TEX0.PSM : 0xff);
-
-			Draw();
-
-			m_count = 0;
-		}
-	}
-
-	virtual void DrawingKick(bool skip) = 0;
-	virtual void Draw() = 0;
-	virtual void ResetDevice() {}
-	virtual bool GetOutput(int i, Texture& t, GSVector2& s) = 0;
 
 	void ProcessWindowMessages()
 	{
@@ -166,6 +75,30 @@ protected:
 			DispatchMessage(&msg);
 		}
 	}
+
+public:
+	GSRendererBase(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync)
+		: GSState(base, mt, irq, nloophack)
+		, m_interlace(interlace)
+		, m_aspectratio(aspectratio)
+		, m_filter(filter)
+		, m_vsync(vsync)
+		, m_osd(true)
+		, m_field(0)
+	{
+	};
+
+	virtual void VSync(int field) = 0;
+	virtual bool MakeSnapshot(LPCTSTR path) = 0;
+};
+
+template<class Device> class GSRenderer : public GSRendererBase
+{
+protected:
+	typedef typename Device::Texture Texture;
+
+	virtual void ResetDevice() {}
+	virtual bool GetOutput(int i, Texture& t, GSVector2& s) = 0;
 
 	bool Merge()
 	{
@@ -247,11 +180,8 @@ public:
 	Device m_dev;
 
 public:
-	GSRendererT(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync)
-		: GSRenderer(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync)
-		, m_vertices(NULL)
-		, m_count(0)
-		, m_maxcount(0)
+	GSRenderer(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync)
+		: GSRendererBase(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync)
 	{
 	}
 
@@ -350,5 +280,87 @@ public:
 		CString fn;
 		fn.Format(_T("%s_%s.bmp"), path, CTime::GetCurrentTime().Format(_T("%Y%m%d%H%M%S")));
 		return m_dev.SaveCurrent(fn);
+	}
+	virtual void MinMaxUV(int w, int h, CRect& r) {r = CRect(0, 0, w, h);}
+};
+
+template<class Device, class Vertex> class GSRendererT : public GSRenderer<Device>
+{
+protected:
+	Vertex* m_vertices;
+	int m_count;
+	int m_maxcount;
+	GSVertexList<Vertex> m_vl;
+
+	void Reset()
+	{
+		m_count = 0;
+		m_vl.RemoveAll();
+
+		__super::Reset();
+	}
+
+	void VertexKick(bool skip)
+	{
+		while(m_vl.GetCount() >= primVertexCount[PRIM->PRIM])
+		{
+			if(m_count + 6 > m_maxcount)
+			{
+				m_maxcount = max(10000, m_maxcount * 3/2);
+
+				Vertex* vertices = (Vertex*)_aligned_malloc(sizeof(Vertex) * m_maxcount, 16);
+
+				if(m_vertices)
+				{
+					memcpy(vertices, m_vertices, sizeof(Vertex) * m_count);
+
+					_aligned_free(m_vertices);
+				}
+
+				m_vertices = vertices;
+			}
+
+			DrawingKick(skip);
+		}
+	}
+
+	void ResetPrim()
+	{
+		m_vl.RemoveAll();
+	}
+
+	void FlushPrim() 
+	{
+		if(m_count > 0)
+		{
+			TRACE(_T("[%d] Draw f %05x (%d) z %05x (%d %d %d %d) t %05x %05x (%d)\n"), 
+				  (int)m_perfmon.GetFrame(), 
+				  (int)m_context->FRAME.Block(), 
+				  (int)m_context->FRAME.PSM, 
+				  (int)m_context->ZBUF.Block(), 
+				  (int)m_context->ZBUF.PSM, 
+				  m_context->TEST.ZTE, 
+				  m_context->TEST.ZTST, 
+				  m_context->ZBUF.ZMSK, 
+				  PRIM->TME ? (int)m_context->TEX0.TBP0 : 0xfffff, 
+				  PRIM->TME && m_context->TEX0.PSM > PSM_PSMCT16S ? (int)m_context->TEX0.CBP : 0xfffff, 
+				  PRIM->TME ? (int)m_context->TEX0.PSM : 0xff);
+
+			Draw();
+
+			m_count = 0;
+		}
+	}
+
+	virtual void DrawingKick(bool skip) = 0;
+	virtual void Draw() = 0;
+
+public:
+	GSRendererT(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync)
+		: GSRenderer<Device>(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync)
+		, m_vertices(NULL)
+		, m_count(0)
+		, m_maxcount(0)
+	{
 	}
 };

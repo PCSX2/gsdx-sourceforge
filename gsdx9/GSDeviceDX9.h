@@ -21,10 +21,6 @@
 
 #pragma once
 
-// this can be painfully slow with ps 2.0/3.0, only helps in a few cases (soul calibur 2)
-
-// #define PS_REGION_REPEAT
-
 #include "GSTextureDX9.h"
 #include "GSMergeFX.h"
 
@@ -95,7 +91,6 @@ class GSDeviceDX9 : public GSDevice<GSTextureDX9>
 	void DoInterlace(GSTextureDX9& st, GSTextureDX9& dt, int shader, bool linear, float yoffset = 0);
 
 private:
-	HWND m_hWnd;
 	DDCAPS m_ddcaps;
 	D3DCAPS9 m_d3dcaps;
 	CComPtr<IDirect3D9> m_d3d;

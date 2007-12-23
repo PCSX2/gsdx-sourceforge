@@ -23,8 +23,8 @@
 #include "GSTextureCache.h"
 #include "GSRendererHW.h"
 
-GSTextureCache::GSRenderTarget::GSRenderTarget(GSTextureCache* tc)
-	: GSSurface(tc)
+GSTextureCache::GSRenderTarget::GSRenderTarget(GSRendererHWDX10* renderer)
+	: GSSurface(renderer)
 	, m_used(true)
 {
 }
@@ -33,63 +33,17 @@ bool GSTextureCache::GSRenderTarget::Create(int w, int h)
 {
 	// FIXME: initial data should be unswizzled from local mem in Update() if dirty
 
-	return m_tc->m_renderer->m_dev.CreateRenderTarget(m_texture, w, h);
+	return m_renderer->m_dev.CreateRenderTarget(m_texture, w, h);
 }
 
 void GSTextureCache::GSRenderTarget::Update()
 {
 	__super::Update();
 
-	// FIXME: the union of the rects may also update wrong parts of the render target (but a lot faster :)
-
-	CRect r = m_dirty.GetDirtyRect(m_TEX0);
-
-	m_dirty.RemoveAll();
-
-	if(r.IsRectEmpty()) return;
-
-	if(r.right > 1024) {ASSERT(0); r.right = 1024;}
-	if(r.bottom > 1024) {ASSERT(0); r.bottom = 1024;}
-
-	int w = r.Width();
-	int h = r.Height();
-
-	static BYTE* buff = (BYTE*)_aligned_malloc(1024 * 1024 * 4, 16);
-	static int pitch = 1024 * 4;
-
-	GIFRegTEXA TEXA;
-
-	TEXA.AEM = 1;
-	TEXA.TA0 = 0;
-	TEXA.TA1 = 0x80;
-
-	GIFRegCLAMP CLAMP;
-
-	CLAMP.WMS = 0;
-	CLAMP.WMT = 0;
-
-	m_tc->m_renderer->m_mem.ReadTexture(r, buff, pitch, m_TEX0, TEXA, CLAMP);
-	
-	// s->m_perfmon.Put(GSPerfMon::Unswizzle, w * h * 4);
-
-	GSTextureDX10 texture;
-
-	if(m_tc->m_renderer->m_dev.CreateTexture(texture, w, h)) 
-	{
-		texture.Update(CRect(0, 0, w, h), buff, pitch);
-
-		GSVector4 dr(m_scale.x * r.left, m_scale.y * r.top, m_scale.x * r.right, m_scale.y * r.bottom);
-
-		m_tc->m_renderer->m_dev.StretchRect(texture, m_texture, dr);
-
-		m_tc->m_renderer->m_dev.Recycle(texture);
-	}
 }
 
 void GSTextureCache::GSRenderTarget::Read(CRect r)
 {
-	HRESULT hr;
-
 	if(m_TEX0.PSM != PSM_PSMCT32 
 	&& m_TEX0.PSM != PSM_PSMCT24
 	&& m_TEX0.PSM != PSM_PSMCT16
@@ -101,7 +55,7 @@ void GSTextureCache::GSRenderTarget::Read(CRect r)
 
 	TRACE(_T("GSRenderTarget::Read %d,%d - %d,%d (%08x)\n"), r.left, r.top, r.right, r.bottom, m_TEX0.TBP0);
 
-	// m_tc->m_renderer->m_perfmon.Put(GSPerfMon::ReadRT, 1);
+	// m_renderer->m_perfmon.Put(GSPerfMon::ReadRT, 1);
 
 	//
 
@@ -119,21 +73,22 @@ void GSTextureCache::GSRenderTarget::Read(CRect r)
 
 	GSTextureDX10 rt;
 
-	hr = m_tc->m_renderer->m_dev.CreateRenderTarget(rt, r.Width(), r.Height(), format);
+	m_renderer->m_dev.CreateRenderTarget(rt, r.Width(), r.Height(), format);
 
-	m_tc->m_renderer->m_dev.StretchRect(m_texture, src, rt, dst, m_tc->m_renderer->m_dev.m_convert.ps[shader], NULL);
+	m_renderer->m_dev.StretchRect(m_texture, src, rt, dst, m_renderer->m_dev.m_convert.ps[shader], NULL);
 
 	GSTextureDX10 offscreen;
 
-	m_tc->m_renderer->m_dev.CreateOffscreen(offscreen, r.Width(), r.Height(), format);
+	m_renderer->m_dev.CreateOffscreen(offscreen, r.Width(), r.Height(), format);
 
-	m_tc->m_renderer->m_dev->CopyResource(offscreen, rt);
+	m_renderer->m_dev->CopyResource(offscreen, rt);
 
-	m_tc->m_renderer->m_dev.Recycle(rt);
+	m_renderer->m_dev.Recycle(rt);
 
-	D3D10_MAPPED_TEXTURE2D map;
+	BYTE* bits;
+	int pitch;
 
-	if(SUCCEEDED(hr) && SUCCEEDED(offscreen->Map(0, D3D10_MAP_READ, 0, &map)))
+	if(offscreen.Map(&bits, pitch))
 	{
 		// TODO: block level write
 
@@ -142,57 +97,55 @@ void GSTextureCache::GSRenderTarget::Read(CRect r)
 
 		GSLocalMemory::pixelAddress pa = GSLocalMemory::m_psm[m_TEX0.PSM].pa;
 
-		BYTE* bits = (BYTE*)map.pData;
-
 		if(m_TEX0.PSM == PSM_PSMCT32)
 		{
-			for(int y = r.top; y < r.bottom; y++, bits += map.RowPitch)
+			for(int y = r.top; y < r.bottom; y++, bits += pitch)
 			{
 				DWORD addr = pa(0, y, bp, bw);
 				int* offset = GSLocalMemory::m_psm[m_TEX0.PSM].rowOffset[y & 7];
 
 				for(int x = r.left, i = 0; x < r.right; x++, i++)
 				{
-					m_tc->m_renderer->m_mem.writePixel32(addr + offset[x], ((DWORD*)bits)[i]);
+					m_renderer->m_mem.writePixel32(addr + offset[x], ((DWORD*)bits)[i]);
 				}
 			}
 		}
 		else if(m_TEX0.PSM == PSM_PSMCT24)
 		{
-			for(int y = r.top; y < r.bottom; y++, bits += map.RowPitch)
+			for(int y = r.top; y < r.bottom; y++, bits += pitch)
 			{
 				DWORD addr = pa(0, y, bp, bw);
 				int* offset = GSLocalMemory::m_psm[m_TEX0.PSM].rowOffset[y & 7];
 
 				for(int x = r.left, i = 0; x < r.right; x++, i++)
 				{
-					m_tc->m_renderer->m_mem.writePixel24(addr + offset[x], ((DWORD*)bits)[i]);
+					m_renderer->m_mem.writePixel24(addr + offset[x], ((DWORD*)bits)[i]);
 				}
 			}
 		}
 		else if(m_TEX0.PSM == PSM_PSMCT16)
 		{
-			for(int y = r.top; y < r.bottom; y++, bits += map.RowPitch)
+			for(int y = r.top; y < r.bottom; y++, bits += pitch)
 			{
 				DWORD addr = pa(0, y, bp, bw);
 				int* offset = GSLocalMemory::m_psm[m_TEX0.PSM].rowOffset[y & 7];
 
 				for(int x = r.left, i = 0; x < r.right; x++, i++)
 				{
-					m_tc->m_renderer->m_mem.writePixel16(addr + offset[x], ((WORD*)bits)[i]);
+					m_renderer->m_mem.writePixel16(addr + offset[x], ((WORD*)bits)[i]);
 				}
 			}
 		}
 		else if(m_TEX0.PSM == PSM_PSMCT16S)
 		{
-			for(int y = r.top; y < r.bottom; y++, bits += map.RowPitch)
+			for(int y = r.top; y < r.bottom; y++, bits += pitch)
 			{
 				DWORD addr = pa(0, y, bp, bw);
 				int* offset = GSLocalMemory::m_psm[m_TEX0.PSM].rowOffset[y & 7];
 
 				for(int x = r.left, i = 0; x < r.right; x++, i++)
 				{
-					m_tc->m_renderer->m_mem.writePixel16S(addr + offset[x], ((WORD*)bits)[i]);
+					m_renderer->m_mem.writePixel16S(addr + offset[x], ((WORD*)bits)[i]);
 				}
 			}
 		}
@@ -201,8 +154,8 @@ void GSTextureCache::GSRenderTarget::Read(CRect r)
 			ASSERT(0);
 		}
 
-		offscreen->Unmap(0);
+		offscreen.Unmap();
 	}
 
-	m_tc->m_renderer->m_dev.Recycle(offscreen);
+	m_renderer->m_dev.Recycle(offscreen);
 }

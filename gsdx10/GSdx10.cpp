@@ -146,7 +146,7 @@ EXPORT_C_(UINT32) PS2EgetCpuPlatform()
 //////////////////
 
 static HRESULT s_hr = E_FAIL;
-static GSRenderer* s_gs;
+static GSRendererBase* s_gs;
 static void (*s_irq)() = NULL;
 static BYTE* s_basemem = NULL;
 

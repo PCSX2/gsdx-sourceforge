@@ -21,68 +21,31 @@
 
 #pragma once
 
-#include "GSTextureDX9.h"
+#include "GSDeviceDX9.h"
 
-class GSRendererHWDX9;
-
-class GSTextureCache
+class GSTextureCacheHWDX9 : public GSTextureCache<GSDeviceDX9>
 {
-public:
-	class GSSurface
-	{
-	protected:
-		GSTextureCache* m_tc;
-
-	public:
-		GSTextureDX9 m_texture;
-		GSTextureDX9 m_palette;
-		GSVector2 m_scale;
-		int m_age;
-		GSDirtyRectList m_dirty;
-		GIFRegTEX0 m_TEX0;
-
-		explicit GSSurface(GSTextureCache* tc);
-		virtual ~GSSurface();
-
-		void Update();
-	};
-
-	class GSRenderTarget : public GSSurface
+	class GSRenderTargetHWDX9 : public GSRenderTarget
 	{
 	public:
-		bool m_used;
+		explicit GSRenderTargetHWDX9(GSRenderer<GSDeviceDX9>* renderer) : GSRenderTarget(renderer) {}
 
-		explicit GSRenderTarget(GSTextureCache* tc);
-
-		bool Create(int w, int h);
 		void Update();
 		void Read(CRect r);
 	};
 
-	class GSDepthStencil : public GSSurface
+	class GSDepthStencilHWDX9 : public GSDepthStencil
 	{
 	public:
-		bool m_used;
+		explicit GSDepthStencilHWDX9(GSRenderer<GSDeviceDX9>* renderer) : GSDepthStencil(renderer) {}
 
-		explicit GSDepthStencil(GSTextureCache* tc);
-
-		bool Create(int w, int h);
 		void Update();
 	};
 
-	class GSTexture : public GSSurface
+	class GSTextureHWDX9 : public GSTexture
 	{
-		bool GetDirtyRect(CRect& r);
-
 	public:
-		GIFRegCLAMP m_CLAMP;
-		DWORD m_clut[256]; // *
-		CRect m_valid;
-		int m_bpp;
-		int m_bpp2;
-		bool m_rendered;
-
-		explicit GSTexture(GSTextureCache* tc);
+		explicit GSTextureHWDX9(GSRenderer<GSDeviceDX9>* renderer) : GSTexture(renderer) {}
 
 		bool Create();
 		bool Create(GSRenderTarget* rt);
@@ -91,26 +54,10 @@ public:
 	};
 
 protected:
-	GSRendererHWDX9* m_renderer;
-	CAtlList<GSRenderTarget*> m_rt;
-	CAtlList<GSDepthStencil*> m_ds;
-	CAtlList<GSTexture*> m_tex;
-	bool m_nativeres;
-
-	template<class T> void RecycleByAge(CAtlList<T*>& l, int maxage = 10);
+	GSRenderTarget* CreateRenderTarget() {return new GSRenderTargetHWDX9(m_renderer);}
+	GSDepthStencil* CreateDepthStencil() {return new GSDepthStencilHWDX9(m_renderer);}
+	GSTexture* CreateTexture() {return new GSTextureHWDX9(m_renderer);}
 
 public:
-	GSTextureCache(GSRendererHWDX9* renderer);
-	virtual ~GSTextureCache();
-
-	void RemoveAll();
-
-	GSRenderTarget* GetRenderTarget(const GIFRegTEX0& TEX0, int w, int h, bool fb = false);
-	GSDepthStencil* GetDepthStencil(const GIFRegTEX0& TEX0, int w, int h);
-	GSTexture* GetTexture();
-
-	void InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, const CRect& r);
-	void InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, const CRect& r);
-
-	void IncAge();
+	GSTextureCacheHWDX9(GSRenderer<GSDeviceDX9>* renderer, bool nativeres);
 };

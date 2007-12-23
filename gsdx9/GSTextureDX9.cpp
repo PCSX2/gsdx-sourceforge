@@ -110,6 +110,32 @@ bool GSTextureDX9::Update(CRect r, const void* data, int pitch)
 	return false;
 }
 
+bool GSTextureDX9::Map(BYTE** bits, int& pitch, const RECT* r)
+{
+	if(CComPtr<IDirect3DSurface9> surface = *this)
+	{
+		D3DLOCKED_RECT lr;
+
+		if(SUCCEEDED(surface->LockRect(&lr, r, 0)))
+		{
+			*bits = (BYTE*)lr.pBits;
+			pitch = (int)lr.Pitch;
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void GSTextureDX9::Unmap()
+{
+	if(CComPtr<IDirect3DSurface9> surface = *this)
+	{
+		surface->UnlockRect();
+	}
+}
+
 bool GSTextureDX9::Save(CString fn, bool dds)
 {
 	if(CComPtr<IDirect3DTexture9> texture = *this)

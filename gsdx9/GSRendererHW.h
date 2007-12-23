@@ -26,23 +26,11 @@
 
 class GSRendererHWDX9 : public GSRendererHW<GSDeviceDX9>
 {
-	friend class GSTextureCache;
-
 protected:
-	int m_width;
-	int m_height;
-	int m_skip;
-
-	GSTextureCache m_tc;
 	GSTextureFX m_tfx;
 
-	void VSync(int field);
-	bool GetOutput(int i, GSTextureDX9& t, GSVector2& s);
 	void DrawingKick(bool skip);
 	void Draw();
-	void InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r);
-	void InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r);
-	void MinMaxUV(int w, int h, CRect& r);
 
 	struct
 	{
@@ -57,13 +45,12 @@ protected:
 		Direct3DBlendState9 bs;
 	} m_fba;
 
-	void SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache::GSDepthStencil* ds);
-	void UpdateFBA(GSTextureCache::GSRenderTarget* rt);
-	bool OverrideInput(int& prim, GSTextureCache::GSTexture* tex);	
+	void SetupDATE(GSTextureCache<GSDeviceDX9>::GSRenderTarget* rt, GSTextureCache<GSDeviceDX9>::GSDepthStencil* ds);
+	void UpdateFBA(GSTextureCache<GSDeviceDX9>::GSRenderTarget* rt);
+	bool OverrideInput(int& prim, GSTextureCache<GSDeviceDX9>::GSTexture* tex);	
 
 public:
 	GSRendererHWDX9(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync);
 
 	bool Create(LPCTSTR title);
-	void ResetDevice() {m_tc.RemoveAll();}
 };

@@ -69,10 +69,8 @@ class GSDeviceDX10 : public GSDevice<GSTextureDX10>
 	void DoInterlace(GSTextureDX10& st, GSTextureDX10& dt, int shader, bool linear, float yoffset = 0);
 
 private:
-	HWND m_hWnd;
 	CComPtr<ID3D10Device> m_dev;
 	CComPtr<IDXGISwapChain> m_swapchain;
-	GSTextureDX10 m_backbuffer;
 	GSMergeFX m_mergefx;
 
 public: // TODO

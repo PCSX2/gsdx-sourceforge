@@ -29,6 +29,8 @@ template<class Texture> class GSDevice
 	CAtlList<Texture> m_pool;
 
 protected:
+	HWND m_hWnd;
+	Texture m_backbuffer;
 	Texture m_merge;
 	Texture m_weavebob;
 	Texture m_blend;
@@ -61,7 +63,7 @@ protected:
 	virtual void DoInterlace(Texture& st, Texture& dt, int shader, bool linear, float yoffset) = 0;
 
 public:
-	GSDevice() 
+	GSDevice() : m_hWnd(NULL)
 	{
 	}
 
@@ -71,12 +73,15 @@ public:
 
 	virtual bool Create(HWND hWnd)
 	{
+		m_hWnd = hWnd;
+
 		return true;
 	}
 	
 	virtual bool Reset(int w, int h, bool fs)
 	{
 		m_pool.RemoveAll();
+		m_backbuffer = Texture();
 		m_merge = Texture();
 		m_weavebob = Texture();
 		m_blend = Texture();

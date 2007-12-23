@@ -591,10 +591,6 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\GSDepthStencil.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\GSDeviceDX10.cpp"
 				>
 			</File>
@@ -637,15 +633,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\GSRenderTarget.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\GSSettingsDlg.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\GSTexture.cpp"
 				>
 			</File>
 			<File
