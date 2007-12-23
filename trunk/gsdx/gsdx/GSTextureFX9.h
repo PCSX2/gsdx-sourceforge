@@ -150,8 +150,8 @@ public:
 	
 	bool SetupIA(const GSVertexHW* vertices, UINT count, D3DPRIMITIVETYPE prim);
 	bool SetupVS(const VSConstantBuffer* cb);
-	bool SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel, IDirect3DTexture9* tex, IDirect3DTexture9* pal);
-	void UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel);
+	bool SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel, IDirect3DTexture9* tex, IDirect3DTexture9* pal, bool psrr);
+	void UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel, bool psrr);
 	void SetupRS(int w, int h, const RECT& scissor);
 	void SetupOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, BYTE bf, IDirect3DSurface9* rt, IDirect3DSurface9* ds);
 	void UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, BYTE bf);

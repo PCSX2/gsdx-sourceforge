@@ -30,7 +30,7 @@ extern bool s_save;
 extern bool s_savez;
 
 GSRendererHW10::GSRendererHW10(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync)
-	: GSRendererHW<GSDevice10>(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync)
+	: GSRendererHW<GSDevice10>(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync, true)
 {
 	m_tc = new GSTextureCache10(this, !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("nativeres"), FALSE));
 

@@ -30,7 +30,7 @@ bool s_save = false;
 bool s_savez = false;
 
 GSRendererHW9::GSRendererHW9(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync)
-	: GSRendererHW<GSDevice9>(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync)
+	: GSRendererHW<GSDevice9>(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync, false)
 {
 	m_tc = new GSTextureCache9(this, !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("nativeres"), FALSE));
 
@@ -444,13 +444,13 @@ if(s_dump)
 		ps_cb.WH = GSVector2(w, h);
 		ps_cb.rWrH = GSVector2(1.0f / w, 1.0f / h);
 
-		m_tfx.SetupPS(ps_sel, &ps_cb, ps_ssel, tex->m_texture, tex->m_palette);
+		m_tfx.SetupPS(ps_sel, &ps_cb, ps_ssel, tex->m_texture, tex->m_palette, m_psrr);
 	}
 	else
 	{
 		ps_sel.tfx = 4;
 
-		m_tfx.SetupPS(ps_sel, &ps_cb, ps_ssel, NULL, NULL);
+		m_tfx.SetupPS(ps_sel, &ps_cb, ps_ssel, NULL, NULL, m_psrr);
 	}
 
 	// rs
@@ -483,7 +483,7 @@ if(s_dump)
 
 		ps_sel.atst = iatst[ps_sel.atst];
 
-		m_tfx.UpdatePS(ps_sel, &ps_cb, ps_ssel);
+		m_tfx.UpdatePS(ps_sel, &ps_cb, ps_ssel, m_psrr);
 
 		bool z = om_dssel.zwe;
 		bool r = om_bsel.wr;

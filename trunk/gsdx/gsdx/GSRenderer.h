@@ -175,10 +175,12 @@ protected:
 
 public:
 	Device m_dev;
+	bool m_psrr;
 
 public:
-	GSRenderer(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync)
+	GSRenderer(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync, bool psrr)
 		: GSRendererBase(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync)
+		, m_psrr(psrr)
 	{
 	}
 
@@ -353,8 +355,8 @@ protected:
 	virtual void Draw() = 0;
 
 public:
-	GSRendererT(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync)
-		: GSRenderer<Device>(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync)
+	GSRendererT(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync, bool psrr = true)
+		: GSRenderer<Device>(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync, psrr)
 		, m_vertices(NULL)
 		, m_count(0)
 		, m_maxcount(0)
