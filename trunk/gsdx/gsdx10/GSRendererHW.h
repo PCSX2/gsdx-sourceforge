@@ -26,23 +26,11 @@
 
 class GSRendererHWDX10 : public GSRendererHW<GSDeviceDX10>
 {
-	friend class GSTextureCache;
-
 protected:
-	int m_width;
-	int m_height;
-	int m_skip;
-
-	GSTextureCache m_tc;
 	GSTextureFX m_tfx;
 
-	void VSync(int field);
-	bool GetOutput(int i, GSTextureDX10& t, GSVector2& s);
 	void DrawingKick(bool skip);
 	void Draw();
-	void InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r);
-	void InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r);
-	void MinMaxUV(int w, int h, CRect& r);
 
 	struct
 	{
@@ -50,8 +38,8 @@ protected:
 		CComPtr<ID3D10BlendState> bs;
 	} m_date;
 
-	void SetupDATE(GSTextureCache::GSRenderTarget* rt, GSTextureCache::GSDepthStencil* ds);
-	bool OverrideInput(int& prim, GSTextureCache::GSTexture* tex);	
+	void SetupDATE(GSTextureCache<GSDeviceDX10>::GSRenderTarget* rt, GSTextureCache<GSDeviceDX10>::GSDepthStencil* ds);
+	bool OverrideInput(int& prim, GSTextureCache<GSDeviceDX10>::GSTexture* tex);	
 
 public:
 	GSRendererHWDX10(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync);

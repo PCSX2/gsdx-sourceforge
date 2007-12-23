@@ -67,16 +67,17 @@ bool GSTextureFX::CreateMskFix(GSTextureDX9& t, DWORD size, DWORD msk, DWORD fix
 			return false;
 		}
 
-		D3DLOCKED_RECT lr;
+		BYTE* bits;
+		int pitch;
 		
-		if(SUCCEEDED(t->LockRect(0, &lr, NULL, 0)))
+		if(t.Map(&bits, pitch))
 		{
 			for(DWORD i = 0; i < size; i++)
 			{
-				((float*)lr.pBits)[i] = (float)((i & msk) | fix) / size;
+				((float*)bits)[i] = (float)((i & msk) | fix) / size;
 			}
 
-			t->UnlockRect(0);
+			t.Unmap();
 		}
 
 		printf("CreateMskFix %03x %03x %d\n", msk, fix, size);
@@ -107,7 +108,7 @@ bool GSTextureFX::SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerS
 {
 	m_dev->PSSetShaderResources(tex, pal);
 
-#ifdef PS_REGION_REPEAT
+#ifndef SW_REGION_REPEAT
 
 	if(tex)
 	{
@@ -145,7 +146,7 @@ void GSTextureFX::UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSampler
 {
 	HRESULT hr;
 
-#ifndef PS_REGION_REPEAT
+#ifdef SW_REGION_REPEAT
 
 	if(sel.wms == 3) sel.wms = 0;
 	if(sel.wmt == 3) sel.wmt = 0;

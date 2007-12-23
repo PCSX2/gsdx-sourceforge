@@ -59,9 +59,14 @@
 #include <xmmintrin.h>
 #include <emmintrin.h>
 
+// this can be painfully slow with ps 2.0/3.0, only helps in a few cases (soul calibur 2)
+
+// #define SW_REGION_REPEAT
+
 #include "../GSdx/GSRendererHW.h"
 #include "../GSdx/GSRendererSW.h"
 #include "../GSdx/GSRendererNull.h"
+#include "../GSdx/GSTextureCache.h"
 
 #define countof(a) (sizeof(a)/sizeof(a[0]))
 

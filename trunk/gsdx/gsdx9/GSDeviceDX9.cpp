@@ -1,3 +1,24 @@
+/* 
+ *	Copyright (C) 2007 Gabest
+ *	http://www.gabest.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *   
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *   
+ *  You should have received a copy of the GNU General Public License
+ *  along with GNU Make; see the file COPYING.  If not, write to
+ *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA. 
+ *  http://www.gnu.org/copyleft/gpl.html
+ *
+ */
+
 #include "stdafx.h"
 #include "GSDeviceDX9.h"
 #include "resource.h"
@@ -38,9 +59,12 @@ GSDeviceDX9::~GSDeviceDX9()
 
 bool GSDeviceDX9::Create(HWND hWnd)
 {
-	HRESULT hr;
+	if(!__super::Create(hWnd))
+	{
+		return false;
+	}
 
-	m_hWnd = hWnd;
+	HRESULT hr;
 
 	// dd
 
@@ -167,7 +191,6 @@ bool GSDeviceDX9::Reset(int w, int h, bool fs)
 	if(m_swapchain && !fs && m_pp.Windowed)
 	{
 		m_swapchain = NULL;
-		m_backbuffer = GSTextureDX9();
 
 		m_pp.BackBufferWidth = w;
 		m_pp.BackBufferHeight = h;
@@ -184,7 +207,6 @@ bool GSDeviceDX9::Reset(int w, int h, bool fs)
 	}
 
 	m_swapchain = NULL;
-	m_backbuffer = GSTextureDX9();
 	m_font = NULL;
 
 	delete [] m_vs_cb;

@@ -19,27 +19,5 @@
  *
  */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "GSTextureCache.h"
-#include "GSRendererHW.h"
-
-GSTextureCache::GSDepthStencil::GSDepthStencil(GSTextureCache* tc)
-	: GSSurface(tc)
-	, m_used(false)
-{
-}
-
-bool GSTextureCache::GSDepthStencil::Create(int w, int h)
-{
-	// FIXME: initial data should be unswizzled from local mem in Update() if dirty
-
-	return m_tc->m_renderer->m_dev.CreateDepthStencil(m_texture, w, h);
-}
-
-void GSTextureCache::GSDepthStencil::Update()
-{
-	__super::Update();
-
-	// TODO
-}
-

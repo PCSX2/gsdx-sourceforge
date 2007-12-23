@@ -83,6 +83,32 @@ bool GSTextureDX10::Update(CRect r, const void* data, int pitch)
 	return false;
 }
 
+bool GSTextureDX10::Map(BYTE** bits, int& pitch, const RECT* r)
+{
+	if(m_texture)
+	{
+		D3D10_MAPPED_TEXTURE2D map;
+
+		if(SUCCEEDED(m_texture->Map(0, D3D10_MAP_READ_WRITE, 0, &map)))
+		{
+			*bits = (BYTE*)map.pData;
+			pitch = (int)map.RowPitch;
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void GSTextureDX10::Unmap()
+{
+	if(m_texture)
+	{
+		m_texture->Unmap(0);
+	}
+}
+
 bool GSTextureDX10::Save(CString fn, bool dds)
 {
 	return SUCCEEDED(D3DX10SaveTextureToFile(m_texture, dds ? D3DX10_IFF_DDS : D3DX10_IFF_BMP, fn));

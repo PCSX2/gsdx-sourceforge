@@ -530,6 +530,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\GSTextureCache.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\GSUtil.cpp"
 				>
 			</File>
@@ -823,6 +827,10 @@
 			</File>
 			<File
 				RelativePath=".\GSTexture.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSTextureCache.h"
 				>
 			</File>
 			<File

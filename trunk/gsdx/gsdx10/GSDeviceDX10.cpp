@@ -24,8 +24,7 @@
 #include "resource.h"
 
 GSDeviceDX10::GSDeviceDX10()
-	: m_hWnd(NULL)
-	, m_vb(NULL)
+	: m_vb(NULL)
 	, m_vb_count(0)
 	, m_vb_stride(0)
 	, m_layout(NULL)
@@ -54,7 +53,10 @@ GSDeviceDX10::~GSDeviceDX10()
 
 bool GSDeviceDX10::Create(HWND hWnd)
 {
-	m_hWnd = hWnd;
+	if(!__super::Create(hWnd))
+	{
+		return false;
+	}
 
 	HRESULT hr;
 
@@ -207,8 +209,6 @@ bool GSDeviceDX10::Reset(int w, int h, bool fs)
 {
 	if(!__super::Reset(w, h, fs))
 		return false;
-
-	m_backbuffer = GSTextureDX10();
 
 	DXGI_SWAP_CHAIN_DESC scd;
 	memset(&scd, 0, sizeof(scd));
