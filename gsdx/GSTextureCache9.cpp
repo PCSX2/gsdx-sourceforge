@@ -433,11 +433,14 @@ void GSTextureCache9::GSTexture9::Update()
 
 	if(m_texture.Map(&bits, pitch, &r)) 
 	{
-#ifdef SW_REGION_REPEAT
-		m_renderer->m_mem.ReadTextureNP(r, bits, pitch, m_renderer->m_context->TEX0, m_renderer->m_env.TEXA, m_renderer->m_context->CLAMP);
-#else
-		m_renderer->m_mem.ReadTextureNP2(r, bits, pitch, m_renderer->m_context->TEX0, m_renderer->m_env.TEXA, m_renderer->m_context->CLAMP);
-#endif
+		if(m_renderer->m_psrr)
+		{
+			m_renderer->m_mem.ReadTextureNP2(r, bits, pitch, m_renderer->m_context->TEX0, m_renderer->m_env.TEXA, m_renderer->m_context->CLAMP);
+		}
+		else
+		{
+			m_renderer->m_mem.ReadTextureNP(r, bits, pitch, m_renderer->m_context->TEX0, m_renderer->m_env.TEXA, m_renderer->m_context->CLAMP);
+		}
 
 		m_texture.Unmap();
 

@@ -104,13 +104,11 @@ bool GSTextureFX9::SetupVS(const VSConstantBuffer* cb)
 	return true;
 }
 
-bool GSTextureFX9::SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel, IDirect3DTexture9* tex, IDirect3DTexture9* pal)
+bool GSTextureFX9::SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel, IDirect3DTexture9* tex, IDirect3DTexture9* pal, bool psrr)
 {
 	m_dev->PSSetShaderResources(tex, pal);
 
-#ifndef SW_REGION_REPEAT
-
-	if(tex)
+	if(tex && psrr)
 	{
 		if(sel.wms == 3)
 		{
@@ -135,23 +133,20 @@ bool GSTextureFX9::SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSampler
 		}
 	}
 
-#endif
-
-	UpdatePS(sel, cb, ssel);
+	UpdatePS(sel, cb, ssel, psrr);
 
 	return true;
 }
 
-void GSTextureFX9::UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel)
+void GSTextureFX9::UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel, bool psrr)
 {
 	HRESULT hr;
 
-#ifdef SW_REGION_REPEAT
-
-	if(sel.wms == 3) sel.wms = 0;
-	if(sel.wmt == 3) sel.wmt = 0;
-
-#endif
+	if(!psrr)
+	{
+		if(sel.wms == 3) sel.wms = 0;
+		if(sel.wmt == 3) sel.wmt = 0;
+	}
 
 	CComPtr<IDirect3DPixelShader9> ps;
 

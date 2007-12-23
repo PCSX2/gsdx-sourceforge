@@ -262,13 +262,16 @@ protected:
 		}
 		else
 		{
-			#ifdef SW_REGION_REPEAT
-			r.left = 0;
-			r.right = w;
-			#else
-			r.left = (int)(m_context->CLAMP.MAXU);
-			r.right = (int)(r.left + (m_context->CLAMP.MINU + 1));
-			#endif
+			if(m_psrr)
+			{
+				r.left = (int)(m_context->CLAMP.MAXU);
+				r.right = (int)(r.left + (m_context->CLAMP.MINU + 1));
+			}
+			else
+			{
+				r.left = 0;
+				r.right = w;
+			}
 		}
 
 		r.left = max(r.left & ~bsm.cx, 0);
@@ -311,13 +314,16 @@ protected:
 		}
 		else
 		{
-			#ifdef SW_REGION_REPEAT
-			r.top = 0;
-			r.bottom = h;
-			#else
-			r.top = (int)(m_context->CLAMP.MAXV);
-			r.bottom = (int)(r.top + (m_context->CLAMP.MINV + 1));
-			#endif
+			if(m_psrr)
+			{
+				r.top = (int)(m_context->CLAMP.MAXV);
+				r.bottom = (int)(r.top + (m_context->CLAMP.MINV + 1));
+			}
+			else
+			{
+				r.top = 0;
+				r.bottom = h;
+			}
 		}
 
 		r.top = max(r.top & ~bsm.cy, 0);
@@ -381,8 +387,8 @@ protected:
 	}
 
 public:
-	GSRendererHW(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync)
-		: GSRendererT<Device, GSVertexHW>(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync)
+	GSRendererHW(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync, bool psrr)
+		: GSRendererT<Device, GSVertexHW>(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync, psrr)
 		, m_width(1024)
 		, m_height(1024)
 		, m_skip(0)

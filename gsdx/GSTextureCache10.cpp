@@ -449,14 +449,16 @@ void GSTextureCache10::GSTextureHW10::Update()
 	static BYTE* buff = (BYTE*)::_aligned_malloc(1024 * 1024 * 4, 16);
 
 	int pitch = 1024 * m_bpp >> 3;
-
 	BYTE* bits = buff + pitch * r.top + (r.left * m_bpp >> 3);
 
-#ifdef SW_REGION_REPEAT
-	m_renderer->m_mem.ReadTextureNP(r, bits, pitch, m_renderer->m_context->TEX0, m_renderer->m_env.TEXA, m_renderer->m_context->CLAMP);
-#else
-	m_renderer->m_mem.ReadTextureNP2(r, bits, pitch, m_renderer->m_context->TEX0, m_renderer->m_env.TEXA, m_renderer->m_context->CLAMP);
-#endif
+	if(m_renderer->m_psrr)
+	{
+		m_renderer->m_mem.ReadTextureNP2(r, bits, pitch, m_renderer->m_context->TEX0, m_renderer->m_env.TEXA, m_renderer->m_context->CLAMP);
+	}
+	else
+	{
+		m_renderer->m_mem.ReadTextureNP(r, bits, pitch, m_renderer->m_context->TEX0, m_renderer->m_env.TEXA, m_renderer->m_context->CLAMP);
+	}
 
 	m_texture.Update(r, bits, pitch);
 
