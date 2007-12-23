@@ -147,9 +147,14 @@ void GSSettingsDlg::OnKickIdle()
 
 static bool IsDirect3D10Available()
 {
-	CComPtr<ID3D10Device> dev;
+	if(HMODULE hModule = LoadLibrary(_T("d3d10.dll")))
+	{
+		FreeLibrary(hModule);
 
-	return SUCCEEDED(D3D10CreateDevice(NULL, D3D10_DRIVER_TYPE_HARDWARE, NULL, 0, D3D10_SDK_VERSION, &dev));
+		return true;
+	}
+
+	return false;
 }
 
 BOOL GSSettingsDlg::OnInitDialog()

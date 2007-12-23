@@ -18,6 +18,7 @@
 	/>
 	<Tool
 		Name="VCLinkerTool"
+		DelayLoadDLLs="d3d10.dll;d3dx10_36.dll"
 		GenerateDebugInformation="true"
 		SubSystem="2"
 		RandomizedBaseAddress="1"
