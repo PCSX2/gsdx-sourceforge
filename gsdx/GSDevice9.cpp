@@ -844,7 +844,7 @@ void GSDevice9::StretchRect(GSTexture9& st, const GSVector4& sr, GSTexture9& dt,
 	for(int i = 0; i < countof(vertices); i++)
 	{
 		vertices[i].p.x -= 1.0f / dt.GetWidth();
-		vertices[i].p.y -= 1.0f / dt.GetHeight();
+		vertices[i].p.y += 1.0f / dt.GetHeight();
 	}
 
 	IASetVertexBuffer(4, vertices);

@@ -138,14 +138,14 @@ void GSTexture9::Unmap()
 
 bool GSTexture9::Save(CString fn, bool dds)
 {
-	if(CComPtr<IDirect3DTexture9> texture = *this)
-	{
-		return SUCCEEDED(D3DXSaveTextureToFile(fn, dds ? D3DXIFF_DDS : D3DXIFF_BMP, texture, NULL));
-	}
-
 	if(CComPtr<IDirect3DSurface9> surface = *this)
 	{
 		return SUCCEEDED(D3DXSaveSurfaceToFile(fn, dds ? D3DXIFF_DDS : D3DXIFF_BMP, surface, NULL, NULL));
+	}
+
+	if(CComPtr<IDirect3DTexture9> texture = *this)
+	{
+		return SUCCEEDED(D3DXSaveTextureToFile(fn, dds ? D3DXIFF_DDS : D3DXIFF_BMP, texture, NULL));
 	}
 
 	return false;

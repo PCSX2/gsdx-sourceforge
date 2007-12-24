@@ -264,7 +264,7 @@ EXPORT_C GSvsync(int field)
 
 EXPORT_C_(UINT32) GSmakeSnapshot(char* path)
 {
-	return s_gs->MakeSnapshot(CString(path) + _T("gsdx10"));
+	return s_gs->MakeSnapshot(CString(path) + _T("gsdx"));
 }
 
 EXPORT_C GSkeyEvent(keyEvent* ev)
