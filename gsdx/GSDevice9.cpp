@@ -488,6 +488,7 @@ void GSDevice9::DoMerge(GSTexture9* st, GSVector4* sr, GSTexture9& dt, bool en1,
 	GSMergeFX9::PSConstantBuffer cb;
 
 	cb.BGColor = c;
+
 	m_mergefx.Draw(st, sr, dt, sel, cb);
 }
 

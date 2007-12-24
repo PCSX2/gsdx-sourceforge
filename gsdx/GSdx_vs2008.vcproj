@@ -123,7 +123,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="d3d10.lib d3dx10.lib d3d9.lib d3dx9.lib ddraw.lib dxguid.lib winmm.lib"
-				ModuleDefinitionFile=".\GSdx.def"
+				ModuleDefinitionFile=""
 				DataExecutionPrevention="0"
 				TargetMachine="17"
 			/>
@@ -255,7 +255,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="d3d10.lib d3dx10.lib d3d9.lib d3dx9.lib ddraw.lib dxguid.lib winmm.lib"
-				ModuleDefinitionFile=".\GSdx.def"
+				ModuleDefinitionFile=""
 				DataExecutionPrevention="0"
 				TargetMachine="17"
 			/>
@@ -817,7 +817,7 @@
 					>
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="ml /nologo /c /Zi /Fo&quot;$(IntDir)\$(InputName).obj&quot; &quot;$(InputPath)&quot;&#x0D;&#x0A;"
+						CommandLine="ml64 /nologo /c /Zi /Fo&quot;$(IntDir)\$(InputName).obj&quot; &quot;$(InputPath)&quot;&#x0D;&#x0A;"
 						Outputs="$(IntDir)\$(InputName).obj"
 					/>
 				</FileConfiguration>
@@ -834,7 +834,7 @@
 					>
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="ml /nologo /c /Zi /Fo&quot;$(IntDir)\$(InputName).obj&quot; &quot;$(InputPath)&quot;&#x0D;&#x0A;"
+						CommandLine="ml64 /nologo /c /Zi /Fo&quot;$(IntDir)\$(InputName).obj&quot; &quot;$(InputPath)&quot;&#x0D;&#x0A;"
 						Outputs="$(IntDir)\$(InputName).obj"
 					/>
 				</FileConfiguration>
