@@ -280,6 +280,7 @@ public:
 		fn.Format(_T("%s_%s.bmp"), path, CTime::GetCurrentTime().Format(_T("%Y%m%d%H%M%S")));
 		return m_dev.SaveCurrent(fn);
 	}
+
 	virtual void MinMaxUV(int w, int h, CRect& r) {r = CRect(0, 0, w, h);}
 };
 

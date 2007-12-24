@@ -75,7 +75,7 @@ void GSMergeFX9::Draw(GSTexture9* st, GSVector4* sr, GSTexture9& dt, PSSelector 
 	for(int i = 0; i < countof(vertices); i++)
 	{
 		vertices[i].p.x -= 1.0f / dt.GetWidth();
-		vertices[i].p.y -= 1.0f / dt.GetHeight();
+		vertices[i].p.y += 1.0f / dt.GetHeight();
 	}
 
 	m_dev->IASetVertexBuffer(4, vertices);

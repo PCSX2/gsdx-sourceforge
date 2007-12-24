@@ -389,6 +389,7 @@ protected:
 public:
 	GSRendererHW(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync, bool psrr)
 		: GSRendererT<Device, GSVertexHW>(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync, psrr)
+		, m_tc(NULL)
 		, m_width(1024)
 		, m_height(1024)
 		, m_skip(0)
