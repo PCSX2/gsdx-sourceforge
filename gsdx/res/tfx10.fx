@@ -191,14 +191,14 @@ float4 sample(float2 tc)
 	// if(WMS >= 2 || WMT >= 2)
 	if(WMS >= 3 || WMT >= 3)
 	{
-		int4 itc = tc.xyxy * WH.xyxy + float4(-0.5f, -0.5f, 0.5f, 0.5f);
+		int4 itc = tc.xyxy * WH.xyxy;
 		
 		float4 tc01;
 		
 		tc01.x = repeatu(itc.x);
 		tc01.y = repeatv(itc.y);
-		tc01.z = repeatu(itc.z);
-		tc01.w = repeatv(itc.w);
+		tc01.z = repeatu(itc.z + 1);
+		tc01.w = repeatv(itc.w + 1);
 		
 		tc01 *= rWrH.xyxy;
 
@@ -207,7 +207,7 @@ float4 sample(float2 tc)
 		float4 t10 = Texture.Sample(Sampler, tc01.xw);
 		float4 t11 = Texture.Sample(Sampler, tc01.zw);
 
-		float2 dd = frac(tc * WH - 0.5f); 
+		float2 dd = frac(tc * WH); 
 
 		t = lerp(lerp(t00, t01, dd.x), lerp(t10, t11, dd.x), dd.y);
 	}
@@ -226,21 +226,21 @@ float4 sample8hp(float2 tc)
 	// if(WMS >= 2 || WMT >= 2)
 	if(WMS >= 3 || WMT >= 3)
 	{
-		int4 itc = tc.xyxy * WH.xyxy + float4(-0.5f, -0.5f, 0.5f, 0.5f);
+		int4 itc = tc.xyxy * WH.xyxy;
 		
 		tc01.x = repeatu(itc.x);
 		tc01.y = repeatv(itc.y);
-		tc01.z = repeatu(itc.z);
-		tc01.w = repeatv(itc.w);
+		tc01.z = repeatu(itc.z + 1);
+		tc01.w = repeatv(itc.w + 1);
 
 		tc01 *= rWrH.xyxy;
 	}
 	else
 	{
-		tc01.x = tc.x - rWrH.x * 0.5f; 
-		tc01.y = tc.y - rWrH.y * 0.5f;
-		tc01.z = tc.x + rWrH.x * 0.5f; 
-		tc01.w = tc.y + rWrH.y * 0.5f;
+		tc01.x = tc.x;
+		tc01.y = tc.y;
+		tc01.z = tc.x + rWrH.x; 
+		tc01.w = tc.y + rWrH.y;
 	}
 
 	float4 t;
@@ -255,7 +255,7 @@ float4 sample8hp(float2 tc)
 	float4 t10 = Palette.Sample(Sampler, t.z);
 	float4 t11 = Palette.Sample(Sampler, t.w);
 
-	float2 dd = frac(tc * WH - 0.5f); 
+	float2 dd = frac(tc * WH); 
 
 	return lerp(lerp(t00, t01, dd.x), lerp(t10, t11, dd.x), dd.y);
 }
@@ -269,21 +269,21 @@ float4 sample16p(float2 tc)
 	// if(WMS >= 2 || WMT >= 2)
 	if(WMS >= 3 || WMT >= 3)
 	{
-		int4 itc = tc.xyxy * WH.xyxy + float4(-0.5f, -0.5f, 0.5f, 0.5f);
+		int4 itc = tc.xyxy * WH.xyxy;
 		
 		tc01.x = repeatu(itc.x);
 		tc01.y = repeatv(itc.y);
-		tc01.z = repeatu(itc.z);
-		tc01.w = repeatv(itc.w);
+		tc01.z = repeatu(itc.z + 1);
+		tc01.w = repeatv(itc.w + 1);
 
 		tc01 *= rWrH.xyxy;
 	}
 	else
 	{
-		tc01.x = tc.x - rWrH.x * 0.5f; 
-		tc01.y = tc.y - rWrH.y * 0.5f;
-		tc01.z = tc.x + rWrH.x * 0.5f; 
-		tc01.w = tc.y + rWrH.y * 0.5f;
+		tc01.x = tc.x;
+		tc01.y = tc.y;
+		tc01.z = tc.x + rWrH.x; 
+		tc01.w = tc.y + rWrH.y;
 	}
 
 	t.x = Texture.Sample(Sampler, tc01.xy).r;
@@ -298,7 +298,7 @@ float4 sample16p(float2 tc)
 	float4 t10 = Extract16(i.z);
 	float4 t11 = Extract16(i.w);
 
-	float2 dd = frac(tc * WH - 0.5f); 
+	float2 dd = frac(tc * WH); 
 
 	return Normalize16(lerp(lerp(t00, t01, dd.x), lerp(t10, t11, dd.x), dd.y));
 }
@@ -311,6 +311,8 @@ PS_OUTPUT ps_main(PS_INPUT input)
 	{
 		tc /= input.t.w;
 	}
+	
+	tc -= rWrH / 2;
 	
 	if(WMS == 2)
 	{

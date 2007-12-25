@@ -24,11 +24,6 @@
 #include "GSTextureCache9.h"
 #include "resource.h"
 
-int s_n = 0;
-bool s_dump = false;
-bool s_save = false;
-bool s_savez = false;
-
 GSRendererHW9::GSRendererHW9(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync)
 	: GSRendererHW<GSDevice9>(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync, false)
 {
@@ -246,7 +241,11 @@ void GSRendererHW9::Draw()
 if(s_dump)
 {
 	CString str;
-	str.Format(_T("c:\\temp2\\_%05d_f%I64d_tex_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), (int)m_context->TEX0.TBP0, (int)m_context->TEX0.PSM);
+	str.Format(_T("c:\\temp2\\_%05d_f%I64d_tex_%05x_%d_%d%d_%02x_%02x_%02x_%02x.dds"), 
+		s_n++, m_perfmon.GetFrame(), (int)m_context->TEX0.TBP0, (int)m_context->TEX0.PSM,
+		(int)m_context->CLAMP.WMS, (int)m_context->CLAMP.WMT, 
+		(int)m_context->CLAMP.MINU, (int)m_context->CLAMP.MAXU, 
+		(int)m_context->CLAMP.MINV, (int)m_context->CLAMP.MAXV);
 	if(PRIM->TME) if(s_save) tex->m_texture.Save(str);
 	str.Format(_T("c:\\temp2\\_%05d_f%I64d_rt0_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), m_context->FRAME.Block(), m_context->FRAME.PSM);
 	if(s_save) rt->m_texture.Save(str);
