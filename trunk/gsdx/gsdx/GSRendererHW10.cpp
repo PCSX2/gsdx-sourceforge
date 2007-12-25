@@ -24,11 +24,6 @@
 #include "GSTextureCache10.h"
 #include "resource.h"
 
-extern int s_n;
-extern bool s_dump;
-extern bool s_save;
-extern bool s_savez;
-
 GSRendererHW10::GSRendererHW10(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync)
 	: GSRendererHW<GSDevice10>(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync, true)
 {

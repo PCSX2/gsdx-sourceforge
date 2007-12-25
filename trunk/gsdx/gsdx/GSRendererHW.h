@@ -34,6 +34,14 @@ protected:
 	int m_height;
 	int m_skip;
 
+	void Reset() 
+	{
+		// TODO: GSreset can come from the main thread too => crash
+		// m_tc->RemoveAll();
+
+		__super::Reset();
+	}
+
 	void VertexKick(bool skip)
 	{
 		GSVertexHW& v = m_vl.AddTail();
@@ -337,8 +345,6 @@ protected:
 		m_tc->IncAge();
 
 		m_skip = 0;
-
-		// s_dump = m_perfmon.GetFrame() >= 5002;
 	}
 
 	void ResetDevice() 
@@ -357,14 +363,14 @@ protected:
 		if(GSTextureCache<Device>::GSRenderTarget* rt = m_tc->GetRenderTarget(TEX0, m_width, m_height, true))
 		{
 			t = rt->m_texture;
-/*
+
 			if(s_dump)
 			{
 				CString str;
 				str.Format(_T("c:\\temp2\\_%05d_f%I64d_fr%d_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), i, (int)TEX0.TBP0, (int)TEX0.PSM);
 				if(s_save) rt->m_texture.Save(str);
 			}
-*/
+
 			return true;
 		}
 

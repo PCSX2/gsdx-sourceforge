@@ -176,11 +176,20 @@ public:
 	Device m_dev;
 	bool m_psrr;
 
+	int s_n;
+	bool s_dump;
+	bool s_save;
+	bool s_savez;
+
 public:
 	GSRenderer(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync, bool psrr)
 		: GSRendererBase(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync)
 		, m_psrr(psrr)
 	{
+		s_n = 0;
+		s_dump = false;
+		s_save = false;
+		s_savez = false;
 	}
 
 	bool Create(LPCTSTR title)
@@ -211,6 +220,8 @@ public:
 		Flush();
 
 		if(!Merge()) return;
+
+// s_dump = m_perfmon.GetFrame() >= 5002;
 
 		// osd 
 

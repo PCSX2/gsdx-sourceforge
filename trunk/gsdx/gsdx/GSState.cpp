@@ -1299,6 +1299,8 @@ int GSState::Defrost(const freezeData* fd)
 
 	Flush();
 
+	Reset();
+
 	memcpy(&m_env, data, sizeof(m_env)); data += sizeof(m_env); 
 	memcpy(&m_v, data, sizeof(m_v)); data += sizeof(m_v);
 	memcpy(&m_x, data, sizeof(m_x)); data += sizeof(m_x);
