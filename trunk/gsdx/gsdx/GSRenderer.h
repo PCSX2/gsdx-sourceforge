@@ -95,7 +95,7 @@ protected:
 	typedef typename Device::Texture Texture;
 
 	virtual void ResetDevice() {}
-	virtual bool GetOutput(int i, Texture& t, GSVector2& s) = 0;
+	virtual bool GetOutput(int i, Texture& t) = 0;
 
 	bool Merge()
 	{
@@ -108,16 +108,15 @@ protected:
 
 		Texture st[2];
 		GSVector4 sr[2];
-		GSVector2 ss[2];
 
 		for(int i = 0; i < 2; i++)
 		{
-			if(IsEnabled(i) && GetOutput(i, st[i], ss[i]))
+			if(IsEnabled(i) && GetOutput(i, st[i]))
 			{
 				CSize s = GetFrameSize(i);
 
-				s.cx = (int)(ss[i].x * s.cx);
-				s.cy = (int)(ss[i].y * s.cy);
+				s.cx = (int)(st[i].m_scale.x * s.cx);
+				s.cy = (int)(st[i].m_scale.y * s.cy);
 
 				ASSERT(fs.cx == 0 || fs.cx == s.cx);
 				ASSERT(fs.cy == 0 || fs.cy == s.cy || fs.cy + 1 == s.cy);
@@ -135,10 +134,10 @@ protected:
 
 				CRect r = GetFrameRect(i);
 
-				sr[i].x = ss[i].x * r.left / st[i].GetWidth();
-				sr[i].y = ss[i].y * r.top / st[i].GetHeight();
-				sr[i].z = ss[i].x * r.right / st[i].GetWidth();
-				sr[i].w = ss[i].y * r.bottom / st[i].GetHeight();
+				sr[i].x = st[i].m_scale.x * r.left / st[i].GetWidth();
+				sr[i].y = st[i].m_scale.y * r.top / st[i].GetHeight();
+				sr[i].z = st[i].m_scale.x * r.right / st[i].GetWidth();
+				sr[i].w = st[i].m_scale.y * r.bottom / st[i].GetHeight();
 			}
 		}
 
@@ -163,7 +162,7 @@ protected:
 				int field = 1 - ((m_interlace - 1) & 1);
 				int mode = (m_interlace - 1) >> 1;
 
-				if(!m_dev.Interlace(ds, m_field ^ field, mode, ss[1].y)) // ss[1].y?
+				if(!m_dev.Interlace(ds, m_field ^ field, mode, st[1].m_scale.y)) // st[1].m_scale.y
 				{
 					return false;
 				}

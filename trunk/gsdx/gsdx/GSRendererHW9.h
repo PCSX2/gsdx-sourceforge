@@ -45,9 +45,8 @@ protected:
 		Direct3DBlendState9 bs;
 	} m_fba;
 
-	void SetupDATE(GSTextureCache<GSDevice9>::GSRenderTarget* rt, GSTextureCache<GSDevice9>::GSDepthStencil* ds);
-	void UpdateFBA(GSTextureCache<GSDevice9>::GSRenderTarget* rt);
-	bool OverrideInput(int& prim, GSTextureCache<GSDevice9>::GSTexture* tex);	
+	void SetupDATE(Texture& rt, Texture& ds);
+	void UpdateFBA(Texture& rt);
 
 public:
 	GSRendererHW9(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync);

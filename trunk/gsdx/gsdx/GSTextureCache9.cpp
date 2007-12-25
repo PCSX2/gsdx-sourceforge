@@ -76,7 +76,11 @@ void GSTextureCache9::GSRenderTarget9::Update()
 		
 		// m_renderer->m_perfmon.Put(GSPerfMon::Unswizzle, r.Width() * r.Height() * 4);
 
-		GSVector4 dr(m_scale.x * r.left, m_scale.y * r.top, m_scale.x * r.right, m_scale.y * r.bottom);
+		GSVector4 dr(
+			m_texture.m_scale.x * r.left, 
+			m_texture.m_scale.y * r.top, 
+			m_texture.m_scale.x * r.right, 
+			m_texture.m_scale.y * r.bottom);
 
 		m_renderer->m_dev.StretchRect(texture, m_texture, dr);
 	}
@@ -104,10 +108,10 @@ void GSTextureCache9::GSRenderTarget9::Read(CRect r)
 
 	GSVector4 src;
 
-	src.x = m_scale.x * r.left / m_texture.GetWidth();
-	src.y = m_scale.y * r.top / m_texture.GetHeight();
-	src.z = m_scale.x * r.right / m_texture.GetWidth();
-	src.w = m_scale.y * r.bottom / m_texture.GetHeight();
+	src.x = m_texture.m_scale.x * r.left / m_texture.GetWidth();
+	src.y = m_texture.m_scale.y * r.top / m_texture.GetHeight();
+	src.z = m_texture.m_scale.x * r.right / m_texture.GetWidth();
+	src.w = m_texture.m_scale.y * r.bottom / m_texture.GetHeight();
 
 	GSVector4 dst(0, 0, w, h);
 	
@@ -251,7 +255,6 @@ bool GSTextureCache9::GSTexture9::Create(GSRenderTarget* rt)
 
 	// m_renderer->m_perfmon.Put(GSPerfMon::ConvertRT2T, 1);
 
-	m_scale = rt->m_scale;
 	m_TEX0 = m_renderer->m_context->TEX0;
 	m_CLAMP = m_renderer->m_context->CLAMP;
 	m_rendered = true;
@@ -260,8 +263,8 @@ bool GSTextureCache9::GSTexture9::Create(GSRenderTarget* rt)
 	int th = 1 << m_TEX0.TH;
 	int tp = (int)m_TEX0.TW << 6;
 
-	int w = (int)(m_scale.x * tw + 0.5f);
-	int h = (int)(m_scale.y * th + 0.5f);
+	int w = (int)(rt->m_texture.m_scale.x * tw + 0.5f);
+	int h = (int)(rt->m_texture.m_scale.y * th + 0.5f);
 
 	// pitch conversion
 
@@ -292,15 +295,15 @@ bool GSTextureCache9::GSTexture9::Create(GSRenderTarget* rt)
 
 				GSVector4 src, dst;
 
-				src.x = m_scale.x * sx / rt->m_texture.GetWidth();
-				src.y = m_scale.y * sy / rt->m_texture.GetHeight();
-				src.z = m_scale.x * (sx + bw) / rt->m_texture.GetWidth();
-				src.w = m_scale.y * (sy + bh) / rt->m_texture.GetHeight();
+				src.x = rt->m_texture.m_scale.x * sx / rt->m_texture.GetWidth();
+				src.y = rt->m_texture.m_scale.y * sy / rt->m_texture.GetHeight();
+				src.z = rt->m_texture.m_scale.x * (sx + bw) / rt->m_texture.GetWidth();
+				src.w = rt->m_texture.m_scale.y * (sy + bh) / rt->m_texture.GetHeight();
 
-				dst.x = m_scale.x * dx;
-				dst.y = m_scale.y * dy;
-				dst.z = m_scale.x * (dx + bw);
-				dst.w = m_scale.y * (dy + bh);
+				dst.x = rt->m_texture.m_scale.x * dx;
+				dst.y = rt->m_texture.m_scale.y * dy;
+				dst.z = rt->m_texture.m_scale.x * (dx + bw);
+				dst.w = rt->m_texture.m_scale.y * (dy + bh);
 
 				m_renderer->m_dev.StretchRect(rt->m_texture, src, m_texture, dst);
 
@@ -320,21 +323,21 @@ bool GSTextureCache9::GSTexture9::Create(GSRenderTarget* rt)
 
 	// width/height conversion
 
+	GSVector2 scale = rt->m_texture.m_scale;
+
 	GSVector4 dst(0, 0, w, h);
 	
 	if(w > rt->m_texture.GetWidth()) 
 	{
-		float scale = m_scale.x;
-		m_scale.x = (float)rt->m_texture.GetWidth() / tw;
-		dst.z = (float)rt->m_texture.GetWidth() * m_scale.x / scale;
+		scale.x = (float)rt->m_texture.GetWidth() / tw;
+		dst.z = (float)rt->m_texture.GetWidth() * scale.x / rt->m_texture.m_scale.x;
 		w = rt->m_texture.GetWidth();
 	}
 	
 	if(h > rt->m_texture.GetHeight()) 
 	{
-		float scale = m_scale.y;
-		m_scale.y = (float)rt->m_texture.GetHeight() / th;
-		dst.w = (float)rt->m_texture.GetHeight() * m_scale.y / scale;
+		scale.y = (float)rt->m_texture.GetHeight() / th;
+		dst.w = (float)rt->m_texture.GetHeight() * scale.y / rt->m_texture.m_scale.y;
 		h = rt->m_texture.GetHeight();
 	}
 
@@ -377,6 +380,8 @@ bool GSTextureCache9::GSTexture9::Create(GSRenderTarget* rt)
 
 		m_texture = tmp;
 	}
+
+	m_texture.m_scale = scale;
 
 	switch(m_TEX0.PSM)
 	{

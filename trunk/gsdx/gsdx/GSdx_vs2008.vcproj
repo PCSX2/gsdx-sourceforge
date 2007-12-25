@@ -958,10 +958,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\GSScale.h"
-				>
-			</File>
-			<File
 				RelativePath=".\GSSetting.h"
 				>
 			</File>
