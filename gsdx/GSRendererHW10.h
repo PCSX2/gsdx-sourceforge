@@ -38,8 +38,7 @@ protected:
 		CComPtr<ID3D10BlendState> bs;
 	} m_date;
 
-	void SetupDATE(GSTextureCache<GSDevice10>::GSRenderTarget* rt, GSTextureCache<GSDevice10>::GSDepthStencil* ds);
-	bool OverrideInput(int& prim, GSTextureCache<GSDevice10>::GSTexture* tex);	
+	void SetupDATE(Texture& rt, Texture& ds);
 
 public:
 	GSRendererHW10(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync);

@@ -257,7 +257,7 @@ if(s_dump)
 	int prim = PRIM->PRIM;
 	int prims = 0;
 
-	if(!OverrideInput(prim, tex))
+	if(!OverrideInput(prim, tex ? &tex->m_texture : NULL))
 	{
 		return;
 	}
@@ -291,7 +291,7 @@ if(s_dump)
 
 	// date
 
-	SetupDATE(rt, ds);
+	SetupDATE(rt->m_texture, ds->m_texture);
 
 	//
 
@@ -333,8 +333,8 @@ if(s_dump)
 
 	GSTextureFX9::VSConstantBuffer vs_cb;
 
-	float sx = 2.0f * rt->m_scale.x / (rt->m_texture.GetWidth() * 16);
-	float sy = 2.0f * rt->m_scale.y / (rt->m_texture.GetHeight() * 16);
+	float sx = 2.0f * rt->m_texture.m_scale.x / (rt->m_texture.GetWidth() * 16);
+	float sy = 2.0f * rt->m_texture.m_scale.y / (rt->m_texture.GetHeight() * 16);
 	float ox = (float)(int)m_context->XYOFFSET.OFX;
 	float oy = (float)(int)m_context->XYOFFSET.OFY;
 
@@ -459,10 +459,10 @@ if(s_dump)
 	int h = rt->m_texture.GetHeight();
 
 	CRect scissor(
-		(int)(rt->m_scale.x * (m_context->SCISSOR.SCAX0)),
-		(int)(rt->m_scale.y * (m_context->SCISSOR.SCAY0)), 
-		(int)(rt->m_scale.x * (m_context->SCISSOR.SCAX1 + 1)),
-		(int)(rt->m_scale.y * (m_context->SCISSOR.SCAY1 + 1)));
+		(int)(rt->m_texture.m_scale.x * (m_context->SCISSOR.SCAX0)),
+		(int)(rt->m_texture.m_scale.y * (m_context->SCISSOR.SCAY0)), 
+		(int)(rt->m_texture.m_scale.x * (m_context->SCISSOR.SCAX1 + 1)),
+		(int)(rt->m_texture.m_scale.y * (m_context->SCISSOR.SCAY1 + 1)));
 
 	scissor &= CRect(0, 0, w, h);
 
@@ -516,7 +516,7 @@ if(s_dump)
 
 	m_dev.EndScene();
 
-	if(om_dssel.fba) UpdateFBA(rt);
+	if(om_dssel.fba) UpdateFBA(rt->m_texture);
 
 if(s_dump)
 {
@@ -529,18 +529,17 @@ if(s_dump)
 
 }
 
-void GSRendererHW9::SetupDATE(GSTextureCache<GSDevice9>::GSRenderTarget* rt, GSTextureCache<GSDevice9>::GSDepthStencil* ds)
+void GSRendererHW9::SetupDATE(Texture& rt, Texture& ds)
 {
 	if(!m_context->TEST.DATE) return; // || (::GetAsyncKeyState(VK_CONTROL)&0x80000000)
 
 	// sfex3 (after the capcom logo), vf4 (first menu fading in), ffxii shadows, rumble roses shadows
 
-	int w = rt->m_texture.GetWidth();
-	int h = rt->m_texture.GetHeight();
+	int w = rt.GetWidth();
+	int h = rt.GetHeight();
 
-	float sx = 2.0f * rt->m_scale.x / (w * 16);
-	float sy = 2.0f * rt->m_scale.y / (h * 16);
-	
+	float sx = 2.0f * rt.m_scale.x / (w * 16);
+	float sy = 2.0f * rt.m_scale.y / (h * 16);	
 	float ox = (float)(int)m_context->XYOFFSET.OFX;
 	float oy = (float)(int)m_context->XYOFFSET.OFY;
 
@@ -573,9 +572,9 @@ void GSRendererHW9::SetupDATE(GSTextureCache<GSDevice9>::GSRenderTarget* rt, GST
 
 	GSTexture9 tmp;
 
-	m_dev.CreateRenderTarget(tmp, rt->m_texture.GetWidth(), rt->m_texture.GetHeight());
+	m_dev.CreateRenderTarget(tmp, rt.GetWidth(), rt.GetHeight());
 
-	m_dev.OMSetRenderTargets(tmp, ds->m_texture);
+	m_dev.OMSetRenderTargets(tmp, ds);
 	m_dev.OMSetDepthStencilState(&m_date.dss, 1);
 	m_dev.OMSetBlendState(&m_date.bs, 0);
 
@@ -601,7 +600,7 @@ void GSRendererHW9::SetupDATE(GSTextureCache<GSDevice9>::GSRenderTarget* rt, GST
 
 	// ps
 
-	m_dev.PSSetShaderResources(rt->m_texture, NULL);
+	m_dev.PSSetShaderResources(rt, NULL);
 	m_dev.PSSetShader(m_dev.m_convert.ps[m_context->TEST.DATM ? 2 : 3], NULL, 0);
 	m_dev.PSSetSamplerState(&m_dev.m_convert.pt);
 
@@ -620,7 +619,7 @@ void GSRendererHW9::SetupDATE(GSTextureCache<GSDevice9>::GSRenderTarget* rt, GST
 	m_dev.Recycle(tmp);
 }
 
-void GSRendererHW9::UpdateFBA(GSTextureCache<GSDevice9>::GSRenderTarget* rt)
+void GSRendererHW9::UpdateFBA(Texture& rt)
 {
 	m_dev.BeginScene();
 
@@ -639,8 +638,8 @@ void GSRendererHW9::UpdateFBA(GSTextureCache<GSDevice9>::GSRenderTarget* rt)
 
 	//
 
-	int w = rt->m_texture.GetWidth();
-	int h = rt->m_texture.GetHeight();
+	int w = rt.GetWidth();
+	int h = rt.GetHeight();
 
 	GSVertexP vertices[] =
 	{
@@ -657,69 +656,4 @@ void GSRendererHW9::UpdateFBA(GSTextureCache<GSDevice9>::GSRenderTarget* rt)
 	// 
 
 	m_dev.EndScene();
-}
-
-bool GSRendererHW9::OverrideInput(int& prim, GSTextureCache<GSDevice9>::GSTexture* tex)
-{
-	#pragma region ffxii pal video conversion
-
-	if(m_crc == 0x78da0252 || m_crc == 0xc1274668 || m_crc == 0xdc2a467e || m_crc == 0xca284668)
-	{
-		static DWORD* video = NULL;
-		static bool ok = false;
-
-		if(prim == GS_POINTLIST && m_count >= 448*448 && m_count <= 448*512)
-		{
-			// incoming pixels are stored in columns, one column is 16x512, total res 448x512 or 448x454
-
-			if(!video) video = new DWORD[512*512];
-
-			for(int x = 0, i = 0, rows = m_count / 448; x < 448; x += 16)
-			{
-				DWORD* dst = &video[x];
-
-				for(int y = 0; y < rows; y++, dst += 512)
-				{
-					for(int j = 0; j < 16; j++, i++)
-					{
-						dst[j] = m_vertices[i].c0;
-					}
-				}
-			}
-
-			ok = true;
-
-			return false;
-		}
-		else if(prim == GS_LINELIST && m_count == 512*2 && ok)
-		{
-			// normally, this step would copy the video onto screen with 512 texture mapped horizontal lines,
-			// but we use the stored video data to create a new texture, and replace the lines with two triangles
-
-			ok = false;
-
-			m_dev.Recycle(tex->m_texture);
-			m_dev.Recycle(tex->m_palette);
-
-			m_dev.CreateTexture(tex->m_texture, 512, 512);
-
-			tex->m_texture.Update(CRect(0, 0, 448, 512), video, 512*4);
-
-			m_vertices[0] = m_vertices[0];
-			m_vertices[1] = m_vertices[1];
-			m_vertices[2] = m_vertices[m_count - 2];
-			m_vertices[3] = m_vertices[1];
-			m_vertices[4] = m_vertices[2];
-			m_vertices[5] = m_vertices[m_count - 1];
-
-			prim = GS_TRIANGLELIST;
-			m_count = 6;
-
-			return true;
-		}
-	}
-
-	#pragma endregion
-
-	return true;
 }

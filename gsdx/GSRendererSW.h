@@ -56,7 +56,7 @@ protected:
 		m_texture[1] = Texture();
 	}
 
-	bool GetOutput(int i, Texture& t, GSVector2& s)
+	bool GetOutput(int i, Texture& t)
 	{
 		CRect r(0, 0, DISPFB[i]->FBW * 64, GetFrameRect(i).bottom);
 
@@ -91,7 +91,6 @@ protected:
 		m_texture[i].Update(r, buff, pitch);
 
 		t = m_texture[i];
-		s = GSVector2(1, 1);
 
 		return true;
 	}

@@ -38,14 +38,12 @@ public:
 	public:
 		Texture m_texture;
 		Texture m_palette;
-		GSVector2 m_scale;
 		int m_age;
 		GSDirtyRectList m_dirty;
 		GIFRegTEX0 m_TEX0;
 
 		explicit GSSurface(GSRenderer<Device>* renderer)
 			: m_renderer(renderer)
-			, m_scale(1, 1)
 			, m_age(0)
 		{
 			m_TEX0.TBP0 = (UINT64)~0;
@@ -301,8 +299,8 @@ public:
 
 		if(!m_nativeres)
 		{
-			rt->m_scale.x = (float)w / (m_renderer->GetFramePos().cx + rt->m_TEX0.TBW * 64);
-			rt->m_scale.y = (float)h / (m_renderer->GetFramePos().cy + m_renderer->GetDisplaySize().cy);
+			rt->m_texture.m_scale.x = (float)w / (m_renderer->GetFramePos().cx + rt->m_TEX0.TBW * 64);
+			rt->m_texture.m_scale.y = (float)h / (m_renderer->GetFramePos().cy + m_renderer->GetDisplaySize().cy);
 		}
 
 		if(!fb)

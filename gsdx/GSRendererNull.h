@@ -85,7 +85,7 @@ protected:
 	{
 	}
 
-	bool GetOutput(int i, Texture& t, GSVector2& s) 
+	bool GetOutput(int i, Texture& t) 
 	{
 		return false;
 	}

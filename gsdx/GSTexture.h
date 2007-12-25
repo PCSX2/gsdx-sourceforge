@@ -21,10 +21,15 @@
 
 #pragma once
 
+#include "GSVector.h"
+
 class GSTexture
 {
 public:
-	GSTexture() {}
+	GSVector2 m_scale;
+
+public:
+	GSTexture() : m_scale(1, 1) {}
 	virtual ~GSTexture() {}
 
 	enum {None, RenderTarget, DepthStencil, Texture, Offscreen};

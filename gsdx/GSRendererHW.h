@@ -346,7 +346,7 @@ protected:
 		m_tc->RemoveAll();
 	}
 
-	bool GetOutput(int i, Texture& t, GSVector2& s)
+	bool GetOutput(int i, Texture& t)
 	{
 		GIFRegTEX0 TEX0;
 
@@ -357,7 +357,6 @@ protected:
 		if(GSTextureCache<Device>::GSRenderTarget* rt = m_tc->GetRenderTarget(TEX0, m_width, m_height, true))
 		{
 			t = rt->m_texture;
-			s = rt->m_scale;
 /*
 			if(s_dump)
 			{
@@ -384,6 +383,68 @@ protected:
 		TRACE(_T("[%d] InvalidateLocalMem %d,%d - %d,%d %05x (%d)\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.SBP, (int)BITBLTBUF.SPSM);
 
 		m_tc->InvalidateLocalMem(BITBLTBUF, &r);
+	}
+
+	virtual bool OverrideInput(int& prim, Texture* t)
+	{
+		#pragma region ffxii pal video conversion
+
+		if(m_crc == 0x78da0252 || m_crc == 0xc1274668 || m_crc == 0xdc2a467e || m_crc == 0xca284668)
+		{
+			static DWORD* video = NULL;
+			static bool ok = false;
+
+			if(prim == GS_POINTLIST && m_count >= 448*448 && m_count <= 448*512)
+			{
+				// incoming pixels are stored in columns, one column is 16x512, total res 448x512 or 448x454
+
+				if(!video) video = new DWORD[512*512];
+
+				for(int x = 0, i = 0, rows = m_count / 448; x < 448; x += 16)
+				{
+					DWORD* dst = &video[x];
+
+					for(int y = 0; y < rows; y++, dst += 512)
+					{
+						for(int j = 0; j < 16; j++, i++)
+						{
+							dst[j] = m_vertices[i].c0;
+						}
+					}
+				}
+
+				ok = true;
+
+				return false;
+			}
+			else if(prim == GS_LINELIST && m_count == 512*2 && ok)
+			{
+				// normally, this step would copy the video onto screen with 512 texture mapped horizontal lines,
+				// but we use the stored video data to create a new texture, and replace the lines with two triangles
+
+				ok = false;
+
+				m_dev.CreateTexture(*t, 512, 512);
+
+				t->Update(CRect(0, 0, 448, 512), video, 512*4);
+
+				m_vertices[0] = m_vertices[0];
+				m_vertices[1] = m_vertices[1];
+				m_vertices[2] = m_vertices[m_count - 2];
+				m_vertices[3] = m_vertices[1];
+				m_vertices[4] = m_vertices[2];
+				m_vertices[5] = m_vertices[m_count - 1];
+
+				prim = GS_TRIANGLELIST;
+				m_count = 6;
+
+				return true;
+			}
+		}
+
+		#pragma endregion
+
+		return true;
 	}
 
 public:
