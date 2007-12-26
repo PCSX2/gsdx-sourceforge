@@ -132,6 +132,11 @@ public:
 	void Present(int arx, int ary);
 	void BeginScene();
 	void EndScene();
+	void Draw(LPCTSTR str);
+
+	void ClearRenderTarget(Texture& t, DWORD c);
+	void ClearDepth(Texture& t, float c);
+	void ClearStencil(Texture& t, BYTE c);
 
 	bool CreateRenderTarget(GSTexture9& t, int w, int h, int format = 0);
 	bool CreateDepthStencil(GSTexture9& t, int w, int h, int format = 0);
@@ -168,6 +173,5 @@ public:
 	HRESULT CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro, IDirect3DPixelShader9** ps);
 
 	// TODO
-	void Draw(LPCTSTR str);
 	bool SaveToFileD24S8(IDirect3DSurface9* ds, LPCTSTR fn);
 };

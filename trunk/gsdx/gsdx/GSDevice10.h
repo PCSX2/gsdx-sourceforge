@@ -72,6 +72,7 @@ class GSDevice10 : public GSDevice<GSTexture10>
 private:
 	CComPtr<ID3D10Device> m_dev;
 	CComPtr<IDXGISwapChain> m_swapchain;
+	CComPtr<ID3DX10Font> m_font;
 	GSMergeFX10 m_mergefx;
 
 public: // TODO
@@ -107,6 +108,11 @@ public:
 	void Present(int arx, int ary);
 	void BeginScene();
 	void EndScene();
+	void Draw(LPCTSTR str);
+
+	void ClearRenderTarget(Texture& t, DWORD c);
+	void ClearDepth(Texture& t, float c);
+	void ClearStencil(Texture& t, BYTE c);
 
 	bool CreateRenderTarget(GSTexture10& t, int w, int h, int format = 0);
 	bool CreateDepthStencil(GSTexture10& t, int w, int h, int format = 0);

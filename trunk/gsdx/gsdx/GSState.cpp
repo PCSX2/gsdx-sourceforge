@@ -27,6 +27,7 @@ GSState::GSState(BYTE* base, bool mt, void (*irq)(), int nloophack)
 	, m_irq(irq)
 	, m_nloophack_org(nloophack)
 	, m_nloophack(nloophack == 1)
+	, m_ffx(false)
 	, m_crc(0)
 	, m_options(0)
 	, m_path3hack(0)
@@ -937,7 +938,16 @@ void GSState::FlushWrite(BYTE* mem, int len)
 
 void GSState::Write(BYTE* mem, int len)
 {
+	/*
+	TRACE(_T("Write len=%d DBP=%05x DPSM=%d DSAX=%d DSAY=%d RRW=%d RRH=%d\n"), 
+		  len, (int)m_env.BITBLTBUF.DBP, (int)m_env.BITBLTBUF.DPSM, 
+		  (int)m_env.TRXPOS.DSAX, (int)m_env.TRXPOS.DSAY,
+		  (int)m_env.TRXREG.RRW, (int)m_env.TRXREG.RRH);
+	*/
+
 	if(len == 0) return;
+
+	if(m_y >= m_env.TRXREG.RRH) return; // TODO: handle overflow during writing data too (just chop len below somewhere)
 
 	// TODO: hmmmm
 
@@ -1345,6 +1355,7 @@ void GSState::SetGameCRC(int crc, int options)
 		case 0x6a4efe60: // ffx ntsc/j
 		case 0x3866ca7e: // ffx int. ntsc/asia (SLPM-67513, some kind of a asia version) 
 		case 0x658597e2: // ffx int. ntsc/j
+			m_ffx = true;
 		case 0x9aac5309: // ffx-2 pal/e
 		case 0x9aac530c: // ffx-2 pal/fr
 		case 0x9aac530a: // ffx-2 pal/fr? (maybe belgium or luxembourg version)
@@ -1548,6 +1559,7 @@ bool GSState::DetectBadFrame(int& skip)
 		break;
 
 	case 0x428113C2: // dbz bt3 ntsc/us
+	case 0xA422BB13: // dbz bt3 pal/eu
 
 		if(skip == 0)
 		{

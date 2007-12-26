@@ -91,7 +91,16 @@ bool GSDevice10::Create(HWND hWnd)
 
 	if(FAILED(hr)) return false;
 
+	// font
+/*
+	// TODO: the driver crashes on alt-enter when using a font...
 
+	D3DX10_FONT_DESC fd;
+	memset(&fd, 0, sizeof(fd));
+	_tcscpy(fd.FaceName, _T("Arial"));
+	fd.Height = 20;
+	D3DX10CreateFontIndirect(m_dev, &fd, &m_font);
+*/
 	// convert
 
 	D3D10_INPUT_ELEMENT_DESC il_convert[] =
@@ -278,6 +287,57 @@ void GSDevice10::EndScene()
 	OMSetRenderTargets(NULL, NULL);
 }
 
+void GSDevice10::Draw(LPCTSTR str)
+{
+	/*
+	BOOL fs;
+	CComPtr<IDXGIOutput> target;
+
+	m_swapchain->GetFullscreenState(&fs, &target);
+
+	if(fs)
+	{
+		BeginScene();
+
+		OMSetRenderTargets(m_backbuffer, NULL);
+
+		CRect r(0, 0, m_backbuffer.GetWidth(), m_backbuffer.GetHeight());
+
+		D3DCOLOR c = D3DCOLOR_ARGB(255, 0, 255, 0);
+
+		if(m_font->DrawText(NULL, str, -1, &r, DT_CALCRECT|DT_LEFT|DT_WORDBREAK, c))
+		{
+			m_font->DrawText(NULL, str, -1, &r, DT_LEFT|DT_WORDBREAK, c);
+		}
+
+		EndScene();
+	}
+	*/
+}
+
+void GSDevice10::ClearRenderTarget(Texture& t, DWORD c)
+{
+	float f[] = 
+	{
+		(float)((c >> 0) & 0xff) / 0xff,
+		(float)((c >> 8) & 0xff) / 0xff,
+		(float)((c >> 16) & 0xff) / 0xff,
+		(float)((c >> 24) & 0xff) / 0xff,
+	};
+
+	m_dev->ClearRenderTargetView(t, f);
+}
+
+void GSDevice10::ClearDepth(Texture& t, float c)
+{
+	m_dev->ClearDepthStencilView(t, D3D10_CLEAR_DEPTH, c, 0);
+}
+
+void GSDevice10::ClearStencil(Texture& t, BYTE c)
+{
+	m_dev->ClearDepthStencilView(t, D3D10_CLEAR_STENCIL, 0, c);
+}
+
 bool GSDevice10::Create(int type, GSTexture10& t, int w, int h, int format)
 {
 	HRESULT hr;
@@ -325,10 +385,10 @@ bool GSDevice10::Create(int type, GSTexture10& t, int w, int h, int format)
 		switch(type)
 		{
 		case GSTexture::RenderTarget:
-			m_dev->ClearRenderTargetView(t, color);
+			ClearRenderTarget(t, 0);
 			break;
 		case GSTexture::DepthStencil:
-			m_dev->ClearDepthStencilView(t, D3D10_CLEAR_DEPTH, 0, 0);
+			ClearDepth(t, 0);
 			break;
 		}
 

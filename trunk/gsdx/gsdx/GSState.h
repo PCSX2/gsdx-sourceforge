@@ -148,6 +148,7 @@ public:
 
 	GSPerfMon m_perfmon;
 	bool m_nloophack;
+	bool m_ffx;
 	int m_crc;
 	int m_options;
 	int m_frameskip;

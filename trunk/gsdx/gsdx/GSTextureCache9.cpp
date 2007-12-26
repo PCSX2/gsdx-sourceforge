@@ -195,6 +195,9 @@ void GSTextureCache9::GSRenderTarget9::Read(CRect r)
 
 void GSTextureCache9::GSDepthStencil9::Update()
 {
+	__super::Update();
+
+	// TODO
 }
 
 // GSTexture9

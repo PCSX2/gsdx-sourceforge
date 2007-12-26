@@ -276,6 +276,10 @@ GSLocalMemory::GSLocalMemory()
 	m_psm[PSM_PSMT8H].rt = &GSLocalMemory::readTexel8H;
 	m_psm[PSM_PSMT4HL].rt = &GSLocalMemory::readTexel4HL;
 	m_psm[PSM_PSMT4HH].rt = &GSLocalMemory::readTexel4HH;
+	m_psm[PSM_PSMZ32].rt = &GSLocalMemory::readTexel32Z;
+	m_psm[PSM_PSMZ24].rt = &GSLocalMemory::readTexel24Z;
+	m_psm[PSM_PSMZ16].rt = &GSLocalMemory::readTexel16Z;
+	m_psm[PSM_PSMZ16S].rt = &GSLocalMemory::readTexel16SZ;
 
 	m_psm[PSM_PSMCT24].rta = &GSLocalMemory::readTexel24;
 	m_psm[PSM_PSMCT16].rta = &GSLocalMemory::readTexel16;
@@ -285,10 +289,16 @@ GSLocalMemory::GSLocalMemory()
 	m_psm[PSM_PSMT8H].rta = &GSLocalMemory::readTexel8H;
 	m_psm[PSM_PSMT4HL].rta = &GSLocalMemory::readTexel4HL;
 	m_psm[PSM_PSMT4HH].rta = &GSLocalMemory::readTexel4HH;
+	m_psm[PSM_PSMZ24].rta = &GSLocalMemory::readTexel24;
+	m_psm[PSM_PSMZ16].rta = &GSLocalMemory::readTexel16;
+	m_psm[PSM_PSMZ16S].rta = &GSLocalMemory::readTexel16S;
 
 	m_psm[PSM_PSMCT24].wfa = &GSLocalMemory::writePixel24;
 	m_psm[PSM_PSMCT16].wfa = &GSLocalMemory::writeFrame16;
 	m_psm[PSM_PSMCT16S].wfa = &GSLocalMemory::writeFrame16S;
+	m_psm[PSM_PSMZ24].wfa = &GSLocalMemory::writePixel24;
+	m_psm[PSM_PSMZ16].wfa = &GSLocalMemory::writeFrame16;
+	m_psm[PSM_PSMZ16S].wfa = &GSLocalMemory::writeFrame16S;
 
 	m_psm[PSM_PSMCT16].rtP = &GSLocalMemory::readTexel16P;
 	m_psm[PSM_PSMCT16S].rtP = &GSLocalMemory::readTexel16SP;
@@ -297,6 +307,10 @@ GSLocalMemory::GSLocalMemory()
 	m_psm[PSM_PSMT8H].rtP = &GSLocalMemory::readTexel8HP;
 	m_psm[PSM_PSMT4HL].rtP = &GSLocalMemory::readTexel4HLP;
 	m_psm[PSM_PSMT4HH].rtP = &GSLocalMemory::readTexel4HHP;
+	m_psm[PSM_PSMZ32].rtP = &GSLocalMemory::readTexel32Z;
+	m_psm[PSM_PSMZ24].rtP = &GSLocalMemory::readTexel24Z;
+	m_psm[PSM_PSMZ16].rtP = &GSLocalMemory::readTexel16ZP;
+	m_psm[PSM_PSMZ16S].rtP = &GSLocalMemory::readTexel16SZP;
 
 	m_psm[PSM_PSMCT16].rtNP = &GSLocalMemory::readTexel16P;
 	m_psm[PSM_PSMCT16S].rtNP = &GSLocalMemory::readTexel16SP;
@@ -305,6 +319,10 @@ GSLocalMemory::GSLocalMemory()
 	m_psm[PSM_PSMT8H].rtNP = &GSLocalMemory::readTexel8H;
 	m_psm[PSM_PSMT4HL].rtNP = &GSLocalMemory::readTexel4HL;
 	m_psm[PSM_PSMT4HH].rtNP = &GSLocalMemory::readTexel4HH;
+	m_psm[PSM_PSMZ32].rtNP = &GSLocalMemory::readTexel32Z;
+	m_psm[PSM_PSMZ24].rtNP = &GSLocalMemory::readTexel24Z;
+	m_psm[PSM_PSMZ16].rtNP = &GSLocalMemory::readTexel16ZP;
+	m_psm[PSM_PSMZ16S].rtNP = &GSLocalMemory::readTexel16SZP;
 
 	m_psm[PSM_PSMCT24].st = &GSLocalMemory::SwizzleTexture24;
 	m_psm[PSM_PSMCT16].st = &GSLocalMemory::SwizzleTexture16;
@@ -314,6 +332,10 @@ GSLocalMemory::GSLocalMemory()
 	m_psm[PSM_PSMT8H].st = &GSLocalMemory::SwizzleTexture8H;
 	m_psm[PSM_PSMT4HL].st = &GSLocalMemory::SwizzleTexture4HL;
 	m_psm[PSM_PSMT4HH].st = &GSLocalMemory::SwizzleTexture4HH;
+	m_psm[PSM_PSMZ32].st = &GSLocalMemory::SwizzleTexture32Z;
+	m_psm[PSM_PSMZ24].st = &GSLocalMemory::SwizzleTexture24Z;
+	m_psm[PSM_PSMZ16].st = &GSLocalMemory::SwizzleTexture16Z;
+	m_psm[PSM_PSMZ16S].st = &GSLocalMemory::SwizzleTexture16SZ;
 
 	m_psm[PSM_PSMCT24].ust = &GSLocalMemory::unSwizzleTexture24;
 	m_psm[PSM_PSMCT16].ust = &GSLocalMemory::unSwizzleTexture16;
@@ -323,6 +345,10 @@ GSLocalMemory::GSLocalMemory()
 	m_psm[PSM_PSMT8H].ust = &GSLocalMemory::unSwizzleTexture8H;
 	m_psm[PSM_PSMT4HL].ust = &GSLocalMemory::unSwizzleTexture4HL;
 	m_psm[PSM_PSMT4HH].ust = &GSLocalMemory::unSwizzleTexture4HH;
+	m_psm[PSM_PSMZ32].ust = &GSLocalMemory::unSwizzleTexture32Z;
+	m_psm[PSM_PSMZ24].ust = &GSLocalMemory::unSwizzleTexture24Z;
+	m_psm[PSM_PSMZ16].ust = &GSLocalMemory::unSwizzleTexture16Z;
+	m_psm[PSM_PSMZ16S].ust = &GSLocalMemory::unSwizzleTexture16SZ;
 
 	m_psm[PSM_PSMCT16].ustP = &GSLocalMemory::unSwizzleTexture16P;
 	m_psm[PSM_PSMCT16S].ustP = &GSLocalMemory::unSwizzleTexture16SP;
@@ -331,6 +357,10 @@ GSLocalMemory::GSLocalMemory()
 	m_psm[PSM_PSMT8H].ustP = &GSLocalMemory::unSwizzleTexture8HP;
 	m_psm[PSM_PSMT4HL].ustP = &GSLocalMemory::unSwizzleTexture4HLP;
 	m_psm[PSM_PSMT4HH].ustP = &GSLocalMemory::unSwizzleTexture4HHP;
+	m_psm[PSM_PSMZ32].ustP = &GSLocalMemory::unSwizzleTexture32Z;
+	m_psm[PSM_PSMZ24].ustP = &GSLocalMemory::unSwizzleTexture24Z;
+	m_psm[PSM_PSMZ16].ustP = &GSLocalMemory::unSwizzleTexture16ZP;
+	m_psm[PSM_PSMZ16S].ustP = &GSLocalMemory::unSwizzleTexture16SZP;
 
 	m_psm[PSM_PSMCT16].ustNP = &GSLocalMemory::unSwizzleTexture16P;
 	m_psm[PSM_PSMCT16S].ustNP = &GSLocalMemory::unSwizzleTexture16SP;
@@ -339,6 +369,10 @@ GSLocalMemory::GSLocalMemory()
 	m_psm[PSM_PSMT8H].ustNP = &GSLocalMemory::unSwizzleTexture8HNP;
 	m_psm[PSM_PSMT4HL].ustNP = &GSLocalMemory::unSwizzleTexture4HLNP;
 	m_psm[PSM_PSMT4HH].ustNP = &GSLocalMemory::unSwizzleTexture4HHNP;
+	m_psm[PSM_PSMZ32].ustNP = &GSLocalMemory::unSwizzleTexture32Z;
+	m_psm[PSM_PSMZ24].ustNP = &GSLocalMemory::unSwizzleTexture24Z;
+	m_psm[PSM_PSMZ16].ustNP = &GSLocalMemory::unSwizzleTexture16ZP;
+	m_psm[PSM_PSMZ16S].ustNP = &GSLocalMemory::unSwizzleTexture16SZP;
 
 	m_psm[PSM_PSMT8].pal = m_psm[PSM_PSMT8H].pal = 256;
 	m_psm[PSM_PSMT4].pal = m_psm[PSM_PSMT4HL].pal = m_psm[PSM_PSMT4HH].pal = 16;
@@ -1241,6 +1275,262 @@ void GSLocalMemory::SwizzleTexture4HH(int& tx, int& ty, BYTE* src, int len, GIFR
 	}
 }
 
+void GSLocalMemory::SwizzleTexture32Z(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
+{
+	if(TRXREG.RRW == 0) return;
+
+	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX)*4;
+	int th = len / srcpitch;
+
+	bool fTopLeftAligned = IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 8, 8);
+
+	if(!fTopLeftAligned || (tw & 7) || (th & 7) || (len % srcpitch))
+	{
+		if(fTopLeftAligned && tw >= 8 && th >= 8)
+		{
+			int twa = tw & ~7;
+			int tha = th & ~7;
+
+			len -= tha * srcpitch;
+			th -= tha;
+
+			for(int j = 0; j < tha; j += 8)
+			{
+				for(int x = tx; x < twa; x += 8)
+					SwizzleBlock32u((BYTE*)&m_vm32[blockAddress32Z(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx)*4, srcpitch);
+
+				for(int i = 0; i < 8; i++, ty++, src += srcpitch)
+					for(int x = twa; x < tw; x++)
+						writePixel32Z(x, ty, ((DWORD*)src)[x - tx], BITBLTBUF.DBP, BITBLTBUF.DBW);
+			}
+		}
+
+		if(len > 0 && tw >= 8 && th >= 2 && IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 8, 2))
+		{
+			int twa = tw & ~7;
+			int tha = th & ~1;
+
+			len -= tha * srcpitch;
+			th -= tha;
+
+			for(int j = 0; j < tha; j += 2)
+			{
+				for(int x = tx; x < twa; x += 8)
+					SwizzleColumn32(ty, (BYTE*)&m_vm32[blockAddress32Z(x, ty&~7, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx)*4, srcpitch);
+
+				for(int i = 0; i < 2; i++, ty++, src += srcpitch)
+					for(int x = twa; x < tw; x++)
+						writePixel32Z(x, ty, ((DWORD*)src)[x - tx], BITBLTBUF.DBP, BITBLTBUF.DBW);
+			}
+		}
+
+		SwizzleTextureX(tx, ty, src, len, BITBLTBUF, TRXPOS, TRXREG);
+	}
+	else
+	{
+		th += ty;
+
+		if((DWORD_PTR)src & 0xf)
+		{
+			for(int y = ty; y < th; y += 8, src += srcpitch*8)
+				for(int x = tx; x < tw; x += 8)
+					SwizzleBlock32u((BYTE*)&m_vm32[blockAddress32Z(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx)*4, srcpitch);
+		}
+		else
+		{
+			for(int y = ty; y < th; y += 8, src += srcpitch*8)
+				for(int x = tx; x < tw; x += 8)
+					SwizzleBlock32((BYTE*)&m_vm32[blockAddress32Z(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx)*4, srcpitch);
+		}
+
+		ty = th;
+	}
+}
+
+void GSLocalMemory::SwizzleTexture24Z(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
+{
+	if(TRXREG.RRW == 0) return;
+
+	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX)*3;
+	int th = len / srcpitch;
+
+	bool fTopLeftAligned = IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 8, 8);
+
+	if(!fTopLeftAligned || (tw & 7) || (th & 7) || (len % srcpitch))
+	{
+		// TODO
+
+		SwizzleTextureX(tx, ty, src, len, BITBLTBUF, TRXPOS, TRXREG);
+	}
+	else
+	{
+		__declspec(align(16)) DWORD block[8*8];
+
+		th += ty;
+
+		for(int y = ty; y < th; y += 8, src += srcpitch*8)
+		{
+			for(int x = tx; x < tw; x += 8)
+			{
+				BYTE* s = src + (x - tx)*3;
+				DWORD* d = block;
+
+				for(int j = 0, diff = srcpitch - 8*3; j < 8; j++, s += diff, d += 8)
+					for(int i = 0; i < 8; i++, s += 3)
+						d[i] = (s[2]<<16)|(s[1]<<8)|s[0];
+
+				SwizzleBlock32((BYTE*)&m_vm32[blockAddress32Z(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], (BYTE*)block, sizeof(block)/8, 0x00ffffff);
+			}
+		}
+
+		ty = th;
+	}
+}
+
+void GSLocalMemory::SwizzleTexture16Z(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
+{
+	if(TRXREG.RRW == 0) return;
+
+	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX)*2;
+	int th = len / srcpitch;
+
+	bool fTopLeftAligned = IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 16, 8);
+
+	if(!fTopLeftAligned || (tw & 15) || (th & 7) || (len % srcpitch))
+	{
+		if(fTopLeftAligned && tw >= 16 && th >= 8)
+		{
+			int twa = tw & ~15;
+			int tha = th & ~7;
+
+			len -= tha * srcpitch;
+			th -= tha;
+
+			for(int j = 0; j < tha; j += 8)
+			{
+				for(int x = tx; x < twa; x += 16)
+					SwizzleBlock16u((BYTE*)&m_vm16[blockAddress16Z(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx)*2, srcpitch);
+
+				for(int i = 0; i < 8; i++, ty++, src += srcpitch)
+					for(int x = twa; x < tw; x++)
+						writePixel16Z(x, ty, ((WORD*)src)[x - tx], BITBLTBUF.DBP, BITBLTBUF.DBW);
+			}
+		}
+
+		if(len > 0 && tw >= 16 && th >= 2 && IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 16, 2))
+		{
+			int twa = tw & ~15;
+			int tha = th & ~1;
+
+			len -= tha * srcpitch;
+			th -= tha;
+
+			for(int j = 0; j < tha; j += 2)
+			{
+				for(int x = tx; x < twa; x += 16)
+					SwizzleColumn16(ty, (BYTE*)&m_vm16[blockAddress16Z(x, ty&~7, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx)*2, srcpitch);
+
+				for(int i = 0; i < 2; i++, ty++, src += srcpitch)
+					for(int x = twa; x < tw; x++)
+						writePixel16Z(x, ty, ((WORD*)src)[x - tx], BITBLTBUF.DBP, BITBLTBUF.DBW);
+			}
+		}
+
+		SwizzleTextureX(tx, ty, src, len, BITBLTBUF, TRXPOS, TRXREG);
+	}
+	else
+	{
+		th += ty;
+
+		if((DWORD_PTR)src & 0xf)
+		{
+			for(int y = ty; y < th; y += 8, src += srcpitch*8)
+				for(int x = tx; x < tw; x += 16)
+					SwizzleBlock16u((BYTE*)&m_vm16[blockAddress16Z(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx)*2, srcpitch);
+		}
+		else
+		{
+			for(int y = ty; y < th; y += 8, src += srcpitch*8)
+				for(int x = tx; x < tw; x += 16)
+					SwizzleBlock16((BYTE*)&m_vm16[blockAddress16Z(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx)*2, srcpitch);
+		}
+
+		ty = th;
+	}
+}
+
+void GSLocalMemory::SwizzleTexture16SZ(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
+{
+	if(TRXREG.RRW == 0) return;
+
+	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX)*2;
+	int th = len / srcpitch;
+
+	bool fTopLeftAligned = IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 16, 8);
+
+	if(!fTopLeftAligned || (tw & 15) || (th & 7) || (len % srcpitch))
+	{
+		if(fTopLeftAligned && tw >= 16 && th >= 8)
+		{
+			int twa = tw & ~15;
+			int tha = th & ~7;
+
+			len -= tha * srcpitch;
+			th -= tha;
+
+			for(int j = 0; j < tha; j += 8)
+			{
+				for(int x = tx; x < twa; x += 16)
+					SwizzleBlock16u((BYTE*)&m_vm16[blockAddress16SZ(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx)*2, srcpitch);
+
+				for(int i = 0; i < 8; i++, ty++, src += srcpitch)
+					for(int x = twa; x < tw; x++)
+						writePixel16SZ(x, ty, ((WORD*)src)[x - tx], BITBLTBUF.DBP, BITBLTBUF.DBW);
+			}
+		}
+
+		if(len > 0 && tw >= 16 && th >= 2 && IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 16, 2))
+		{
+			int twa = tw & ~15;
+			int tha = th & ~1;
+
+			len -= tha * srcpitch;
+			th -= tha;
+
+			for(int j = 0; j < tha; j += 2)
+			{
+				for(int x = tx; x < twa; x += 16)
+					SwizzleColumn16(ty, (BYTE*)&m_vm16[blockAddress16SZ(x, ty&~7, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx)*2, srcpitch);
+
+				for(int i = 0; i < 2; i++, ty++, src += srcpitch)
+					for(int x = twa; x < tw; x++)
+						writePixel16SZ(x, ty, ((WORD*)src)[x - tx], BITBLTBUF.DBP, BITBLTBUF.DBW);
+			}
+		}
+
+		SwizzleTextureX(tx, ty, src, len, BITBLTBUF, TRXPOS, TRXREG);
+	}
+	else
+	{
+		th += ty;
+
+		if((DWORD_PTR)src & 0xf)
+		{
+			for(int y = ty; y < th; y += 8, src += srcpitch*8)
+				for(int x = tx; x < tw; x += 16)
+					SwizzleBlock16((BYTE*)&m_vm16[blockAddress16SZ(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx)*2, srcpitch);
+		}
+		else
+		{
+			for(int y = ty; y < th; y += 8, src += srcpitch*8)
+				for(int x = tx; x < tw; x += 16)
+					SwizzleBlock16((BYTE*)&m_vm16[blockAddress16SZ(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx)*2, srcpitch);
+		}
+
+		ty = th;
+	}
+}
+
 void GSLocalMemory::SwizzleTextureX(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
 {
 	if(len <= 0) return;
@@ -1440,6 +1730,48 @@ void GSLocalMemory::unSwizzleTexture4HH(const CRect& r, BYTE* dst, int dstpitch,
 	FOREACH_BLOCK_END
 }
 
+void GSLocalMemory::unSwizzleTexture32Z(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
+{
+	FOREACH_BLOCK_START(r, 8, 8, 32)
+	{
+		unSwizzleBlock32((BYTE*)&m_vm32[blockAddress32Z(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x-r.left)*4, dstpitch);
+	}
+	FOREACH_BLOCK_END
+}
+
+void GSLocalMemory::unSwizzleTexture24Z(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
+{
+	FOREACH_BLOCK_START(r, 8, 8, 32)
+	{
+		__declspec(align(16)) DWORD block[8*8];
+		unSwizzleBlock32((BYTE*)&m_vm32[blockAddress32Z(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block)/8);
+		ExpandBlock24(block, (DWORD*)ptr + (x-r.left), dstpitch, &TEXA);
+	}
+	FOREACH_BLOCK_END
+}
+
+void GSLocalMemory::unSwizzleTexture16Z(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
+{
+	FOREACH_BLOCK_START(r, 16, 8, 16)
+	{
+		__declspec(align(16)) WORD block[16*8];
+		unSwizzleBlock16((BYTE*)&m_vm16[blockAddress16Z(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block)/8);
+		ExpandBlock16(block, (DWORD*)ptr + (x-r.left), dstpitch, &TEXA);
+	}
+	FOREACH_BLOCK_END
+}
+
+void GSLocalMemory::unSwizzleTexture16SZ(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
+{
+	FOREACH_BLOCK_START(r, 16, 8, 16S)
+	{
+		__declspec(align(16)) WORD block[16*8];
+		unSwizzleBlock16((BYTE*)&m_vm16[blockAddress16SZ(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block)/8);
+		ExpandBlock16(block, (DWORD*)ptr + (x-r.left), dstpitch, &TEXA);
+	}
+	FOREACH_BLOCK_END
+}
+
 ///////////////////
 
 void GSLocalMemory::ReadTexture(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA, GIFRegCLAMP& CLAMP)
@@ -1522,6 +1854,24 @@ void GSLocalMemory::unSwizzleTexture4HHP(const CRect& r, BYTE* dst, int dstpitch
 	FOREACH_BLOCK_START(r, 8, 8, 32)
 	{
 		unSwizzleBlock4HHP((BYTE*)&m_vm32[blockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x-r.left), dstpitch);
+	}
+	FOREACH_BLOCK_END
+}
+
+void GSLocalMemory::unSwizzleTexture16ZP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
+{
+	FOREACH_BLOCK_START(r, 16, 8, 16)
+	{
+		unSwizzleBlock16((BYTE*)&m_vm16[blockAddress16Z(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x-r.left)*2, dstpitch);
+	}
+	FOREACH_BLOCK_END
+}
+
+void GSLocalMemory::unSwizzleTexture16SZP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
+{
+	FOREACH_BLOCK_START(r, 16, 8, 16S)
+	{
+		unSwizzleBlock16((BYTE*)&m_vm16[blockAddress16SZ(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x-r.left)*2, dstpitch);
 	}
 	FOREACH_BLOCK_END
 }

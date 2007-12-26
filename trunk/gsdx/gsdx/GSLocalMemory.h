@@ -716,6 +716,26 @@ public:
 		return readTexel4HH(pixelAddress32(x, y, TEX0.TBP0, TEX0.TBW), TEXA);
 	}
 
+	__forceinline DWORD readTexel32Z(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
+	{
+		return readTexel32(pixelAddress32Z(x, y, TEX0.TBP0, TEX0.TBW), TEXA);
+	}
+
+	__forceinline DWORD readTexel24Z(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
+	{
+		return readTexel24(pixelAddress32Z(x, y, TEX0.TBP0, TEX0.TBW), TEXA);
+	}
+
+	__forceinline DWORD readTexel16Z(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
+	{
+		return readTexel16(pixelAddress16Z(x, y, TEX0.TBP0, TEX0.TBW), TEXA);
+	}
+
+	__forceinline DWORD readTexel16SZ(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
+	{
+		return readTexel16S(pixelAddress16SZ(x, y, TEX0.TBP0, TEX0.TBW), TEXA);
+	}
+
 	__forceinline DWORD readTexel16P(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 	{
 		return readPixel16(x, y, TEX0.TBP0, TEX0.TBW);
@@ -749,6 +769,16 @@ public:
 	__forceinline DWORD readTexel4HHP(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 	{
 		return readPixel4HH(x, y, TEX0.TBP0, TEX0.TBW);
+	}
+
+	__forceinline DWORD readTexel16ZP(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
+	{
+		return readPixel16Z(x, y, TEX0.TBP0, TEX0.TBW);
+	}
+
+	__forceinline DWORD readTexel16SZP(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
+	{
+		return readPixel16SZ(x, y, TEX0.TBP0, TEX0.TBW);
 	}
 
 	//
@@ -872,6 +902,10 @@ public:
 	void SwizzleTexture4(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
 	void SwizzleTexture4HL(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
 	void SwizzleTexture4HH(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
+	void SwizzleTexture32Z(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
+	void SwizzleTexture24Z(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
+	void SwizzleTexture16Z(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
+	void SwizzleTexture16SZ(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
 	void SwizzleTextureX(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
 
 	void unSwizzleTexture32(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
@@ -883,6 +917,10 @@ public:
 	void unSwizzleTexture4(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
 	void unSwizzleTexture4HL(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
 	void unSwizzleTexture4HH(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
+	void unSwizzleTexture32Z(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
+	void unSwizzleTexture24Z(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
+	void unSwizzleTexture16Z(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
+	void unSwizzleTexture16SZ(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
 
 	void ReadTexture(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA, GIFRegCLAMP& CLAMP);
 
@@ -895,6 +933,8 @@ public:
 	void unSwizzleTexture4P(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
 	void unSwizzleTexture4HLP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
 	void unSwizzleTexture4HHP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
+	void unSwizzleTexture16ZP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
+	void unSwizzleTexture16SZP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
 
 	void ReadTextureP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA, GIFRegCLAMP& CLAMP);
 

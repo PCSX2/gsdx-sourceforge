@@ -188,7 +188,7 @@ public:
 	{
 		s_n = 0;
 		s_dump = false;
-		s_save = false;
+		s_save = true;
 		s_savez = false;
 	}
 
@@ -215,20 +215,20 @@ public:
 
 		m_field = !!field;
 
-		ProcessWindowMessages();
-
 		Flush();
+
+		m_perfmon.Put(GSPerfMon::Frame);
+
+		ProcessWindowMessages();
 
 		if(!Merge()) return;
 
-// s_dump = m_perfmon.GetFrame() >= 5002;
+// s_dump = m_perfmon.GetFrame() >= 5086;
 
 		// osd 
 
 		static UINT64 s_frame = 0;
 		static CString s_stats;
-
-		m_perfmon.Put(GSPerfMon::Frame);
 
 		if(m_perfmon.GetFrame() - s_frame >= 30)
 		{
@@ -264,7 +264,7 @@ public:
 
 		if(m_osd)
 		{
-			// TODO: m_dev.Draw(s_stats + _T("\n\nF5: interlace mode\nF6: aspect ratio\nF7: OSD"));
+			m_dev.Draw(s_stats + _T("\n\nF5: interlace mode\nF6: aspect ratio\nF7: OSD"));
 		}
 
 		//
