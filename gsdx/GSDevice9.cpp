@@ -397,6 +397,56 @@ void GSDevice9::EndScene()
 	m_dev->EndScene();
 }
 
+void GSDevice9::Draw(LPCTSTR str)
+{
+	/*
+	if(!m_pp.Windowed)
+	{
+		BeginScene();
+
+		OMSetRenderTargets(m_backbuffer, NULL);
+
+		CRect r(0, 0, m_backbuffer.GetWidth(), m_backbuffer.GetHeight());
+
+		D3DCOLOR c = D3DCOLOR_ARGB(255, 0, 255, 0);
+
+		if(m_font->DrawText(NULL, str, -1, &r, DT_CALCRECT|DT_LEFT|DT_WORDBREAK, c))
+		{
+			m_font->DrawText(NULL, str, -1, &r, DT_LEFT|DT_WORDBREAK, c);
+		}
+
+		EndScene();
+	}
+	*/
+}
+
+void GSDevice9::ClearRenderTarget(Texture& t, DWORD c)
+{
+	CComPtr<IDirect3DSurface9> surface;
+	m_dev->GetRenderTarget(0, &surface);
+	m_dev->SetRenderTarget(0, t);
+	m_dev->Clear(0, NULL, D3DCLEAR_TARGET, c, 0, 0);
+	m_dev->SetRenderTarget(0, surface);
+}
+
+void GSDevice9::ClearDepth(Texture& t, float c)
+{
+	CComPtr<IDirect3DSurface9> surface;
+	m_dev->GetDepthStencilSurface(&surface);
+	m_dev->SetDepthStencilSurface(t);
+	m_dev->Clear(0, NULL, D3DCLEAR_ZBUFFER, 0, c, 0);
+	m_dev->SetDepthStencilSurface(surface);
+}
+
+void GSDevice9::ClearStencil(Texture& t, BYTE c)
+{
+	CComPtr<IDirect3DSurface9> surface;
+	m_dev->GetDepthStencilSurface(&surface);
+	m_dev->SetDepthStencilSurface(t);
+	m_dev->Clear(0, NULL, D3DCLEAR_STENCIL, 0, 0, c);
+	m_dev->SetDepthStencilSurface(surface);
+}
+
 bool GSDevice9::Create(int type, GSTexture9& t, int w, int h, int format)
 {
 	HRESULT hr;
@@ -432,21 +482,13 @@ bool GSDevice9::Create(int type, GSTexture9& t, int w, int h, int format)
 
 	if(t)
 	{
-		surface = NULL;
-
 		switch(type)
 		{
 		case GSTexture::RenderTarget:
-			hr = m_dev->GetRenderTarget(0, &surface);
-			hr = m_dev->SetRenderTarget(0, t);
-			hr = m_dev->Clear(0, NULL, D3DCLEAR_TARGET, 0, 0, 0);
-			hr = m_dev->SetRenderTarget(0, surface);
+			ClearRenderTarget(t, 0);
 			break;
 		case GSTexture::DepthStencil:
-			hr = m_dev->GetDepthStencilSurface(&surface);
-			hr = m_dev->SetDepthStencilSurface(t);
-			hr = m_dev->Clear(0, NULL, D3DCLEAR_ZBUFFER, 0, 0, 0);
-			hr = m_dev->SetDepthStencilSurface(surface);
+			ClearDepth(t, 0);
 			break;
 		}
 
@@ -747,27 +789,6 @@ void GSDevice9::DrawPrimitive()
 	}
 
 	m_dev->DrawPrimitiveUP(m_topology, prims, m_vb_vertices, m_vb_stride);
-}
-
-void GSDevice9::Draw(LPCTSTR str)
-{
-	if(!m_pp.Windowed)
-	{
-		BeginScene();
-
-		OMSetRenderTargets(m_backbuffer, NULL);
-
-		CRect r(0, 0, m_backbuffer.GetWidth(), m_backbuffer.GetHeight());
-
-		D3DCOLOR c = D3DCOLOR_ARGB(255, 0, 255, 0);
-
-		if(m_font->DrawText(NULL, str, -1, &r, DT_CALCRECT|DT_LEFT|DT_WORDBREAK, c))
-		{
-			m_font->DrawText(NULL, str, -1, &r, DT_LEFT|DT_WORDBREAK, c);
-		}
-
-		EndScene();
-	}
 }
 
 bool GSDevice9::SaveToFileD24S8(IDirect3DSurface9* ds, LPCTSTR fn)

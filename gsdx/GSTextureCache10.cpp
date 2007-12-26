@@ -211,6 +211,9 @@ void GSTextureCache10::GSRenderTargetHW10::Read(CRect r)
 
 void GSTextureCache10::GSDepthStencilHW10::Update()
 {
+	__super::Update();
+
+	// TODO
 }
 
 // GSTextureHW10

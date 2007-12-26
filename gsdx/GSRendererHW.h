@@ -379,7 +379,7 @@ protected:
 
 	void InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r)
 	{
-		TRACE(_T("[%d] InvalidateVideoMem %d,%d - %d,%d %05x (%d)\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.DBP, (int)BITBLTBUF.DPSM);
+		// TRACE(_T("[%d] InvalidateVideoMem %d,%d - %d,%d %05x (%d)\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.DBP, (int)BITBLTBUF.DPSM);
 
 		m_tc->InvalidateVideoMem(BITBLTBUF, &r);
 	}
@@ -391,7 +391,7 @@ protected:
 		m_tc->InvalidateLocalMem(BITBLTBUF, &r);
 	}
 
-	virtual bool OverrideInput(int& prim, Texture* t)
+	virtual bool OverrideInput(int& prim, Texture& rt, Texture& ds, Texture* t)
 	{
 		#pragma region ffxii pal video conversion
 
@@ -445,6 +445,22 @@ protected:
 				m_count = 6;
 
 				return true;
+			}
+		}
+
+		#pragma endregion
+
+		#pragma region ffx random battle transition (z buffer written directly, clear it now)
+
+		if(m_ffx)
+		{
+			DWORD FBP = m_context->FRAME.Block();
+			DWORD ZBP = m_context->ZBUF.Block();
+			DWORD TBP = m_context->TEX0.TBP0;
+
+			if((FBP == 0x00d00 || FBP == 0x00000) && ZBP == 0x02100 && PRIM->TME && TBP == 0x01a00 && m_context->TEX0.PSM == PSM_PSMCT16S)
+			{
+				m_dev.ClearDepth(ds, 0);
 			}
 		}
 

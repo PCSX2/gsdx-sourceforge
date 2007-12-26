@@ -80,8 +80,6 @@ bool GSTextureFX9::CreateMskFix(GSTexture9& t, DWORD size, DWORD msk, DWORD fix)
 			t.Unmap();
 		}
 
-		printf("CreateMskFix %03x %03x %d\n", msk, fix, size);
-
 		m_mskfix[hash] = t;
 	}
 

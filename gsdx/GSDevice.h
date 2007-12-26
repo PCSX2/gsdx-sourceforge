@@ -99,6 +99,14 @@ public:
 
 	virtual void EndScene() = 0;
 
+	virtual void Draw(LPCTSTR str) = 0;
+
+	virtual void ClearRenderTarget(Texture& t, DWORD c) = 0;
+
+	virtual void ClearDepth(Texture& t, float c) = 0;
+
+	virtual void ClearStencil(Texture& t, BYTE c) = 0;
+
 	virtual bool CreateRenderTarget(Texture& t, int w, int h, int format = 0)
 	{
 		return Fetch(GSTexture::RenderTarget, t, w, h, format);

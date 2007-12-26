@@ -237,7 +237,7 @@ if(s_dump)
 	int prim = PRIM->PRIM;
 	int prims = 0;
 
-	if(!OverrideInput(prim, tex ? &tex->m_texture : NULL))
+	if(!OverrideInput(prim, rt->m_texture, ds->m_texture, tex ? &tex->m_texture : NULL))
 	{
 		return;
 	}
