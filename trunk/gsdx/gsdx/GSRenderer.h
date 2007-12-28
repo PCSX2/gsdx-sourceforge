@@ -136,7 +136,14 @@ protected:
 				GSVector2 o;
 
 				o.x = 0;
-				o.y = st[i].m_scale.y * (GetDisplayPos(i).y - baseline);
+				o.y = 0;
+				
+				CPoint p = GetDisplayPos(i);
+
+				if(p.y - baseline >= 4) // 2?
+				{
+					o.y = st[i].m_scale.y * (p.y - baseline);
+				}
 
 				if(SMODE2->INT && SMODE2->FFMD) o.y /= 2;
 
