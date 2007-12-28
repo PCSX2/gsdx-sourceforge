@@ -23,7 +23,6 @@
 
 #include "GSDevice.h"
 #include "GSTexture9.h"
-#include "GSMergeFX9.h"
 
 struct Direct3DSamplerState9
 {
@@ -88,7 +87,7 @@ class GSDevice9 : public GSDevice<GSTexture9>
 	//
 
 	bool Create(int type, GSTexture9& t, int w, int h, int format);
-	void DoMerge(GSTexture9* st, GSVector4* sr, GSTexture9& dt, bool en1, bool en2, bool slbg, bool mmod, GSVector4& c);
+	void DoMerge(GSTexture9* st, GSVector4* sr, GSVector4* dr, GSTexture9& dt, bool slbg, bool mmod, GSVector4& c);
 	void DoInterlace(GSTexture9& st, GSTexture9& dt, int shader, bool linear, float yoffset = 0);
 
 private:
@@ -98,7 +97,6 @@ private:
 	CComPtr<IDirect3DDevice9> m_dev;
 	CComPtr<IDirect3DSwapChain9> m_swapchain;
 	GSTexture9 m_backbuffer;
-	GSMergeFX9 m_mergefx;
 
 public: // TODO
 	D3DPRESENT_PARAMETERS m_pp;
@@ -114,6 +112,12 @@ public: // TODO
 		Direct3DDepthStencilState9 dss;
 		Direct3DBlendState9 bs;
 	} m_convert;
+
+	struct
+	{
+		CComPtr<IDirect3DPixelShader9> ps[2];
+		Direct3DBlendState9 bs;
+	} m_merge;
 
 	struct
 	{
@@ -134,6 +138,7 @@ public:
 	void EndScene();
 	void Draw(LPCTSTR str);
 
+	void ClearRenderTarget(Texture& t, const GSVector4& c);
 	void ClearRenderTarget(Texture& t, DWORD c);
 	void ClearDepth(Texture& t, float c);
 	void ClearStencil(Texture& t, BYTE c);
@@ -168,6 +173,7 @@ public:
 	void StretchRect(GSTexture9& st, GSTexture9& dt, const GSVector4& dr, bool linear = true);
 	void StretchRect(GSTexture9& st, const GSVector4& sr, GSTexture9& dt, const GSVector4& dr, bool linear = true);
 	void StretchRect(GSTexture9& st, const GSVector4& sr, GSTexture9& dt, const GSVector4& dr, IDirect3DPixelShader9* ps, const float* ps_cb, int ps_cb_len, bool linear = true);
+	void StretchRect(GSTexture9& st, const GSVector4& sr, GSTexture9& dt, const GSVector4& dr, IDirect3DPixelShader9* ps, const float* ps_cb, int ps_cb_len, Direct3DBlendState9* bs, bool linear = true);
 
 	HRESULT CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro, IDirect3DVertexShader9** vs, const D3DVERTEXELEMENT9* layout, int count, IDirect3DVertexDeclaration9** il);
 	HRESULT CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro, IDirect3DPixelShader9** ps);

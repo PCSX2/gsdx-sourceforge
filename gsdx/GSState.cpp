@@ -204,8 +204,6 @@ CSize GSState::GetDisplaySize(int i)
 	s.cx = (DISPLAY[i]->DW + 1) / (DISPLAY[i]->MAGH + 1);
 	s.cy = (DISPLAY[i]->DH + 1) / (DISPLAY[i]->MAGV + 1);
 
-	if(s.cy & 1) s.cy++;
-
 	return s;
 }
 
@@ -263,6 +261,13 @@ CSize GSState::GetFrameSize()
 CRect GSState::GetFrameRect()
 {
 	return GetFrameRect(IsEnabled(1) ? 1 : 0);
+}
+
+CSize GSState::GetDeviceSize()
+{
+	// TODO: other params of SMODE1 should affect the true device display size
+
+	return CSize(GetDisplaySize().cx, (SMODE1->CMOD & 1) ? 512 : 448);
 }
 
 bool GSState::IsEnabled(int i)
@@ -938,12 +943,14 @@ void GSState::FlushWrite(BYTE* mem, int len)
 
 void GSState::Write(BYTE* mem, int len)
 {
-	/*
 	TRACE(_T("Write len=%d DBP=%05x DPSM=%d DSAX=%d DSAY=%d RRW=%d RRH=%d\n"), 
 		  len, (int)m_env.BITBLTBUF.DBP, (int)m_env.BITBLTBUF.DPSM, 
 		  (int)m_env.TRXPOS.DSAX, (int)m_env.TRXPOS.DSAY,
 		  (int)m_env.TRXREG.RRW, (int)m_env.TRXREG.RRH);
+	/*
 	*/
+
+	BYTE* ptr = &m_mem.GetVM()[m_mem.pixelAddress4(0, 0, 0x02f80, 4)>>1];
 
 	if(len == 0) return;
 
@@ -1519,6 +1526,7 @@ bool GSState::DetectBadFrame(int& skip)
 		break;
 
 	case 0x6F8545DB: // ICO ntsc/us
+	case 0x5C991F4E: // ICO pal/eu + pal/ntsc selector
 
 		if(skip == 0)
 		{
@@ -1543,6 +1551,7 @@ bool GSState::DetectBadFrame(int& skip)
 
 	case 0x44A61C8F: // gt4
 	case 0x0086E35B: // gt4
+	case 0x77E61C8A: // gt4
 
 		if(skip == 0)
 		{
@@ -1552,7 +1561,8 @@ bool GSState::DetectBadFrame(int& skip)
 			}
 			else if(TME && (FBP == 0x00000 || FBP == 0x01400) && FPSM == PSM_PSMCT24 && TBP0 >= 0x03420 && TPSM == PSM_PSMT8)
 			{
-				skip = 58;
+				// TODO: removes gfx from where it is not supposed to (garage)
+				// skip = 58;
 			}
 		}
 

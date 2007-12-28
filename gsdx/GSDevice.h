@@ -24,6 +24,26 @@
 #include "GSTexture.h"
 #include "GSVertex.h"
 
+#pragma pack(push, 1)
+
+struct MergeConstantBuffer
+{
+	GSVector4 BGColor;
+
+	struct MergeConstantBuffer() {memset(this, 0, sizeof(*this));}
+};
+
+struct InterlaceConstantBuffer
+{
+	GSVector2 ZrH;
+	float hH;
+	float _pad[1];
+
+	struct InterlaceConstantBuffer() {memset(this, 0, sizeof(*this));}
+};
+
+#pragma pack(pop)
+
 template<class Texture> class GSDevice
 {
 	CAtlList<Texture> m_pool;
@@ -59,7 +79,7 @@ protected:
 	}
 
 	virtual bool Create(int type, Texture& t, int w, int h, int format) = 0;
-	virtual void DoMerge(Texture* st, GSVector4* sr, Texture& dt, bool en1, bool en2, bool slbg, bool mmod, GSVector4& c) = 0;
+	virtual void DoMerge(Texture* st, GSVector4* sr, GSVector4* dr, Texture& dt, bool slbg, bool mmod, GSVector4& c) = 0;
 	virtual void DoInterlace(Texture& st, Texture& dt, int shader, bool linear, float yoffset) = 0;
 
 public:
@@ -100,6 +120,8 @@ public:
 	virtual void EndScene() = 0;
 
 	virtual void Draw(LPCTSTR str) = 0;
+
+	virtual void ClearRenderTarget(Texture& t, const GSVector4& c) = 0;
 
 	virtual void ClearRenderTarget(Texture& t, DWORD c) = 0;
 
@@ -147,7 +169,7 @@ public:
 		return m_current.Save(fn);
 	}
 
-	void Merge(Texture* st, GSVector4* sr, CSize fs, bool en1, bool en2, bool slbg, bool mmod, GSVector4& c)
+	void Merge(Texture* st, GSVector4* sr, GSVector4* dr, CSize fs, bool slbg, bool mmod, GSVector4& c)
 	{
 		if(!m_merge || m_merge.GetWidth() != fs.cx || m_merge.GetHeight() != fs.cy)
 		{
@@ -156,7 +178,7 @@ public:
 
 		// TODO: m_1x1
 
-		DoMerge(st, sr, m_merge, en1, en2, slbg, mmod, c);
+		DoMerge(st, sr, dr, m_merge, slbg, mmod, c);
 
 		m_current = m_merge;
 	}

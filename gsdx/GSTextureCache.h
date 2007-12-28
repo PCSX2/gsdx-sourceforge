@@ -299,8 +299,19 @@ public:
 
 		if(!m_nativeres)
 		{
-			rt->m_texture.m_scale.x = (float)w / (m_renderer->GetFramePos().cx + rt->m_TEX0.TBW * 64);
-			rt->m_texture.m_scale.y = (float)h / (m_renderer->GetFramePos().cy + m_renderer->GetDisplaySize().cy);
+			int ww = (int)(m_renderer->GetFramePos().cx + rt->m_TEX0.TBW * 64);
+			int hh = (int)(m_renderer->GetFramePos().cy + m_renderer->GetDisplaySize().cy);
+
+			if(hh <= m_renderer->GetDeviceSize().cy / 2)
+			{
+				hh *= 2;
+			}
+
+			if(ww > 0 && hh > 0)
+			{
+				rt->m_texture.m_scale.x = (float)w / ww;
+				rt->m_texture.m_scale.y = (float)h / hh;
+			}
 		}
 
 		if(!fb)
@@ -562,6 +573,8 @@ public:
 
 	void InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, const CRect& r)
 	{
+		bool found = false;
+
 		POSITION pos = m_tex.GetHeadPosition();
 
 		while(pos)
@@ -575,6 +588,8 @@ public:
 				if(BITBLTBUF.DBW == t->m_TEX0.TBW)
 				{
 					t->m_dirty.AddTail(GSDirtyRect(BITBLTBUF.DPSM, r));
+
+					found = true;
 				}
 				else
 				{
@@ -584,6 +599,8 @@ public:
 				}
 			}
 		}
+
+		if(found) return;
 
 		pos = m_rt.GetHeadPosition();
 
@@ -718,6 +735,8 @@ public:
 				}
 			}
 		}
+/*
+		// no good, ffx does a lot of readback after exiting menu, at 0x02f00 this wrongly finds rt 0x02100 (0,448 - 512,480)
 
 		GSRenderTarget* rt2 = NULL;
 		int ymin = INT_MAX;
@@ -754,6 +773,7 @@ public:
 		}
 
 		// TODO: ds
+*/
 	}
 
 	void IncAge()

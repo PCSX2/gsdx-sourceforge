@@ -142,6 +142,38 @@ bool GSDevice10::Create(HWND hWnd)
 
 	hr = m_dev->CreateBlendState(&bsd, &m_convert.bs);
 
+	// merge
+
+	memset(&bd, 0, sizeof(bd));
+
+    bd.ByteWidth = sizeof(MergeConstantBuffer);
+    bd.Usage = D3D10_USAGE_DEFAULT;
+    bd.BindFlags = D3D10_BIND_CONSTANT_BUFFER;
+    bd.CPUAccessFlags = 0;
+    bd.MiscFlags = 0;
+
+    hr = m_dev->CreateBuffer(&bd, NULL, &m_merge.cb);
+
+	for(int i = 0; i < countof(m_merge.ps); i++)
+	{
+		CStringA main;
+		main.Format("ps_main%d", i);
+		hr = CompileShader(IDR_MERGE10_FX, main, NULL, &m_merge.ps[i]);
+	}
+
+	memset(&bsd, 0, sizeof(bsd));
+
+	bsd.BlendEnable[0] = true;
+	bsd.BlendOp = D3D10_BLEND_OP_ADD;
+	bsd.SrcBlend = D3D10_BLEND_SRC_ALPHA;
+	bsd.DestBlend = D3D10_BLEND_INV_SRC_ALPHA;
+	bsd.BlendOpAlpha = D3D10_BLEND_OP_ADD;
+	bsd.SrcBlendAlpha = D3D10_BLEND_ONE;
+	bsd.DestBlendAlpha = D3D10_BLEND_ZERO;
+	bsd.RenderTargetWriteMask[0] = D3D10_COLOR_WRITE_ENABLE_ALL;
+
+	hr = m_dev->CreateBlendState(&bsd, &m_merge.bs);
+
 	// interlace
 
 	memset(&bd, 0, sizeof(bd));
@@ -203,12 +235,12 @@ bool GSDevice10::Create(HWND hWnd)
 	Reset(1, 1, true);
 
 	//
-
+/*
 	if(!m_mergefx.Create(this))
 	{
 		return false;
 	}
-
+*/
 	//
 
 	return true;
@@ -315,6 +347,11 @@ void GSDevice10::Draw(LPCTSTR str)
 	*/
 }
 
+void GSDevice10::ClearRenderTarget(Texture& t, const GSVector4& c)
+{
+	m_dev->ClearRenderTargetView(t, (const float*)&c);
+}
+
 void GSDevice10::ClearRenderTarget(Texture& t, DWORD c)
 {
 	float f[] = 
@@ -418,20 +455,21 @@ bool GSDevice10::CreateOffscreen(GSTexture10& t, int w, int h, int format)
 	return __super::CreateOffscreen(t, w, h, format ? format : DXGI_FORMAT_R8G8B8A8_UNORM);
 }
 
-void GSDevice10::DoMerge(GSTexture10* st, GSVector4* sr, GSTexture10& dt, bool en1, bool en2, bool slbg, bool mmod, GSVector4& c)
+void GSDevice10::DoMerge(GSTexture10* st, GSVector4* sr, GSVector4* dr, GSTexture10& dt, bool slbg, bool mmod, GSVector4& c)
 {
-	GSMergeFX10::PSSelector sel;
+	ClearRenderTarget(dt, c);
 
-	sel.en1 = en1;
-	sel.en2 = en2;
-	sel.slbg = slbg;
-	sel.mmod = mmod;
+	if(st[1] && !slbg)
+	{
+		StretchRect(st[1], sr[1], dt, dr[1], m_merge.ps[0], NULL, true);
+	}
 
-	GSMergeFX10::PSConstantBuffer cb;
+	if(st[0])
+	{
+		m_dev->UpdateSubresource(m_merge.cb, 0, NULL, &c, 0, 0);
 
-	cb.BGColor = c;
-
-	m_mergefx.Draw(st, sr, dt, sel, cb);
+		StretchRect(st[0], sr[0], dt, dr[0], m_merge.ps[mmod ? 1 : 0], m_merge.cb, m_merge.bs, true);
+	}
 }
 
 void GSDevice10::DoInterlace(GSTexture10& st, GSTexture10& dt, int shader, bool linear, float yoffset)
@@ -627,7 +665,7 @@ void GSDevice10::DrawPrimitive()
 
 void GSDevice10::StretchRect(GSTexture10& st, GSTexture10& dt, const GSVector4& dr, bool linear)
 {
-	StretchRect(st, GSVector4(0, 0, 1, 1), dt, dr, m_convert.ps[0], NULL, linear);
+	StretchRect(st, GSVector4(0, 0, 1, 1), dt, dr, linear);
 }
 
 void GSDevice10::StretchRect(GSTexture10& st, const GSVector4& sr, GSTexture10& dt, const GSVector4& dr, bool linear)
@@ -637,12 +675,17 @@ void GSDevice10::StretchRect(GSTexture10& st, const GSVector4& sr, GSTexture10& 
 
 void GSDevice10::StretchRect(GSTexture10& st, const GSVector4& sr, GSTexture10& dt, const GSVector4& dr, ID3D10PixelShader* ps, ID3D10Buffer* ps_cb, bool linear)
 {
+	StretchRect(st, sr, dt, dr, ps, ps_cb, m_convert.bs, linear);
+}
+
+void GSDevice10::StretchRect(GSTexture10& st, const GSVector4& sr, GSTexture10& dt, const GSVector4& dr, ID3D10PixelShader* ps, ID3D10Buffer* ps_cb, ID3D10BlendState* bs, bool linear)
+{
 	BeginScene();
 
 	// om
 
 	OMSetDepthStencilState(m_convert.dss, 0);
-	OMSetBlendState(m_convert.bs, 0);
+	OMSetBlendState(bs, 0);
 	OMSetRenderTargets(dt, NULL);
 
 	// ia
