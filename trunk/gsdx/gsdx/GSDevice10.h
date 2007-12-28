@@ -23,20 +23,6 @@
 
 #include "GSDevice.h"
 #include "GSTexture10.h"
-#include "GSMergeFX10.h"
-
-#pragma pack(push, 1)
-
-struct InterlaceConstantBuffer
-{
-	GSVector2 ZrH;
-	float hH;
-	float _pad[1];
-
-	struct InterlaceConstantBuffer() {memset(this, 0, sizeof(*this));}
-};
-
-#pragma pack(pop)
 
 class GSDevice10 : public GSDevice<GSTexture10>
 {
@@ -66,14 +52,13 @@ class GSDevice10 : public GSDevice<GSTexture10>
 	//
 
 	bool Create(int type, GSTexture10& t, int w, int h, int format);
-	void DoMerge(GSTexture10* st, GSVector4* sr, GSTexture10& dt, bool en1, bool en2, bool slbg, bool mmod, GSVector4& c);
+	void DoMerge(GSTexture10* st, GSVector4* sr, GSVector4* dr, GSTexture10& dt, bool slbg, bool mmod, GSVector4& c);
 	void DoInterlace(GSTexture10& st, GSTexture10& dt, int shader, bool linear, float yoffset = 0);
 
 private:
 	CComPtr<ID3D10Device> m_dev;
 	CComPtr<IDXGISwapChain> m_swapchain;
 	CComPtr<ID3DX10Font> m_font;
-	GSMergeFX10 m_mergefx;
 
 public: // TODO
 	CComPtr<ID3D10RasterizerState> m_rs;
@@ -89,6 +74,13 @@ public: // TODO
 		CComPtr<ID3D10DepthStencilState> dss;
 		CComPtr<ID3D10BlendState> bs;
 	} m_convert;
+
+	struct
+	{
+		CComPtr<ID3D10PixelShader> ps[2];
+		CComPtr<ID3D10Buffer> cb;
+		CComPtr<ID3D10BlendState> bs;
+	} m_merge;
 
 	struct
 	{
@@ -110,6 +102,7 @@ public:
 	void EndScene();
 	void Draw(LPCTSTR str);
 
+	void ClearRenderTarget(Texture& t, const GSVector4& c);
 	void ClearRenderTarget(Texture& t, DWORD c);
 	void ClearDepth(Texture& t, float c);
 	void ClearStencil(Texture& t, BYTE c);
@@ -144,6 +137,7 @@ public:
 	void StretchRect(GSTexture10& st, GSTexture10& dt, const GSVector4& dr, bool linear = true);
 	void StretchRect(GSTexture10& st, const GSVector4& sr, GSTexture10& dt, const GSVector4& dr, bool linear = true);
 	void StretchRect(GSTexture10& st, const GSVector4& sr, GSTexture10& dt, const GSVector4& dr, ID3D10PixelShader* ps, ID3D10Buffer* ps_cb, bool linear = true);
+	void StretchRect(GSTexture10& st, const GSVector4& sr, GSTexture10& dt, const GSVector4& dr, ID3D10PixelShader* ps, ID3D10Buffer* ps_cb, ID3D10BlendState* bs, bool linear = true);
 
 	HRESULT CompileShader(UINT id, LPCSTR entry, D3D10_SHADER_MACRO* macro, ID3D10VertexShader** vs, D3D10_INPUT_ELEMENT_DESC* layout, int count, ID3D10InputLayout** il);
 	HRESULT CompileShader(UINT id, LPCSTR entry, D3D10_SHADER_MACRO* macro, ID3D10GeometryShader** gs);

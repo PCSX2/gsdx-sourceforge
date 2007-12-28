@@ -96,6 +96,11 @@ void GSTextureCache10::GSRenderTargetHW10::Read(CRect r)
 		return;
 	}
 
+	if(!m_dirty.IsEmpty())
+	{
+		return;
+	}
+
 	TRACE(_T("GSRenderTarget::Read %d,%d - %d,%d (%08x)\n"), r.left, r.top, r.right, r.bottom, m_TEX0.TBP0);
 
 	// m_renderer->m_perfmon.Put(GSPerfMon::ReadRT, 1);
@@ -452,7 +457,7 @@ void GSTextureCache10::GSTextureHW10::Update()
 		return;
 	}
 
-	TRACE(_T("GSTexture::Update %d,%d - %d,%d (%08x)\n"), r.left, r.top, r.right, r.bottom, m_TEX0.TBP0);
+	//TRACE(_T("GSTexture::Update %d,%d - %d,%d (%08x)\n"), r.left, r.top, r.right, r.bottom, m_TEX0.TBP0);
 
 	static BYTE* buff = (BYTE*)::_aligned_malloc(1024 * 1024 * 4, 16);
 

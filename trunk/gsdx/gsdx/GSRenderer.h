@@ -99,54 +99,66 @@ protected:
 
 	bool Merge()
 	{
-		// TODO: 
-		// - the two readouts can have different destination rect (dmc1)
-		// - gsuser_e.pdf doesn't define how alpha blending should be done for the non-overlapping areas
+		CSize s = GetDeviceSize();
+
+		if(SMODE2->INT && SMODE2->FFMD) s.cy /= 2;
+
+		int baseline = INT_MAX;
+
+		for(int i = 0; i < 2; i++)
+		{
+			if(IsEnabled(i))
+			{
+				baseline = min(GetDisplayPos(i).y, baseline);
+			}
+		}
 
 		CSize fs(0, 0);
 		CSize ds(0, 0);
 
 		Texture st[2];
 		GSVector4 sr[2];
+		GSVector4 dr[2];
 
 		for(int i = 0; i < 2; i++)
 		{
 			if(IsEnabled(i) && GetOutput(i, st[i]))
 			{
-				CSize s = GetFrameSize(i);
-
-				s.cx = (int)(st[i].m_scale.x * s.cx);
-				s.cy = (int)(st[i].m_scale.y * s.cy);
-
-				ASSERT(fs.cx == 0 || fs.cx == s.cx);
-				ASSERT(fs.cy == 0 || fs.cy == s.cy || fs.cy + 1 == s.cy);
-
-				fs.cx = s.cx;
-				fs.cy = s.cy;
-
-				if(SMODE2->INT && SMODE2->FFMD) s.cy *= 2;
-
-				ASSERT(ds.cx == 0 || ds.cx == s.cx);
-				ASSERT(ds.cy == 0 || ds.cy == s.cy || ds.cy + 1 == s.cy);
-
-				ds.cx = s.cx;
-				ds.cy = s.cy;
-
 				CRect r = GetFrameRect(i);
+
+				if(r.Height() > s.cy) r.bottom = r.top + s.cy; // hmm
 
 				sr[i].x = st[i].m_scale.x * r.left / st[i].GetWidth();
 				sr[i].y = st[i].m_scale.y * r.top / st[i].GetHeight();
 				sr[i].z = st[i].m_scale.x * r.right / st[i].GetWidth();
 				sr[i].w = st[i].m_scale.y * r.bottom / st[i].GetHeight();
+
+				GSVector2 o;
+
+				o.x = 0;
+				o.y = st[i].m_scale.y * (GetDisplayPos(i).y - baseline);
+
+				if(SMODE2->INT && SMODE2->FFMD) o.y /= 2;
+
+				dr[i].x = o.x;
+				dr[i].y = o.y;
+				dr[i].z = o.x + st[i].m_scale.x * r.Width();
+				dr[i].w = o.y + st[i].m_scale.y * r.Height();
+
+				fs.cx = max(fs.cx, (int)(dr[i].z + 0.5f));
+				fs.cy = max(fs.cy, (int)(dr[i].w + 0.5f));
 			}
 		}
 
-		bool en1 = IsEnabled(0);
-		bool en2 = IsEnabled(1);
+		ds.cx = fs.cx;
+		ds.cy = fs.cy;
+
+		if(SMODE2->INT && SMODE2->FFMD) ds.cy *= 2;
+
 		bool slbg = PMODE->SLBG;
 		bool mmod = PMODE->MMOD;
 
-		if(en1 || en2)
+		if(st[0] || st[1])
 		{
 			GSVector4 c;
 
@@ -155,7 +167,7 @@ protected:
 			c.b = (float)BGCOLOR->B / 255;
 			c.a = (float)PMODE->ALP / 255;
 
-			m_dev.Merge(st, sr, fs, en1, en2, slbg, mmod, c);
+			m_dev.Merge(st, sr, dr, fs, slbg, mmod, c);
 
 			if(SMODE2->INT && m_interlace > 0)
 			{
@@ -212,7 +224,21 @@ public:
 	void VSync(int field)
 	{
 		GSPerfMonAutoTimer pmat(m_perfmon);
-
+/*
+		printf("* SMODE1:\n"
+			"\tCLKSEL=%d CMOD=%d EX=%d GCONT=%d\n"
+			"\tLC=%d NVCK=%d PCK2=%d PEHS=%d\n"
+			"\tPEVS=%d PHS=%d PRST=%d PVS=%d\n"
+			"\tRC=%d SINT=%d SLCK=%d SLCK2=%d\n"
+			"\tSPML=%d T1248=%d VCKSEL=%d VHP=%d\n"
+			"\tXPCK=%d\n", 
+			SMODE1->CLKSEL, SMODE1->CMOD, SMODE1->EX, SMODE1->GCONT, 
+			SMODE1->LC, SMODE1->NVCK, SMODE1->PCK2, SMODE1->PEHS, 
+			SMODE1->PEVS, SMODE1->PHS, SMODE1->PRST, SMODE1->PVS, 
+			SMODE1->RC, SMODE1->SINT, SMODE1->SLCK, SMODE1->SLCK2, 
+			SMODE1->SPML, SMODE1->T1248, SMODE1->VCKSEL, SMODE1->VHP, 
+			SMODE1->XPCK);
+*/
 		m_field = !!field;
 
 		Flush();
@@ -223,7 +249,7 @@ public:
 
 		if(!Merge()) return;
 
-// s_dump = m_perfmon.GetFrame() >= 5086;
+// s_dump = m_perfmon.GetFrame() >= 5002;
 
 		// osd 
 
@@ -343,6 +369,7 @@ protected:
 	{
 		if(m_count > 0)
 		{
+			/*
 			TRACE(_T("[%d] Draw f %05x (%d) z %05x (%d %d %d %d) t %05x %05x (%d)\n"), 
 				  (int)m_perfmon.GetFrame(), 
 				  (int)m_context->FRAME.Block(), 
@@ -355,6 +382,7 @@ protected:
 				  PRIM->TME ? (int)m_context->TEX0.TBP0 : 0xfffff, 
 				  PRIM->TME && m_context->TEX0.PSM > PSM_PSMCT16S ? (int)m_context->TEX0.CBP : 0xfffff, 
 				  PRIM->TME ? (int)m_context->TEX0.PSM : 0xff);
+			*/
 
 			Draw();
 

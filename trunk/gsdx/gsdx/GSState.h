@@ -171,6 +171,7 @@ public:
 	CSize GetFramePos();
 	CSize GetFrameSize();
 	CRect GetFrameRect();
+	CSize GetDeviceSize();
 	bool IsEnabled(int i);
 	int GetFPS();
 

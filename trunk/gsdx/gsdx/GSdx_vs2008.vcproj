@@ -570,14 +570,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\GSMergeFX10.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\GSMergeFX9.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\GSPerfMon.cpp"
 				>
 			</File>
@@ -919,14 +911,6 @@
 			</File>
 			<File
 				RelativePath=".\GSLocalMemory.h"
-				>
-			</File>
-			<File
-				RelativePath=".\GSMergeFX10.h"
-				>
-			</File>
-			<File
-				RelativePath=".\GSMergeFX9.h"
 				>
 			</File>
 			<File

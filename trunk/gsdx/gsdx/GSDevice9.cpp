@@ -128,6 +128,8 @@ bool GSDevice9::Create(HWND hWnd)
 	m_d3dcaps.PixelShaderVersion = min(psver, m_d3dcaps.PixelShaderVersion);
 	m_d3dcaps.VertexShaderVersion = m_d3dcaps.PixelShaderVersion & ~0x10000;
 
+	// convert
+
 	static const D3DVERTEXELEMENT9 il_convert[] =
 	{
 		{0, 0,  D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
@@ -142,13 +144,6 @@ bool GSDevice9::Create(HWND hWnd)
 		CStringA main;
 		main.Format("ps_main%d", i);
 		CompileShader(IDR_CONVERT9_FX, main, NULL, &m_convert.ps[i]);
-	}
-
-	for(int i = 0; i < countof(m_interlace.ps); i++)
-	{
-		CStringA main;
-		main.Format("ps_main%d", i);
-		CompileShader(IDR_INTERLACE9_FX, main, NULL, &m_interlace.ps[i]);
 	}
 
 	m_convert.dss.DepthEnable = false;
@@ -171,10 +166,34 @@ bool GSDevice9::Create(HWND hWnd)
 	m_convert.pt.AddressU = D3DTADDRESS_CLAMP;
 	m_convert.pt.AddressV = D3DTADDRESS_CLAMP;
 
-	if(!m_mergefx.Create(this))
+	// merge
+
+	for(int i = 0; i < countof(m_merge.ps); i++)
 	{
-		return false;
+		CStringA main;
+		main.Format("ps_main%d", i);
+		CompileShader(IDR_MERGE9_FX, main, NULL, &m_merge.ps[i]);
 	}
+
+	m_merge.bs.BlendEnable = true;
+	m_merge.bs.BlendOp = D3DBLENDOP_ADD;
+	m_merge.bs.SrcBlend = D3DBLEND_SRCALPHA;
+	m_merge.bs.DestBlend = D3DBLEND_INVSRCALPHA;
+	m_merge.bs.BlendOpAlpha = D3DBLENDOP_ADD;
+	m_merge.bs.SrcBlendAlpha = D3DBLEND_ONE;
+	m_merge.bs.DestBlendAlpha = D3DBLEND_ZERO;
+	m_merge.bs.RenderTargetWriteMask = D3DCOLORWRITEENABLE_RGBA;
+
+	// interlace
+
+	for(int i = 0; i < countof(m_interlace.ps); i++)
+	{
+		CStringA main;
+		main.Format("ps_main%d", i);
+		CompileShader(IDR_INTERLACE9_FX, main, NULL, &m_interlace.ps[i]);
+	}
+
+	//
 
 	return true;
 }
@@ -420,6 +439,11 @@ void GSDevice9::Draw(LPCTSTR str)
 	*/
 }
 
+void GSDevice9::ClearRenderTarget(Texture& t, const GSVector4& c)
+{
+	ClearRenderTarget(t, D3DCOLOR_RGBA((BYTE)(c.r * 255 + 0.5f), (BYTE)(c.g * 255 + 0.5f), (BYTE)(c.b * 255 + 0.5f), (BYTE)(c.a * 255 + 0.5f)));
+}
+
 void GSDevice9::ClearRenderTarget(Texture& t, DWORD c)
 {
 	CComPtr<IDirect3DSurface9> surface;
@@ -518,20 +542,23 @@ bool GSDevice9::CreateOffscreen(GSTexture9& t, int w, int h, int format)
 	return __super::CreateOffscreen(t, w, h, format ? format : D3DFMT_A8R8G8B8);
 }
 
-void GSDevice9::DoMerge(GSTexture9* st, GSVector4* sr, GSTexture9& dt, bool en1, bool en2, bool slbg, bool mmod, GSVector4& c)
+void GSDevice9::DoMerge(GSTexture9* st, GSVector4* sr, GSVector4* dr, GSTexture9& dt, bool slbg, bool mmod, GSVector4& c)
 {
-	GSMergeFX9::PSSelector sel;
+	ClearRenderTarget(dt, c);
 
-	sel.en1 = en1;
-	sel.en2 = en2;
-	sel.slbg = slbg;
-	sel.mmod = mmod;
+	if(st[1] && !slbg)
+	{
+		StretchRect(st[1], sr[1], dt, dr[1], m_merge.ps[0], NULL, true);
+	}
 
-	GSMergeFX9::PSConstantBuffer cb;
+	if(st[0])
+	{
+		MergeConstantBuffer cb;
 
-	cb.BGColor = c;
+		cb.BGColor = c;
 
-	m_mergefx.Draw(st, sr, dt, sel, cb);
+		StretchRect(st[0], sr[0], dt, dr[0], m_merge.ps[mmod ? 1 : 0], (const float*)&cb, 1, &m_merge.bs, true);
+	}
 }
 
 void GSDevice9::DoInterlace(GSTexture9& st, GSTexture9& dt, int shader, bool linear, float yoffset)
@@ -539,9 +566,12 @@ void GSDevice9::DoInterlace(GSTexture9& st, GSTexture9& dt, int shader, bool lin
 	GSVector4 sr(0, 0, 1, 1);
 	GSVector4 dr(0, yoffset, (float)dt.GetWidth(), (float)dt.GetHeight() + yoffset);
 
-	const float cb[] = {0, 1.0f / dt.GetHeight(), 0, (float)dt.GetHeight() / 2};
+	InterlaceConstantBuffer cb;
 
-	StretchRect(st, sr, dt, dr, m_interlace.ps[shader], cb, 1, linear);
+	cb.ZrH = GSVector2(0, 1.0f / dt.GetHeight());
+	cb.hH = (float)dt.GetHeight() / 2;
+
+	StretchRect(st, sr, dt, dr, m_interlace.ps[shader], (const float*)&cb, 1, linear);
 }
 /*
 void GSDevice9::IASetVertexBuffer(IDirect3DVertexBuffer9* vb, UINT count, const void* vertices, UINT stride)
@@ -830,7 +860,7 @@ bool GSDevice9::SaveToFileD24S8(IDirect3DSurface9* ds, LPCTSTR fn)
 
 void GSDevice9::StretchRect(GSTexture9& st, GSTexture9& dt, const GSVector4& dr, bool linear)
 {
-	StretchRect(st, GSVector4(0, 0, 1, 1), dt, dr, m_convert.ps[0], NULL, 0, linear);
+	StretchRect(st, GSVector4(0, 0, 1, 1), dt, dr, linear);
 }
 
 void GSDevice9::StretchRect(GSTexture9& st, const GSVector4& sr, GSTexture9& dt, const GSVector4& dr, bool linear)
@@ -840,12 +870,17 @@ void GSDevice9::StretchRect(GSTexture9& st, const GSVector4& sr, GSTexture9& dt,
 
 void GSDevice9::StretchRect(GSTexture9& st, const GSVector4& sr, GSTexture9& dt, const GSVector4& dr, IDirect3DPixelShader9* ps, const float* ps_cb, int ps_cb_len, bool linear)
 {
+	StretchRect(st, sr, dt, dr, ps, ps_cb, ps_cb_len, &m_convert.bs, linear);
+}
+
+void GSDevice9::StretchRect(GSTexture9& st, const GSVector4& sr, GSTexture9& dt, const GSVector4& dr, IDirect3DPixelShader9* ps, const float* ps_cb, int ps_cb_len, Direct3DBlendState9* bs, bool linear)
+{
 	BeginScene();
 
 	// om
 
 	OMSetDepthStencilState(&m_convert.dss, 0);
-	OMSetBlendState(&m_convert.bs, 0);
+	OMSetBlendState(bs, 0);
 	OMSetRenderTargets(dt, NULL);
 
 	// ia
