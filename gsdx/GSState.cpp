@@ -943,14 +943,12 @@ void GSState::FlushWrite(BYTE* mem, int len)
 
 void GSState::Write(BYTE* mem, int len)
 {
+	/*
 	TRACE(_T("Write len=%d DBP=%05x DPSM=%d DSAX=%d DSAY=%d RRW=%d RRH=%d\n"), 
 		  len, (int)m_env.BITBLTBUF.DBP, (int)m_env.BITBLTBUF.DPSM, 
 		  (int)m_env.TRXPOS.DSAX, (int)m_env.TRXPOS.DSAY,
 		  (int)m_env.TRXREG.RRW, (int)m_env.TRXREG.RRH);
-	/*
 	*/
-
-	BYTE* ptr = &m_mem.GetVM()[m_mem.pixelAddress4(0, 0, 0x02f80, 4)>>1];
 
 	if(len == 0) return;
 
@@ -1108,6 +1106,9 @@ void GSState::Move()
 	for(int y = 0; y < h; y++, sy += yinc, dy += yinc, sx -= xinc*w, dx -= xinc*w)
 		for(int x = 0; x < w; x++, sx += xinc, dx += xinc)
 			(m_mem.*wp)(dx, dy, (m_mem.*rp)(sx, sy, m_env.BITBLTBUF.SBP, m_env.BITBLTBUF.SBW), m_env.BITBLTBUF.DBP, m_env.BITBLTBUF.DBW);
+
+	m_mem.SaveBMP(_T("c:\\1.bmp"), m_env.BITBLTBUF.SBP, m_env.BITBLTBUF.SBW, m_env.BITBLTBUF.SPSM, 512, 32);
+	m_mem.SaveBMP(_T("c:\\2.bmp"), m_env.BITBLTBUF.DBP, m_env.BITBLTBUF.DBW, m_env.BITBLTBUF.DPSM, 512, 32);
 }
 
 void GSState::ReadFIFO(BYTE* mem, int size)
@@ -1144,7 +1145,7 @@ void GSState::Transfer(BYTE* mem, int size, int index)
 				m_path3hack = 1;
 			}
 
-			if(path.tag.PRE)
+			if(path.tag.PRE) // TODO: this should be ignored in image mode 
 			{
 				GIFReg r;
 				r.i64 = path.tag.PRIM;
