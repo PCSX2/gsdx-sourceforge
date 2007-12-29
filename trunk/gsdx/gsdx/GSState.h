@@ -153,6 +153,25 @@ public:
 	int m_options;
 	int m_frameskip;
 
+	CString m_dumpfn;
+	FILE* m_dumpfp;
+
+	/* 
+	
+	Dump file format:
+	- [crc/4] [state size/4] [state data/size] [PMODE/0x2000] [id/1] [data/?] .. [id/1] [data/?]
+
+	Transfer data (id == 0)
+	- [0/1] [path index/1] [size/4] [data/size]
+	
+	VSync data (id == 1)
+	- [1/1] [field/1]
+
+	ReadFIFO2 data (id == 2)
+	- [2/1] [size/?]
+
+	*/
+
 public:
 	GSState(BYTE* base, bool mt, void (*irq)(), int nloophack);
 	virtual ~GSState();

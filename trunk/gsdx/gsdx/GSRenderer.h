@@ -259,6 +259,8 @@ public:
 
 		ProcessWindowMessages();
 
+		Dump();
+
 		if(!Merge()) return;
 
 // s_dump = m_perfmon.GetFrame() >= 5001;
@@ -322,11 +324,54 @@ public:
 		m_dev.Present(arx, ary);
 	}
 
+	void Dump()
+	{
+		if(m_dumpfp == NULL)
+		{
+			if(m_field == 0 && !m_dumpfn.IsEmpty())
+			{
+				m_dumpfp = _tfopen(m_dumpfn, _T("wb"));
+
+				freezeData fd;
+				fd.size = 0;
+				fd.data = NULL;
+				Freeze(&fd, true);
+				fd.data = new BYTE[fd.size];
+				Freeze(&fd, false);
+
+				fwrite(&m_crc, 4, 1, m_dumpfp);
+				fwrite(&fd.size, 4, 1, m_dumpfp);
+				fwrite(fd.data, fd.size, 1, m_dumpfp);
+				fwrite(PMODE, 0x2000, 1, m_dumpfp);
+
+				delete [] fd.data;
+			}
+		}
+		else
+		{
+			fputc(1, m_dumpfp);
+			fputc(m_field, m_dumpfp);
+
+			if(m_field == 0)
+			{
+				fclose(m_dumpfp);
+				m_dumpfp = NULL;
+				m_dumpfn.Empty();
+			}
+		}
+	}
+
 	bool MakeSnapshot(LPCTSTR path)
 	{
 		CString fn;
-		fn.Format(_T("%s_%s.bmp"), path, CTime::GetCurrentTime().Format(_T("%Y%m%d%H%M%S")));
-		return m_dev.SaveCurrent(fn);
+		fn.Format(_T("%s_%s"), path, CTime::GetCurrentTime().Format(_T("%Y%m%d%H%M%S")));
+
+		if((::GetAsyncKeyState(VK_SHIFT) & 0x80000000) && m_dumpfn.IsEmpty())
+		{
+			m_dumpfn = fn + _T(".gs");
+		}
+
+		return m_dev.SaveCurrent(fn + _T(".bmp"));
 	}
 
 	virtual void MinMaxUV(int w, int h, CRect& r) {r = CRect(0, 0, w, h);}
