@@ -263,11 +263,30 @@ CRect GSState::GetFrameRect()
 	return GetFrameRect(IsEnabled(1) ? 1 : 0);
 }
 
-CSize GSState::GetDeviceSize()
+CSize GSState::GetDeviceSize(int i)
 {
 	// TODO: other params of SMODE1 should affect the true device display size
 
-	return CSize(GetDisplaySize().cx, (SMODE1->CMOD & 1) ? 512 : 448);
+	// TODO2: pal games at 60Hz
+
+	CSize s = GetDisplaySize(i);
+
+	if(s.cy == 2*416 || s.cy == 2*448 || s.cy == 2*512)
+	{
+		s.cy /= 2;
+	}
+	else
+	{
+		s.cy = (SMODE1->CMOD & 1) ? 512 : 448;
+	}
+
+	return s;
+
+}
+
+CSize GSState::GetDeviceSize()
+{
+	return GetDeviceSize(IsEnabled(1) ? 1 : 0);
 }
 
 bool GSState::IsEnabled(int i)
@@ -1106,9 +1125,6 @@ void GSState::Move()
 	for(int y = 0; y < h; y++, sy += yinc, dy += yinc, sx -= xinc*w, dx -= xinc*w)
 		for(int x = 0; x < w; x++, sx += xinc, dx += xinc)
 			(m_mem.*wp)(dx, dy, (m_mem.*rp)(sx, sy, m_env.BITBLTBUF.SBP, m_env.BITBLTBUF.SBW), m_env.BITBLTBUF.DBP, m_env.BITBLTBUF.DBW);
-
-	m_mem.SaveBMP(_T("c:\\1.bmp"), m_env.BITBLTBUF.SBP, m_env.BITBLTBUF.SBW, m_env.BITBLTBUF.SPSM, 512, 32);
-	m_mem.SaveBMP(_T("c:\\2.bmp"), m_env.BITBLTBUF.DBP, m_env.BITBLTBUF.DBW, m_env.BITBLTBUF.DPSM, 512, 32);
 }
 
 void GSState::ReadFIFO(BYTE* mem, int size)
@@ -1577,6 +1593,19 @@ bool GSState::DetectBadFrame(int& skip)
 			if(TME && FBP == 0x01c00 && FPSM == PSM_PSMCT32 && TPSM == PSM_PSMT8H)
 			{
 				skip = 24;
+			}
+		}
+
+		break;
+
+	case 0xC164550A: // wild arms 5 undub
+	case 0xC1640D2C: // wild arms 5 ntsc/us
+
+		if(skip == 0)
+		{
+			if(TME && FBP == 0x03100 && FPSM == PSM_PSMZ32 && TBP0 == 0x01c00 && TPSM == PSM_PSMZ32)
+			{
+				skip = 9;
 			}
 		}
 

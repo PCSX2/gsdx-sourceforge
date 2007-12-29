@@ -600,8 +600,6 @@ public:
 			}
 		}
 
-		if(found) return;
-
 		pos = m_rt.GetHeadPosition();
 
 		while(pos)
@@ -612,14 +610,7 @@ public:
 
 			if(HasSharedBits(BITBLTBUF.DBP, BITBLTBUF.DPSM, rt->m_TEX0.TBP0, rt->m_TEX0.PSM))
 			{
-				if(BITBLTBUF.DPSM == PSM_PSMCT32 
-				|| BITBLTBUF.DPSM == PSM_PSMCT24 
-				|| BITBLTBUF.DPSM == PSM_PSMCT16 
-				|| BITBLTBUF.DPSM == PSM_PSMCT16S
-				|| BITBLTBUF.DPSM == PSM_PSMZ32 
-				|| BITBLTBUF.DPSM == PSM_PSMZ24 
-				|| BITBLTBUF.DPSM == PSM_PSMZ16 
-				|| BITBLTBUF.DPSM == PSM_PSMZ16S)
+				if(!found && HasCompatibleBits(BITBLTBUF.DPSM, rt->m_TEX0.PSM))
 				{
 					rt->m_dirty.AddTail(GSDirtyRect(BITBLTBUF.DPSM, r));
 					rt->m_TEX0.TBW = BITBLTBUF.DBW;
@@ -627,9 +618,7 @@ public:
 				else
 				{
 					m_rt.RemoveAt(cur);
-
 					delete rt;
-
 					continue;
 				}
 			}
@@ -666,14 +655,7 @@ public:
 
 			if(HasSharedBits(BITBLTBUF.DBP, BITBLTBUF.DPSM, ds->m_TEX0.TBP0, ds->m_TEX0.PSM))
 			{
-				if(BITBLTBUF.DPSM == PSM_PSMCT32 
-				|| BITBLTBUF.DPSM == PSM_PSMCT24 
-				|| BITBLTBUF.DPSM == PSM_PSMCT16 
-				|| BITBLTBUF.DPSM == PSM_PSMCT16S
-				|| BITBLTBUF.DPSM == PSM_PSMZ32 
-				|| BITBLTBUF.DPSM == PSM_PSMZ24 
-				|| BITBLTBUF.DPSM == PSM_PSMZ16 
-				|| BITBLTBUF.DPSM == PSM_PSMZ16S)
+				if(!found && HasCompatibleBits(BITBLTBUF.DPSM, ds->m_TEX0.PSM))
 				{
 					ds->m_dirty.AddTail(GSDirtyRect(BITBLTBUF.DPSM, r));
 					ds->m_TEX0.TBW = BITBLTBUF.DBW;
@@ -681,9 +663,7 @@ public:
 				else
 				{
 					m_ds.RemoveAt(cur);
-
 					delete ds;
-
 					continue;
 				}
 			}
