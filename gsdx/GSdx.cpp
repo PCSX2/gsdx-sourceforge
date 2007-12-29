@@ -132,7 +132,7 @@ EXPORT_C_(UINT32) PS2EgetLibVersion2(UINT32 type)
 {
 	const UINT32 revision = 0;
 	const UINT32 build = 1;
-	const UINT32 minor = 2;
+	const UINT32 minor = 4;
 
 	return (build << 0) | (revision << 8) | (PS2E_GS_VERSION << 16) | (minor << 24);
 }
@@ -339,4 +339,88 @@ EXPORT_C GSgetLastTag(UINT32* tag)
 EXPORT_C GSsetFrameSkip(int frameskip)
 {
 	s_gs->SetFrameSkip(frameskip);
+}
+
+EXPORT_C GSReplay(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow)
+{
+	if(FILE* fp = fopen(lpszCmdLine, "rb"))
+	{
+		GSinit();
+
+		BYTE regs[0x2000];
+		GSsetBaseMem(regs);
+
+		HWND hWnd = NULL;
+		GSopen(&hWnd, _T(""), true);
+
+		int crc;
+		fread(&crc, 4, 1, fp);
+		GSsetGameCRC(crc, 0);
+
+		freezeData fd;
+		fread(&fd.size, 4, 1, fp);
+		fd.data = new BYTE[fd.size];
+		fread(fd.data, fd.size, 1, fp);
+		GSfreeze(FREEZE_LOAD, &fd);
+		delete [] fd.data;
+
+		fread(regs, 0x2000, 1, fp);
+
+		long start = ftell(fp);
+
+		int index, size, addr;
+		BYTE* buff;
+
+		while(::IsWindowVisible(hWnd))
+		{
+			switch(fgetc(fp))
+			{
+			case EOF:
+				fseek(fp, start, 0);
+				break;
+			case 0:
+				index = fgetc(fp);
+				fread(&size, 4, 1, fp);
+				switch(index)
+				{
+				case 0:
+					buff = new BYTE[0x4000];
+					addr = 0x4000 - size;
+					fread(buff + addr, size, 1, fp);
+					GSgifTransfer1(buff, addr);
+					delete [] buff;
+					break;
+				case 1:
+					buff = new BYTE[size];
+					fread(buff, size, 1, fp);
+					GSgifTransfer2(buff, size / 16);
+					delete [] buff;
+					break;
+				case 2:
+					buff = new BYTE[size];
+					fread(buff, size, 1, fp);
+					GSgifTransfer3(buff, size / 16);
+					delete [] buff;
+					break;
+				}
+				break;
+			case 1:
+				GSvsync(fgetc(fp));
+				break;
+			case 2:
+				fread(&size, 4, 1, fp);
+				buff = new BYTE[size];
+				GSreadFIFO2(buff, size / 16);
+				delete [] buff;
+			default:
+				return;
+			}
+		}
+
+		GSclose();
+
+		GSshutdown();
+
+		fclose(fp);
+	}
 }

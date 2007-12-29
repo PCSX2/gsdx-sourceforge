@@ -390,26 +390,6 @@ public:
 		return (m_vm32[addr] >> 28) & 0x0f;
 	}
 
-	__forceinline DWORD readPixel32Z(DWORD addr) 
-	{
-		return m_vm32[addr];
-	}
-
-	__forceinline DWORD readPixel24Z(DWORD addr) 
-	{
-		return m_vm32[addr] & 0x00ffffff;
-	}
-
-	__forceinline DWORD readPixel16Z(DWORD addr) 
-	{
-		return (DWORD)m_vm16[addr];
-	}
-
-	__forceinline DWORD readPixel16SZ(DWORD addr) 
-	{
-		return (DWORD)m_vm16[addr];
-	}
-
 	__forceinline DWORD readPixel32(int x, int y, DWORD bp, DWORD bw)
 	{
 		return readPixel32(pixelAddress32(x, y, bp, bw));
@@ -457,22 +437,22 @@ public:
 
 	__forceinline DWORD readPixel32Z(int x, int y, DWORD bp, DWORD bw)
 	{
-		return readPixel32Z(pixelAddress32Z(x, y, bp, bw));
+		return readPixel32(pixelAddress32Z(x, y, bp, bw));
 	}
 
 	__forceinline DWORD readPixel24Z(int x, int y, DWORD bp, DWORD bw)
 	{
-		return readPixel24Z(pixelAddress32Z(x, y, bp, bw));
+		return readPixel24(pixelAddress32Z(x, y, bp, bw));
 	}
 
 	__forceinline DWORD readPixel16Z(int x, int y, DWORD bp, DWORD bw)
 	{
-		return readPixel16Z(pixelAddress16Z(x, y, bp, bw));
+		return readPixel16(pixelAddress16Z(x, y, bp, bw));
 	}
 
 	__forceinline DWORD readPixel16SZ(int x, int y, DWORD bp, DWORD bw)
 	{
-		return readPixel16SZ(pixelAddress16SZ(x, y, bp, bw));
+		return readPixel16S(pixelAddress16SZ(x, y, bp, bw));
 	}
 
 	__forceinline void writePixel32(DWORD addr, DWORD c) 
@@ -519,26 +499,6 @@ public:
 	__forceinline void writePixel4HH(DWORD addr, DWORD c)
 	{
 		m_vm32[addr] = (m_vm32[addr] & 0x0fffffff) | ((c & 0x0f) << 28);
-	}
-
-	__forceinline void writePixel32Z(DWORD addr, DWORD c)
-	{
-		m_vm32[addr] = c;
-	}
-
-	__forceinline void writePixel24Z(DWORD addr, DWORD c)
-	{
-		m_vm32[addr] = (m_vm32[addr] & 0xff000000) | (c & 0x00ffffff);
-	}
-
-	__forceinline void writePixel16Z(DWORD addr, DWORD c)
-	{
-		m_vm16[addr] = (WORD)c;
-	}
-
-	__forceinline void writePixel16SZ(DWORD addr, DWORD c)
-	{
-		m_vm16[addr] = (WORD)c;
 	}
 
 	__forceinline void writeFrame16(DWORD addr, DWORD c) 
@@ -598,22 +558,22 @@ public:
 
 	__forceinline void writePixel32Z(int x, int y, DWORD c, DWORD bp, DWORD bw)
 	{
-		writePixel32Z(pixelAddress32Z(x, y, bp, bw), c);
+		writePixel32(pixelAddress32Z(x, y, bp, bw), c);
 	}
 
 	__forceinline void writePixel24Z(int x, int y, DWORD c, DWORD bp, DWORD bw)
 	{
-		writePixel24Z(pixelAddress32Z(x, y, bp, bw), c);
+		writePixel24(pixelAddress32Z(x, y, bp, bw), c);
 	}
 
 	__forceinline void writePixel16Z(int x, int y, DWORD c, DWORD bp, DWORD bw)
 	{
-		writePixel16Z(pixelAddress16Z(x, y, bp, bw), c);
+		writePixel16(pixelAddress16Z(x, y, bp, bw), c);
 	}
 
 	__forceinline void writePixel16SZ(int x, int y, DWORD c, DWORD bp, DWORD bw)
 	{
-		writePixel16SZ(pixelAddress16SZ(x, y, bp, bw), c);
+		writePixel16S(pixelAddress16SZ(x, y, bp, bw), c);
 	}
 
 	__forceinline void writeFrame16(int x, int y, DWORD c, DWORD bp, DWORD bw)
@@ -624,6 +584,16 @@ public:
 	__forceinline void writeFrame16S(int x, int y, DWORD c, DWORD bp, DWORD bw)
 	{
 		writeFrame16S(pixelAddress16S(x, y, bp, bw), c);
+	}
+
+	__forceinline void writeFrame16Z(int x, int y, DWORD c, DWORD bp, DWORD bw)
+	{
+		writeFrame16(pixelAddress16Z(x, y, bp, bw), c);
+	}
+
+	__forceinline void writeFrame16SZ(int x, int y, DWORD c, DWORD bp, DWORD bw)
+	{
+		writeFrame16S(pixelAddress16SZ(x, y, bp, bw), c);
 	}
 
 	__forceinline DWORD readTexel32(DWORD addr, GIFRegTEXA& TEXA) 
@@ -796,10 +766,10 @@ public:
 		case PSM_PSMT8H: return readPixel8H(addr);
 		case PSM_PSMT4HL: return readPixel4HL(addr);
 		case PSM_PSMT4HH: return readPixel4HH(addr);
-		case PSM_PSMZ32: return readPixel32Z(addr);
-		case PSM_PSMZ24: return readPixel24Z(addr);
-		case PSM_PSMZ16: return readPixel16Z(addr);
-		case PSM_PSMZ16S: return readPixel16SZ(addr);
+		case PSM_PSMZ32: return readPixel32(addr);
+		case PSM_PSMZ24: return readPixel24(addr);
+		case PSM_PSMZ16: return readPixel16(addr);
+		case PSM_PSMZ16S: return readPixel16S(addr);
 		default: ASSERT(0); return readPixel32(addr);
 		}
 	}
@@ -817,6 +787,10 @@ public:
 		case PSM_PSMT8H: return readTexel8H(addr, TEXA);
 		case PSM_PSMT4HL: return readTexel4HL(addr, TEXA);
 		case PSM_PSMT4HH: return readTexel4HH(addr, TEXA);
+		case PSM_PSMZ32: return readTexel32(addr, TEXA);
+		case PSM_PSMZ24: return readTexel24(addr, TEXA);
+		case PSM_PSMZ16: return readTexel16(addr, TEXA);
+		case PSM_PSMZ16S: return readTexel16S(addr, TEXA);
 		default: ASSERT(0); return readTexel32(addr, TEXA);
 		}
 	}
@@ -834,6 +808,10 @@ public:
 		case PSM_PSMT8H: return readTexel8H(x, y, TEX0, TEXA);
 		case PSM_PSMT4HL: return readTexel4HL(x, y, TEX0, TEXA);
 		case PSM_PSMT4HH: return readTexel4HH(x, y, TEX0, TEXA);
+		case PSM_PSMZ32: return readTexel32Z(x, y, TEX0, TEXA);
+		case PSM_PSMZ24: return readTexel24Z(x, y, TEX0, TEXA);
+		case PSM_PSMZ16: return readTexel16Z(x, y, TEX0, TEXA);
+		case PSM_PSMZ16S: return readTexel16SZ(x, y, TEX0, TEXA);
 		default: ASSERT(0); return readTexel32(x, y, TEX0, TEXA);
 		}
 	}
@@ -851,10 +829,10 @@ public:
 		case PSM_PSMT8H: writePixel8H(addr, c); break;
 		case PSM_PSMT4HL: writePixel4HL(addr, c); break;
 		case PSM_PSMT4HH: writePixel4HH(addr, c); break;
-		case PSM_PSMZ32: writePixel32Z(addr, c); break;
-		case PSM_PSMZ24: writePixel24Z(addr, c); break;
-		case PSM_PSMZ16: writePixel16Z(addr, c); break;
-		case PSM_PSMZ16S: writePixel16SZ(addr, c); break;
+		case PSM_PSMZ32: writePixel32(addr, c); break;
+		case PSM_PSMZ24: writePixel24(addr, c); break;
+		case PSM_PSMZ16: writePixel16(addr, c); break;
+		case PSM_PSMZ16S: writePixel16S(addr, c); break;
 		default: ASSERT(0); writePixel32(addr, c); break;
 		}
 	}
@@ -867,6 +845,10 @@ public:
 		case PSM_PSMCT24: writePixel24(addr, c); break; 
 		case PSM_PSMCT16: writeFrame16(addr, c); break;
 		case PSM_PSMCT16S: writeFrame16S(addr, c); break;
+		case PSM_PSMZ32: writePixel32(addr, c); break; 
+		case PSM_PSMZ24: writePixel24(addr, c); break; 
+		case PSM_PSMZ16: writeFrame16(addr, c); break;
+		case PSM_PSMZ16S: writeFrame16S(addr, c); break;
 		default: ASSERT(0); writePixel32(addr, c); break;
 		}
 	}

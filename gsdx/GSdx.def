@@ -30,4 +30,4 @@ EXPORTS
 	GSirqCallback
 	GSsetGameCRC
 	GSsetFrameSkip
-	; GSReplay
+	GSReplay

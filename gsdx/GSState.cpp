@@ -34,6 +34,7 @@ GSState::GSState(BYTE* base, bool mt, void (*irq)(), int nloophack)
 	, m_q(1.0f)
 	, m_version(4)
 	, m_vmsize(4 * 1024 * 1024)
+	, m_dumpfp(NULL)
 {
 	m_sssize = sizeof(m_version) + sizeof(m_env) + sizeof(m_v) + sizeof(m_x) + sizeof(m_y) + m_vmsize + sizeof(m_path) + sizeof(m_q);
 
@@ -1133,12 +1134,22 @@ void GSState::ReadFIFO(BYTE* mem, int size)
 
 	Flush();
 
-	Read(mem, size * 16);
+	size *= 16;
+
+	Read(mem, size);
+
+	if(m_dumpfp && size > 0)
+	{
+		fputc(2, m_dumpfp);
+		fwrite(&size, 4, 1, m_dumpfp);
+	}
 }
 
 void GSState::Transfer(BYTE* mem, int size, int index)
 {
 	GSPerfMonAutoTimer pmat(m_perfmon);
+
+	BYTE* start = mem;
 
 	GIFPath& path = m_path[index];
 
@@ -1278,6 +1289,16 @@ void GSState::Transfer(BYTE* mem, int size, int index)
 
 			TRACE(_T("path1 hack\n"));
 		}
+	}
+
+	size = mem - start;
+
+	if(m_dumpfp && size > 0)
+	{
+		fputc(0, m_dumpfp);
+		fputc(index, m_dumpfp);
+		fwrite(&size, 4, 1, m_dumpfp);
+		fwrite(start, size, 1, m_dumpfp);
 	}
 }
 
