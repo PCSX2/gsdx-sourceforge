@@ -33,11 +33,14 @@ protected:
 	int m_width;
 	int m_height;
 	int m_skip;
+	bool m_reset;
 
 	void Reset() 
 	{
 		// TODO: GSreset can come from the main thread too => crash
 		// m_tc->RemoveAll();
+
+		m_reset = true;
 
 		__super::Reset();
 	}
@@ -345,6 +348,13 @@ protected:
 		m_tc->IncAge();
 
 		m_skip = 0;
+
+		if(m_reset)
+		{
+			m_tc->RemoveAll();
+
+			m_reset = false;
+		}
 	}
 
 	void ResetDevice() 
@@ -476,6 +486,7 @@ public:
 		, m_width(1024)
 		, m_height(1024)
 		, m_skip(0)
+		, m_reset(false)
 	{
 	}
 

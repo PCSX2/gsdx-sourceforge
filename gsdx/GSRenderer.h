@@ -99,10 +99,6 @@ protected:
 
 	bool Merge()
 	{
-		CSize s = GetDeviceSize();
-
-		if(SMODE2->INT && SMODE2->FFMD) s.cy /= 2;
-
 		int baseline = INT_MAX;
 
 		for(int i = 0; i < 2; i++)
@@ -126,7 +122,16 @@ protected:
 			{
 				CRect r = GetFrameRect(i);
 
-				if(r.Height() > s.cy) r.bottom = r.top + s.cy; // hmm
+				// overscan hack
+
+				if(GetDisplaySize(i).cy > 512) // hmm
+				{
+					int y = GetDeviceSize(i).cy;
+					if(SMODE2->INT && SMODE2->FFMD) y /= 2;
+					r.bottom = r.top + y;
+				}
+
+				//
 
 				sr[i].x = st[i].m_scale.x * r.left / st[i].GetWidth();
 				sr[i].y = st[i].m_scale.y * r.top / st[i].GetHeight();
@@ -256,7 +261,7 @@ public:
 
 		if(!Merge()) return;
 
-// s_dump = m_perfmon.GetFrame() >= 5002;
+// s_dump = m_perfmon.GetFrame() >= 5001;
 
 		// osd 
 
@@ -377,6 +382,7 @@ protected:
 		if(m_count > 0)
 		{
 			/*
+			*/
 			TRACE(_T("[%d] Draw f %05x (%d) z %05x (%d %d %d %d) t %05x %05x (%d)\n"), 
 				  (int)m_perfmon.GetFrame(), 
 				  (int)m_context->FRAME.Block(), 
@@ -389,7 +395,6 @@ protected:
 				  PRIM->TME ? (int)m_context->TEX0.TBP0 : 0xfffff, 
 				  PRIM->TME && m_context->TEX0.PSM > PSM_PSMCT16S ? (int)m_context->TEX0.CBP : 0xfffff, 
 				  PRIM->TME ? (int)m_context->TEX0.PSM : 0xff);
-			*/
 
 			Draw();
 
