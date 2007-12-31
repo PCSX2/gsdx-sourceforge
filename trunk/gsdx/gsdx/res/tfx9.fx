@@ -1,6 +1,6 @@
 struct VS_INPUT
 {
-	float4 p : POSITION; 
+	float4 p : POSITION0; 
 	float2 t : TEXCOORD0;
 	float4 c : COLOR0;
 	float4 f : COLOR1;
@@ -19,27 +19,55 @@ float4 vs_params[3];
 #define VertexOffset vs_params[1]
 #define TextureScale vs_params[2].xy
 
-#ifndef LOGZ
-#define LOGZ 1
+#ifndef VS_BPPZ
+#define VS_BPPZ 0
+#define VS_TME 1
+#define VS_FST 1
+#define VS_LOGZ 1
 #endif
 
 VS_OUTPUT vs_main(VS_INPUT input)
 {
+	if(VS_BPPZ == 1) // 24
+	{
+		input.p.z = fmod(input.p.z, 0x1000000); 
+	}
+	else if(VS_BPPZ == 2) // 16
+	{
+		input.p.z = fmod(input.p.z, 0x10000);
+	} 
+
 	VS_OUTPUT output;
 
 	output.p = input.p * VertexScale - VertexOffset;
 
-	if(LOGZ == 1)
+	if(VS_LOGZ == 1)
 	{
 		output.p.z = log2(1.0f + input.p.z) / 32;
 	}
+	
+	if(VS_TME == 1)
+	{
+		if(VS_FST == 1)
+		{
+			output.t.xy = input.t * TextureScale;
+			output.t.w = 1.0f;
+		}
+		else
+		{
+			output.t.xy = input.t;
+			output.t.w = input.p.w < 0 ? 1 : input.p.w; // FIXME: <= takes small but not 0 numbers as 0
+		}
+	}
+	else
+	{
+		output.t.xy = 0;
+		output.t.w = 1.0f;
+	}
 
 	output.c = input.c;
-
-	output.t.xy = input.t * TextureScale;
 	output.t.z = input.f.a;
-	output.t.w = input.p.w < 0 ? 1 : input.p.w; // FIXME: <= takes small but not 0 numbers as 0
-
+	
 	return output;
 }
 

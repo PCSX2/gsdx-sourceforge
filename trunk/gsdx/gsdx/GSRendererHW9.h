@@ -22,13 +22,16 @@
 #pragma once
 
 #include "GSRendererHW.h"
+#include "GSVertexHW.h"
 #include "GSTextureFX9.h"
 
-class GSRendererHW9 : public GSRendererHW<GSDevice9>
+class GSRendererHW9 : public GSRendererHW<GSDevice9, GSVertexHW9>
 {
 protected:
 	GSTextureFX9 m_tfx;
+	bool m_logz;
 
+	void VertexKick(bool skip);
 	void DrawingKick(bool skip);
 	void Draw();
 

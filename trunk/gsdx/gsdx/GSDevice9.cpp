@@ -800,21 +800,21 @@ void GSDevice9::DrawPrimitive()
 
 	switch(m_topology)
 	{
-    case D3DPT_POINTLIST:
-		prims = m_vb_count;
+    case D3DPT_TRIANGLELIST:
+		prims = m_vb_count / 3;
 		break;
     case D3DPT_LINELIST:
 		prims = m_vb_count / 2;
 		break;
-    case D3DPT_LINESTRIP:
-		prims = m_vb_count - 1;
-		break;
-    case D3DPT_TRIANGLELIST:
-		prims = m_vb_count / 3;
+    case D3DPT_POINTLIST:
+		prims = m_vb_count;
 		break;
     case D3DPT_TRIANGLESTRIP:
     case D3DPT_TRIANGLEFAN:
 		prims = m_vb_count - 2;
+		break;
+    case D3DPT_LINESTRIP:
+		prims = m_vb_count - 1;
 		break;
 	}
 

@@ -69,17 +69,17 @@ bool GSDevice10::Create(HWND hWnd)
 
 	memset(&scd, 0, sizeof(scd));
 
-    scd.BufferCount = 2;
-    scd.BufferDesc.Width = 1;
-    scd.BufferDesc.Height = 1;
-    scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    // scd.BufferDesc.RefreshRate.Numerator = 60;
-    // scd.BufferDesc.RefreshRate.Denominator = 1;
-    scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    scd.OutputWindow = hWnd;
-    scd.SampleDesc.Count = 1;
-    scd.SampleDesc.Quality = 0;
-    scd.Windowed = TRUE;
+	scd.BufferCount = 2;
+	scd.BufferDesc.Width = 1;
+	scd.BufferDesc.Height = 1;
+	scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	//scd.BufferDesc.RefreshRate.Numerator = 60;
+	//scd.BufferDesc.RefreshRate.Denominator = 1;
+	scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	scd.OutputWindow = hWnd;
+	scd.SampleDesc.Count = 1;
+	scd.SampleDesc.Quality = 0;
+	scd.Windowed = TRUE;
 
 	UINT flags = 0;
 
@@ -417,8 +417,6 @@ bool GSDevice10::Create(int type, GSTexture10& t, int w, int h, int format)
 	{
 		t = GSTexture10(texture);
 
-		float color[4] = {0, 0, 0, 0};
-
 		switch(type)
 		{
 		case GSTexture::RenderTarget:
@@ -491,7 +489,7 @@ void GSDevice10::IASetVertexBuffer(ID3D10Buffer* vb, UINT count, const void* ver
 {
 	D3D10_BOX box = {0, 0, 0, count * stride, 1, 1};
 
-	m_dev->UpdateSubresource(vb, 0, &box, vertices, 0, 0);
+	m_dev->UpdateSubresource(vb, 0, &box, vertices, 0, 0); // slower than using DPUP in dx9, do something!!!
 
 	if(m_vb != vb || m_vb_stride != stride)
 	{
@@ -862,7 +860,7 @@ bool GSDevice10::SaveToFileD32S8X24(ID3D10Texture2D* ds, LPCTSTR fn)
 	{
 		for(int x = 0; x < desc.Width; x++)
 		{
-			((float*)d)[x] = ((float*)s)[x*2];
+			((UINT*)d)[x] = ((float*)s)[x*2] * UINT_MAX;
 		}
 	}
 

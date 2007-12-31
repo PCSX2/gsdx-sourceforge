@@ -36,6 +36,21 @@ public:
 		float _pad[2];
 	};
 
+	union VSSelector
+	{
+		struct
+		{
+			DWORD bppz:2;
+			DWORD tme:1;
+			DWORD fst:1;
+			DWORD logz:1;
+		};
+
+		DWORD dw;
+
+		operator DWORD() {return dw & 0x1f;}
+	};
+
 	struct PSConstantBuffer
 	{
 		GSVector4 FogColor;
@@ -134,7 +149,7 @@ public:
 private:
 	GSDevice9* m_dev;
 	CComPtr<IDirect3DVertexDeclaration9> m_il;
-	CComPtr<IDirect3DVertexShader9> m_vs;
+	CSimpleMap<DWORD, CComPtr<IDirect3DVertexShader9> > m_vs;
 	D3DXHANDLE m_vs_params;
 	CSimpleMap<DWORD, CComPtr<IDirect3DPixelShader9> > m_ps;
 	CSimpleMap<DWORD, Direct3DSamplerState9* > m_ps_ss;
@@ -148,8 +163,8 @@ public:
 	bool Create(GSDevice9* dev);
 	bool CreateMskFix(GSTexture9& t, DWORD size, DWORD msk, DWORD fix);
 	
-	bool SetupIA(const GSVertexHW* vertices, UINT count, D3DPRIMITIVETYPE prim);
-	bool SetupVS(const VSConstantBuffer* cb);
+	bool SetupIA(const GSVertexHW9* vertices, UINT count, D3DPRIMITIVETYPE prim);
+	bool SetupVS(VSSelector sel, const VSConstantBuffer* cb);
 	bool SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel, IDirect3DTexture9* tex, IDirect3DTexture9* pal, bool psrr);
 	void UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel, bool psrr);
 	void SetupRS(int w, int h, const RECT& scissor);

@@ -23,10 +23,9 @@
 
 #include "GSRenderer.h"
 #include "GSTextureCache.h"
-#include "GSVertexHW.h"
 
-template<class Device>
-class GSRendererHW : public GSRendererT<Device, GSVertexHW>
+template<class Device, class Vertex> 
+class GSRendererHW : public GSRendererT<Device, Vertex>
 {
 protected:
 	GSTextureCache<Device>* m_tc; // derived class creates this
@@ -45,42 +44,7 @@ protected:
 		__super::Reset();
 	}
 
-	void VertexKick(bool skip)
-	{
-		GSVertexHW& v = m_vl.AddTail();
-
-		v.p.x = (float)m_v.XYZ.X;
-		v.p.y = (float)m_v.XYZ.Y;
-		v.p.z = (float)m_v.XYZ.Z;
-
-		v.c0 = m_v.RGBAQ.ai32[0];
-		v.c1 = m_v.FOG.ai32[1];
-
-		if(PRIM->TME)
-		{
-			if(PRIM->FST)
-			{
-				v.p.w = 1.0f;
-				v.t.x = (float)(int)m_v.UV.U;
-				v.t.y = (float)(int)m_v.UV.V;
-			}
-			else
-			{
-				v.p.w = m_v.RGBAQ.Q;
-				v.t.x = m_v.ST.S;
-				v.t.y = m_v.ST.T;
-			}
-		}
-		else
-		{
-			v.p.w = 1.0f;
-			v.t.x = 0;
-			v.t.y = 0;
-		}
-
-		__super::VertexKick(skip);
-	}
-
+/*
 	void MinMaxXY(GSVector4& mm)
 	{
 		#if _M_IX86_FP >= 2 || defined(_M_AMD64)
@@ -138,6 +102,49 @@ protected:
 		#endif
 	}
 
+	float MinZ()
+	{
+		#if _M_IX86_FP >= 2 || defined(_M_AMD64)
+				
+		__m128 min = _mm_set1_ps(+1e10);
+
+		int i = 0;
+
+		for(int count = m_count - 6; i < count; i += 7) // 7 regs for loading, 1 reg for min
+		{
+			min = _mm_min_ps(m_vertices[i+0].m128[0], min);
+			min = _mm_min_ps(m_vertices[i+1].m128[0], min);
+			min = _mm_min_ps(m_vertices[i+2].m128[0], min);
+			min = _mm_min_ps(m_vertices[i+3].m128[0], min);
+			min = _mm_min_ps(m_vertices[i+4].m128[0], min);
+			min = _mm_min_ps(m_vertices[i+5].m128[0], min);
+			min = _mm_min_ps(m_vertices[i+6].m128[0], min);
+		}
+
+		for(; i < m_count; i++)
+		{
+			min = _mm_min_ps(m_vertices[i+0].m128[0], min);
+		}
+
+		return min.m128_f32[2];
+
+		#else	
+
+		float minz = +1e10;
+
+		for(int i = 0, j = m_count; i < j; i++)
+		{
+			float z = m_vertices[i].p.z;
+
+			if(z < minz) minz = z;
+		}
+
+		return minz;
+
+		#endif
+	}
+
+*/
 	void MinMaxUV(GSVector4& mm)
 	{
 		if(PRIM->FST)
@@ -151,24 +158,24 @@ protected:
 
 			for(int count = m_count - 5; i < count; i += 6) // 6 regs for loading, 2 regs for min/max
 			{
-				min = _mm_min_ps(m_vertices[i+0].m128[1], min);
-				max = _mm_max_ps(m_vertices[i+0].m128[1], max);
-				min = _mm_min_ps(m_vertices[i+1].m128[1], min);
-				max = _mm_max_ps(m_vertices[i+1].m128[1], max);
-				min = _mm_min_ps(m_vertices[i+2].m128[1], min);
-				max = _mm_max_ps(m_vertices[i+2].m128[1], max);
-				min = _mm_min_ps(m_vertices[i+3].m128[1], min);
-				max = _mm_max_ps(m_vertices[i+3].m128[1], max);
-				min = _mm_min_ps(m_vertices[i+4].m128[1], min);
-				max = _mm_max_ps(m_vertices[i+4].m128[1], max);
-				min = _mm_min_ps(m_vertices[i+5].m128[1], min);
-				max = _mm_max_ps(m_vertices[i+5].m128[1], max);
+				min = _mm_min_ps(m_vertices[i+0].m128[0], min);
+				max = _mm_max_ps(m_vertices[i+0].m128[0], max);
+				min = _mm_min_ps(m_vertices[i+1].m128[0], min);
+				max = _mm_max_ps(m_vertices[i+1].m128[0], max);
+				min = _mm_min_ps(m_vertices[i+2].m128[0], min);
+				max = _mm_max_ps(m_vertices[i+2].m128[0], max);
+				min = _mm_min_ps(m_vertices[i+3].m128[0], min);
+				max = _mm_max_ps(m_vertices[i+3].m128[0], max);
+				min = _mm_min_ps(m_vertices[i+4].m128[0], min);
+				max = _mm_max_ps(m_vertices[i+4].m128[0], max);
+				min = _mm_min_ps(m_vertices[i+5].m128[0], min);
+				max = _mm_max_ps(m_vertices[i+5].m128[0], max);
 			}
 
 			for(; i < m_count; i++)
 			{
-				min = _mm_min_ps(m_vertices[i+0].m128[1], min);
-				max = _mm_max_ps(m_vertices[i+0].m128[1], max);
+				min = _mm_min_ps(m_vertices[i+0].m128[0], min);
+				max = _mm_max_ps(m_vertices[i+0].m128[0], max);
 			}
 
 			mm.x = min.m128_f32[0];
@@ -207,7 +214,7 @@ protected:
 
 			for(int i = 0, j = m_count; i < j; i++)
 			{
-				float w = 1.0f / m_vertices[i].p.w;
+				float w = 1.0f / m_vertices[i].q;
 
 				float x = m_vertices[i].t.x * w;
 
@@ -481,7 +488,7 @@ protected:
 
 public:
 	GSRendererHW(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync, bool psrr)
-		: GSRendererT<Device, GSVertexHW>(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync, psrr)
+		: GSRendererT<Device, Vertex>(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync, psrr)
 		, m_tc(NULL)
 		, m_width(1024)
 		, m_height(1024)

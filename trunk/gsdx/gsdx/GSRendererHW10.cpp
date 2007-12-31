@@ -25,7 +25,7 @@
 #include "resource.h"
 
 GSRendererHW10::GSRendererHW10(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync)
-	: GSRendererHW<GSDevice10>(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync, true)
+	: GSRendererHW<GSDevice10, GSVertexHW10>(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync, true)
 {
 	m_tc = new GSTextureCache10(this, !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("nativeres"), FALSE));
 
@@ -76,9 +76,53 @@ bool GSRendererHW10::Create(LPCTSTR title)
 	return true;
 }
 
+void GSRendererHW10::VertexKick(bool skip)
+{
+	GSVertexHW10& v = m_vl.AddTail();
+
+#if 0 //_M_IX86_FP >= 2 || defined(_M_AMD64)
+
+	v.m128i[0] = m_v.m128i[0];
+	v.m128i[1] = m_v.m128i[1];
+
+	if(PRIM->TME)
+	{
+		if(PRIM->FST)
+		{
+			v.ST.S = (float)(int)m_v.UV.U;
+			v.ST.T = (float)(int)m_v.UV.V;
+			v.RGBAQ.Q = 1.0;
+		}
+	}
+
+#else
+
+	v.RGBAQ = m_v.RGBAQ;
+	v.FOG = m_v.FOG;
+	v.XYZ = m_v.XYZ;
+
+	if(PRIM->TME)
+	{
+		if(PRIM->FST)
+		{
+			v.ST.S = (float)(int)m_v.UV.U;
+			v.ST.T = (float)(int)m_v.UV.V;
+			v.RGBAQ.Q = 1.0;
+		}
+		else
+		{
+			v.ST = m_v.ST;
+		}
+	}
+
+#endif
+
+	__super::VertexKick(skip);
+}
+
 void GSRendererHW10::DrawingKick(bool skip)
 {
-	GSVertexHW* v = &m_vertices[m_count];
+	GSVertexHW10* v = &m_vertices[m_count];
 	int nv = 0;
 
 	switch(PRIM->PRIM)
@@ -131,10 +175,10 @@ void GSRendererHW10::DrawingKick(bool skip)
 		return;
 	}
 
-	float sx0 = m_context->scissor.x0;
-	float sy0 = m_context->scissor.y0;
-	float sx1 = m_context->scissor.x1;
-	float sy1 = m_context->scissor.y1;
+	DWORD sx0 = m_context->scissor.x0;
+	DWORD sy0 = m_context->scissor.y0;
+	DWORD sx1 = m_context->scissor.x1;
+	DWORD sy1 = m_context->scissor.y1;
 
 	switch(nv)
 	{
@@ -273,19 +317,6 @@ if(s_dump)
 
 	SetupDATE(rt->m_texture, ds->m_texture);
 
-	// color wrap
-
-	GSTexture10 rt2;
-/*
-	if(m_env.COLCLAMP.CLAMP == 0) // color wrap is a crime against humanity!
-	{
-		m_dev.CreateRenderTarget(rt2, rt->m_texture.GetWidth(), rt->m_texture.GetHeight(), DXGI_FORMAT_R16G16B16A16_FLOAT);
-
-		GSVector4 dr(0, 0, rt->m_texture.GetWidth(), rt->m_texture.GetHeight());
-
-		m_dev.StretchRect(rt->m_texture, rt2, dr, false);
-	}
-*/
 	//
 
 	m_dev.BeginScene();
@@ -313,14 +344,34 @@ if(s_dump)
 
 	float factor = (float)(int)m_context->ALPHA.FIX / 0x80;
 
-	m_tfx.SetupOM(om_dssel, om_bsel, factor, rt2 ? rt2 : rt->m_texture, ds->m_texture);
-
-	// ia
-
-	m_tfx.SetupIA(m_vertices, m_count, topology);
-
 	// vs
 
+	GSTextureFX10::VSSelector vs_sel;
+
+	vs_sel.bppz = 0;
+	vs_sel.tme = PRIM->TME;
+	vs_sel.fst = PRIM->FST;
+/*
+	if(om_dssel.zte && om_dssel.ztst > 0 && om_dssel.zwe)
+	{
+		if(m_context->ZBUF.PSM == PSM_PSMZ24)
+		{
+			if(MinZ() >= 0x1000000)
+			{
+				vs_sel.bppz = 1;
+				om_dssel.ztst = 1;
+			}
+		}
+		else if(m_context->ZBUF.PSM == PSM_PSMZ16 || m_context->ZBUF.PSM == PSM_PSMZ16S)
+		{
+			if(MinZ() >= 0x10000)
+			{
+				vs_sel.bppz = 2;
+				om_dssel.ztst = 1;
+			}
+		}
+	}
+*/
 	GSTextureFX10::VSConstantBuffer vs_cb;
 
 	float sx = 2.0f * rt->m_texture.m_scale.x / (rt->m_texture.GetWidth() * 16);
@@ -337,8 +388,6 @@ if(s_dump)
 		vs_cb.TextureScale.x = 1.0f / (16 << m_context->TEX0.TW);
 		vs_cb.TextureScale.y = 1.0f / (16 << m_context->TEX0.TH);
 	}
-
-	m_tfx.SetupVS(&vs_cb);
 
 	// gs
 
@@ -366,8 +415,6 @@ if(s_dump)
 	default:
 		__assume(0);
 	}	
-
-	m_tfx.SetupGS(gs_sel);
 
 	// ps
 
@@ -463,14 +510,10 @@ if(s_dump)
 
 		ps_cb.WH = GSVector2(w, h);
 		ps_cb.rWrH = GSVector2(1.0f / w, 1.0f / h);
-
-		m_tfx.SetupPS(ps_sel, &ps_cb, ps_ssel, tex->m_texture, tex->m_palette);
 	}
 	else
 	{
 		ps_sel.tfx = 4;
-
-		m_tfx.SetupPS(ps_sel, &ps_cb, ps_ssel, NULL, NULL);
 	}
 
 	// rs
@@ -486,6 +529,15 @@ if(s_dump)
 
 	scissor &= CRect(0, 0, w, h);
 
+	//
+
+	m_tfx.SetupOM(om_dssel, om_bsel, factor, rt->m_texture, ds->m_texture);
+	m_tfx.SetupIA(m_vertices, m_count, topology);
+	m_tfx.SetupVS(vs_sel, &vs_cb);
+	m_tfx.SetupGS(gs_sel);
+	m_tfx.SetupPS(ps_sel, &ps_cb, ps_ssel, 
+		tex ? (ID3D10ShaderResourceView*)tex->m_texture : NULL, 
+		tex ? (ID3D10ShaderResourceView*)tex->m_palette : NULL);
 	m_tfx.SetupRS(w, h, scissor);
 
 	// draw
@@ -535,17 +587,7 @@ if(s_dump)
 	}
 
 	m_dev.EndScene();
-/*
-	if(rt2)
-	{
-		GSVector4 sr(0, 0, 1, 1);
-		GSVector4 dr(0, 0, rt->m_texture.GetWidth(), rt->m_texture.GetHeight());
 
-		m_dev.StretchRect(rt2, sr, rt->m_texture, dr, m_dev.m_convert.ps[4], false);
-
-		m_dev.Recycle(rt2);
-	}
-*/
 if(s_dump)
 {
 	CString str;
@@ -563,6 +605,14 @@ void GSRendererHW10::SetupDATE(Texture& rt, Texture& ds)
 
 	// sfex3 (after the capcom logo), vf4 (first menu fading in), ffxii shadows, rumble roses shadows
 
+	GSVector4 mm;
+
+	// TODO
+
+	mm = GSVector4(-1, -1, 1, 1);
+/*
+	MinMaxXY(mm);
+
 	int w = rt.GetWidth();
 	int h = rt.GetHeight();
 
@@ -570,10 +620,6 @@ void GSRendererHW10::SetupDATE(Texture& rt, Texture& ds)
 	float sy = 2.0f * rt.m_scale.y / (h * 16);	
 	float ox = (float)(int)m_context->XYOFFSET.OFX;
 	float oy = (float)(int)m_context->XYOFFSET.OFY;
-
-	GSVector4 mm;
-
-	MinMaxXY(mm);
 
 	mm.x = (mm.x - ox) * sx - 1;
 	mm.y = (mm.y - oy) * sy - 1;
@@ -584,7 +630,7 @@ void GSRendererHW10::SetupDATE(Texture& rt, Texture& ds)
 	if(mm.y < -1) mm.y = -1;
 	if(mm.z > +1) mm.z = +1;
 	if(mm.w > +1) mm.w = +1;
-
+*/
 	GSVector4 uv;
 
 	uv.x = (mm.x + 1) / 2;

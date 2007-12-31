@@ -38,6 +38,20 @@ public:
 		struct VSConstantBuffer() {memset(this, 0, sizeof(*this));}
 	};
 
+	union VSSelector
+	{
+		struct
+		{
+			DWORD bppz:2;
+			DWORD tme:1;
+			DWORD fst:1;
+		};
+
+		DWORD dw;
+
+		operator DWORD() {return dw & 0xf;}
+	};
+
 	struct PSConstantBuffer
 	{
 		GSVector4 FogColor;
@@ -151,7 +165,7 @@ public:
 private:
 	GSDevice10* m_dev;
 	CComPtr<ID3D10InputLayout> m_il;
-	CComPtr<ID3D10VertexShader> m_vs;
+	CSimpleMap<DWORD, CComPtr<ID3D10VertexShader> > m_vs;
 	CComPtr<ID3D10Buffer> m_vs_cb;
 	CSimpleMap<DWORD, CComPtr<ID3D10GeometryShader> > m_gs;
 	CSimpleMap<DWORD, CComPtr<ID3D10PixelShader> > m_ps;
@@ -171,8 +185,8 @@ public:
 
 	bool Create(GSDevice10* dev);
 	
-	bool SetupIA(const GSVertexHW* vertices, int count, D3D10_PRIMITIVE_TOPOLOGY prim);
-	bool SetupVS(const VSConstantBuffer* cb);
+	bool SetupIA(const GSVertexHW10* vertices, int count, D3D10_PRIMITIVE_TOPOLOGY prim);
+	bool SetupVS(VSSelector sel, const VSConstantBuffer* cb);
 	bool SetupGS(GSSelector sel);
 	bool SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel, ID3D10ShaderResourceView* tex, ID3D10ShaderResourceView* pal);
 	void UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSelector ssel);
