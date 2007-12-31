@@ -32,26 +32,16 @@ bool GSTextureFX9::Create(GSDevice9* dev)
 {
 	m_dev = dev;
 
-	HRESULT hr;
+	VSSelector sel;
+	
+	sel.bppz = 0;
+	sel.tme = 0;
+	sel.fst = 0;
+	sel.logz = 0;
 
-	static const D3DVERTEXELEMENT9 il[] =
-	{
-		{0, 0,  D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
-		{0, 16, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
-		{0, 24, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR, 0},
-		{0, 28, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR, 1},
-		D3DDECL_END()
-	};
+	VSConstantBuffer cb;
 
-	D3DXMACRO macro[] =
-	{
-		{"LOGZ", !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("logz"), FALSE) ? "1" : "0"},
-		{NULL, NULL},
-	};
-
-	hr = m_dev->CompileShader(IDR_TFX9_FX, "vs_main", macro, &m_vs, il, countof(il), &m_il);
-
-	if(FAILED(hr)) return false;
+	SetupVS(sel, &cb); // creates layout
 
 	return true;
 }
@@ -86,7 +76,7 @@ bool GSTextureFX9::CreateMskFix(GSTexture9& t, DWORD size, DWORD msk, DWORD fix)
 	return true;
 }
 
-bool GSTextureFX9::SetupIA(const GSVertexHW* vertices, UINT count, D3DPRIMITIVETYPE prim)
+bool GSTextureFX9::SetupIA(const GSVertexHW9* vertices, UINT count, D3DPRIMITIVETYPE prim)
 {
 	m_dev->IASetVertexBuffer(count, vertices);
 	m_dev->IASetInputLayout(m_il);
@@ -95,9 +85,50 @@ bool GSTextureFX9::SetupIA(const GSVertexHW* vertices, UINT count, D3DPRIMITIVET
 	return true;
 }
 
-bool GSTextureFX9::SetupVS(const VSConstantBuffer* cb)
+bool GSTextureFX9::SetupVS(VSSelector sel, const VSConstantBuffer* cb)
 {
-	m_dev->VSSetShader(m_vs, (const float*)cb, sizeof(*cb) / sizeof(GSVector4));
+	CComPtr<IDirect3DVertexShader9> vs;
+
+	if(!(vs = m_vs.Lookup(sel)))
+	{
+		CStringA str[4];
+
+		str[0].Format("%d", sel.bppz);
+		str[1].Format("%d", sel.tme);
+		str[2].Format("%d", sel.fst);
+		str[3].Format("%d", sel.logz);
+
+		D3DXMACRO macro[] =
+		{
+			{"VS_BPPZ", str[0]},
+			{"VS_TME", str[1]},
+			{"VS_FST", str[2]},
+			{"VS_LOGZ", str[3]},
+			{NULL, NULL},
+		};
+
+		static const D3DVERTEXELEMENT9 layout[] =
+		{
+			{0, 0, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
+			{0, 8, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR, 0},
+			{0, 12, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR, 1},
+			{0, 16,  D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+			D3DDECL_END()
+		};
+
+		CComPtr<IDirect3DVertexDeclaration9> il;
+
+		m_dev->CompileShader(IDR_TFX9_FX, "vs_main", macro, &vs, layout, countof(layout), &il);
+
+		if(m_il == NULL)
+		{
+			m_il = il;
+		}
+
+		m_vs.Add(sel, vs);
+	}
+
+	m_dev->VSSetShader(vs, (const float*)cb, sizeof(*cb) / sizeof(GSVector4));
 
 	return true;
 }

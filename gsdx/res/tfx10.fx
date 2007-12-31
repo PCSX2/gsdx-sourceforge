@@ -7,8 +7,10 @@ cbuffer cb0
 
 struct VS_INPUT
 {
-	float4 p : POSITION; 
+	uint2 p : POSITION0;
+	uint z : POSITION1;
 	float2 t : TEXCOORD0;
+	float q : TEXCOORD1;
 	float4 c : COLOR0;
 	float4 f : COLOR1;
 };
@@ -20,17 +22,48 @@ struct VS_OUTPUT
 	float4 c : COLOR0;
 };
 
+#ifndef VS_BPPZ
+#define VS_BPPZ 0
+#define VS_TME 1
+#define VS_FST 1
+#endif
+
 VS_OUTPUT vs_main(VS_INPUT input)
 {
+	if(VS_BPPZ == 1) // 24
+	{
+		input.z = input.z & 0xffffff; 
+	}
+	else if(VS_BPPZ == 2) // 16
+	{
+		input.z = input.z & 0xffff;
+	}
+
 	VS_OUTPUT output;
 
-	output.p = input.p * VertexScale - VertexOffset;
-
-	output.t.xy = input.t * TextureScale;
-	output.t.z = input.f.a;
-	output.t.w = input.p.w < 0 ? 1 : input.p.w; // FIXME: <= takes small but not 0 numbers as 0
+	output.p = float4(input.p, input.z, 0) * VertexScale - VertexOffset;
+	
+	if(VS_TME == 1)
+	{
+		if(VS_FST == 1)
+		{
+			output.t.xy = input.t * TextureScale;
+			output.t.w = 1.0f;
+		}
+		else
+		{
+			output.t.xy = input.t;
+			output.t.w = input.q < 0 ? 1 : input.q; // FIXME: <= takes small but not 0 numbers as 0
+		}
+	}
+	else
+	{
+		output.t.xy = 0;
+		output.t.w = 1.0f;
+	}
 
 	output.c = input.c;
+	output.t.z = input.f.a;
 
 	return output;
 }

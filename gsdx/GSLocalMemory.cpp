@@ -2466,13 +2466,13 @@ HRESULT GSLocalMemory::SaveBMP(LPCTSTR fn, DWORD bp, DWORD bw, DWORD psm, int w,
 
 	// (this->*m_psm[TEX0.PSM].ust)(CRect(0, 0, w, h), bits, pitch, TEX0, TEXA);
 
-	readTexel rt = m_psm[psm].rt;
+	readPixel rp = m_psm[psm].rp;
 
 	BYTE* p = (BYTE*)bits;
 
 	for(int j = h-1; j >= 0; j--, p += pitch)
 		for(int i = 0; i < w; i++)
-			((DWORD*)p)[i] = (this->*rt)(i, j, TEX0, TEXA);
+			((DWORD*)p)[i] = (this->*rp)(i, j, TEX0.TBP0, TEX0.TBW);
 
 	if(FILE* fp = _tfopen(fn, _T("wb")))
 	{

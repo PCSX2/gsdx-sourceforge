@@ -456,6 +456,8 @@
 				AdditionalDependencies="d3d10.lib d3dx10.lib d3d9.lib d3dx9.lib ddraw.lib dxguid.lib winmm.lib"
 				OutputFile="C:\Users\Gabest\Desktop\pcsx2\plugins\$(ProjectName).dll"
 				ModuleDefinitionFile=".\GSdx.def"
+				OptimizeReferences="1"
+				EnableCOMDATFolding="1"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -1057,7 +1059,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\res\logo1.bmp"
+				RelativePath=".\res\logo10.bmp"
+				>
+			</File>
+			<File
+				RelativePath=".\res\logo9.bmp"
 				>
 			</File>
 			<File

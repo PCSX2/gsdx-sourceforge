@@ -145,6 +145,7 @@ public:
 	GSDrawingContext* m_context;
 	GSVertex m_v;
 	float m_q;
+	int m_vprim;
 
 	GSPerfMon m_perfmon;
 	bool m_nloophack;

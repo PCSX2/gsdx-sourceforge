@@ -30,13 +30,34 @@
 
 struct GSVertex
 {
+	union
+	{
+		struct
+		{
+			GIFRegST ST;
+			GIFRegXYZ XYZ;
+			GIFRegRGBAQ RGBAQ;
+			GIFRegFOG FOG;
+		};
+
+		struct {__m128i m128i[2];};
+		struct {__m128 m128[2];};
+	};
+
+	GIFRegUV UV;
+
+	GSVertex() {memset(this, 0, sizeof(*this));}
+};
+
+struct GSVertexOld
+{
 	GIFRegRGBAQ		RGBAQ;
 	GIFRegST		ST;
 	GIFRegUV		UV;
 	GIFRegXYZ		XYZ;
 	GIFRegFOG		FOG;
 
-	GSVertex() {memset(this, 0, sizeof(*this));}
+	GSVertexOld() {memset(this, 0, sizeof(*this));}
 };
 
 struct GSVertexP

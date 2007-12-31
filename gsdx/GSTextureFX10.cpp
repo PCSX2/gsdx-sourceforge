@@ -35,23 +35,19 @@ bool GSTextureFX10::Create(GSDevice10* dev)
 {
 	m_dev = dev;
 
-	// shaders
+	//
+
+	VSSelector sel;
+	
+	sel.bppz = 0;
+	sel.tme = 0;
+	sel.fst = 0;
+
+	VSConstantBuffer cb;
+
+	SetupVS(sel, &cb); // creates layout
 
 	HRESULT hr;
-
-	D3D10_INPUT_ELEMENT_DESC il[] =
-	{
-		{"POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D10_INPUT_PER_VERTEX_DATA, 0},
-		{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 16, D3D10_INPUT_PER_VERTEX_DATA, 0},
-		{"COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 24, D3D10_INPUT_PER_VERTEX_DATA, 0},
-		{"COLOR", 1, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 28, D3D10_INPUT_PER_VERTEX_DATA, 0},
-	};
-
-	hr = m_dev->CompileShader(IDR_TFX10_FX, "vs_main", NULL, &m_vs, il, countof(il), &m_il);
-
-	if(FAILED(hr)) return false;
-
-	// buffers
 
 	D3D10_BUFFER_DESC bd;
 
@@ -75,10 +71,12 @@ bool GSTextureFX10::Create(GSDevice10* dev)
 
 	if(FAILED(hr)) return false;
 
+	//
+
 	return true;
 }
 
-bool GSTextureFX10::SetupIA(const GSVertexHW* vertices, int count, D3D10_PRIMITIVE_TOPOLOGY prim)
+bool GSTextureFX10::SetupIA(const GSVertexHW10* vertices, int count, D3D10_PRIMITIVE_TOPOLOGY prim)
 {
 	HRESULT hr;
 
@@ -101,7 +99,7 @@ bool GSTextureFX10::SetupIA(const GSVertexHW* vertices, int count, D3D10_PRIMITI
 		memset(&bd, 0, sizeof(bd));
 
 		bd.Usage = D3D10_USAGE_DEFAULT;
-		bd.ByteWidth = m_vb_max * sizeof(GSVertexHW);
+		bd.ByteWidth = m_vb_max * sizeof(GSVertexHW10);
 		bd.BindFlags = D3D10_BIND_VERTEX_BUFFER;
 		bd.CPUAccessFlags = 0;
 		bd.MiscFlags = 0;
@@ -118,8 +116,48 @@ bool GSTextureFX10::SetupIA(const GSVertexHW* vertices, int count, D3D10_PRIMITI
 	return true;
 }
 
-bool GSTextureFX10::SetupVS(const VSConstantBuffer* cb)
+bool GSTextureFX10::SetupVS(VSSelector sel, const VSConstantBuffer* cb)
 {
+	CComPtr<ID3D10VertexShader> vs;
+
+	if(!(vs = m_vs.Lookup(sel)))
+	{
+		CStringA str[3];
+
+		str[0].Format("%d", sel.bppz);
+		str[1].Format("%d", sel.tme);
+		str[2].Format("%d", sel.fst);
+
+		D3D10_SHADER_MACRO macro[] =
+		{
+			{"VS_BPPZ", str[0]},
+			{"VS_TME", str[1]},
+			{"VS_FST", str[2]},
+			{NULL, NULL},
+		};
+
+		D3D10_INPUT_ELEMENT_DESC layout[] =
+		{
+			{"POSITION", 0, DXGI_FORMAT_R16G16_UINT, 0, 8, D3D10_INPUT_PER_VERTEX_DATA, 0},
+			{"POSITION", 1, DXGI_FORMAT_R32_UINT, 0, 12, D3D10_INPUT_PER_VERTEX_DATA, 0},
+			{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D10_INPUT_PER_VERTEX_DATA, 0},
+			{"TEXCOORD", 1, DXGI_FORMAT_R32_FLOAT, 0, 20, D3D10_INPUT_PER_VERTEX_DATA, 0},
+			{"COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 16, D3D10_INPUT_PER_VERTEX_DATA, 0},
+			{"COLOR", 1, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 28, D3D10_INPUT_PER_VERTEX_DATA, 0},
+		};
+
+		CComPtr<ID3D10InputLayout> il;
+
+		m_dev->CompileShader(IDR_TFX10_FX, "vs_main", macro, &vs, layout, countof(layout), &il);
+
+		if(m_il == NULL)
+		{
+			m_il = il;
+		}
+
+		m_vs.Add(sel, vs);
+	}
+
 	if(memcmp(&m_vs_cb_cache, cb, sizeof(*cb)))
 	{
 		(*m_dev)->UpdateSubresource(m_vs_cb, 0, NULL, cb, 0, 0);
@@ -127,7 +165,7 @@ bool GSTextureFX10::SetupVS(const VSConstantBuffer* cb)
 		memcpy(&m_vs_cb_cache, cb, sizeof(*cb));
 	}
 
-	m_dev->VSSetShader(m_vs, m_vs_cb);
+	m_dev->VSSetShader(vs, m_vs_cb);
 
 	return true;
 }

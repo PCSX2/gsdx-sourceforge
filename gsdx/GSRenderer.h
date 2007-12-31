@@ -212,7 +212,7 @@ public:
 	{
 		s_n = 0;
 		s_dump = false;
-		s_save = true;
+		s_save = false;
 		s_savez = false;
 	}
 
@@ -236,21 +236,7 @@ public:
 	void VSync(int field)
 	{
 		GSPerfMonAutoTimer pmat(m_perfmon);
-/*
-		printf("* SMODE1:\n"
-			"\tCLKSEL=%d CMOD=%d EX=%d GCONT=%d\n"
-			"\tLC=%d NVCK=%d PCK2=%d PEHS=%d\n"
-			"\tPEVS=%d PHS=%d PRST=%d PVS=%d\n"
-			"\tRC=%d SINT=%d SLCK=%d SLCK2=%d\n"
-			"\tSPML=%d T1248=%d VCKSEL=%d VHP=%d\n"
-			"\tXPCK=%d\n", 
-			SMODE1->CLKSEL, SMODE1->CMOD, SMODE1->EX, SMODE1->GCONT, 
-			SMODE1->LC, SMODE1->NVCK, SMODE1->PCK2, SMODE1->PEHS, 
-			SMODE1->PEVS, SMODE1->PHS, SMODE1->PRST, SMODE1->PVS, 
-			SMODE1->RC, SMODE1->SINT, SMODE1->SLCK, SMODE1->SLCK2, 
-			SMODE1->SPML, SMODE1->T1248, SMODE1->VCKSEL, SMODE1->VHP, 
-			SMODE1->XPCK);
-*/
+
 		m_field = !!field;
 
 		Flush();
@@ -263,7 +249,7 @@ public:
 
 		if(!Merge()) return;
 
-// s_dump = m_perfmon.GetFrame() >= 5001;
+//s_dump = m_perfmon.GetFrame() >= 5101;
 
 		// osd 
 
@@ -395,7 +381,7 @@ protected:
 
 	void VertexKick(bool skip)
 	{
-		while(m_vl.GetCount() >= primVertexCount[PRIM->PRIM])
+		while(m_vl.GetCount() >= m_vprim)
 		{
 			if(m_count + 6 > m_maxcount)
 			{
@@ -427,7 +413,6 @@ protected:
 		if(m_count > 0)
 		{
 			/*
-			*/
 			TRACE(_T("[%d] Draw f %05x (%d) z %05x (%d %d %d %d) t %05x %05x (%d)\n"), 
 				  (int)m_perfmon.GetFrame(), 
 				  (int)m_context->FRAME.Block(), 
@@ -440,6 +425,7 @@ protected:
 				  PRIM->TME ? (int)m_context->TEX0.TBP0 : 0xfffff, 
 				  PRIM->TME && m_context->TEX0.PSM > PSM_PSMCT16S ? (int)m_context->TEX0.CBP : 0xfffff, 
 				  PRIM->TME ? (int)m_context->TEX0.PSM : 0xff);
+			*/
 
 			Draw();
 

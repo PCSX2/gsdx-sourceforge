@@ -287,8 +287,10 @@ bool GSTextureCache10::GSTextureHW10::Create(GSRenderTarget* rt)
 	int th = 1 << m_TEX0.TH;
 	int tp = (int)m_TEX0.TW << 6;
 
-	int w = (int)(rt->m_texture.m_scale.x * tw + 0.5f);
-	int h = (int)(rt->m_texture.m_scale.y * th + 0.5f);
+	// do not round here!!! if edge becomes a black pixel and addressing mode is clamp => everything outside the clamped area turns into black (kh2 shadows)
+
+	int w = (int)(rt->m_texture.m_scale.x * tw);
+	int h = (int)(rt->m_texture.m_scale.y * th); 
 
 	// pitch conversion
 

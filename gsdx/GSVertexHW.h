@@ -25,21 +25,58 @@
 
 #pragma pack(push, 1)
 
-__declspec(align(16)) union GSVertexHW
+__declspec(align(16)) union GSVertexHW9
 {
 	struct
 	{
-		GSVector4 p;
-		GSVector2 t;
+		struct {float x, y;} t;
 		union {struct {BYTE r, g, b, a;}; DWORD c0;};
 		union {struct {BYTE ta0, ta1, res, f;}; DWORD c1;};
+		union {struct {float _pad[3]; float q;}; struct {float x, y, z, w;} p;};
 	};
 	
 	struct {__m128i m128i[2];};
 	struct {__m128 m128[2];};
 
 #if _M_IX86_FP >= 2 || defined(_M_AMD64)
-	GSVertexHW& operator = (GSVertexHW& v) {m128i[0] = v.m128i[0]; m128i[1] = v.m128i[1]; return *this;}
+	GSVertexHW9& operator = (GSVertexHW9& v) {m128i[0] = v.m128i[0]; m128i[1] = v.m128i[1]; return *this;}
+#endif
+};
+
+__declspec(align(16)) union GSVertexHW10
+{
+	struct
+	{
+		union
+		{
+			struct {float x, y;} t;
+			GIFRegST ST;
+		};
+
+		union
+		{
+			struct {WORD x, y; DWORD z;} p;
+			GIFRegXYZ XYZ;
+		};
+		
+		union 
+		{
+			union {struct {BYTE r, g, b, a; float q;}; DWORD c0;};
+			GIFRegRGBAQ RGBAQ;
+		};
+
+		union 
+		{
+			union {DWORD _pad[1]; struct {BYTE ta0, ta1, res, f;}; DWORD c1;};
+			GIFRegFOG FOG;
+		};
+	};
+	
+	struct {__m128i m128i[2];};
+	struct {__m128 m128[2];};
+
+#if _M_IX86_FP >= 2 || defined(_M_AMD64)
+	GSVertexHW10& operator = (GSVertexHW10& v) {m128i[0] = v.m128i[0]; m128i[1] = v.m128i[1]; return *this;}
 #endif
 };
 

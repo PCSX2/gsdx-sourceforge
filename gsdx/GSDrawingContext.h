@@ -48,14 +48,19 @@ struct GSDrawingContext
 	GSLocalMemory::psm_t* ztbl;
 	GSLocalMemory::psm_t* ttbl;
 
-	struct {float x0, y0, x1, y1;} scissor;
+	struct {DWORD x0, y0, x1, y1;} scissor;
+	struct {float x0, y0, x1, y1;} fscissor;
 
 	void UpdateScissor()
 	{
-		scissor.x0 = (float)(int)((int)(SCISSOR.SCAX0 << 4) + (int)XYOFFSET.OFX);
-		scissor.y0 = (float)(int)((int)(SCISSOR.SCAY0 << 4) + (int)XYOFFSET.OFY);
-		scissor.x1 = (float)(int)((int)(SCISSOR.SCAX1 << 4) + (int)XYOFFSET.OFX);
-		scissor.y1 = (float)(int)((int)(SCISSOR.SCAY1 << 4) + (int)XYOFFSET.OFY);
+		scissor.x0 = (SCISSOR.SCAX0 << 4) + XYOFFSET.OFX;
+		scissor.y0 = (SCISSOR.SCAY0 << 4) + XYOFFSET.OFY;
+		scissor.x1 = (SCISSOR.SCAX1 << 4) + XYOFFSET.OFX;
+		scissor.y1 = (SCISSOR.SCAY1 << 4) + XYOFFSET.OFY;
+		fscissor.x0 = (float)(int)scissor.x0;
+		fscissor.y1 = (float)(int)scissor.y0;
+		fscissor.x1 = (float)(int)scissor.x1;
+		fscissor.y1 = (float)(int)scissor.y1;
 	}
 };
 
