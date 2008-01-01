@@ -343,6 +343,8 @@ EXPORT_C GSsetFrameSkip(int frameskip)
 
 EXPORT_C GSReplay(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow)
 {
+	CAtlArray<BYTE> buff;
+
 	if(FILE* fp = fopen(lpszCmdLine, "rb"))
 	{
 		GSinit();
@@ -373,14 +375,14 @@ EXPORT_C GSReplay(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow)
 		long start = ftell(fp);
 
 		int index, size, addr;
-		BYTE* buff;
 
-		while(::IsWindowVisible(hWnd))
+		while(1)
 		{
 			switch(fgetc(fp))
 			{
 			case EOF:
 				fseek(fp, start, 0);
+				if(!IsWindowVisible(hWnd)) return;
 				break;
 			case 0:
 				index = fgetc(fp);
@@ -388,34 +390,31 @@ EXPORT_C GSReplay(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow)
 				switch(index)
 				{
 				case 0:
-					buff = new BYTE[0x4000];
+					if(buff.GetCount() < 0x4000) buff.SetCount(0x4000);
 					addr = 0x4000 - size;
-					fread(buff + addr, size, 1, fp);
-					GSgifTransfer1(buff, addr);
-					delete [] buff;
+					fread(buff.GetData() + addr, size, 1, fp);
+					GSgifTransfer1(buff.GetData(), addr);
 					break;
 				case 1:
-					buff = new BYTE[size];
-					fread(buff, size, 1, fp);
-					GSgifTransfer2(buff, size / 16);
-					delete [] buff;
+					if(buff.GetCount() < size) buff.SetCount(size);
+					fread(buff.GetData(), size, 1, fp);
+					GSgifTransfer2(buff.GetData(), size / 16);
 					break;
 				case 2:
-					buff = new BYTE[size];
-					fread(buff, size, 1, fp);
-					GSgifTransfer3(buff, size / 16);
-					delete [] buff;
+					if(buff.GetCount() < size) buff.SetCount(size);
+					fread(buff.GetData(), size, 1, fp);
+					GSgifTransfer3(buff.GetData(), size / 16);
 					break;
 				}
 				break;
 			case 1:
 				GSvsync(fgetc(fp));
+				if(!IsWindowVisible(hWnd)) return;
 				break;
 			case 2:
 				fread(&size, 4, 1, fp);
-				buff = new BYTE[size];
-				GSreadFIFO2(buff, size / 16);
-				delete [] buff;
+				if(buff.GetCount() < size) buff.SetCount(size);
+				GSreadFIFO2(buff.GetData(), size / 16);
 			default:
 				return;
 			}
