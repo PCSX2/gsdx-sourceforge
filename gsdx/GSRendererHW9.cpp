@@ -368,12 +368,12 @@ if(s_dump)
 	vs_sel.tme = PRIM->TME;
 	vs_sel.fst = PRIM->FST;
 	vs_sel.logz = m_logz ? 1 : 0;
-/*
+
 	if(om_dssel.zte && om_dssel.ztst > 0 && om_dssel.zwe)
 	{
 		if(m_context->ZBUF.PSM == PSM_PSMZ24)
 		{
-			if(MinZ() >= 0x1000000)
+			if(WrapZ(0xffffff))
 			{
 				vs_sel.bppz = 1;
 				om_dssel.ztst = 1;
@@ -381,14 +381,14 @@ if(s_dump)
 		}
 		else if(m_context->ZBUF.PSM == PSM_PSMZ16 || m_context->ZBUF.PSM == PSM_PSMZ16S)
 		{
-			if(MinZ() >= 0x10000)
+			if(WrapZ(0xffff))
 			{
 				vs_sel.bppz = 2;
 				om_dssel.ztst = 1;
 			}
 		}
 	}
-*/
+
 	GSTextureFX9::VSConstantBuffer vs_cb;
 
 	float sx = 2.0f * rt->m_texture.m_scale.x / (rt->m_texture.GetWidth() * 16);
@@ -588,6 +588,21 @@ if(s_dump)
 	if(s_savez) m_dev.SaveToFileD24S8(ds->m_texture, str); // TODO
 }
 
+}
+
+bool GSRendererHW9::WrapZ(float maxz)
+{
+	// should only run once if z values are in the z buffer range
+
+	for(int i = 0, j = m_count; i < j; i++)
+	{
+		if(m_vertices[i].p.z <= maxz)
+		{
+			return false;
+		}
+	}
+
+	return true;
 }
 
 void GSRendererHW9::SetupDATE(Texture& rt, Texture& ds)

@@ -34,6 +34,7 @@ protected:
 	void VertexKick(bool skip);
 	void DrawingKick(bool skip);
 	void Draw();
+	bool WrapZ(float maxz);
 
 	struct
 	{

@@ -33,6 +33,7 @@ protected:
 	void VertexKick(bool skip);
 	void DrawingKick(bool skip);
 	void Draw();
+	bool WrapZ(DWORD maxz);
 
 	struct
 	{

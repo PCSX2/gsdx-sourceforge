@@ -53,7 +53,7 @@ VS_OUTPUT vs_main(VS_INPUT input)
 		else
 		{
 			output.t.xy = input.t;
-			output.t.w = input.q < 0 ? 1 : input.q; // FIXME: <= takes small but not 0 numbers as 0
+			output.t.w = input.q;
 		}
 	}
 	else

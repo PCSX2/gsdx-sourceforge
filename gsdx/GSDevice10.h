@@ -115,7 +115,7 @@ public:
 	ID3D10Device* operator->() {return m_dev;}
 	operator ID3D10Device*() {return m_dev;}
 
-	void IASetVertexBuffer(ID3D10Buffer* vb, UINT count, const void* vertices, UINT stride);
+	void IASetVertexBuffer(ID3D10Buffer* vb, UINT stride);
 	void IASetInputLayout(ID3D10InputLayout* layout);
 	void IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY topology);
 	void VSSetShader(ID3D10VertexShader* vs, ID3D10Buffer* vs_cb);
@@ -127,12 +127,7 @@ public:
 	void OMSetDepthStencilState(ID3D10DepthStencilState* dss, UINT sref);
 	void OMSetBlendState(ID3D10BlendState* bs, float bf);
 	void OMSetRenderTargets(ID3D10RenderTargetView* rtv, ID3D10DepthStencilView* dsv);
-	void DrawPrimitive();
-
-	template<class T> void IASetVertexBuffer(ID3D10Buffer* vb, UINT count, T* vertices)
-	{
-		IASetVertexBuffer(vb, count, vertices, sizeof(T));
-	}
+	void DrawPrimitive(UINT count, UINT start = 0);
 
 	void StretchRect(GSTexture10& st, GSTexture10& dt, const GSVector4& dr, bool linear = true);
 	void StretchRect(GSTexture10& st, const GSVector4& sr, GSTexture10& dt, const GSVector4& dr, bool linear = true);

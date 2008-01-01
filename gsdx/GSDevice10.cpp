@@ -25,7 +25,6 @@
 
 GSDevice10::GSDevice10()
 	: m_vb(NULL)
-	, m_vb_count(0)
 	, m_vb_stride(0)
 	, m_layout(NULL)
 	, m_topology(D3D10_PRIMITIVE_TOPOLOGY_UNDEFINED)
@@ -485,12 +484,8 @@ void GSDevice10::DoInterlace(GSTexture10& st, GSTexture10& dt, int shader, bool 
 	StretchRect(st, sr, dt, dr, m_interlace.ps[shader], m_interlace.cb, linear);
 }
 
-void GSDevice10::IASetVertexBuffer(ID3D10Buffer* vb, UINT count, const void* vertices, UINT stride)
+void GSDevice10::IASetVertexBuffer(ID3D10Buffer* vb, UINT stride)
 {
-	D3D10_BOX box = {0, 0, 0, count * stride, 1, 1};
-
-	m_dev->UpdateSubresource(vb, 0, &box, vertices, 0, 0); // slower than using DPUP in dx9, do something!!!
-
 	if(m_vb != vb || m_vb_stride != stride)
 	{
 		UINT offset = 0;
@@ -500,8 +495,6 @@ void GSDevice10::IASetVertexBuffer(ID3D10Buffer* vb, UINT count, const void* ver
 		m_vb = vb;
 		m_vb_stride = stride;
 	}
-
-	m_vb_count = count;
 }
 
 void GSDevice10::IASetInputLayout(ID3D10InputLayout* layout)
@@ -656,9 +649,9 @@ void GSDevice10::OMSetRenderTargets(ID3D10RenderTargetView* rtv, ID3D10DepthSten
 	}
 }
 
-void GSDevice10::DrawPrimitive()
+void GSDevice10::DrawPrimitive(UINT count, UINT start)
 {
-	m_dev->Draw(m_vb_count, 0);
+	m_dev->Draw(count, start);
 }
 
 void GSDevice10::StretchRect(GSTexture10& st, GSTexture10& dt, const GSVector4& dr, bool linear)
@@ -701,7 +694,11 @@ void GSDevice10::StretchRect(GSTexture10& st, const GSVector4& sr, GSTexture10& 
 		{GSVector4(right, bottom), GSVector2(sr.z, sr.w)},
 	};
 
-	IASetVertexBuffer(m_convert.vb, 4, vertices);
+	D3D10_BOX box = {0, 0, 0, sizeof(vertices), 1, 1};
+
+	m_dev->UpdateSubresource(m_convert.vb, 0, &box, vertices, 0, 0);
+
+	IASetVertexBuffer(m_convert.vb, sizeof(vertices[0]));
 	IASetInputLayout(m_convert.il);
 	IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
@@ -725,7 +722,7 @@ void GSDevice10::StretchRect(GSTexture10& st, const GSVector4& sr, GSTexture10& 
 
 	//
 
-	DrawPrimitive();
+	DrawPrimitive(countof(vertices));
 
 	//
 

@@ -292,9 +292,6 @@ protected:
 			}
 		}
 
-		r.left = max(r.left & ~bsm.cx, 0);
-		r.right = min((r.right + bsm.cx + 1) & ~bsm.cx, w);
-
 		if(m_context->CLAMP.WMT != 3)
 		{
 			if(m_context->CLAMP.WMT == 0)
@@ -344,8 +341,13 @@ protected:
 			}
 		}
 
+		r.InflateRect(1, 1); // one more pixel because of bilinear filtering
+
+		r.left = max(r.left & ~bsm.cx, 0);
+		r.right = min((r.right + bsm.cx) & ~bsm.cx, w);
+
 		r.top = max(r.top & ~bsm.cy, 0);
-		r.bottom = min((r.bottom + bsm.cy + 1) & ~bsm.cy, h);
+		r.bottom = min((r.bottom + bsm.cy) & ~bsm.cy, h);
 	}
 
 	void VSync(int field)
@@ -396,7 +398,7 @@ protected:
 
 	void InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r)
 	{
-		// TRACE(_T("[%d] InvalidateVideoMem %d,%d - %d,%d %05x (%d)\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.DBP, (int)BITBLTBUF.DPSM);
+		TRACE(_T("[%d] InvalidateVideoMem %d,%d - %d,%d %05x (%d)\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.DBP, (int)BITBLTBUF.DPSM);
 
 		m_tc->InvalidateVideoMem(BITBLTBUF, &r);
 	}
