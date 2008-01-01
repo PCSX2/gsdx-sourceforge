@@ -461,10 +461,8 @@ void GSTextureCache10::GSTextureHW10::Update()
 
 	//TRACE(_T("GSTexture::Update %d,%d - %d,%d (%08x)\n"), r.left, r.top, r.right, r.bottom, m_TEX0.TBP0);
 
-	static BYTE* buff = (BYTE*)::_aligned_malloc(1024 * 1024 * 4, 16);
-
-	int pitch = 1024 * m_bpp >> 3;
-	BYTE* bits = buff + pitch * r.top + (r.left * m_bpp >> 3);
+	static BYTE* bits = (BYTE*)::_aligned_malloc(1024 * 1024 * 4, 16);
+	int pitch = 1024 * 4;
 
 	if(m_renderer->m_psrr)
 	{

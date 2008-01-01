@@ -219,12 +219,6 @@ protected:
 
 	void Draw()
 	{
-if(s_n >= 546)
-{
-	s_save = true;
-	s_savez = true;
-}
-
 		if(s_dump)
 		{
 			CString str;

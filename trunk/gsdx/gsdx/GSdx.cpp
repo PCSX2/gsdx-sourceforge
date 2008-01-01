@@ -356,7 +356,11 @@ EXPORT_C GSReplay(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow)
 		int crc;
 		fread(&crc, 4, 1, fp);
 		GSsetGameCRC(crc, 0);
-
+/*
+		CString str;
+		str.Format(_T("%08x"), crc);
+		MessageBox(NULL, str, _T(""), MB_OK);
+*/
 		freezeData fd;
 		fread(&fd.size, 4, 1, fp);
 		fd.data = new BYTE[fd.size];

@@ -632,7 +632,7 @@ public:
 				{
 					int y = m_renderer->m_mem.m_psm[BITBLTBUF.DPSM].pgs.cy * offset / rowsize;
 
-					if(r.top >= y)
+					if(r.bottom >= y)
 					{
 						// TODO: do not add this rect above too
 						rt->m_dirty.AddTail(GSDirtyRect(BITBLTBUF.DPSM, CRect(r.left, r.top - y, r.right, r.bottom - y)));
@@ -677,7 +677,7 @@ public:
 				{
 					int y = m_renderer->m_mem.m_psm[BITBLTBUF.DPSM].pgs.cy * offset / rowsize;
 
-					if(r.top >= y)
+					if(r.bottom >= y)
 					{
 						// TODO: do not add this rect above too
 						ds->m_dirty.AddTail(GSDirtyRect(BITBLTBUF.DPSM, CRect(r.left, r.top - y, r.right, r.bottom - y)));

@@ -174,8 +174,10 @@ private:
 	CSimpleMap<DWORD, CComPtr<ID3D10DepthStencilState> > m_om_dss;	
 	CSimpleMap<DWORD, CComPtr<ID3D10BlendState> > m_om_bs;	
 
-	CComPtr<ID3D10Buffer> m_vb;
+	CComPtr<ID3D10Buffer> m_vb, m_vb_old;
 	int m_vb_max;
+	int m_vb_start;
+	int m_vb_count;
 
 	VSConstantBuffer m_vs_cb_cache;
 	PSConstantBuffer m_ps_cb_cache;
@@ -193,4 +195,5 @@ public:
 	void SetupRS(UINT w, UINT h, const RECT& scissor);
 	void SetupOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, float bf, ID3D10RenderTargetView* rtv, ID3D10DepthStencilView* dsv);
 	void UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, float bf);
+	void Draw();
 };

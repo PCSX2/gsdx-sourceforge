@@ -603,6 +603,8 @@ void GSDevice9::IASetVertexBuffer(UINT count, const void* vertices, UINT stride)
 
 void GSDevice9::IASetInputLayout(IDirect3DVertexDeclaration9* layout)
 {
+	// TODO: get rid of all SetFVF before enabling this
+
 	// if(m_layout != layout)
 	{
 		m_dev->SetVertexDeclaration(layout);

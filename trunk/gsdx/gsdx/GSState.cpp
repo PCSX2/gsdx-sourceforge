@@ -1923,6 +1923,18 @@ bool GSState::DetectBadFrame(int& skip)
 		}
 
 		break;
+
+	case 0x8B029334: // manhunt 2 (?)
+
+		if(skip == 0)
+		{
+			if(TME && FBP == 0x03c20 && FPSM == PSM_PSMCT32 && TBP0 == 0x01400 && TPSM == PSM_PSMT8)
+			{
+				skip = 640;
+			}
+		}
+
+		break;
 	}
 
 	if(skip == 0)

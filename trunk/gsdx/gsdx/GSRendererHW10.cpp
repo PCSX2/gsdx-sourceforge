@@ -351,12 +351,12 @@ if(s_dump)
 	vs_sel.bppz = 0;
 	vs_sel.tme = PRIM->TME;
 	vs_sel.fst = PRIM->FST;
-/*
+
 	if(om_dssel.zte && om_dssel.ztst > 0 && om_dssel.zwe)
 	{
 		if(m_context->ZBUF.PSM == PSM_PSMZ24)
 		{
-			if(MinZ() >= 0x1000000)
+			if(WrapZ(0xffffff))
 			{
 				vs_sel.bppz = 1;
 				om_dssel.ztst = 1;
@@ -364,14 +364,14 @@ if(s_dump)
 		}
 		else if(m_context->ZBUF.PSM == PSM_PSMZ16 || m_context->ZBUF.PSM == PSM_PSMZ16S)
 		{
-			if(MinZ() >= 0x10000)
+			if(WrapZ(0xffff))
 			{
 				vs_sel.bppz = 2;
 				om_dssel.ztst = 1;
 			}
 		}
 	}
-*/
+
 	GSTextureFX10::VSConstantBuffer vs_cb;
 
 	float sx = 2.0f * rt->m_texture.m_scale.x / (rt->m_texture.GetWidth() * 16);
@@ -544,7 +544,7 @@ if(s_dump)
 
 	if(m_context->TEST.DoFirstPass())
 	{
-		m_dev.DrawPrimitive();
+		m_tfx.Draw();
 	}
 
 	if(m_context->TEST.DoSecondPass())
@@ -582,7 +582,7 @@ if(s_dump)
 
 			m_tfx.UpdateOM(om_dssel, om_bsel, factor);
 
-			m_dev.DrawPrimitive();
+			m_tfx.Draw();
 		}
 	}
 
@@ -597,6 +597,21 @@ if(s_dump)
 	if(s_savez) m_dev.SaveToFileD32S8X24(ds->m_texture, str); // TODO
 }
 
+}
+
+bool GSRendererHW10::WrapZ(DWORD maxz)
+{
+	// should only run once if z values are in the z buffer range
+
+	for(int i = 0, j = m_count; i < j; i++)
+	{
+		if(m_vertices[i].p.z <= maxz)
+		{
+			return false;
+		}
+	}
+
+	return true;
 }
 
 void GSRendererHW10::SetupDATE(Texture& rt, Texture& ds)
@@ -664,7 +679,10 @@ void GSRendererHW10::SetupDATE(Texture& rt, Texture& ds)
 		{GSVector4(mm.z, -mm.w), GSVector2(uv.z, uv.w)},
 	};
 
-	m_dev.IASetVertexBuffer(m_dev.m_convert.vb, 4, vertices);
+	D3D10_BOX box = {0, 0, 0, sizeof(vertices), 1, 1};
+	m_dev->UpdateSubresource(m_dev.m_convert.vb, 0, &box, vertices, 0, 0);
+
+	m_dev.IASetVertexBuffer(m_dev.m_convert.vb, sizeof(vertices[0]));
 	m_dev.IASetInputLayout(m_dev.m_convert.il);
 	m_dev.IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
@@ -688,7 +706,7 @@ void GSRendererHW10::SetupDATE(Texture& rt, Texture& ds)
 
 	// set
 
-	m_dev.DrawPrimitive();
+	m_dev.DrawPrimitive(countof(vertices));
 
 	//
 

@@ -338,7 +338,7 @@ public:
 			fputc(1, m_dumpfp);
 			fputc(m_field, m_dumpfp);
 
-			if(m_field == 0)
+			if(m_field == 0 && !(::GetAsyncKeyState(VK_CONTROL) & 0x80000000))
 			{
 				fclose(m_dumpfp);
 				m_dumpfp = NULL;
@@ -350,6 +350,7 @@ public:
 	bool MakeSnapshot(LPCTSTR path)
 	{
 		CString fn;
+
 		fn.Format(_T("%s_%s"), path, CTime::GetCurrentTime().Format(_T("%Y%m%d%H%M%S")));
 
 		if((::GetAsyncKeyState(VK_SHIFT) & 0x80000000) && m_dumpfn.IsEmpty())
@@ -413,6 +414,7 @@ protected:
 		if(m_count > 0)
 		{
 			/*
+			*/
 			TRACE(_T("[%d] Draw f %05x (%d) z %05x (%d %d %d %d) t %05x %05x (%d)\n"), 
 				  (int)m_perfmon.GetFrame(), 
 				  (int)m_context->FRAME.Block(), 
@@ -425,7 +427,6 @@ protected:
 				  PRIM->TME ? (int)m_context->TEX0.TBP0 : 0xfffff, 
 				  PRIM->TME && m_context->TEX0.PSM > PSM_PSMCT16S ? (int)m_context->TEX0.CBP : 0xfffff, 
 				  PRIM->TME ? (int)m_context->TEX0.PSM : 0xff);
-			*/
 
 			Draw();
 
