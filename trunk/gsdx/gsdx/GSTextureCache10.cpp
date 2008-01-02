@@ -43,9 +43,6 @@ void GSTextureCache10::GSRenderTargetHW10::Update()
 
 	if(r.IsRectEmpty()) return;
 
-	if(r.right > 1024) {ASSERT(0); r.right = 1024;}
-	if(r.bottom > 1024) {ASSERT(0); r.bottom = 1024;}
-
 	int w = r.Width();
 	int h = r.Height();
 
@@ -459,6 +456,8 @@ void GSTextureCache10::GSTextureHW10::Update()
 		return;
 	}
 
+	m_valid |= r;
+
 	//TRACE(_T("GSTexture::Update %d,%d - %d,%d (%08x)\n"), r.left, r.top, r.right, r.bottom, m_TEX0.TBP0);
 
 	static BYTE* bits = (BYTE*)::_aligned_malloc(1024 * 1024 * 4, 16);
@@ -476,16 +475,4 @@ void GSTextureCache10::GSTextureHW10::Update()
 	m_texture.Update(r, bits, pitch);
 
 	m_renderer->m_perfmon.Put(GSPerfMon::Unswizzle, r.Width() * r.Height() * m_bpp >> 3);
-
-	CRect r2 = m_valid & r;
-
-	if(!r2.IsRectEmpty())
-	{
-		m_renderer->m_perfmon.Put(GSPerfMon::Unswizzle2, r2.Width() * r2.Height() * m_bpp >> 3);
-	}
-
-	m_valid |= r;
-	m_dirty.RemoveAll();
-
-	m_renderer->m_perfmon.Put(GSPerfMon::Texture, r.Width() * r.Height() * m_bpp >> 3);
 }

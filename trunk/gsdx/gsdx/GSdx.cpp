@@ -132,7 +132,7 @@ EXPORT_C_(UINT32) PS2EgetLibVersion2(UINT32 type)
 {
 	const UINT32 revision = 0;
 	const UINT32 build = 1;
-	const UINT32 minor = 5;
+	const UINT32 minor = 6;
 
 	return (build << 0) | (revision << 8) | (PS2E_GS_VERSION << 16) | (minor << 24);
 }
@@ -189,6 +189,8 @@ EXPORT_C_(INT32) GSopen(void* dsp, char* title, int mt)
 	AFX_MANAGE_STATE(AfxGetStaticModuleState());
 
 	GSclose();
+
+	// TODO: wrap constructor params into a GSOptions class 
 
 	int nloophack = AfxGetApp()->GetProfileInt(_T("Settings"), _T("nloophack"), 2);
 	int interlace = AfxGetApp()->GetProfileInt(_T("Settings"), _T("interlace"), 0);

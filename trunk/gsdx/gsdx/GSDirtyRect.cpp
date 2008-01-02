@@ -66,7 +66,7 @@ CRect GSDirtyRectList::GetDirtyRect(const GIFRegTEX0& TEX0)
 	CRect r(INT_MAX, INT_MAX, 0, 0);
 	POSITION pos = GetHeadPosition();
 	while(pos) r |= GetNext(pos).GetDirtyRect(TEX0);
-	return r;
+	return r & CRect(0, 0, 1 << TEX0.TW, 1 << TEX0.TH);
 }
 
 /*

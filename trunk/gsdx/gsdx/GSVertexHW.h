@@ -67,7 +67,7 @@ __declspec(align(16)) union GSVertexHW10
 
 		union 
 		{
-			union {DWORD _pad[1]; struct {BYTE ta0, ta1, res, f;}; DWORD c1;};
+			struct {DWORD _pad[1]; union {struct {BYTE ta0, ta1, res, f;}; DWORD c1;};};
 			GIFRegFOG FOG;
 		};
 	};

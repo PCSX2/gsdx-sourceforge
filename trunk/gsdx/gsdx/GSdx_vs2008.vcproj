@@ -568,6 +568,14 @@
 			<File
 				RelativePath=".\GSLocalMemory.cpp"
 				>
+				<FileConfiguration
+					Name="Release SSE2|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AssemblerOutput="4"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\GSPerfMon.cpp"

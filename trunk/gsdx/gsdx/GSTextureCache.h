@@ -110,39 +110,64 @@ public:
 			int w = 1 << m_TEX0.TW;
 			int h = 1 << m_TEX0.TH;
 
-			r.SetRect(0, 0, w, h);
+			r = CRect(0, 0, w, h);
+
+			POSITION pos = m_dirty.GetHeadPosition();
+
+			while(pos)
+			{
+				const CRect& dirty = m_dirty.GetNext(pos).GetDirtyRect(m_TEX0) & r;
+
+				if(!(m_valid & dirty).IsRectEmpty())
+				{
+					 // find the rect having the largest area, outside dirty, inside m_valid
+
+					CRect left(m_valid.left, m_valid.top, min(m_valid.right, dirty.left), m_valid.bottom);
+					CRect top(m_valid.left, m_valid.top, m_valid.right, min(m_valid.bottom, dirty.top));
+					CRect right(max(m_valid.left, dirty.right), m_valid.top, m_valid.right, m_valid.bottom);
+					CRect bottom(m_valid.left, max(m_valid.top, dirty.bottom), m_valid.right, m_valid.bottom);
+
+					int leftsize = !left.IsRectEmpty() ? left.Width() * left.Height() : 0;
+					int topsize = !top.IsRectEmpty() ? top.Width() * top.Height() : 0;
+					int rightsize = !right.IsRectEmpty() ? right.Width() * right.Height() : 0;
+					int bottomsize = !bottom.IsRectEmpty() ? bottom.Width() * bottom.Height() : 0;
+
+					// TODO: sort
+
+					m_valid = 
+						leftsize > 0 ? left : 
+						topsize > 0 ? top : 
+						rightsize > 0 ? right : 
+						bottomsize > 0 ? bottom : 
+						CRect(0, 0, 0, 0);
+				}
+			}
+
+			m_dirty.RemoveAll();
 
 			m_renderer->MinMaxUV(w, h, r);
 
-			CRect dirty = m_dirty.GetDirtyRect(m_TEX0);
-			CRect valid = m_valid;
-
-			dirty &= CRect(0, 0, m_texture.GetWidth(), m_texture.GetHeight());
-
-			if(IsRectInRect(r, valid))
+			if(IsRectInRect(r, m_valid))
 			{
-				if(dirty.IsRectEmpty()) return false;
-				else if(IsRectInRect(dirty, r)) r = dirty;
-				else if(IsRectInRect(dirty, valid)) r |= dirty;
-				else r = valid & dirty;
+				return false;
 			}
-			else if(IsRectInRectH(r, valid) && (r.left >= valid.left || r.right <= valid.right))
+			else if(IsRectInRectH(r, m_valid) && (r.left >= m_valid.left || r.right <= m_valid.right))
 			{
-				r.top = valid.top;
-				r.bottom = valid.bottom;
-				if(r.left < valid.left) r.right = valid.left;
-				else /*if(r.right > valid.right)*/ r.left = valid.right;
+				r.top = m_valid.top;
+				r.bottom = m_valid.bottom;
+				if(r.left < m_valid.left) r.right = m_valid.left;
+				else r.left = m_valid.right; // if(r.right > m_valid.right)
 			}
-			else if(IsRectInRectV(r, valid) && (r.top >= valid.top || r.bottom <= valid.bottom))
+			else if(IsRectInRectV(r, m_valid) && (r.top >= m_valid.top || r.bottom <= m_valid.bottom))
 			{
-				r.left = valid.left;
-				r.right = valid.right;
-				if(r.top < valid.top) r.bottom = valid.top;
-				else /*if(r.bottom > valid.bottom)*/ r.top = valid.bottom;
+				r.left = m_valid.left;
+				r.right = m_valid.right;
+				if(r.top < m_valid.top) r.bottom = m_valid.top;
+				else r.top = m_valid.bottom; // if(r.bottom > m_valid.bottom)
 			}
 			else
 			{
-				r |= valid;
+				r |= m_valid;
 			}
 
 			return !r.IsRectEmpty();
@@ -556,8 +581,6 @@ public:
 				if(sum != 0) 
 				{
 					t->m_palette.Update(CRect(0, 0, pal, 1), t->m_clut, size);
-
-					m_renderer->m_perfmon.Put(GSPerfMon::Texture, size);
 				}
 			}
 			else
@@ -598,6 +621,28 @@ public:
 					delete t;
 				}
 			}
+			else if(BITBLTBUF.DBW == t->m_TEX0.TBW && HasCompatibleBits(BITBLTBUF.DPSM, t->m_TEX0.PSM))
+			{
+				int rowsize = (int)BITBLTBUF.DBW * 8192;
+				int offset = ((int)BITBLTBUF.DBP - (int)t->m_TEX0.TBP0) * 256;
+
+				if(rowsize > 0 && offset % rowsize == 0)
+				{
+					int y = m_renderer->m_mem.m_psm[BITBLTBUF.DPSM].pgs.cy * offset / rowsize;
+
+					CRect r2(r.left, r.top + y, r.right, r.bottom + y);
+
+					int w = 1 << t->m_TEX0.TW;
+					int h = 1 << t->m_TEX0.TH;
+
+					if(r2.bottom > 0 && r2.top < h && r2.right > 0 && r2.left < w)
+					{
+// _tprintf(_T("%05x (%d) %05x (%d) %d,%d - %d,%d (%d,%d)\n"), (int)BITBLTBUF.DBP, (int)BITBLTBUF.DPSM, (int)t->m_TEX0.TBP0, (int)t->m_TEX0.PSM, r2.left, r2.top, r2.right, r2.bottom, w, h);
+						t->m_dirty.AddTail(GSDirtyRect(BITBLTBUF.DPSM, r2));
+					}
+				}
+			}
+/**/
 		}
 
 		pos = m_rt.GetHeadPosition();

@@ -121,7 +121,7 @@ class GSState
 	void StepTransfer(int sx, int ex) {if(++m_x == ex) {m_x = sx; m_y++;}}
 
 protected:
-	bool DetectBadFrame(int& skip);
+	bool IsBadFrame(int& skip);
 
 public:
 	GIFRegPRIM*		PRIM;

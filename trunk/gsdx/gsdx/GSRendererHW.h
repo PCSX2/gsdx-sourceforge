@@ -485,6 +485,21 @@ protected:
 
 		#pragma endregion
 
+		#pragma region metal slug missing red channel fix
+		
+		if(m_crc == 0x2113EA2E)
+		{
+			for(int i = 0, j = m_count; i < j; i++)
+			{
+				if(m_vertices[i].r == 0 && m_vertices[i].g != 0 && m_vertices[i].b != 0)
+				{
+					m_vertices[i].r = (m_vertices[i].g + m_vertices[i].b) / 2;
+				}
+			}
+		}
+
+		#pragma endregion
+
 		return true;
 	}
 
