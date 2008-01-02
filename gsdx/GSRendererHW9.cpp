@@ -240,7 +240,7 @@ void GSRendererHW9::DrawingKick(bool skip)
 
 void GSRendererHW9::Draw()
 {
-	if(DetectBadFrame(m_skip))
+	if(IsBadFrame(m_skip))
 	{
 		return;
 	}

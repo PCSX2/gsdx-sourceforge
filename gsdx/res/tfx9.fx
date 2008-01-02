@@ -167,10 +167,10 @@ float4 sample8hp(float2 tc)
 
 	float4 tc01;
 	
-	tc01.x = tc.x; 
+	tc01.x = tc.x;
 	tc01.y = tc.y;
-	tc01.z = tc.x + 1; 
-	tc01.w = tc.y + 1;
+	tc01.z = tc.x + rWrH.x; 
+	tc01.w = tc.y + rWrH.y;
 
 	float4 t;
 
@@ -180,7 +180,7 @@ float4 sample8hp(float2 tc)
 	t.w = tex2D(Texture, tc01.zw).a;
 
 	if(RT == 1) t *= 0.5;
-
+	
 	float4 t00 = tex1D(Palette, t.x);
 	float4 t01 = tex1D(Palette, t.y);
 	float4 t10 = tex1D(Palette, t.z);
@@ -188,7 +188,7 @@ float4 sample8hp(float2 tc)
 
 	float2 dd = frac(tc * WH); 
 
-	return lerp(lerp(t00, t01, dd.x), lerp(t10, t11, dd.x), dd.y).bgra; // .bgra? ("fixes" dbzbt3)
+	return lerp(lerp(t00, t01, dd.x), lerp(t10, t11, dd.x), dd.y);
 }
 
 float4 ps_main(PS_INPUT input) : COLOR

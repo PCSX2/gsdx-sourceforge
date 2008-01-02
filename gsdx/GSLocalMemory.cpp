@@ -585,16 +585,17 @@ bool GSLocalMemory::WriteCLUT(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT)
 		{
 			for(int i = 0; i < pal; i++)
 			{
-				pCLUT[i] = (WORD)(this->*rp)((TEXCLUT.COU<<4) + i, TEXCLUT.COV, bp, bw);
+				pCLUT[i] = (WORD)(this->*rp)((TEXCLUT.COU << 4) + i, TEXCLUT.COV, bp, bw);
 			}
 		}
 		else if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 		{
 			for(int i = 0; i < pal; i++)
 			{
-				DWORD dw = (this->*rp)((TEXCLUT.COU<<4) + i, TEXCLUT.COV, bp, bw);
+				DWORD dw = (this->*rp)((TEXCLUT.COU << 4) + i, TEXCLUT.COV, bp, bw);
+
 				pCLUT[i] = (WORD)(dw & 0xffff);
-				pCLUT[i+256] = (WORD)(dw >> 16);
+				pCLUT[i + 256] = (WORD)(dw >> 16);
 			}
 		}
 	}

@@ -26,7 +26,7 @@
 class GSPerfMon
 {
 public:
-	enum counter_t {Frame, Prim, Draw, Swizzle, Unswizzle, Unswizzle2, Texture, ConvertRT2T, ReadRT, WriteRT, WriteTexture, CounterLast};
+	enum counter_t {Frame, Prim, Draw, Swizzle, Unswizzle, ConvertRT2T, ReadRT, WriteRT, WriteTexture, CounterLast};
 	enum warning_t {DATE, PABE, ABE, COLCLAMP, DepthTexture, WarningLast};
 
 protected:

@@ -82,6 +82,8 @@ void GSRendererHW10::VertexKick(bool skip)
 
 #if 0 //_M_IX86_FP >= 2 || defined(_M_AMD64)
 
+	// TODO: make m_v aligned
+
 	v.m128i[0] = m_v.m128i[0];
 	v.m128i[1] = m_v.m128i[1];
 
@@ -225,7 +227,7 @@ void GSRendererHW10::DrawingKick(bool skip)
 
 void GSRendererHW10::Draw()
 {
-	if(DetectBadFrame(m_skip))
+	if(IsBadFrame(m_skip))
 	{
 		return;
 	}

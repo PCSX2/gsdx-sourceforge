@@ -763,7 +763,7 @@ void GSState::GIFRegHandlerFOGCOL(GIFReg* r)
 
 void GSState::GIFRegHandlerTEXFLUSH(GIFReg* r)
 {
-	// what should we do here?
+	// TODO: invalidate the texture cache page (sw-only)
 }
 
 template<int i> void GSState::GIFRegHandlerSCISSOR(GIFReg* r)
@@ -1722,235 +1722,337 @@ void GSState::SetFrameSkip(int frameskip)
 	}
 }
 
-bool GSState::DetectBadFrame(int& skip)
+// hacks
+
+struct GSFrameInfo
 {
-	DWORD FBP = m_context->FRAME.Block();
-	DWORD FPSM = m_context->FRAME.PSM;
+	DWORD FBP;
+	DWORD FPSM;
+	bool TME;
+	DWORD TBP0;
+	DWORD TPSM;
+};
 
-	bool TME = PRIM->TME;
-	DWORD TBP0 = m_context->TEX0.TBP0;
-	DWORD TPSM = m_context->TEX0.PSM;
+typedef bool (*GetSkipCount)(const GSFrameInfo& fi, int& skip);
 
-	switch(m_crc)
+bool GSC_Okami(const GSFrameInfo& fi, int& skip)
+{
+	if(skip == 0)
 	{
-	case 0x21068223: // okami ntsc/us
-	case 0x891f223f: // okami pal/fr
-
-		if(skip == 0)
+		if(fi.TME && fi.FBP == 0x00e00 && fi.FPSM == PSM_PSMCT32 && fi.TBP0 == 0x00000 && fi.TPSM == PSM_PSMCT32)
 		{
-			if(TME && FBP == 0x00e00 && FPSM == PSM_PSMCT32 && TBP0 == 0x00000 && TPSM == PSM_PSMCT32)
-			{
-				skip = 1000;
-			}
+			skip = 1000;
 		}
-		else
+	}
+	else
+	{
+		if(fi.TME && fi.FBP == 0x00e00 && fi.FPSM == PSM_PSMCT32 && fi.TBP0 == 0x03800 && fi.TPSM == PSM_PSMT4)
 		{
-			if(TME && FBP == 0x00e00 && FPSM == PSM_PSMCT32 && TBP0 == 0x03800 && TPSM == PSM_PSMT4)
-			{
-				skip = 0;
-			}
+			skip = 0;
 		}
+	}
 
-		break;
+	return true;
+}
 
-	case 0x053D2239: // mgs3s1 ntsc/us (TODO: in-game has funny colors)
-	case 0x086273D2: // mgs3 snake eater pal/fr
-	case 0xAA31B5BF: // mgs3 snake eater 
-
-		if(skip == 0)
+bool GSC_MetalGearSolid3(const GSFrameInfo& fi, int& skip)
+{
+	if(skip == 0)
+	{
+		if(fi.TME && fi.FBP == 0x02000 && fi.FPSM == PSM_PSMCT32 && (fi.TBP0 == 0x00000 || fi.TBP0 == 0x01000) && fi.TPSM == PSM_PSMCT24)
 		{
-			if(TME && FBP == 0x02000 && FPSM == PSM_PSMCT32 && (TBP0 == 0x00000 || TBP0 == 0x01000) && TPSM == PSM_PSMCT24)
-			{
-				skip = 1000; // 76, 79
-			}
-			else if(TME && FBP == 0x02800 && FPSM == PSM_PSMCT24 && (TBP0 == 0x00000 || TBP0 == 0x01000) && TPSM == PSM_PSMCT32)
-			{
-				skip = 1000; // 69
-			}
+			skip = 1000; // 76, 79
 		}
-		else 
+		else if(fi.TME && fi.FBP == 0x02800 && fi.FPSM == PSM_PSMCT24 && (fi.TBP0 == 0x00000 || fi.TBP0 == 0x01000) && fi.TPSM == PSM_PSMCT32)
 		{
-			if(!TME && (FBP == 0x00000 || FBP == 0x01000) && FPSM == PSM_PSMCT32)
-			{
-				skip = 0;
-			}
+			skip = 1000; // 69
 		}
-
-		break;
-
-	case 0x278722BF: // dbz bt2 ntsc/us
-
-		if(skip == 0)
+	}
+	else 
+	{
+		if(!fi.TME && (fi.FBP == 0x00000 || fi.FBP == 0x01000) && fi.FPSM == PSM_PSMCT32)
 		{
-			if(TME && /*FBP == 0x00000 && FPSM == PSM_PSMCT16 &&*/ TBP0 == 0x02000 && TPSM == PSM_PSMZ16)
-			{
-				skip = 27;
-			}
+			skip = 0;
 		}
+	}
 
-		break;
+	return true;
+}
 
-	case 0x72B3802A: // sfex3 ntsc/us
-	case 0x71521863: // sfex3 ntsc/us
-
-		if(skip == 0)
+bool GSC_DBZBT2(const GSFrameInfo& fi, int& skip)
+{
+	if(skip == 0)
+	{
+		if(fi.TME && /*fi.FBP == 0x00000 && fi.FPSM == PSM_PSMCT16 &&*/ fi.TBP0 == 0x02000 && fi.TPSM == PSM_PSMZ16)
 		{
-			if(TME && FBP == 0x00f00 && FPSM == PSM_PSMCT16 && (TBP0 == 0x00500 || TBP0 == 0x00000) && TPSM == PSM_PSMCT32)
-			{
-				skip = 4;
-			}
+			skip = 27;
 		}
+	}
 
-		break;
+	return true;
+}
 
-	case 0x28703748: // bully ntsc/us
-
-		if(skip == 0)
+bool GSC_DBZBT3(const GSFrameInfo& fi, int& skip)
+{
+	if(skip == 0)
+	{
+		if(fi.TME && fi.FBP == 0x01c00 && fi.FPSM == PSM_PSMCT32 && (fi.TBP0 == 0x00000 || fi.TBP0 == 0x00e00) && fi.TPSM == PSM_PSMT8H)
 		{
-			if(TME && (FBP == 0x00000 || FBP == 0x01180) && (TBP0 == 0x00000 || TBP0 == 0x01180) && FBP == TBP0 && FPSM == PSM_PSMCT32 && FPSM == TPSM)
-			{
-				return false; // allowed for bully
-			}
-
-			if(TME && (FBP == 0x00000 || FBP == 0x01180) && FPSM == PSM_PSMCT16S && TBP0 == 0x02300 && TPSM == PSM_PSMZ16S)
-			{
-				skip = 6;
-			}
+			skip = 24; // blur
 		}
-		else 
+		else if(fi.TME && (fi.FBP == 0x00000 || fi.FBP == 0x00e00) && fi.FPSM == PSM_PSMCT32 && fi.TPSM == PSM_PSMT8H)
 		{
-			if(!TME && (FBP == 0x00000 || FBP == 0x01180) && FPSM == PSM_PSMCT32)
-			{
-				skip = 0;
-			}
+			skip = 28; // outline
 		}
+	}
 
-		break;
+	return true;
+}
 
-	case 0xC19A374E: // shadow of the colossus ntsc/us
-
-		if(skip == 0)
+bool GSC_SFEX3(const GSFrameInfo& fi, int& skip)
+{
+	if(skip == 0)
+	{
+		if(fi.TME && fi.FBP == 0x00f00 && fi.FPSM == PSM_PSMCT16 && (fi.TBP0 == 0x00500 || fi.TBP0 == 0x00000) && fi.TPSM == PSM_PSMCT32)
 		{
-			if(TME && FBP == 0x02b80 && FPSM == PSM_PSMCT24 && TBP0 == 0x01e80 && TPSM == PSM_PSMCT24)
-			{
-				skip = 9;
-			}
-			else if(TME && FBP == 0x01e80 && FPSM == PSM_PSMCT32 && TBP0 == 0x03880 && TPSM == PSM_PSMCT32)
-			{
-				skip = 8;
-			}
+			skip = 4;
+		}
+	}
+
+	return true;
+}
+
+bool GSC_Bully(const GSFrameInfo& fi, int& skip)
+{
+	if(skip == 0)
+	{
+		if(fi.TME && (fi.FBP == 0x00000 || fi.FBP == 0x01180) && (fi.TBP0 == 0x00000 || fi.TBP0 == 0x01180) && fi.FBP == fi.TBP0 && fi.FPSM == PSM_PSMCT32 && fi.FPSM == fi.TPSM)
+		{
+			return false; // allowed for bully
 		}
 
-		break;
-
-	case 0x3122B508: // one piece grand adventure ntsc/us
-
-		if(skip == 0)
+		if(fi.TME && (fi.FBP == 0x00000 || fi.FBP == 0x01180) && fi.FPSM == PSM_PSMCT16S && fi.TBP0 == 0x02300 && fi.TPSM == PSM_PSMZ16S)
 		{
-			if(TME && FBP == 0x02d00 && FPSM == PSM_PSMCT16 && (TBP0 == 0x00000 || TBP0 == 0x00e00) && TPSM == PSM_PSMCT16)
-			{
-				skip = 3;
-			}
+			skip = 6;
 		}
-
-		break;
-
-	case 0x6F8545DB: // ICO ntsc/us
-	case 0x5C991F4E: // ICO pal/eu + pal/ntsc selector
-
-		if(skip == 0)
+	}
+	else 
+	{
+		if(!fi.TME && (fi.FBP == 0x00000 || fi.FBP == 0x01180) && fi.FPSM == PSM_PSMCT32)
 		{
-			if(TME && FBP == 0x00800 && FPSM == PSM_PSMCT32 && TBP0 == 0x03d00 && TPSM == PSM_PSMCT32)
-			{
-				skip = 3;
-			}
-			else if(TME && FBP == 0x00800 && FPSM == PSM_PSMCT32 && TBP0 == 0x02800 && TPSM == PSM_PSMT8H)
-			{
-				skip = 1;
-			}
+			skip = 0;
 		}
-		else
+	}
+
+	return true;
+}
+
+bool GSC_SoTC(const GSFrameInfo& fi, int& skip)
+{
+	if(skip == 0)
+	{
+		if(fi.TME && fi.FBP == 0x02b80 && fi.FPSM == PSM_PSMCT24 && fi.TBP0 == 0x01e80 && fi.TPSM == PSM_PSMCT24)
 		{
-			if(TME && TBP0 == 0x00800 && TPSM == PSM_PSMCT32)
-			{
-				skip = 0;
-			}
+			skip = 9;
 		}
-
-		break;
-
-	case 0x44A61C8F: // gt4
-	case 0x0086E35B: // gt4
-	case 0x77E61C8A: // gt4
-
-		if(skip == 0)
+		else if(fi.TME && fi.FBP == 0x01e80 && fi.FPSM == PSM_PSMCT32 && fi.TBP0 == 0x03880 && fi.TPSM == PSM_PSMCT32)
 		{
-			if(TME && (FBP == 0x03440 || FBP >= 0x03e00) && FPSM == PSM_PSMCT32 && (TBP0 == 0x00000 || TBP0 == 0x01400) && TPSM == PSM_PSMT8)
-			{
-				skip = 880;
-			}
-			else if(TME && (FBP == 0x00000 || FBP == 0x01400) && FPSM == PSM_PSMCT24 && TBP0 >= 0x03420 && TPSM == PSM_PSMT8)
-			{
-				// TODO: removes gfx from where it is not supposed to (garage)
-				// skip = 58;
-			}
+			skip = 8;
 		}
+	}
 
-		break;
+	return true;
+}
 
-	case 0x428113C2: // dbz bt3 ntsc/us
-	case 0xA422BB13: // dbz bt3 pal/eu
-
-		if(skip == 0)
+bool GSC_OnePieceGrandAdventure(const GSFrameInfo& fi, int& skip)
+{
+	if(skip == 0)
+	{
+		if(fi.TME && fi.FBP == 0x02d00 && fi.FPSM == PSM_PSMCT16 && (fi.TBP0 == 0x00000 || fi.TBP0 == 0x00e00) && fi.TPSM == PSM_PSMCT16)
 		{
-			if(TME && FBP == 0x01c00 && FPSM == PSM_PSMCT32 && TPSM == PSM_PSMT8H)
-			{
-				skip = 24;
-			}
+			skip = 3;
 		}
+	}
 
-		break;
+	return true;
+}
 
-	case 0xC164550A: // wild arms 5 undub
-	case 0xC1640D2C: // wild arms 5 ntsc/us
-
-		if(skip == 0)
+bool GSC_ICO(const GSFrameInfo& fi, int& skip)
+{
+	if(skip == 0)
+	{
+		if(fi.TME && fi.FBP == 0x00800 && fi.FPSM == PSM_PSMCT32 && fi.TBP0 == 0x03d00 && fi.TPSM == PSM_PSMCT32)
 		{
-			if(TME && FBP == 0x03100 && FPSM == PSM_PSMZ32 && TBP0 == 0x01c00 && TPSM == PSM_PSMZ32)
-			{
-				skip = 9;
-			}
+			skip = 3;
 		}
-
-		break;
-
-	case 0x8B029334: // manhunt 2 (?)
-
-		if(skip == 0)
+		else if(fi.TME && fi.FBP == 0x00800 && fi.FPSM == PSM_PSMCT32 && fi.TBP0 == 0x02800 && fi.TPSM == PSM_PSMT8H)
 		{
-			if(TME && FBP == 0x03c20 && FPSM == PSM_PSMCT32 && TBP0 == 0x01400 && TPSM == PSM_PSMT8)
-			{
-				skip = 640;
-			}
+			skip = 1;
 		}
+	}
+	else
+	{
+		if(fi.TME && fi.TBP0 == 0x00800 && fi.TPSM == PSM_PSMCT32)
+		{
+			skip = 0;
+		}
+	}
 
-		break;
+	return true;
+}
+
+bool GSC_GT4(const GSFrameInfo& fi, int& skip)
+{
+	if(skip == 0)
+	{
+		if(fi.TME && (fi.FBP == 0x03440 || fi.FBP >= 0x03e00) && fi.FPSM == PSM_PSMCT32 && (fi.TBP0 == 0x00000 || fi.TBP0 == 0x01400) && fi.TPSM == PSM_PSMT8)
+		{
+			skip = 880;
+		}
+		else if(fi.TME && (fi.FBP == 0x00000 || fi.FBP == 0x01400) && fi.FPSM == PSM_PSMCT24 && fi.TBP0 >= 0x03420 && fi.TPSM == PSM_PSMT8)
+		{
+			// TODO: removes gfx from where it is not supposed to (garage)
+			// skip = 58;
+		}
+	}
+
+	return true;
+}
+
+bool GSC_WildArms5(const GSFrameInfo& fi, int& skip)
+{
+	if(skip == 0)
+	{
+		if(fi.TME && fi.FBP == 0x03100 && fi.FPSM == PSM_PSMZ32 && fi.TBP0 == 0x01c00 && fi.TPSM == PSM_PSMZ32)
+		{
+			skip = 100;
+		}
+	}
+	else
+	{
+		if(fi.TME && fi.FBP == 0x00e00 && fi.FPSM == PSM_PSMCT32 && fi.TBP0 == 0x02a00 && fi.TPSM == PSM_PSMCT32)
+		{
+			skip = 1;
+		}
+	}
+
+	return true;
+}
+
+bool GSC_Manhunt2(const GSFrameInfo& fi, int& skip)
+{
+	if(skip == 0)
+	{
+		if(fi.TME && fi.FBP == 0x03c20 && fi.FPSM == PSM_PSMCT32 && fi.TBP0 == 0x01400 && fi.TPSM == PSM_PSMT8)
+		{
+			skip = 640;
+		}
+	}
+
+	return true;
+}
+
+bool GSC_CrashBandicootWoC(const GSFrameInfo& fi, int& skip)
+{
+	if(skip == 0)
+	{
+		if(fi.TME && fi.FBP == 0x02200 && fi.FPSM == PSM_PSMZ24 && fi.TBP0 == 0x01400 && fi.TPSM == PSM_PSMZ24)
+		{
+			skip = 41;
+		}
+	}
+
+	return true;
+}
+
+bool GSC_ResidentEvil4(const GSFrameInfo& fi, int& skip)
+{
+	if(skip == 0)
+	{
+		if(fi.TME && fi.FBP == 0x03100 && fi.FPSM == PSM_PSMCT32 && fi.TBP0 == 0x01c00 && fi.TPSM == PSM_PSMZ24)
+		{
+			skip = 176;
+		}
+	}
+
+	return true;
+}
+
+bool GSC_Spartan(const GSFrameInfo& fi, int& skip)
+{
+	if(skip == 0)
+	{
+		if(fi.TME && fi.FBP == 0x02000 && fi.FPSM == PSM_PSMCT32 && fi.TBP0 == 0x00000 && fi.TPSM == PSM_PSMCT32)
+		{
+			skip = 107;
+		}
+	}
+
+	return true;
+}
+
+bool GSState::IsBadFrame(int& skip)
+{
+	GSFrameInfo fi;
+
+	fi.FBP = m_context->FRAME.Block();
+	fi.FPSM = m_context->FRAME.PSM;
+	fi.TME = PRIM->TME;
+	fi.TBP0 = m_context->TEX0.TBP0;
+	fi.TPSM = m_context->TEX0.PSM;
+
+	static CAtlMap<DWORD, GetSkipCount> m_crc2gsc;
+
+	if(m_crc2gsc.IsEmpty())
+	{
+		m_crc2gsc[0x21068223] = GSC_Okami; // okami ntsc/us
+		m_crc2gsc[0x891f223f] = GSC_Okami; // okami pal/fr
+		m_crc2gsc[0x053D2239] = GSC_MetalGearSolid3; // mgs3s1 ntsc/us (TODO: in-game has funny colors)
+		m_crc2gsc[0x086273D2] = GSC_MetalGearSolid3; // mgs3 snake eater pal/fr
+		m_crc2gsc[0xAA31B5BF] = GSC_MetalGearSolid3; // mgs3 snake eater 
+		m_crc2gsc[0x278722BF] = GSC_DBZBT2; // dbz bt2 ntsc/us
+		m_crc2gsc[0x428113C2] = GSC_DBZBT3; // dbz bt3 ntsc/us
+		m_crc2gsc[0xA422BB13] = GSC_DBZBT3; // dbz bt3 pal/eu
+		m_crc2gsc[0x72B3802A] = GSC_SFEX3; // sfex3 ntsc/us
+		m_crc2gsc[0x71521863] = GSC_SFEX3; // sfex3 ntsc/us (patched)
+		m_crc2gsc[0x28703748] = GSC_Bully; // bully ntsc/us
+		m_crc2gsc[0xC19A374E] = GSC_SoTC; // shadow of the colossus ntsc/us
+		m_crc2gsc[0x3122B508] = GSC_OnePieceGrandAdventure; // one piece grand adventure ntsc/us
+		m_crc2gsc[0x6F8545DB] = GSC_ICO; // ICO ntsc/us
+		m_crc2gsc[0x5C991F4E] = GSC_ICO; // ICO pal/eu + pal/ntsc selector
+		m_crc2gsc[0x44A61C8F] = GSC_GT4; // gt4 ? 
+		m_crc2gsc[0x0086E35B] = GSC_GT4; // gt4 ?
+		m_crc2gsc[0x77E61C8A] = GSC_GT4; // gt4 ?
+		m_crc2gsc[0xC164550A] = GSC_WildArms5; // wild arms 5 undub
+		m_crc2gsc[0xC1640D2C] = GSC_WildArms5; // wild arms 5 ntsc/us
+		m_crc2gsc[0x8B029334] = GSC_Manhunt2; // manhunt 2 ?
+		m_crc2gsc[0x09F49E37] = GSC_CrashBandicootWoC; // crash bandicoot wrath of cortex
+		m_crc2gsc[0x013E349D] = GSC_ResidentEvil4; // re4 ntsc/us
+		m_crc2gsc[0x6BA2F6B9] = GSC_ResidentEvil4; // re4 ?
+		m_crc2gsc[0x72E1E60E] = GSC_Spartan; // spartan ntsc/us
+	}
+
+	if(CAtlMap<DWORD, GetSkipCount>::CPair* pair = m_crc2gsc.Lookup(m_crc))
+	{
+		if(!pair->m_value(fi, skip))
+		{
+			return false;
+		}
 	}
 
 	if(skip == 0)
 	{
-		if(TME)
+		if(fi.TME)
 		{
-			if(HasSharedBits(FBP, FPSM, TBP0, TPSM))
+			if(HasSharedBits(fi.FBP, fi.FPSM, fi.TBP0, fi.TPSM))
 			{
 				skip = 1;
 			}
 
 			// depth textures (bully, mgs3s1 intro)
 
-			if(TPSM == PSM_PSMZ32 || TPSM == PSM_PSMZ24 || TPSM == PSM_PSMZ16 || TPSM == PSM_PSMZ16S)
+			if(fi.TPSM == PSM_PSMZ32 || fi.TPSM == PSM_PSMZ24 || fi.TPSM == PSM_PSMZ16 || fi.TPSM == PSM_PSMZ16S)
 			{
-				// m_perfmon.Put(GSPerfMon::DepthTexture);
 				skip = 1;
 			}
 		}

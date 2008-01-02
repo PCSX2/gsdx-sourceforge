@@ -249,7 +249,8 @@ public:
 
 		if(!Merge()) return;
 
-//s_dump = m_perfmon.GetFrame() >= 5101;
+//
+s_dump = m_perfmon.GetFrame() >= 5002;
 
 		// osd 
 
@@ -265,7 +266,7 @@ public:
 			double fps = 1000.0f / m_perfmon.Get(GSPerfMon::Frame);
 			
 			s_stats.Format(
-				_T("%I64d | %d x %d | %.2f fps (%d%%) | %s - %s | %s | %d/%d | %d%% CPU | %.2f | %.2f/%.2f | %.2f"), 
+				_T("%I64d | %d x %d | %.2f fps (%d%%) | %s - %s | %s | %d/%d | %d%% CPU | %.2f | %.2f"), 
 				m_perfmon.GetFrame(), GetDisplaySize().cx, GetDisplaySize().cy, fps, (int)(100.0 * fps / GetFPS()),
 				SMODE2->INT ? (CString(_T("Interlaced ")) + (SMODE2->FFMD ? _T("(frame)") : _T("(field)"))) : _T("Progressive"),
 				g_interlace[m_interlace].name,
@@ -274,10 +275,8 @@ public:
 				(int)m_perfmon.Get(GSPerfMon::Draw),
 				m_perfmon.CPU(),
 				m_perfmon.Get(GSPerfMon::Swizzle) / 1024,
-				m_perfmon.Get(GSPerfMon::Unswizzle) / 1024,
-				m_perfmon.Get(GSPerfMon::Unswizzle2) / 1024,
-				m_perfmon.Get(GSPerfMon::Texture) / 1024
-				);
+				m_perfmon.Get(GSPerfMon::Unswizzle) / 1024
+			);
 
 			if(m_perfmon.Get(GSPerfMon::COLCLAMP)) _tprintf(_T("*** NOT SUPPORTED: color wrap ***\n"));
 			if(m_perfmon.Get(GSPerfMon::PABE)) _tprintf(_T("*** NOT SUPPORTED: per pixel alpha blend ***\n"));
