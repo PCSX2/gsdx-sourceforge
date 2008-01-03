@@ -6,94 +6,7 @@
 
 	.const
 
-	align 16
-	
-	__us16shufmask DB 0, 1, 4, 5, 2, 3, 6, 7, 8, 9, 12, 13, 10, 11, 14, 15
-	__us8shufmask DB 0, 4, 2, 6, 8, 12, 10, 14, 1, 5, 3, 7, 9, 13, 11, 15
-	__s8shufmask DB 0, 8, 1, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15
-
 	.code
-	
-;
-; memsetd
-;
-
-@memsetd@12 proc public
-
-	push	edi
-	
-	mov		edi, ecx
-	mov		eax, edx
-	mov		ecx, [esp+4+4]
-	cld
-	rep		stosd
-	
-	pop		edi
-
-	ret		4
-	
-@memsetd@12 endp
-
-;
-; SaturateColor
-;
-			
-@SaturateColor_sse2@4 proc public
-
-	pxor		xmm0, xmm0
-	movdqa		xmm1, [ecx]
-	packssdw	xmm1, xmm0
-	packuswb	xmm1, xmm0
-	punpcklbw	xmm1, xmm0
-	punpcklwd	xmm1, xmm0
-	movdqa		[ecx], xmm1
-
-	ret
-
-@SaturateColor_sse2@4 endp
-
-@SaturateColor_asm@4 proc public
-
-	push	esi
-
-	mov		esi, ecx
-
-	xor		eax, eax
-	mov		edx, 000000ffh
-
-	mov		ecx, [esi]
-	cmp		ecx, eax
-	cmovl	ecx, eax
-	cmp		ecx, edx
-	cmovg	ecx, edx
-	mov		[esi], ecx
-
-	mov		ecx, [esi+4]
-	cmp		ecx, eax
-	cmovl	ecx, eax
-	cmp		ecx, edx
-	cmovg	ecx, edx
-	mov		[esi+4], ecx
-
-	mov		ecx, [esi+8]
-	cmp		ecx, eax
-	cmovl	ecx, eax
-	cmp		ecx, edx
-	cmovg	ecx, edx
-	mov		[esi+8], ecx
-
-	mov		ecx, [esi+12]
-	cmp		ecx, eax
-	cmovl	ecx, eax
-	cmp		ecx, edx
-	cmovg	ecx, edx
-	mov		[esi+12], ecx
-	
-	pop		esi
-	
-	ret
-	
-@SaturateColor_asm@4 endp
 
 ;
 ; swizzling
@@ -157,7 +70,7 @@ punpcknb macro
 ; unSwizzleBlock32
 ;
 
-@unSwizzleBlock32_sse2@12 proc public
+@unSwizzleBlock32_x86_sse2@12 proc public
 
 	push		ebx
 
@@ -219,13 +132,13 @@ punpcknb macro
 
 	ret			4
 
-@unSwizzleBlock32_sse2@12 endp
+@unSwizzleBlock32_x86_sse2@12 endp
 
 ;
 ; unSwizzleBlock16
 ;
 
-@unSwizzleBlock16_sse2@12 proc public
+@unSwizzleBlock16_x86_sse2@12 proc public
 	
 	push		ebx
 
@@ -258,54 +171,13 @@ punpcknb macro
 	
 	ret			4
 	
-@unSwizzleBlock16_sse2@12 endp
-
-@unSwizzleBlock16_sse3@12 proc public
-	
-	push		ebx
-
-	mov			ebx, [esp+4+4]
-	mov			eax, 4
-	
-	movaps		xmm7, xmmword ptr __us16shufmask
-	
-	align 16
-@@:
-	movdqa		xmm0, [ecx+16*0]
-	movdqa		xmm1, [ecx+16*1]
-	movdqa		xmm2, [ecx+16*2]
-	movdqa		xmm3, [ecx+16*3]
-
-	pshufb		xmm0, xmm7
-	pshufb		xmm1, xmm7
-	pshufb		xmm2, xmm7
-	pshufb		xmm3, xmm7
-	
-	punpck		dq, 0, 2, 1, 3, 4, 6
-	punpck		qdq, 0, 4, 2, 6, 1, 3
-
-	movdqa		[edx], xmm0
-	movdqa		[edx+16], xmm1
-	movdqa		[edx+ebx], xmm4
-	movdqa		[edx+ebx+16], xmm3
-
-	add			ecx, 64
-	lea			edx, [edx+ebx*2]
-
-	dec			eax
-	jnz			@B
-	
-	pop			ebx
-	
-	ret			4
-	
-@unSwizzleBlock16_sse3@12 endp
+@unSwizzleBlock16_x86_sse2@12 endp
 
 ;
 ; unSwizzleBlock8
 ;
 
-@unSwizzleBlock8_sse2@12 proc public
+@unSwizzleBlock8_x86_sse2@12 proc public
 
 	push		ebx
 
@@ -369,81 +241,13 @@ punpcknb macro
 	
 	ret			4
 
-@unSwizzleBlock8_sse2@12 endp
-
-@unSwizzleBlock8_sse3@12 proc public
-
-	push		ebx
-
-	mov			ebx, [esp+4+4]
-	mov			eax, 2
-
-	movaps		xmm7, xmmword ptr __us8shufmask
-
-	align 16
-@@:
-	; col 0, 2
-
-	movdqa		xmm0, [ecx+16*0]
-	movdqa		xmm1, [ecx+16*1]
-	movdqa		xmm2, [ecx+16*2]
-	movdqa		xmm3, [ecx+16*3]
-	
-	pshufb		xmm0, xmm7
-	pshufb		xmm1, xmm7
-	pshufb		xmm2, xmm7
-	pshufb		xmm3, xmm7
-
-	punpck		wd, 0, 2, 1, 3, 4, 6
-	punpck		dq, 0, 6, 2, 4, 1, 3
-
-	movdqa		[edx], xmm0
-	movdqa		[edx+ebx], xmm1
-	lea			edx, [edx+ebx*2]
-
-	movdqa		[edx], xmm6
-	movdqa		[edx+ebx], xmm3
-	lea			edx, [edx+ebx*2]
-
-	; col 1, 3
-
-	movdqa		xmm2, [ecx+16*4]
-	movdqa		xmm3, [ecx+16*5]
-	movdqa		xmm0, [ecx+16*6]
-	movdqa		xmm1, [ecx+16*7]
-
-	pshufb		xmm0, xmm7
-	pshufb		xmm1, xmm7
-	pshufb		xmm2, xmm7
-	pshufb		xmm3, xmm7
-
-	punpck		wd, 0, 2, 1, 3, 4, 6
-	punpck		dq, 0, 6, 2, 4, 1, 3
-
-	movdqa		[edx], xmm0
-	movdqa		[edx+ebx], xmm1
-	lea			edx, [edx+ebx*2]
-
-	movdqa		[edx], xmm6
-	movdqa		[edx+ebx], xmm3
-	lea			edx, [edx+ebx*2]
-
-	add			ecx, 128
-
-	dec			eax
-	jnz			@B
-
-	pop			ebx
-	
-	ret			4
-
-@unSwizzleBlock8_sse3@12 endp
+@unSwizzleBlock8_x86_sse2@12 endp
 
 ;
 ; unSwizzleBlock4
 ;
 
-@unSwizzleBlock4_sse2@12 proc public
+@unSwizzleBlock4_x86_sse2@12 proc public
 
 	push		ebx
 
@@ -531,13 +335,13 @@ punpcknb macro
 	
 	ret			4
 
-@unSwizzleBlock4_sse2@12 endp
+@unSwizzleBlock4_x86_sse2@12 endp
 
 ;
 ; unSwizzleBlock8HP
 ;
 
-@unSwizzleBlock8HP_sse2@12 proc public
+@unSwizzleBlock8HP_x86_sse2@12 proc public
 
 	push		ebx
 
@@ -575,13 +379,13 @@ punpcknb macro
 
 	ret			4
 
-@unSwizzleBlock8HP_sse2@12 endp
+@unSwizzleBlock8HP_x86_sse2@12 endp
 
 ;
 ; unSwizzleBlock4HLP
 ;
 
-@unSwizzleBlock4HLP_sse2@12 proc public
+@unSwizzleBlock4HLP_x86_sse2@12 proc public
 
 	push		ebx
 	
@@ -625,13 +429,13 @@ punpcknb macro
 
 	ret			4
 
-@unSwizzleBlock4HLP_sse2@12 endp
+@unSwizzleBlock4HLP_x86_sse2@12 endp
 
 ;
 ; unSwizzleBlock4HHP
 ;
 
-@unSwizzleBlock4HHP_sse2@12 proc public
+@unSwizzleBlock4HHP_x86_sse2@12 proc public
 
 	push		ebx
 
@@ -669,13 +473,13 @@ punpcknb macro
 
 	ret			4
 
-@unSwizzleBlock4HHP_sse2@12 endp
+@unSwizzleBlock4HHP_x86_sse2@12 endp
 
 ;
 ; unSwizzleBlock4P
 ;
 
-@unSwizzleBlock4P_sse2@12 proc public
+@unSwizzleBlock4P_x86_sse2@12 proc public
 
 	push		esi
 	push		edi
@@ -881,7 +685,7 @@ punpcknb macro
 
 	ret			4
 
-@unSwizzleBlock4P_sse2@12 endp
+@unSwizzleBlock4P_x86_sse2@12 endp
 
 ;
 ; swizzling
@@ -891,7 +695,7 @@ punpcknb macro
 ; SwizzleBlock32
 ;
 
-@SwizzleBlock32_sse2@16 proc public
+@SwizzleBlock32_x86_sse2@16 proc public
 
 
 	push		esi
@@ -904,7 +708,7 @@ punpcknb macro
 
 	mov			eax, [esp+8+8]
 	cmp			eax, 0ffffffffh
-	jnz			SwizzleBlock32_sse2@WM
+	jnz			SwizzleBlock32_x86_sse2@WM
 
 	align 16
 @@:
@@ -931,7 +735,7 @@ punpcknb macro
 
 	ret			8
 
-SwizzleBlock32_sse2@WM:
+SwizzleBlock32_x86_sse2@WM:
 
 	movd		xmm7, eax
 	pshufd		xmm7, xmm7, 0
@@ -982,13 +786,13 @@ SwizzleBlock32_sse2@WM:
 
 	ret			8
 	
-@SwizzleBlock32_sse2@16 endp
+@SwizzleBlock32_x86_sse2@16 endp
 
 ;
 ; SwizzleBlock16
 ;
 
-@SwizzleBlock16_sse2@12 proc public
+@SwizzleBlock16_x86_sse2@12 proc public
 
 	push		ebx
 
@@ -1020,13 +824,13 @@ SwizzleBlock32_sse2@WM:
 
 	ret			4
 
-@SwizzleBlock16_sse2@12 endp
+@SwizzleBlock16_x86_sse2@12 endp
 
 ;
 ; SwizzleBlock8
 ;
 
-@SwizzleBlock8_sse2@12 proc public
+@SwizzleBlock8_x86_sse2@12 proc public
 
 	push		ebx
 
@@ -1082,81 +886,13 @@ SwizzleBlock32_sse2@WM:
 
 	ret			4
 	
-@SwizzleBlock8_sse2@12 endp
-
-@SwizzleBlock8_sse3@12 proc public
-
-	push		ebx
-
-	mov			ebx, [esp+4+4]
-	mov			eax, 2
-
-	movaps		xmm7, xmmword ptr __s8shufmask
-
-	align 16
-@@:
-	; col 0, 2
-
-	movdqa		xmm0, [edx]
-	movdqa		xmm2, [edx+ebx]
-	lea			edx, [edx+ebx*2]
-
-	pshufd		xmm1, [edx], 0b1h
-	pshufd		xmm3, [edx+ebx], 0b1h
-	lea			edx, [edx+ebx*2]
-
-	pshufb		xmm0, xmm7
-	pshufb		xmm1, xmm7
-	pshufb		xmm2, xmm7
-	pshufb		xmm3, xmm7
-	
-	punpck		bw, 0, 2, 1, 3, 4, 6
-	punpck		qdq, 0, 4, 2, 6, 1, 3
-
-	movdqa		[ecx+16*0], xmm0
-	movdqa		[ecx+16*1], xmm1
-	movdqa		[ecx+16*2], xmm4
-	movdqa		[ecx+16*3], xmm3
-
-	; col 1, 3
-
-	pshufd		xmm0, [edx], 0b1h
-	pshufd		xmm2, [edx+ebx], 0b1h
-	lea			edx, [edx+ebx*2]
-
-	movdqa		xmm1, [edx]
-	movdqa		xmm3, [edx+ebx]
-	lea			edx, [edx+ebx*2]
-
-	pshufb		xmm0, xmm7
-	pshufb		xmm1, xmm7
-	pshufb		xmm2, xmm7
-	pshufb		xmm3, xmm7
-	
-	punpck		bw, 0, 2, 1, 3, 4, 6
-	punpck		qdq, 0, 4, 2, 6, 1, 3
-
-	movdqa		[ecx+16*4], xmm0
-	movdqa		[ecx+16*5], xmm1
-	movdqa		[ecx+16*6], xmm4
-	movdqa		[ecx+16*7], xmm3
-
-	add			ecx, 128
-
-	dec			eax
-	jnz			@B
-
-	pop			ebx
-
-	ret			4
-	
-@SwizzleBlock8_sse3@12 endp
+@SwizzleBlock8_x86_sse2@12 endp
 
 ;
 ; SwizzleBlock4
 ;
 
-@SwizzleBlock4_sse2@12 proc public
+@SwizzleBlock4_x86_sse2@12 proc public
 
 	push		ebx
 	
@@ -1228,7 +964,7 @@ SwizzleBlock32_sse2@WM:
 
 	ret			4
 
-@SwizzleBlock4_sse2@12 endp
+@SwizzleBlock4_x86_sse2@12 endp
 
 ;
 ; swizzling with unaligned reads
@@ -1238,7 +974,7 @@ SwizzleBlock32_sse2@WM:
 ; SwizzleBlock32u
 ;
 
-@SwizzleBlock32u_sse2@16 proc public
+@SwizzleBlock32u_x86_sse2@16 proc public
 
 	push		esi
 	push		edi
@@ -1250,7 +986,7 @@ SwizzleBlock32_sse2@WM:
 
 	mov			eax, [esp+8+8]
 	cmp			eax, 0ffffffffh
-	jnz			SwizzleBlock32u_sse2@WM
+	jnz			SwizzleBlock32u_x86_sse2@WM
 
 	align 16
 @@:
@@ -1277,7 +1013,7 @@ SwizzleBlock32_sse2@WM:
 
 	ret			8
 
-SwizzleBlock32u_sse2@WM:
+SwizzleBlock32u_x86_sse2@WM:
 
 	movd		xmm7, eax
 	pshufd		xmm7, xmm7, 0
@@ -1328,13 +1064,13 @@ SwizzleBlock32u_sse2@WM:
 
 	ret			8
 	
-@SwizzleBlock32u_sse2@16 endp
+@SwizzleBlock32u_x86_sse2@16 endp
 
 ;
 ; SwizzleBlock16u
 ;
 
-@SwizzleBlock16u_sse2@12 proc public
+@SwizzleBlock16u_x86_sse2@12 proc public
 
 	push		ebx
 
@@ -1366,13 +1102,13 @@ SwizzleBlock32u_sse2@WM:
 
 	ret			4
 
-@SwizzleBlock16u_sse2@12 endp
+@SwizzleBlock16u_x86_sse2@12 endp
 
 ;
 ; SwizzleBlock8u
 ;
 
-@SwizzleBlock8u_sse2@12 proc public
+@SwizzleBlock8u_x86_sse2@12 proc public
 
 	push		ebx
 
@@ -1432,85 +1168,13 @@ SwizzleBlock32u_sse2@WM:
 
 	ret			4
 	
-@SwizzleBlock8u_sse2@12 endp
-
-@SwizzleBlock8u_sse3@12 proc public
-
-	push		ebx
-
-	mov			ebx, [esp+4+4]
-	mov			eax, 2
-
-	movaps		xmm7, xmmword ptr __s8shufmask
-
-	align 16
-@@:
-	; col 0, 2
-
-	movdqu		xmm0, [edx]
-	movdqu		xmm2, [edx+ebx]
-	lea			edx, [edx+ebx*2]
-
-	movdqu		xmm1, [edx]
-	movdqu		xmm3, [edx+ebx]
-	pshufd		xmm1, xmm1, 0b1h
-	pshufd		xmm3, xmm3, 0b1h
-	lea			edx, [edx+ebx*2]
-
-	pshufb		xmm0, xmm7
-	pshufb		xmm1, xmm7
-	pshufb		xmm2, xmm7
-	pshufb		xmm3, xmm7
-	
-	punpck		bw, 0, 2, 1, 3, 4, 6
-	punpck		qdq, 0, 4, 2, 6, 1, 3
-
-	movdqa		[ecx+16*0], xmm0
-	movdqa		[ecx+16*1], xmm1
-	movdqa		[ecx+16*2], xmm4
-	movdqa		[ecx+16*3], xmm3
-
-	; col 1, 3
-
-	movdqu		xmm0, [edx]
-	movdqu		xmm2, [edx+ebx]
-	pshufd		xmm0, xmm0, 0b1h
-	pshufd		xmm2, xmm2, 0b1h
-	lea			edx, [edx+ebx*2]
-
-	movdqu		xmm1, [edx]
-	movdqu		xmm3, [edx+ebx]
-	lea			edx, [edx+ebx*2]
-
-	pshufb		xmm0, xmm7
-	pshufb		xmm1, xmm7
-	pshufb		xmm2, xmm7
-	pshufb		xmm3, xmm7
-	
-	punpck		bw, 0, 2, 1, 3, 4, 6
-	punpck		qdq, 0, 4, 2, 6, 1, 3
-
-	movdqa		[ecx+16*4], xmm0
-	movdqa		[ecx+16*5], xmm1
-	movdqa		[ecx+16*6], xmm4
-	movdqa		[ecx+16*7], xmm3
-
-	add			ecx, 128
-
-	dec			eax
-	jnz			@B
-
-	pop			ebx
-
-	ret			4
-	
-@SwizzleBlock8u_sse3@12 endp
+@SwizzleBlock8u_x86_sse2@12 endp
 
 ;
 ; SwizzleBlock4u
 ;
 
-@SwizzleBlock4u_sse2@12 proc public
+@SwizzleBlock4u_x86_sse2@12 proc public
 
 	push		ebx
 	
@@ -1582,6 +1246,6 @@ SwizzleBlock32u_sse2@WM:
 
 	ret			4
 
-@SwizzleBlock4u_sse2@12 endp
+@SwizzleBlock4u_x86_sse2@12 endp
 
 	end

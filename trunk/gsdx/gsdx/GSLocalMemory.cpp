@@ -476,9 +476,45 @@ bool GSLocalMemory::FillRect(const CRect& r, DWORD c, DWORD psm, DWORD fbp, DWOR
 	}
 	else
 	{
+		#if _M_SSE >= 2
+
+		__m128i c128 = _mm_set1_epi32(c);
+
 		for(int y = clip.top; y < clip.bottom; y += h)
+		{
 			for(int x = clip.left; x < clip.right; x += w)
-				memsetd(&m_vm8[ba(x, y, fbp, fbw) << 2 >> shift], c, 64);
+			{
+				__m128i* p = (__m128i*)&m_vm8[ba(x, y, fbp, fbw) << 2 >> shift];
+
+				for(int i = 0; i < 16; i += 4)
+				{
+					p[i + 0] = c128;
+					p[i + 1] = c128;
+					p[i + 2] = c128;
+					p[i + 3] = c128;
+				}
+			}
+		}
+
+		#else
+
+		for(int y = clip.top; y < clip.bottom; y += h)
+		{
+			for(int x = clip.left; x < clip.right; x += w)
+			{
+				DWORD* p = (DWORD*)&m_vm8[ba(x, y, fbp, fbw) << 2 >> shift];
+
+				for(int i = 0; i < 64; i += 4)
+				{
+					p[i + 0] = c;
+					p[i + 1] = c;
+					p[i + 2] = c;
+					p[i + 3] = c;
+				}
+			}
+		}
+
+		#endif
 	}
 
 	for(int y = clip.bottom; y < r.bottom; y++)
