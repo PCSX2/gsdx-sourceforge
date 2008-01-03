@@ -583,7 +583,7 @@ protected:
 		}
 		else
 		{
-			#if _M_IX86_FP >= 2 || defined(_M_AMD64)
+			#if _M_SSE >= 2
 			
 			__m128i r0 = _mm_load_si128((__m128i*)&Cui64);
 			Cdw = (DWORD)_mm_cvtsi128_si32(_mm_packus_epi16(r0, r0));
@@ -749,7 +749,7 @@ protected:
 				Bf = m_clamp[Bf];
 				Af |= m_context->FBA.FBA << 7;
 
-				#if _M_IX86_FP >= 2 || defined(_M_AMD64)
+				#if _M_SSE >= 2
 				
 				__m128i r0 = _mm_load_si128((__m128i*)&Cui64);
 				Cdw = (DWORD)_mm_cvtsi128_si32(_mm_packus_epi16(r0, r0));
@@ -811,7 +811,7 @@ protected:
 			(short)(int)t.y+1
 		};
 
-		#if _M_IX86_FP >= 2 || defined(_M_AMD64)
+		#if _M_SSE >= 2
 
 		__m128i uv = _mm_load_si128((__m128i*)ituv);
 		__m128i mask = _mm_load_si128((__m128i*)m_uv->mask);
@@ -836,9 +836,9 @@ protected:
 		{
 			for(int i = 0; i < 4; i++)
 			{
-				Ct[i] = m_mem.readTexelX(m_context->TEX0.PSM, ituv[i&1], ituv[2+(i>>1)], m_context->TEX0, m_env.TEXA);
-				// Ct[i] = (m_mem.*m_context->ttbl->rt)(ituv[i&1], ituv[2+(i>>1)], m_context->TEX0, m_env.TEXA);
-				// Ct[i] = m_pTexture[(ituv[2+(i>>1)] << m_context->TEX0.TW) + ituv[i&1]];
+				Ct[i] = m_mem.readTexelX(m_context->TEX0.PSM, ituv[i&1], ituv[i|2], m_context->TEX0, m_env.TEXA);
+				// Ct[i] = (m_mem.*m_context->ttbl->rt)(ituv[i&1], ituv[i|2], m_context->TEX0, m_env.TEXA);
+				// Ct[i] = m_pTexture[(ituv[i|2] << m_context->TEX0.TW) + ituv[i&1]];
 			}
 
 			Vertex::Vector ft = t - t.floor();

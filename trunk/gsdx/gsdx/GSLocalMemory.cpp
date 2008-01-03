@@ -31,7 +31,7 @@
 #define ASSERT_BLOCK(r, w, h) \
 	ASSERT((r).Width() >= w && (r).Height() >= h && !((r).left&(w-1)) && !((r).top&(h-1)) && !((r).right&(w-1)) && !((r).bottom&(h-1))); \
 
-#if defined(_M_AMD64) || _M_IX86_FP >= 2
+#if _M_SSE >= 2
 #define BLOCK_PREFETCH(mem) \
 	_mm_prefetch(&mem[16*0], _MM_HINT_T0); \
 	_mm_prefetch(&mem[16*2], _MM_HINT_T0); \

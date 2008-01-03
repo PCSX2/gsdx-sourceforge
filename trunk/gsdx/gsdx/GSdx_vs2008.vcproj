@@ -283,6 +283,7 @@
 		</Configuration>
 		<Configuration
 			Name="Debug SSE2|Win32"
+			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
 			InheritedPropertySheets="..\common.vsprops;..\debug.vsprops;..\sse2.vsprops"
 			UseOfMFC="1"
@@ -532,6 +533,143 @@
 				Name="VCPostBuildEventTool"
 			/>
 		</Configuration>
+		<Configuration
+			Name="Release SSE3|Win32"
+			OutputDirectory="$(ConfigurationName)"
+			IntermediateDirectory="$(ConfigurationName)"
+			ConfigurationType="2"
+			InheritedPropertySheets="..\common.vsprops;..\release.vsprops;..\sse2.vsprops;..\sse3.vsprops"
+			UseOfMFC="1"
+			CharacterSet="2"
+			WholeProgramOptimization="1"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				UsePrecompiledHeader="2"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLinkerTool"
+				AdditionalDependencies="d3d10.lib d3dx10.lib d3d9.lib d3dx9.lib ddraw.lib dxguid.lib winmm.lib"
+				OutputFile="C:\Users\Gabest\Desktop\pcsx2\plugins\$(ProjectName).dll"
+				ModuleDefinitionFile=".\GSdx.def"
+				DelayLoadDLLs=""
+				DataExecutionPrevention="0"
+				TargetMachine="1"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCManifestTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+		</Configuration>
+		<Configuration
+			Name="Debug SSE3|Win32"
+			OutputDirectory="$(ConfigurationName)"
+			IntermediateDirectory="$(ConfigurationName)"
+			ConfigurationType="2"
+			InheritedPropertySheets="..\common.vsprops;..\debug.vsprops;..\sse2.vsprops;..\sse3.vsprops"
+			UseOfMFC="1"
+			CharacterSet="2"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				UsePrecompiledHeader="2"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLinkerTool"
+				AdditionalDependencies="d3d10.lib d3dx10.lib d3d9.lib d3dx9.lib ddraw.lib dxguid.lib winmm.lib"
+				OutputFile="C:\Users\Gabest\Desktop\pcsx2\plugins\$(ProjectName).dll"
+				ModuleDefinitionFile=".\GSdx.def"
+				DelayLoadDLLs=""
+				DataExecutionPrevention="0"
+				TargetMachine="1"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCManifestTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+		</Configuration>
 	</Configurations>
 	<References>
 	</References>
@@ -576,6 +714,14 @@
 						AssemblerOutput="4"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release SSE3|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AssemblerOutput="4"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\GSPerfMon.cpp"
@@ -600,12 +746,28 @@
 						AssemblerOutput="4"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release SSE3|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AssemblerOutput="4"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\GSRendererHW9.cpp"
 				>
 				<FileConfiguration
 					Name="Release SSE2|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AssemblerOutput="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release SSE3|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -634,6 +796,14 @@
 				>
 				<FileConfiguration
 					Name="Release SSE2|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AssemblerOutput="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release SSE3|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -744,6 +914,22 @@
 						UsePrecompiledHeader="1"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release SSE3|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="1"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug SSE3|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="1"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\x86-32.asm"
@@ -824,6 +1010,24 @@
 						Outputs="$(IntDir)\$(InputName).obj"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release SSE3|Win32"
+					>
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="ml /nologo /c /Zi /Fo&quot;$(IntDir)\$(InputName).obj&quot; &quot;$(InputPath)&quot;&#x0D;&#x0A;"
+						Outputs="$(IntDir)\$(InputName).obj"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug SSE3|Win32"
+					>
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="ml /nologo /c /Zi /Fo&quot;$(IntDir)\$(InputName).obj&quot; &quot;$(InputPath)&quot;&#x0D;&#x0A;"
+						Outputs="$(IntDir)\$(InputName).obj"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\x86-64.asm"
@@ -891,6 +1095,24 @@
 				</FileConfiguration>
 				<FileConfiguration
 					Name="Release SSE2|x64"
+					>
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="ml /nologo /c /Zi /Fo&quot;$(IntDir)\$(InputName).obj&quot; &quot;$(InputPath)&quot;&#x0D;&#x0A;"
+						Outputs="$(IntDir)\$(InputName).obj"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release SSE3|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCustomBuildTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug SSE3|Win32"
+					ExcludedFromBuild="true"
 					>
 					<Tool
 						Name="VCCustomBuildTool"

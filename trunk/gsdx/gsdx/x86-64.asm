@@ -1,9 +1,6 @@
 
 	.const
 
-	__uvmin DD 0d01502f9r ; -1e+010
-	__uvmax DD 0501502f9r ; +1e+010
-
 	.code
 	
 ;

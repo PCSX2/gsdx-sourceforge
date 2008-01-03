@@ -384,7 +384,7 @@ void GSState::GIFPackedRegHandlerPRIM(GIFPackedReg* r)
 
 void GSState::GIFPackedRegHandlerRGBA(GIFPackedReg* r)
 {
-#if defined(_M_AMD64) || _M_IX86_FP >= 2
+#if _M_SSE >= 2
 
 	__m128i r0 = _mm_loadu_si128((__m128i*)r);
 	r0 = _mm_and_si128(r0, _000000ff);
@@ -410,7 +410,7 @@ void GSState::GIFPackedRegHandlerSTQ(GIFPackedReg* r)
 
 	m_v.ST.i64 = r->ai64[0];
 
-#elif _M_IX86_FP >= 2
+#elif _M_SSE >= 2
 
 	_mm_storel_epi64((__m128i*)&m_v.ST.i64, _mm_loadl_epi64((__m128i*)r));
 
@@ -426,7 +426,7 @@ void GSState::GIFPackedRegHandlerSTQ(GIFPackedReg* r)
 
 void GSState::GIFPackedRegHandlerUV(GIFPackedReg* r)
 {
-#if defined(_M_AMD64) || _M_IX86_FP >= 2
+#if _M_SSE >= 2
 
 	__m128i r0 = _mm_loadu_si128((__m128i*)r);
 	r0 = _mm_and_si128(r0, _00003fff);
