@@ -219,8 +219,6 @@ void __fastcall SwizzleColumn4_c(int y, BYTE* dst, BYTE* src, int srcpitch)
 
 //
 
-#if defined(_M_AMD64) || _M_IX86_FP >= 2
-
 static __m128i s_zero = _mm_setzero_si128();
 static __m128i s_bgrm = _mm_set1_epi32(0x00ffffff);
 static __m128i s_am = _mm_set1_epi32(0x00008000);
@@ -437,8 +435,6 @@ void __fastcall Expand16_sse2(WORD* src, DWORD* dst, int w, GIFRegTEXA* pTEXA)
 	}
 }
 
-#endif
-
 void __fastcall ExpandBlock24_c(DWORD* src, DWORD* dst, int dstpitch, GIFRegTEXA* pTEXA)
 {
 	DWORD TA0 = (DWORD)pTEXA->TA0 << 24;
@@ -498,8 +494,6 @@ void __fastcall Expand16_c(WORD* src, DWORD* dst, int w, GIFRegTEXA* pTEXA)
 }
 
 //
-
-#if defined(_M_AMD64) || _M_IX86_FP >= 2
 
 static __m128i s_clut[64];
 
@@ -619,8 +613,6 @@ void __fastcall WriteCLUT_T32_I4_CSM1_sse2(DWORD* vm, WORD* clut)
 	}
 }
 
-#endif
-
 void __fastcall WriteCLUT_T16_I8_CSM1_c(WORD* vm, WORD* clut)
 {
 	const static DWORD map[] = 
@@ -697,8 +689,6 @@ void __fastcall WriteCLUT_T32_I4_CSM1_c(DWORD* vm, WORD* clut)
 
 //
 
-#if defined(_M_AMD64) || _M_IX86_FP >= 2
-
 extern "C" void __fastcall ReadCLUT32_T32_I8_sse2(WORD* src, DWORD* dst)
 {
 	for(int i = 0; i < 256; i += 16)
@@ -736,8 +726,6 @@ extern "C" void __fastcall ReadCLUT32_T16_I4_sse2(WORD* src, DWORD* dst)
 	_mm_store_si128(&((__m128i*)dst)[2], _mm_unpacklo_epi16(r1, s_zero));
 	_mm_store_si128(&((__m128i*)dst)[3], _mm_unpackhi_epi16(r1, s_zero));
 }
-
-#endif
 
 void __fastcall ReadCLUT32_T32_I8_c(WORD* src, DWORD* dst)
 {

@@ -38,7 +38,7 @@ __declspec(align(16)) union GSVertexHW9
 	struct {__m128i m128i[2];};
 	struct {__m128 m128[2];};
 
-#if _M_IX86_FP >= 2 || defined(_M_AMD64)
+#if _M_SSE >= 2
 	GSVertexHW9& operator = (GSVertexHW9& v) {m128i[0] = v.m128i[0]; m128i[1] = v.m128i[1]; return *this;}
 #endif
 };
@@ -75,7 +75,7 @@ __declspec(align(16)) union GSVertexHW10
 	struct {__m128i m128i[2];};
 	struct {__m128 m128[2];};
 
-#if _M_IX86_FP >= 2 || defined(_M_AMD64)
+#if _M_SSE >= 2
 	GSVertexHW10& operator = (GSVertexHW10& v) {m128i[0] = v.m128i[0]; m128i[1] = v.m128i[1]; return *this;}
 #endif
 };

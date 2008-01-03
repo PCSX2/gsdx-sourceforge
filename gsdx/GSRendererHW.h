@@ -44,112 +44,11 @@ protected:
 		__super::Reset();
 	}
 
-/*
-	void MinMaxXY(GSVector4& mm)
-	{
-		#if _M_IX86_FP >= 2 || defined(_M_AMD64)
-				
-		__m128 min = _mm_set1_ps(+1e10);
-		__m128 max = _mm_set1_ps(-1e10);
-
-		int i = 0;
-
-		for(int count = m_count - 5; i < count; i += 6) // 6 regs for loading, 2 regs for min/max
-		{
-			min = _mm_min_ps(m_vertices[i+0].m128[0], min);
-			max = _mm_max_ps(m_vertices[i+0].m128[0], max);
-			min = _mm_min_ps(m_vertices[i+1].m128[0], min);
-			max = _mm_max_ps(m_vertices[i+1].m128[0], max);
-			min = _mm_min_ps(m_vertices[i+2].m128[0], min);
-			max = _mm_max_ps(m_vertices[i+2].m128[0], max);
-			min = _mm_min_ps(m_vertices[i+3].m128[0], min);
-			max = _mm_max_ps(m_vertices[i+3].m128[0], max);
-			min = _mm_min_ps(m_vertices[i+4].m128[0], min);
-			max = _mm_max_ps(m_vertices[i+4].m128[0], max);
-			min = _mm_min_ps(m_vertices[i+5].m128[0], min);
-			max = _mm_max_ps(m_vertices[i+5].m128[0], max);
-		}
-
-		for(; i < m_count; i++)
-		{
-			min = _mm_min_ps(m_vertices[i+0].m128[0], min);
-			max = _mm_max_ps(m_vertices[i+0].m128[0], max);
-		}
-
-		mm.x = min.m128_f32[0];
-		mm.y = min.m128_f32[1];
-		mm.z = max.m128_f32[0];
-		mm.w = max.m128_f32[1];
-
-		#else	
-
-		mm.x = mm.y = +1e10;
-		mm.z = mm.w = -1e10;
-
-		for(int i = 0, j = m_count; i < j; i++)
-		{
-			float x = m_vertices[i].p.x;
-
-			if(x < mm.x) mm.x = x;
-			if(x > mm.z) mm.z = x;
-			
-			float y = m_vertices[i].p.y;
-
-			if(y < mm.y) mm.y = y;
-			if(y > mm.w) mm.w = y;
-		}
-
-		#endif
-	}
-
-	float MinZ()
-	{
-		#if _M_IX86_FP >= 2 || defined(_M_AMD64)
-				
-		__m128 min = _mm_set1_ps(+1e10);
-
-		int i = 0;
-
-		for(int count = m_count - 6; i < count; i += 7) // 7 regs for loading, 1 reg for min
-		{
-			min = _mm_min_ps(m_vertices[i+0].m128[0], min);
-			min = _mm_min_ps(m_vertices[i+1].m128[0], min);
-			min = _mm_min_ps(m_vertices[i+2].m128[0], min);
-			min = _mm_min_ps(m_vertices[i+3].m128[0], min);
-			min = _mm_min_ps(m_vertices[i+4].m128[0], min);
-			min = _mm_min_ps(m_vertices[i+5].m128[0], min);
-			min = _mm_min_ps(m_vertices[i+6].m128[0], min);
-		}
-
-		for(; i < m_count; i++)
-		{
-			min = _mm_min_ps(m_vertices[i+0].m128[0], min);
-		}
-
-		return min.m128_f32[2];
-
-		#else	
-
-		float minz = +1e10;
-
-		for(int i = 0, j = m_count; i < j; i++)
-		{
-			float z = m_vertices[i].p.z;
-
-			if(z < minz) minz = z;
-		}
-
-		return minz;
-
-		#endif
-	}
-
-*/
 	void MinMaxUV(GSVector4& mm)
 	{
 		if(PRIM->FST)
 		{
-			#if defined(_M_AMD64) || _M_IX86_FP >= 2
+			#if _M_SSE >= 2
 
 			__m128 min = _mm_set1_ps(+1e10);
 			__m128 max = _mm_set1_ps(-1e10);
