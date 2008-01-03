@@ -249,8 +249,7 @@ public:
 
 		if(!Merge()) return;
 
-//
-s_dump = m_perfmon.GetFrame() >= 5002;
+//s_dump = m_perfmon.GetFrame() >= 5002;
 
 		// osd 
 
