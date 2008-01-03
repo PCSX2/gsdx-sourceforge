@@ -4,44 +4,6 @@
 	.code
 	
 ;
-; memsetd
-;
-
-memsetd proc public
-
-	push	rdi
-
-	mov		rdi, rcx
-	mov		eax, edx
-	mov		rcx, r8
-	cld
-	rep		stosd
-
-	pop		rdi
-
-	ret
-
-memsetd endp
-
-;
-; SaturateColor
-;
-
-SaturateColor_amd64 proc public
-
-	pxor		xmm0, xmm0
-	movdqa		xmm1, [rcx]
-	packssdw	xmm1, xmm0
-	packuswb	xmm1, xmm0
-	punpcklbw	xmm1, xmm0
-	punpcklwd	xmm1, xmm0
-	movdqa		[rcx], xmm1
-
-	ret
-
-SaturateColor_amd64 endp
-
-;
 ; swizzling
 ;
 
@@ -163,7 +125,7 @@ punpcknbh macro
 ; unSwizzleBlock32
 ;
 
-unSwizzleBlock32_amd64 proc public
+unSwizzleBlock32_x64_sse2 proc public
 
 	push		rsi
 	push		rdi
@@ -197,13 +159,13 @@ unSwizzleBlock32_amd64 proc public
 
 	ret
 
-unSwizzleBlock32_amd64 endp
+unSwizzleBlock32_x64_sse2 endp
 
 ;
 ; unSwizzleBlock32_2 (TODO: test me)
 ;
 
-unSwizzleBlock32_2_amd64 proc public
+unSwizzleBlock32_2_x64_sse2 proc public
 
 	push		rsi
 	push		rdi
@@ -247,13 +209,13 @@ unSwizzleBlock32_2_amd64 proc public
 
 	ret
 
-unSwizzleBlock32_2_amd64 endp
+unSwizzleBlock32_2_x64_sse2 endp
 
 ;
 ; unSwizzleBlock16
 ;
 
-unSwizzleBlock16_amd64 proc public
+unSwizzleBlock16_x64_sse2 proc public
 
 	push		rsi
 	push		rdi
@@ -289,13 +251,13 @@ unSwizzleBlock16_amd64 proc public
 
 	ret
 	
-unSwizzleBlock16_amd64 endp
+unSwizzleBlock16_x64_sse2 endp
 
 ;
 ; unSwizzleBlock8
 ;
 
-unSwizzleBlock8_amd64 proc public
+unSwizzleBlock8_x64_sse2 proc public
 
 	push		rsi
 	push		rdi
@@ -370,13 +332,13 @@ unSwizzleBlock8_amd64 proc public
 	
 	ret
 
-unSwizzleBlock8_amd64 endp
+unSwizzleBlock8_x64_sse2 endp
 
 ;
 ; unSwizzleBlock4
 ;
 
-unSwizzleBlock4_amd64 proc public
+unSwizzleBlock4_x64_sse2 proc public
 
 	push		rsi
 	push		rdi
@@ -488,13 +450,13 @@ unSwizzleBlock4_amd64 proc public
 
 	ret
 
-unSwizzleBlock4_amd64 endp
+unSwizzleBlock4_x64_sse2 endp
 
 ;
 ; unSwizzleBlock8HP
 ;
 
-unSwizzleBlock8HP_amd64 proc public
+unSwizzleBlock8HP_x64_sse2 proc public
 
 	push		rsi
 	push		rdi
@@ -535,13 +497,13 @@ unSwizzleBlock8HP_amd64 proc public
 	
 	ret
 
-unSwizzleBlock8HP_amd64 endp
+unSwizzleBlock8HP_x64_sse2 endp
 
 ;
 ; unSwizzleBlock4HLP
 ;
 
-unSwizzleBlock4HLP_amd64 proc public
+unSwizzleBlock4HLP_x64_sse2 proc public
 
 	push		rsi
 	push		rdi
@@ -588,13 +550,13 @@ unSwizzleBlock4HLP_amd64 proc public
 	
 	ret
 	
-unSwizzleBlock4HLP_amd64 endp
+unSwizzleBlock4HLP_x64_sse2 endp
 
 ;
 ; unSwizzleBlock4HHP
 ;
 
-unSwizzleBlock4HHP_amd64 proc public
+unSwizzleBlock4HHP_x64_sse2 proc public
 
 	push		rsi
 	push		rdi
@@ -635,13 +597,13 @@ unSwizzleBlock4HHP_amd64 proc public
 	
 	ret
 	
-unSwizzleBlock4HHP_amd64 endp
+unSwizzleBlock4HHP_x64_sse2 endp
 
 ;
 ; unSwizzleBlock4P
 ;
 
-unSwizzleBlock4P_amd64 proc public
+unSwizzleBlock4P_x64_sse2 proc public
 
 	mov         eax, 0f0f0f0fh
 	movd        xmm8, eax 
@@ -841,17 +803,17 @@ unSwizzleBlock4P_amd64 proc public
 
 	ret
 
-unSwizzleBlock4P_amd64 endp
+unSwizzleBlock4P_x64_sse2 endp
 
 ;
 ; swizzling
 ;
 
 ;
-; SwizzleBlock32_amd64
+; SwizzleBlock32_x64_sse2
 ;
 
-SwizzleBlock32_amd64 proc public
+SwizzleBlock32_x64_sse2 proc public
 
 	push		rsi
 	push		rdi
@@ -861,7 +823,7 @@ SwizzleBlock32_amd64 proc public
 	mov			rcx, 4
 
 	cmp			r9d, 0ffffffffh
-	jnz			SwizzleBlock32_amd64@WM
+	jnz			SwizzleBlock32_x64_sse2@WM
 
 	align 16
 @@:
@@ -888,7 +850,7 @@ SwizzleBlock32_amd64 proc public
 
 	ret
 
-SwizzleBlock32_amd64@WM:
+SwizzleBlock32_x64_sse2@WM:
 
 	movd		xmm7, r9d
 	pshufd		xmm7, xmm7, 0
@@ -938,13 +900,13 @@ SwizzleBlock32_amd64@WM:
 
 	ret
 	
-SwizzleBlock32_amd64 endp
+SwizzleBlock32_x64_sse2 endp
 
 ;
-; SwizzleBlock16_amd64
+; SwizzleBlock16_x64_sse2
 ;
 
-SwizzleBlock16_amd64 proc public
+SwizzleBlock16_x64_sse2 proc public
 
 	push		rsi
 	push		rdi
@@ -979,13 +941,13 @@ SwizzleBlock16_amd64 proc public
 
 	ret
 	
-SwizzleBlock16_amd64 endp
+SwizzleBlock16_x64_sse2 endp
 
 ;
 ; SwizzleBlock8
 ;
 
-SwizzleBlock8_amd64 proc public
+SwizzleBlock8_x64_sse2 proc public
 
 	push		rsi
 	push		rdi
@@ -1044,13 +1006,13 @@ SwizzleBlock8_amd64 proc public
 
 	ret
 
-SwizzleBlock8_amd64 endp
+SwizzleBlock8_x64_sse2 endp
 
 ;
 ; SwizzleBlock4
 ;
 
-SwizzleBlock4_amd64 proc public
+SwizzleBlock4_x64_sse2 proc public
 
 	push		rsi
 	push		rdi
@@ -1125,17 +1087,17 @@ SwizzleBlock4_amd64 proc public
 
 	ret
 
-SwizzleBlock4_amd64 endp
+SwizzleBlock4_x64_sse2 endp
 
 ;
 ; swizzling with unaligned reads
 ;
 
 ;
-; SwizzleBlock32u_amd64
+; SwizzleBlock32u_x64_sse2
 ;
 
-SwizzleBlock32u_amd64 proc public
+SwizzleBlock32u_x64_sse2 proc public
 
 	push		rsi
 	push		rdi
@@ -1145,7 +1107,7 @@ SwizzleBlock32u_amd64 proc public
 	mov			rcx, 4
 
 	cmp			r9d, 0ffffffffh
-	jnz			SwizzleBlock32u_amd64@WM
+	jnz			SwizzleBlock32u_x64_sse2@WM
 
 	align 16
 @@:
@@ -1172,7 +1134,7 @@ SwizzleBlock32u_amd64 proc public
 
 	ret
 
-SwizzleBlock32u_amd64@WM:
+SwizzleBlock32u_x64_sse2@WM:
 
 	movd		xmm7, r9d
 	pshufd		xmm7, xmm7, 0
@@ -1222,13 +1184,13 @@ SwizzleBlock32u_amd64@WM:
 
 	ret
 	
-SwizzleBlock32u_amd64 endp
+SwizzleBlock32u_x64_sse2 endp
 
 ;
-; SwizzleBlock16u_amd64
+; SwizzleBlock16u_x64_sse2
 ;
 
-SwizzleBlock16u_amd64 proc public
+SwizzleBlock16u_x64_sse2 proc public
 
 	push		rsi
 	push		rdi
@@ -1263,13 +1225,13 @@ SwizzleBlock16u_amd64 proc public
 
 	ret
 	
-SwizzleBlock16u_amd64 endp
+SwizzleBlock16u_x64_sse2 endp
 
 ;
 ; SwizzleBlock8u
 ;
 
-SwizzleBlock8u_amd64 proc public
+SwizzleBlock8u_x64_sse2 proc public
 
 	push		rsi
 	push		rdi
@@ -1332,13 +1294,13 @@ SwizzleBlock8u_amd64 proc public
 
 	ret
 
-SwizzleBlock8u_amd64 endp
+SwizzleBlock8u_x64_sse2 endp
 
 ;
 ; SwizzleBlock4u
 ;
 
-SwizzleBlock4u_amd64 proc public
+SwizzleBlock4u_x64_sse2 proc public
 
 	push		rsi
 	push		rdi
@@ -1413,7 +1375,7 @@ SwizzleBlock4u_amd64 proc public
 
 	ret
 
-SwizzleBlock4u_amd64 endp
+SwizzleBlock4u_x64_sse2 endp
 
 	end
 	

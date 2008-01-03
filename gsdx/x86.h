@@ -23,46 +23,9 @@
 
 #include "GS.h"
 
-extern "C" void __fastcall memsetd(void* dst, unsigned int c, size_t len);
-
-extern "C" void unSwizzleBlock32_amd64(BYTE* src, BYTE* dst, __int64 dstpitch);
-extern "C" void unSwizzleBlock16_amd64(BYTE* src, BYTE* dst, __int64 dstpitch);
-extern "C" void unSwizzleBlock8_amd64(BYTE* src, BYTE* dst, __int64 dstpitch);
-extern "C" void unSwizzleBlock4_amd64(BYTE* src, BYTE* dst, __int64 dstpitch);
-extern "C" void unSwizzleBlock8HP_amd64(BYTE* src, BYTE* dst, __int64 dstpitch);
-extern "C" void unSwizzleBlock4HLP_amd64(BYTE* src, BYTE* dst, __int64 dstpitch);
-extern "C" void unSwizzleBlock4HHP_amd64(BYTE* src, BYTE* dst, __int64 dstpitch);
-extern "C" void unSwizzleBlock4P_amd64(BYTE* src, BYTE* dst, __int64 dstpitch);
-extern "C" void SwizzleBlock32_amd64(BYTE* dst, BYTE* src, __int64 srcpitch, DWORD WriteMask = 0xffffffff);
-extern "C" void SwizzleBlock16_amd64(BYTE* dst, BYTE* src, __int64 srcpitch);
-extern "C" void SwizzleBlock8_amd64(BYTE* dst, BYTE* src, __int64 srcpitch);
-extern "C" void SwizzleBlock4_amd64(BYTE* dst, BYTE* src, __int64 srcpitch);
-extern "C" void SwizzleBlock32u_amd64(BYTE* dst, BYTE* src, __int64 srcpitch, DWORD WriteMask = 0xffffffff);
-extern "C" void SwizzleBlock16u_amd64(BYTE* dst, BYTE* src, __int64 srcpitch);
-extern "C" void SwizzleBlock8u_amd64(BYTE* dst, BYTE* src, __int64 srcpitch);
-extern "C" void SwizzleBlock4u_amd64(BYTE* dst, BYTE* src, __int64 srcpitch);
-
-extern "C" void __fastcall unSwizzleBlock16_sse3(BYTE* src, BYTE* dst, int dstpitch);
-extern "C" void __fastcall unSwizzleBlock8_sse3(BYTE* src, BYTE* dst, int dstpitch);
-extern "C" void __fastcall SwizzleBlock8_sse3(BYTE* dst, BYTE* src, int srcpitch);
-extern "C" void __fastcall SwizzleBlock8u_sse3(BYTE* dst, BYTE* src, int srcpitch);
-
-extern "C" void __fastcall unSwizzleBlock32_sse2(BYTE* src, BYTE* dst, int dstpitch);
-extern "C" void __fastcall unSwizzleBlock16_sse2(BYTE* src, BYTE* dst, int dstpitch);
-extern "C" void __fastcall unSwizzleBlock8_sse2(BYTE* src, BYTE* dst, int dstpitch);
-extern "C" void __fastcall unSwizzleBlock4_sse2(BYTE* src, BYTE* dst, int dstpitch);
-extern "C" void __fastcall unSwizzleBlock8HP_sse2(BYTE* src, BYTE* dst, int dstpitch);
-extern "C" void __fastcall unSwizzleBlock4HLP_sse2(BYTE* src, BYTE* dst, int dstpitch);
-extern "C" void __fastcall unSwizzleBlock4HHP_sse2(BYTE* src, BYTE* dst, int dstpitch);
-extern "C" void __fastcall unSwizzleBlock4P_sse2(BYTE* src, BYTE* dst, int dstpitch);
-extern "C" void __fastcall SwizzleBlock32_sse2(BYTE* dst, BYTE* src, int srcpitch, DWORD WriteMask = 0xffffffff);
-extern "C" void __fastcall SwizzleBlock16_sse2(BYTE* dst, BYTE* src, int srcpitch);
-extern "C" void __fastcall SwizzleBlock8_sse2(BYTE* dst, BYTE* src, int srcpitch);
-extern "C" void __fastcall SwizzleBlock4_sse2(BYTE* dst, BYTE* src, int srcpitch);
-extern "C" void __fastcall SwizzleBlock32u_sse2(BYTE* dst, BYTE* src, int srcpitch, DWORD WriteMask = 0xffffffff);
-extern "C" void __fastcall SwizzleBlock16u_sse2(BYTE* dst, BYTE* src, int srcpitch);
-extern "C" void __fastcall SwizzleBlock8u_sse2(BYTE* dst, BYTE* src, int srcpitch);
-extern "C" void __fastcall SwizzleBlock4u_sse2(BYTE* dst, BYTE* src, int srcpitch);
+#include "x86_sse2.h"
+#include "x86_sse3.h"
+#include "x64_sse2.h"
 
 extern void __fastcall unSwizzleBlock32_c(BYTE* src, BYTE* dst, int dstpitch);
 extern void __fastcall unSwizzleBlock16_c(BYTE* src, BYTE* dst, int dstpitch);
@@ -89,15 +52,6 @@ extern void __fastcall ExpandBlock24_c(DWORD* src, DWORD* dst, int dstpitch, GIF
 extern void __fastcall ExpandBlock16_c(WORD* src, DWORD* dst, int dstpitch, GIFRegTEXA* pTEXA);
 extern void __fastcall Expand16_c(WORD* src, DWORD* dst, int w, GIFRegTEXA* pTEXA);
 
-extern "C" void SaturateColor_amd64(int* c);
-extern "C" void __fastcall SaturateColor_sse2(int* c);
-extern "C" void __fastcall SaturateColor_asm(int* c);
-
-struct uvmm_t {float umin, vmin, umax, vmax;};
-struct vertex_t {float xyzw[4]; DWORD color[2]; float u, v;};
-extern "C" void __fastcall UVMinMax_sse2(int nVertices, vertex_t* pVertices, uvmm_t* uv);
-extern "C" void __fastcall UVMinMax_c(int nVertices, vertex_t* pVertices, uvmm_t* uv);
-
 extern "C" void __fastcall WriteCLUT_T16_I8_CSM1_sse2(WORD* vm, WORD* clut);
 extern "C" void __fastcall WriteCLUT_T32_I8_CSM1_sse2(DWORD* vm, WORD* clut);
 extern "C" void __fastcall WriteCLUT_T16_I4_CSM1_sse2(WORD* vm, WORD* clut);
@@ -118,24 +72,22 @@ extern void __fastcall ReadCLUT32_T16_I4_c(WORD* src, DWORD* dst);
 
 #ifdef _M_AMD64
 
-#define SaturateColor SaturateColor_amd64
-
-#define unSwizzleBlock32 unSwizzleBlock32_amd64
-#define unSwizzleBlock16 unSwizzleBlock16_amd64
-#define unSwizzleBlock8 unSwizzleBlock8_amd64
-#define unSwizzleBlock4 unSwizzleBlock4_amd64
-#define unSwizzleBlock8HP unSwizzleBlock8HP_amd64
-#define unSwizzleBlock4HLP unSwizzleBlock4HLP_amd64
-#define unSwizzleBlock4HHP unSwizzleBlock4HHP_amd64
-#define unSwizzleBlock4P unSwizzleBlock4P_amd64
-#define SwizzleBlock32 SwizzleBlock32_amd64
-#define SwizzleBlock16 SwizzleBlock16_amd64
-#define SwizzleBlock8 SwizzleBlock8_amd64
-#define SwizzleBlock4 SwizzleBlock4_amd64
-#define SwizzleBlock32u SwizzleBlock32u_amd64
-#define SwizzleBlock16u SwizzleBlock16u_amd64
-#define SwizzleBlock8u SwizzleBlock8u_amd64
-#define SwizzleBlock4u SwizzleBlock4u_amd64
+#define unSwizzleBlock32 unSwizzleBlock32_x64_sse2
+#define unSwizzleBlock16 unSwizzleBlock16_x64_sse2
+#define unSwizzleBlock8 unSwizzleBlock8_x64_sse2
+#define unSwizzleBlock4 unSwizzleBlock4_x64_sse2
+#define unSwizzleBlock8HP unSwizzleBlock8HP_x64_sse2
+#define unSwizzleBlock4HLP unSwizzleBlock4HLP_x64_sse2
+#define unSwizzleBlock4HHP unSwizzleBlock4HHP_x64_sse2
+#define unSwizzleBlock4P unSwizzleBlock4P_x64_sse2
+#define SwizzleBlock32 SwizzleBlock32_x64_sse2
+#define SwizzleBlock16 SwizzleBlock16_x64_sse2
+#define SwizzleBlock8 SwizzleBlock8_x64_sse2
+#define SwizzleBlock4 SwizzleBlock4_x64_sse2
+#define SwizzleBlock32u SwizzleBlock32u_x64_sse2
+#define SwizzleBlock16u SwizzleBlock16u_x64_sse2
+#define SwizzleBlock8u SwizzleBlock8u_x64_sse2
+#define SwizzleBlock4u SwizzleBlock4u_x64_sse2
 
 #define SwizzleColumn32 SwizzleColumn32_c
 #define SwizzleColumn16 SwizzleColumn16_c
@@ -145,8 +97,6 @@ extern void __fastcall ReadCLUT32_T16_I4_c(WORD* src, DWORD* dst);
 #define ExpandBlock24 ExpandBlock24_sse2
 #define ExpandBlock16 ExpandBlock16_sse2
 #define Expand16 Expand16_sse2
-
-#define UVMinMax UVMinMax_sse2
 
 #define WriteCLUT_T16_I8_CSM1 WriteCLUT_T16_I8_CSM1_sse2
 #define WriteCLUT_T32_I8_CSM1 WriteCLUT_T32_I8_CSM1_sse2
@@ -160,24 +110,22 @@ extern void __fastcall ReadCLUT32_T16_I4_c(WORD* src, DWORD* dst);
 
 #elif _M_SSE >= 3
 
-#define SaturateColor SaturateColor_sse2
-
-#define unSwizzleBlock32 unSwizzleBlock32_sse2
-#define unSwizzleBlock16 unSwizzleBlock16_sse3
-#define unSwizzleBlock8 unSwizzleBlock8_sse3
-#define unSwizzleBlock4 unSwizzleBlock4_sse2
-#define unSwizzleBlock8HP unSwizzleBlock8HP_sse2
-#define unSwizzleBlock4HLP unSwizzleBlock4HLP_sse2
-#define unSwizzleBlock4HHP unSwizzleBlock4HHP_sse2
-#define unSwizzleBlock4P unSwizzleBlock4P_sse2
-#define SwizzleBlock32 SwizzleBlock32_sse2
-#define SwizzleBlock16 SwizzleBlock16_sse2
-#define SwizzleBlock8 SwizzleBlock8_sse3
-#define SwizzleBlock4 SwizzleBlock4_sse2
-#define SwizzleBlock32u SwizzleBlock32u_sse2
-#define SwizzleBlock16u SwizzleBlock16u_sse2
-#define SwizzleBlock8u SwizzleBlock8u_sse3
-#define SwizzleBlock4u SwizzleBlock4u_sse2
+#define unSwizzleBlock32 unSwizzleBlock32_x86_sse2
+#define unSwizzleBlock16 unSwizzleBlock16_x86_sse3
+#define unSwizzleBlock8 unSwizzleBlock8_x86_sse3
+#define unSwizzleBlock4 unSwizzleBlock4_x86_sse2
+#define unSwizzleBlock8HP unSwizzleBlock8HP_x86_sse2
+#define unSwizzleBlock4HLP unSwizzleBlock4HLP_x86_sse2
+#define unSwizzleBlock4HHP unSwizzleBlock4HHP_x86_sse2
+#define unSwizzleBlock4P unSwizzleBlock4P_x86_sse2
+#define SwizzleBlock32 SwizzleBlock32_x86_sse2
+#define SwizzleBlock16 SwizzleBlock16_x86_sse2
+#define SwizzleBlock8 SwizzleBlock8_x86_sse3
+#define SwizzleBlock4 SwizzleBlock4_x86_sse2
+#define SwizzleBlock32u SwizzleBlock32u_x86_sse2
+#define SwizzleBlock16u SwizzleBlock16u_x86_sse2
+#define SwizzleBlock8u SwizzleBlock8u_x86_sse3
+#define SwizzleBlock4u SwizzleBlock4u_x86_sse2
 
 #define SwizzleColumn32 SwizzleColumn32_c
 #define SwizzleColumn16 SwizzleColumn16_c
@@ -201,24 +149,22 @@ extern void __fastcall ReadCLUT32_T16_I4_c(WORD* src, DWORD* dst);
 
 #elif _M_SSE >= 2
 
-#define SaturateColor SaturateColor_sse2
-
-#define unSwizzleBlock32 unSwizzleBlock32_sse2
-#define unSwizzleBlock16 unSwizzleBlock16_sse2
-#define unSwizzleBlock8 unSwizzleBlock8_sse2
-#define unSwizzleBlock4 unSwizzleBlock4_sse2
-#define unSwizzleBlock8HP unSwizzleBlock8HP_sse2
-#define unSwizzleBlock4HLP unSwizzleBlock4HLP_sse2
-#define unSwizzleBlock4HHP unSwizzleBlock4HHP_sse2
-#define unSwizzleBlock4P unSwizzleBlock4P_sse2
-#define SwizzleBlock32 SwizzleBlock32_sse2
-#define SwizzleBlock16 SwizzleBlock16_sse2
-#define SwizzleBlock8 SwizzleBlock8_sse2
-#define SwizzleBlock4 SwizzleBlock4_sse2
-#define SwizzleBlock32u SwizzleBlock32u_sse2
-#define SwizzleBlock16u SwizzleBlock16u_sse2
-#define SwizzleBlock8u SwizzleBlock8u_sse2
-#define SwizzleBlock4u SwizzleBlock4u_sse2
+#define unSwizzleBlock32 unSwizzleBlock32_x86_sse2
+#define unSwizzleBlock16 unSwizzleBlock16_x86_sse2
+#define unSwizzleBlock8 unSwizzleBlock8_x86_sse2
+#define unSwizzleBlock4 unSwizzleBlock4_x86_sse2
+#define unSwizzleBlock8HP unSwizzleBlock8HP_x86_sse2
+#define unSwizzleBlock4HLP unSwizzleBlock4HLP_x86_sse2
+#define unSwizzleBlock4HHP unSwizzleBlock4HHP_x86_sse2
+#define unSwizzleBlock4P unSwizzleBlock4P_x86_sse2
+#define SwizzleBlock32 SwizzleBlock32_x86_sse2
+#define SwizzleBlock16 SwizzleBlock16_x86_sse2
+#define SwizzleBlock8 SwizzleBlock8_x86_sse2
+#define SwizzleBlock4 SwizzleBlock4_x86_sse2
+#define SwizzleBlock32u SwizzleBlock32u_x86_sse2
+#define SwizzleBlock16u SwizzleBlock16u_x86_sse2
+#define SwizzleBlock8u SwizzleBlock8u_x86_sse2
+#define SwizzleBlock4u SwizzleBlock4u_x86_sse2
 
 #define SwizzleColumn32 SwizzleColumn32_c
 #define SwizzleColumn16 SwizzleColumn16_c
@@ -241,8 +187,6 @@ extern void __fastcall ReadCLUT32_T16_I4_c(WORD* src, DWORD* dst);
 #define ReadCLUT32_T16_I4 ReadCLUT32_T16_I4_sse2
 
 #else
-
-#define SaturateColor SaturateColor_asm
 
 #define unSwizzleBlock32 unSwizzleBlock32_c
 #define unSwizzleBlock16 unSwizzleBlock16_c

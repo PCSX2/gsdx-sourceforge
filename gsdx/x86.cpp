@@ -497,40 +497,6 @@ void __fastcall Expand16_c(WORD* src, DWORD* dst, int w, GIFRegTEXA* pTEXA)
 
 static __m128i s_clut[64];
 
-void __fastcall WriteCLUT_T16_I8_CSM1_sse2(WORD* vm, WORD* clut)
-{
-	__m128i* src = (__m128i*)vm;
-	__m128i* dst = (__m128i*)clut;
-
-	for(int i = 0; i < 32; i += 4)
-	{
-		__m128i r0 = _mm_load_si128(&src[i+0]);
-		__m128i r1 = _mm_load_si128(&src[i+1]);
-		__m128i r2 = _mm_load_si128(&src[i+2]);
-		__m128i r3 = _mm_load_si128(&src[i+3]);
-
-		__m128i r4 = _mm_unpacklo_epi16(r0, r1);
-		__m128i r5 = _mm_unpackhi_epi16(r0, r1);
-		__m128i r6 = _mm_unpacklo_epi16(r2, r3);
-		__m128i r7 = _mm_unpackhi_epi16(r2, r3);
-
-		r0 = _mm_unpacklo_epi32(r4, r6);
-		r1 = _mm_unpackhi_epi32(r4, r6);
-		r2 = _mm_unpacklo_epi32(r5, r7);
-		r3 = _mm_unpackhi_epi32(r5, r7);
-
-		r4 = _mm_unpacklo_epi16(r0, r1);
-		r5 = _mm_unpackhi_epi16(r0, r1);
-		r6 = _mm_unpacklo_epi16(r2, r3);
-		r7 = _mm_unpackhi_epi16(r2, r3);
-
-		_mm_store_si128(&dst[i+0], r4);
-		_mm_store_si128(&dst[i+1], r6);
-		_mm_store_si128(&dst[i+2], r5);
-		_mm_store_si128(&dst[i+3], r7);
-	}
-}
-
 void __fastcall WriteCLUT_T32_I8_CSM1_sse2(DWORD* vm, WORD* clut)
 {
 	__m128i* src = (__m128i*)vm;
@@ -577,12 +543,6 @@ void __fastcall WriteCLUT_T32_I8_CSM1_sse2(DWORD* vm, WORD* clut)
 	}
 }
 
-void __fastcall WriteCLUT_T16_I4_CSM1_sse2(WORD* vm, WORD* clut)
-{
-	// TODO (probably not worth, _c is going to be just as fast)
-	WriteCLUT_T16_I4_CSM1_c(vm, clut);
-}
-
 void __fastcall WriteCLUT_T32_I4_CSM1_sse2(DWORD* vm, WORD* clut)
 {
 	__m128i* src = (__m128i*)vm;
@@ -613,83 +573,91 @@ void __fastcall WriteCLUT_T32_I4_CSM1_sse2(DWORD* vm, WORD* clut)
 	}
 }
 
-void __fastcall WriteCLUT_T16_I8_CSM1_c(WORD* vm, WORD* clut)
+void __fastcall WriteCLUT_T16_I8_CSM1_sse2(WORD* vm, WORD* clut)
 {
-	const static DWORD map[] = 
-	{
-		0, 2, 8, 10, 16, 18, 24, 26,
-		4, 6, 12, 14, 20, 22, 28, 30,
-		1, 3, 9, 11, 17, 19, 25, 27, 
-		5, 7, 13, 15, 21, 23, 29, 31
-	};
+	__m128i* src = (__m128i*)vm;
+	__m128i* dst = (__m128i*)clut;
 
-	for(int j = 0; j < 8; j++, vm += 32, clut += 32) 
+	for(int i = 0; i < 32; i += 4)
 	{
-		for(int i = 0; i < 32; i++)
-		{
-			clut[i] = vm[map[i]];
-		}
+		__m128i r0 = _mm_load_si128(&src[i+0]);
+		__m128i r1 = _mm_load_si128(&src[i+1]);
+		__m128i r2 = _mm_load_si128(&src[i+2]);
+		__m128i r3 = _mm_load_si128(&src[i+3]);
+
+		__m128i r4 = _mm_unpacklo_epi16(r0, r1);
+		__m128i r5 = _mm_unpackhi_epi16(r0, r1);
+		__m128i r6 = _mm_unpacklo_epi16(r2, r3);
+		__m128i r7 = _mm_unpackhi_epi16(r2, r3);
+
+		r0 = _mm_unpacklo_epi32(r4, r6);
+		r1 = _mm_unpackhi_epi32(r4, r6);
+		r2 = _mm_unpacklo_epi32(r5, r7);
+		r3 = _mm_unpackhi_epi32(r5, r7);
+
+		r4 = _mm_unpacklo_epi16(r0, r1);
+		r5 = _mm_unpackhi_epi16(r0, r1);
+		r6 = _mm_unpacklo_epi16(r2, r3);
+		r7 = _mm_unpackhi_epi16(r2, r3);
+
+		_mm_store_si128(&dst[i+0], r4);
+		_mm_store_si128(&dst[i+1], r6);
+		_mm_store_si128(&dst[i+2], r5);
+		_mm_store_si128(&dst[i+3], r7);
 	}
+}
+
+void __fastcall WriteCLUT_T16_I4_CSM1_sse2(WORD* vm, WORD* clut)
+{
+	// TODO (probably not worth, _c is going to be just as fast)
+	WriteCLUT_T16_I4_CSM1_c(vm, clut);
 }
 
 void __fastcall WriteCLUT_T32_I8_CSM1_c(DWORD* vm, WORD* clut)
 {
-	const static DWORD map[] = 
-	{
-		0, 1, 4, 5, 8, 9, 12, 13, 2, 3, 6, 7, 10, 11, 14, 15, 
-		64, 65, 68, 69, 72, 73, 76, 77, 66, 67, 70, 71, 74, 75, 78, 79, 
-		16, 17, 20, 21, 24, 25, 28, 29, 18, 19, 22, 23, 26, 27, 30, 31, 
-		80, 81, 84, 85, 88, 89, 92, 93, 82, 83, 86, 87, 90, 91, 94, 95, 
-		32, 33, 36, 37, 40, 41, 44, 45, 34, 35, 38, 39, 42, 43, 46, 47, 
-		96, 97, 100, 101, 104, 105, 108, 109, 98, 99, 102, 103, 106, 107, 110, 111, 
-		48, 49, 52, 53, 56, 57, 60, 61, 50, 51, 54, 55, 58, 59, 62, 63, 
-		112, 113, 116, 117, 120, 121, 124, 125, 114, 115, 118, 119, 122, 123, 126, 127
-	};
-
 	for(int j = 0; j < 2; j++, vm += 128, clut += 128)
 	{
 		for(int i = 0; i < 128; i++) 
 		{
-			DWORD dw = vm[map[i]];
+			DWORD dw = vm[clutTableT32I8[i]];
 			clut[i] = (WORD)(dw & 0xffff);
-			clut[i+256] = (WORD)(dw >> 16);
+			clut[i + 256] = (WORD)(dw >> 16);
+		}
+	}
+}
+
+void __fastcall WriteCLUT_T32_I4_CSM1_c(DWORD* vm, WORD* clut)
+{
+	for(int i = 0; i < 16; i++) 
+	{
+		DWORD dw = vm[clutTableT32I4[i]];
+		clut[i] = (WORD)(dw & 0xffff);
+		clut[i + 256] = (WORD)(dw >> 16);
+	}
+}
+
+void __fastcall WriteCLUT_T16_I8_CSM1_c(WORD* vm, WORD* clut)
+{
+	for(int j = 0; j < 8; j++, vm += 32, clut += 32) 
+	{
+		for(int i = 0; i < 32; i++)
+		{
+			clut[i] = vm[clutTableT16I8[i]];
 		}
 	}
 }
 
 void __fastcall WriteCLUT_T16_I4_CSM1_c(WORD* vm, WORD* clut)
 {
-	const static DWORD map[] = 
-	{
-		0, 2, 8, 10, 16, 18, 24, 26,
-		4, 6, 12, 14, 20, 22, 28, 30
-	};
-
 	for(int i = 0; i < 16; i++) 
 	{
-		clut[i] = vm[map[i]];
-	}
-}
-
-void __fastcall WriteCLUT_T32_I4_CSM1_c(DWORD* vm, WORD* clut)
-{
-	const static DWORD map[] = 
-	{
-		0, 1, 4, 5, 8, 9, 12, 13,
-		2, 3, 6, 7, 10, 11, 14, 15
-	};
-
-	for(int i = 0; i < 16; i++) 
-	{
-		DWORD dw = vm[map[i]];
-		clut[i] = (WORD)(dw & 0xffff);
-		clut[i+256] = (WORD)(dw >> 16);
+		clut[i] = vm[clutTableT16I4[i]];
 	}
 }
 
 //
 
-extern "C" void __fastcall ReadCLUT32_T32_I8_sse2(WORD* src, DWORD* dst)
+void __fastcall ReadCLUT32_T32_I8_sse2(WORD* src, DWORD* dst)
 {
 	for(int i = 0; i < 256; i += 16)
 	{
@@ -697,7 +665,7 @@ extern "C" void __fastcall ReadCLUT32_T32_I8_sse2(WORD* src, DWORD* dst)
 	}
 }
 
-extern "C" void __fastcall ReadCLUT32_T32_I4_sse2(WORD* src, DWORD* dst)
+void __fastcall ReadCLUT32_T32_I4_sse2(WORD* src, DWORD* dst)
 {
 	__m128i r0 = ((__m128i*)src)[0];
 	__m128i r1 = ((__m128i*)src)[1];
@@ -709,7 +677,7 @@ extern "C" void __fastcall ReadCLUT32_T32_I4_sse2(WORD* src, DWORD* dst)
 	_mm_store_si128(&((__m128i*)dst)[3], _mm_unpackhi_epi16(r1, r3));
 }
 
-extern "C" void __fastcall ReadCLUT32_T16_I8_sse2(WORD* src, DWORD* dst)
+void __fastcall ReadCLUT32_T16_I8_sse2(WORD* src, DWORD* dst)
 {
 	for(int i = 0; i < 256; i += 16)
 	{
@@ -717,7 +685,7 @@ extern "C" void __fastcall ReadCLUT32_T16_I8_sse2(WORD* src, DWORD* dst)
 	}
 }
 
-extern "C" void __fastcall ReadCLUT32_T16_I4_sse2(WORD* src, DWORD* dst)
+void __fastcall ReadCLUT32_T16_I4_sse2(WORD* src, DWORD* dst)
 {
 	__m128i r0 = ((__m128i*)src)[0];
 	__m128i r1 = ((__m128i*)src)[1];
