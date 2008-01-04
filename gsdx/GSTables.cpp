@@ -242,7 +242,7 @@ const DWORD clutTableT32I8[128] =
 	112, 113, 116, 117, 120, 121, 124, 125, 114, 115, 118, 119, 122, 123, 126, 127
 };
 
-const static DWORD clutTableT32I4[16] = 
+const DWORD clutTableT32I4[16] = 
 {
 	0, 1, 4, 5, 8, 9, 12, 13,
 	2, 3, 6, 7, 10, 11, 14, 15
@@ -256,7 +256,7 @@ const DWORD clutTableT16I8[32] =
 	5, 7, 13, 15, 21, 23, 29, 31
 };
 
-const static DWORD clutTableT16I4[16] = 
+const DWORD clutTableT16I4[16] = 
 {
 	0, 2, 8, 10, 16, 18, 24, 26,
 	4, 6, 12, 14, 20, 22, 28, 30
