@@ -315,7 +315,9 @@ void GSDevice10::EndScene()
 {
 	PSSetShaderResources(NULL, NULL);
 
-	OMSetRenderTargets(NULL, NULL);
+	// not clearing the rt/ds gives a little fps boost in complex games (5-10%)
+
+	// OMSetRenderTargets(NULL, NULL);
 }
 
 void GSDevice10::Draw(LPCTSTR str)

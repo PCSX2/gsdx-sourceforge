@@ -49,7 +49,7 @@ __declspec(align(16)) union GSVertexSWFP
 		float GetValue() const {return val;}
 		void SetValue(int i) {val = (float)i;}
 
-#if _M_SSE >= 2
+#if _M_SSE >= 0x200
 		void sat() {_mm_store_ss(&val, _mm_min_ss(_mm_max_ss(_mm_set_ss(val), _mm_setzero_ps()), _mm_set_ss(255)));}
 		void rcp() {_mm_store_ss(&val, _mm_rcp_ss(_mm_set_ss(val)));}
 #else
@@ -101,9 +101,7 @@ __declspec(align(16)) union GSVertexSWFP
 		{
 			union {struct {Scalar x, y, z, q;}; struct {Scalar r, g, b, a;};};
 			union {struct {Scalar v[4];}; struct {Scalar c[4];};};
-#if _M_SSE >= 2
 			union {__m128 xyzq; __m128 rgba;};
-#endif
 		};
 
 		Vector() {}
@@ -111,11 +109,11 @@ __declspec(align(16)) union GSVertexSWFP
 		Vector(Scalar s) {*this = s;}
 		Vector(Scalar s0, Scalar s1, Scalar s2, Scalar s3) {x = s0; y = s1; z = s2; q = s3;}
 		explicit Vector(DWORD dw) {*this = dw;}
-#if _M_SSE >= 2
+#if _M_SSE >= 0x200
 		Vector(__m128 f0123) {*this = f0123;}
 #endif
 
-#if _M_SSE >= 2
+#if _M_SSE >= 0x200
 
 		void operator = (const Vector& v) {xyzq = v.xyzq;}
 		void operator = (Scalar s) {xyzq = _mm_set1_ps(s);}
@@ -219,23 +217,6 @@ __declspec(align(16)) union GSVertexSWFP
 	__forceinline DWORD GetZ() const 
 	{
 		return (int)p.z;
-
-		ASSERT((float)p.z >= 0 && (float)p.q >= 0);
-#if _M_SSE >= 2
-		__m128 z = _mm_shuffle_ps(p, p, _MM_SHUFFLE(2,2,2,2));
-		__m128 q = _mm_shuffle_ps(p, p, _MM_SHUFFLE(3,3,3,3));
-		// TODO: check if our floor is faster than doing ss->si->ss
-		int zh = _mm_cvttss_si32(z);
-		__m128 zhi = _mm_cvtsi32_ss(zhi, zh);
-		__m128 zhf = _mm_mul_ss(_mm_sub_ss(z, zhi), _mm_set_ss(65536));
-		int zl = _mm_cvtss_si32(_mm_add_ss(zhf, q));
-		return ((DWORD)zh << 16) + (DWORD)zl;
-#else
-		// return ((DWORD)(int)p.z << 16) + (DWORD)(int)((p.z - p.z.floor_s())*65536 + p.q);
-
-		int z = (int)p.z;
-		return ((DWORD)z << 16) + (DWORD)(((float)p.z - z)*65536 + (float)p.q);
-#endif
 	}
 
 	friend GSVertexSWFP operator + (const GSVertexSWFP& v1, const GSVertexSWFP& v2);
@@ -251,7 +232,7 @@ __declspec(align(16)) union GSVertexSWFP
 	}
 };
 
-#if _M_SSE >= 2
+#if _M_SSE >= 0x200
 
 __forceinline GSVertexSWFP::Vector operator + (const GSVertexSWFP::Vector& v1, const GSVertexSWFP::Vector& v2) {return GSVertexSWFP::Vector(_mm_add_ps(v1, v2));}
 __forceinline GSVertexSWFP::Vector operator - (const GSVertexSWFP::Vector& v1, const GSVertexSWFP::Vector& v2) {return GSVertexSWFP::Vector(_mm_sub_ps(v1, v2));}

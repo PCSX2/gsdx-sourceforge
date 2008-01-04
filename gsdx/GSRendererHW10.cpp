@@ -80,7 +80,7 @@ void GSRendererHW10::VertexKick(bool skip)
 {
 	GSVertexHW10& v = m_vl.AddTail();
 
-#if 0 //_M_SSE >= 2
+#if 0 //_M_SSE >= 0x200
 
 	// TODO: make m_v aligned
 

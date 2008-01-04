@@ -31,7 +31,7 @@
 #define ASSERT_BLOCK(r, w, h) \
 	ASSERT((r).Width() >= w && (r).Height() >= h && !((r).left&(w-1)) && !((r).top&(h-1)) && !((r).right&(w-1)) && !((r).bottom&(h-1))); \
 
-#if _M_SSE >= 2
+#if _M_SSE >= 0x200
 #define BLOCK_PREFETCH(mem) \
 	_mm_prefetch(&mem[16*0], _MM_HINT_T0); \
 	_mm_prefetch(&mem[16*2], _MM_HINT_T0); \
@@ -476,7 +476,7 @@ bool GSLocalMemory::FillRect(const CRect& r, DWORD c, DWORD psm, DWORD fbp, DWOR
 	}
 	else
 	{
-		#if _M_SSE >= 2
+		#if _M_SSE >= 0x200
 
 		__m128i c128 = _mm_set1_epi32(c);
 

@@ -583,9 +583,10 @@ protected:
 		}
 		else
 		{
-			#if _M_SSE >= 2
+			#if _M_SSE >= 0x200
 			
 			__m128i r0 = _mm_load_si128((__m128i*)&Cui64);
+
 			Cdw = (DWORD)_mm_cvtsi128_si32(_mm_packus_epi16(r0, r0));
 
 			#else
@@ -749,9 +750,10 @@ protected:
 				Bf = m_clamp[Bf];
 				Af |= m_context->FBA.FBA << 7;
 
-				#if _M_SSE >= 2
+				#if _M_SSE >= 0x200
 				
 				__m128i r0 = _mm_load_si128((__m128i*)&Cui64);
+
 				Cdw = (DWORD)_mm_cvtsi128_si32(_mm_packus_epi16(r0, r0));
 
 				#else
@@ -811,7 +813,7 @@ protected:
 			(short)(int)t.y+1
 		};
 
-		#if _M_SSE >= 2
+		#if _M_SSE >= 0x200
 
 		__m128i uv = _mm_load_si128((__m128i*)ituv);
 		__m128i mask = _mm_load_si128((__m128i*)m_uv->mask);

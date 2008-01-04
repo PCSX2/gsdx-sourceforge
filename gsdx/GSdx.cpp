@@ -108,11 +108,11 @@ EXPORT_C_(char*) PS2EgetLibName()
 	sl.AddTail(s);
 #endif
 
-#if _M_SSE >= 3
-	sl.AddTail(_T("SSE3"));
-#elif _M_SSE >= 2
+#if _M_SSE >= 0x301
+	sl.AddTail(_T("SSSE3"));
+#elif _M_SSE >= 0x200
 	sl.AddTail(_T("SSE2"));
-#elif _M_SSE >= 1
+#elif _M_SSE >= 0x100
 	sl.AddTail(_T("SSE"));
 #endif
 

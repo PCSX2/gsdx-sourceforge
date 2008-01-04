@@ -24,7 +24,7 @@
 #include "GS.h"
 
 #include "x86_sse2.h"
-#include "x86_sse3.h"
+#include "x86_ssse3.h"
 #include "x64_sse2.h"
 
 extern void __fastcall unSwizzleBlock32_c(BYTE* src, BYTE* dst, int dstpitch);
@@ -108,7 +108,7 @@ extern void __fastcall ReadCLUT32_T16_I4_c(WORD* src, DWORD* dst);
 #define ReadCLUT32_T16_I8 ReadCLUT32_T16_I8_sse2
 #define ReadCLUT32_T16_I4 ReadCLUT32_T16_I4_sse2
 
-#elif _M_SSE >= 3
+#elif _M_SSE >= 0x301
 
 #define unSwizzleBlock32 unSwizzleBlock32_x86_sse2
 #define unSwizzleBlock16 unSwizzleBlock16_x86_sse3
@@ -147,7 +147,7 @@ extern void __fastcall ReadCLUT32_T16_I4_c(WORD* src, DWORD* dst);
 #define ReadCLUT32_T16_I8 ReadCLUT32_T16_I8_sse2
 #define ReadCLUT32_T16_I4 ReadCLUT32_T16_I4_sse2
 
-#elif _M_SSE >= 2
+#elif _M_SSE >= 0x200
 
 #define unSwizzleBlock32 unSwizzleBlock32_x86_sse2
 #define unSwizzleBlock16 unSwizzleBlock16_x86_sse2
