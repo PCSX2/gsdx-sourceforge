@@ -59,5 +59,5 @@
 #define D3DCOLORWRITEENABLE_RGBA (D3DCOLORWRITEENABLE_RGB|D3DCOLORWRITEENABLE_ALPHA)
 
 #if !defined(_M_SSE) && (defined(_M_AMD64) || _M_IX86_FP >= 2)
-#define _M_SSE 2
+#define _M_SSE 0x200
 #endif

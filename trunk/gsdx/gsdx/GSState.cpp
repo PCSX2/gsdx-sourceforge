@@ -378,13 +378,13 @@ void GSState::GIFPackedRegHandlerPRIM(GIFPackedReg* r)
 {
 	GIFReg r2;
 	r2.PRIM.i64 = r->PRIM.PRIM;
-	ASSERT(r2.PRIM.PRIM < 7);
+	// ASSERT(r2.PRIM.PRIM < 7);
 	GIFRegHandlerPRIM(&r2);
 }
 
 void GSState::GIFPackedRegHandlerRGBA(GIFPackedReg* r)
 {
-#if _M_SSE >= 2
+#if _M_SSE >= 0x200
 
 	__m128i r0 = _mm_loadu_si128((__m128i*)r);
 	r0 = _mm_and_si128(r0, _000000ff);
@@ -410,7 +410,7 @@ void GSState::GIFPackedRegHandlerSTQ(GIFPackedReg* r)
 
 	m_v.ST.i64 = r->ai64[0];
 
-#elif _M_SSE >= 2
+#elif _M_SSE >= 0x200
 
 	_mm_storel_epi64((__m128i*)&m_v.ST.i64, _mm_loadl_epi64((__m128i*)r));
 
@@ -426,7 +426,7 @@ void GSState::GIFPackedRegHandlerSTQ(GIFPackedReg* r)
 
 void GSState::GIFPackedRegHandlerUV(GIFPackedReg* r)
 {
-#if _M_SSE >= 2
+#if _M_SSE >= 0x200
 
 	__m128i r0 = _mm_loadu_si128((__m128i*)r);
 	r0 = _mm_and_si128(r0, _00003fff);

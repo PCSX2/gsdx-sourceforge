@@ -48,7 +48,7 @@ protected:
 	{
 		if(PRIM->FST)
 		{
-			#if _M_SSE >= 2
+			#if _M_SSE >= 0x200
 
 			__m128 min = _mm_set1_ps(+1e10);
 			__m128 max = _mm_set1_ps(-1e10);
