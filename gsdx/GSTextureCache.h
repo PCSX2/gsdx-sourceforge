@@ -404,7 +404,7 @@ public:
 			m_ds.AddHead(ds);
 		}
 
-		if(!m_renderer->m_context->ZBUF.ZMSK)
+		if(m_renderer->m_context->DepthWrite())
 		{
 			ds->m_used = true;
 		}
@@ -608,7 +608,7 @@ public:
 
 			if(HasSharedBits(BITBLTBUF.DBP, BITBLTBUF.DPSM, t->m_TEX0.TBP0, t->m_TEX0.PSM))
 			{
-				if(BITBLTBUF.DBW == t->m_TEX0.TBW)
+				if(BITBLTBUF.DBW == t->m_TEX0.TBW && !t->m_rendered)
 				{
 					t->m_dirty.AddTail(GSDirtyRect(BITBLTBUF.DPSM, r));
 
@@ -621,28 +621,29 @@ public:
 					delete t;
 				}
 			}
-			else if(BITBLTBUF.DBW == t->m_TEX0.TBW && HasCompatibleBits(BITBLTBUF.DPSM, t->m_TEX0.PSM))
+			else if(HasCompatibleBits(BITBLTBUF.DPSM, t->m_TEX0.PSM))
 			{
-				int rowsize = (int)BITBLTBUF.DBW * 8192;
-				int offset = ((int)BITBLTBUF.DBP - (int)t->m_TEX0.TBP0) * 256;
-
-				if(rowsize > 0 && offset % rowsize == 0)
+				if(BITBLTBUF.DBW == t->m_TEX0.TBW && !t->m_rendered)
 				{
-					int y = m_renderer->m_mem.m_psm[BITBLTBUF.DPSM].pgs.cy * offset / rowsize;
+					int rowsize = (int)BITBLTBUF.DBW * 8192;
+					int offset = ((int)BITBLTBUF.DBP - (int)t->m_TEX0.TBP0) * 256;
 
-					CRect r2(r.left, r.top + y, r.right, r.bottom + y);
-
-					int w = 1 << t->m_TEX0.TW;
-					int h = 1 << t->m_TEX0.TH;
-
-					if(r2.bottom > 0 && r2.top < h && r2.right > 0 && r2.left < w)
+					if(rowsize > 0 && offset % rowsize == 0)
 					{
-// _tprintf(_T("%05x (%d) %05x (%d) %d,%d - %d,%d (%d,%d)\n"), (int)BITBLTBUF.DBP, (int)BITBLTBUF.DPSM, (int)t->m_TEX0.TBP0, (int)t->m_TEX0.PSM, r2.left, r2.top, r2.right, r2.bottom, w, h);
-						t->m_dirty.AddTail(GSDirtyRect(BITBLTBUF.DPSM, r2));
+						int y = m_renderer->m_mem.m_psm[BITBLTBUF.DPSM].pgs.cy * offset / rowsize;
+
+						CRect r2(r.left, r.top + y, r.right, r.bottom + y);
+
+						int w = 1 << t->m_TEX0.TW;
+						int h = 1 << t->m_TEX0.TH;
+
+						if(r2.bottom > 0 && r2.top < h && r2.right > 0 && r2.left < w)
+						{
+							t->m_dirty.AddTail(GSDirtyRect(BITBLTBUF.DPSM, r2));
+						}
 					}
 				}
 			}
-/**/
 		}
 
 		pos = m_rt.GetHeadPosition();

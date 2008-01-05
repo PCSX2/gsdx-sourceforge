@@ -43,4 +43,6 @@ public:
 	virtual bool Map(BYTE** bits, int& pitch, const RECT* r = NULL) = 0;
 	virtual void Unmap() = 0;
 	virtual bool Save(CString fn, bool dds = false) = 0;
+
+	CSize GetSize() {return CSize(GetWidth(), GetHeight());}
 };

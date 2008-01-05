@@ -838,9 +838,9 @@ protected:
 		{
 			for(int i = 0; i < 4; i++)
 			{
-				Ct[i] = m_mem.readTexelX(m_context->TEX0.PSM, ituv[i&1], ituv[i|2], m_context->TEX0, m_env.TEXA);
-				// Ct[i] = (m_mem.*m_context->ttbl->rt)(ituv[i&1], ituv[i|2], m_context->TEX0, m_env.TEXA);
-				// Ct[i] = m_pTexture[(ituv[i|2] << m_context->TEX0.TW) + ituv[i&1]];
+				Ct[i] = m_mem.readTexelX(m_context->TEX0.PSM, ituv[i&1], ituv[(i>>1)|2], m_context->TEX0, m_env.TEXA);
+				// Ct[i] = (m_mem.*m_context->ttbl->rt)(ituv[i&1], ituv[(i>>1)|2], m_context->TEX0, m_env.TEXA);
+				// Ct[i] = m_pTexture[(ituv[(i>>1)|2] << m_context->TEX0.TW) + ituv[i&1]];
 			}
 
 			Vertex::Vector ft = t - t.floor();

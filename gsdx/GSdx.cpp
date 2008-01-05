@@ -134,7 +134,7 @@ EXPORT_C_(UINT32) PS2EgetLibVersion2(UINT32 type)
 {
 	const UINT32 revision = 0;
 	const UINT32 build = 1;
-	const UINT32 minor = 6;
+	const UINT32 minor = 7;
 
 	return (build << 0) | (revision << 8) | (PS2E_GS_VERSION << 16) | (minor << 24);
 }
@@ -186,7 +186,7 @@ EXPORT_C GSclose()
 	}
 }
 
-EXPORT_C_(INT32) GSopen(void* dsp, char* title, int mt)
+EXPORT_C_(INT32) __GSopen(void* dsp, char* title, int mt, int renderer)
 {
 	AFX_MANAGE_STATE(AfxGetStaticModuleState());
 
@@ -200,15 +200,15 @@ EXPORT_C_(INT32) GSopen(void* dsp, char* title, int mt)
 	int filter = AfxGetApp()->GetProfileInt(_T("Settings"), _T("filter"), 1);
 	bool vsync = !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("vsync"), FALSE);
 
-	switch(AfxGetApp()->GetProfileInt(_T("Settings"), _T("renderer"), 0))
+	switch(renderer)
 	{
+	default: 
 	case 0: s_gs = new GSRendererHW9(s_basemem, !!mt, s_irq, nloophack, interlace, aspectratio, filter, vsync); break;
 	case 1: s_gs = new GSRendererSWFP<GSDevice9>(s_basemem, !!mt, s_irq, nloophack, interlace, aspectratio, filter, vsync); break;
 	case 2: s_gs = new GSRendererNull<GSDevice9>(s_basemem, !!mt, s_irq, nloophack, interlace, aspectratio, filter, vsync); break;
 	case 3: s_gs = new GSRendererHW10(s_basemem, !!mt, s_irq, nloophack, interlace, aspectratio, filter, vsync); break;
 	case 4: s_gs = new GSRendererSWFP<GSDevice10>(s_basemem, !!mt, s_irq, nloophack, interlace, aspectratio, filter, vsync); break;
 	case 5: s_gs = new GSRendererNull<GSDevice10>(s_basemem, !!mt, s_irq, nloophack, interlace, aspectratio, filter, vsync); break;
-	default: return -1;
 	}
 
 	s_hr = ::CoInitialize(0);
@@ -224,6 +224,15 @@ EXPORT_C_(INT32) GSopen(void* dsp, char* title, int mt)
 	*(HWND*)dsp = *s_gs;
 
 	return 0;
+}
+
+EXPORT_C_(INT32) GSopen(void* dsp, char* title, int mt)
+{
+	AFX_MANAGE_STATE(AfxGetStaticModuleState());
+
+	int renderer = AfxGetApp()->GetProfileInt(_T("Settings"), _T("renderer"), 0);
+
+	return __GSopen(dsp, title, mt, renderer);
 }
 
 EXPORT_C GSreset()
@@ -347,6 +356,17 @@ EXPORT_C GSsetFrameSkip(int frameskip)
 
 EXPORT_C GSReplay(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow)
 {
+	int renderer = -1;
+
+	{
+		char* start = lpszCmdLine;
+		char* end = NULL;
+		long n = strtol(lpszCmdLine, &end, 10);
+		if(end > start) {renderer = n; lpszCmdLine = end;}
+	}
+
+	while(*lpszCmdLine == ' ') lpszCmdLine++;
+
 	CAtlArray<BYTE> buff;
 
 	if(FILE* fp = fopen(lpszCmdLine, "rb"))
@@ -357,16 +377,12 @@ EXPORT_C GSReplay(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow)
 		GSsetBaseMem(regs);
 
 		HWND hWnd = NULL;
-		GSopen(&hWnd, _T(""), true);
+		__GSopen(&hWnd, _T(""), true, renderer);
 
 		int crc;
 		fread(&crc, 4, 1, fp);
 		GSsetGameCRC(crc, 0);
-/*
-		CString str;
-		str.Format(_T("%08x"), crc);
-		MessageBox(NULL, str, _T(""), MB_OK);
-*/
+
 		freezeData fd;
 		fread(&fd.size, 4, 1, fp);
 		fd.data = new BYTE[fd.size];
@@ -379,6 +395,8 @@ EXPORT_C GSReplay(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow)
 		long start = ftell(fp);
 
 		int index, size, addr;
+
+		GSvsync(1);
 
 		while(1)
 		{
@@ -419,6 +437,7 @@ EXPORT_C GSReplay(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow)
 				fread(&size, 4, 1, fp);
 				if(buff.GetCount() < size) buff.SetCount(size);
 				GSreadFIFO2(buff.GetData(), size / 16);
+				break;
 			default:
 				return;
 			}

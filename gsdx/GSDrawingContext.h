@@ -62,6 +62,16 @@ struct GSDrawingContext
 		fscissor.x1 = (float)(int)scissor.x1;
 		fscissor.y1 = (float)(int)scissor.y1;
 	}
+
+	bool DepthWrite()
+	{
+		if(TEST.ATE && TEST.ATST == 0 && TEST.AFAIL != 2) // alpha test, all pixels fail, z buffer is not updated
+		{
+			return false;
+		}
+
+		return ZBUF.ZMSK == 0;
+	}
 };
 
 #pragma pack(pop)

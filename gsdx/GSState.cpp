@@ -1828,7 +1828,7 @@ bool GSC_Bully(const GSFrameInfo& fi, int& skip)
 	{
 		if(fi.TME && (fi.FBP == 0x00000 || fi.FBP == 0x01180) && (fi.TBP0 == 0x00000 || fi.TBP0 == 0x01180) && fi.FBP == fi.TBP0 && fi.FPSM == PSM_PSMCT32 && fi.FPSM == fi.TPSM)
 		{
-			return false; // allowed for bully
+			return false; // allowed
 		}
 
 		if(fi.TME && (fi.FBP == 0x00000 || fi.FBP == 0x01180) && fi.FPSM == PSM_PSMCT16S && fi.TBP0 == 0x02300 && fi.TPSM == PSM_PSMZ16S)
@@ -1956,9 +1956,21 @@ bool GSC_CrashBandicootWoC(const GSFrameInfo& fi, int& skip)
 {
 	if(skip == 0)
 	{
+		if(fi.TME && (fi.FBP == 0x00000 || fi.FBP == 0x00a00) && (fi.TBP0 == 0x00000 || fi.TBP0 == 0x00a00) && fi.FBP == fi.TBP0 && fi.FPSM == PSM_PSMCT32 && fi.FPSM == fi.TPSM)
+		{
+			return false; // allowed
+		}
+
 		if(fi.TME && fi.FBP == 0x02200 && fi.FPSM == PSM_PSMZ24 && fi.TBP0 == 0x01400 && fi.TPSM == PSM_PSMZ24)
 		{
 			skip = 41;
+		}
+	}
+	else
+	{
+		if(fi.TME && fi.FBP == 0x00000 && fi.FPSM == PSM_PSMCT32 && fi.TBP0 == 0x03c00 && fi.TPSM == PSM_PSMCT32)
+		{
+			skip = 0;
 		}
 	}
 
@@ -1985,6 +1997,23 @@ bool GSC_Spartan(const GSFrameInfo& fi, int& skip)
 		if(fi.TME && fi.FBP == 0x02000 && fi.FPSM == PSM_PSMCT32 && fi.TBP0 == 0x00000 && fi.TPSM == PSM_PSMCT32)
 		{
 			skip = 107;
+		}
+	}
+
+	return true;
+}
+
+bool GSC_AceCombat4(const GSFrameInfo& fi, int& skip)
+{
+	if(skip == 0)
+	{
+		if(fi.TME && fi.FBP == 0x02a00 && fi.FPSM == PSM_PSMZ24 && fi.TBP0 == 0x01600 && fi.TPSM == PSM_PSMZ24)
+		{
+			skip = 71; // clouds (z, 16-bit)
+		}
+		else if(fi.TME && fi.FBP == 0x02900 && fi.FPSM == PSM_PSMCT32 && fi.TBP0 == 0x00000 && fi.TPSM == PSM_PSMCT24)
+		{
+			skip = 28; // blur
 		}
 	}
 
@@ -2030,6 +2059,7 @@ bool GSState::IsBadFrame(int& skip)
 		m_crc2gsc[0x013E349D] = GSC_ResidentEvil4; // re4 ntsc/us
 		m_crc2gsc[0x6BA2F6B9] = GSC_ResidentEvil4; // re4 ?
 		m_crc2gsc[0x72E1E60E] = GSC_Spartan; // spartan ntsc/us
+		m_crc2gsc[0x1B9B7563] = GSC_AceCombat4; // ace combat 4 ?
 	}
 
 	if(CAtlMap<DWORD, GetSkipCount>::CPair* pair = m_crc2gsc.Lookup(m_crc))
