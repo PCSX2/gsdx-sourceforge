@@ -1968,7 +1968,11 @@ bool GSC_CrashBandicootWoC(const GSFrameInfo& fi, int& skip)
 	}
 	else
 	{
-		if(fi.TME && fi.FBP == 0x00000 && fi.FPSM == PSM_PSMCT32 && fi.TBP0 == 0x03c00 && fi.TPSM == PSM_PSMCT32)
+		if(fi.TME && (fi.FBP == 0x00000 || fi.FBP == 0x00a00) && fi.FPSM == PSM_PSMCT32 && fi.TBP0 == 0x03c00 && fi.TPSM == PSM_PSMCT32)
+		{
+			skip = 0;
+		}
+		else if(!fi.TME && (fi.FBP == 0x00000 || fi.FBP == 0x00a00))
 		{
 			skip = 0;
 		}
