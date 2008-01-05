@@ -38,5 +38,5 @@ class GSDirtyRectList : public CAtlList<GSDirtyRect>
 {
 public:
 	GSDirtyRectList() {}
-	CRect GetDirtyRect(const GIFRegTEX0& TEX0);
+	CRect GetDirtyRect(const GIFRegTEX0& TEX0, CSize size);
 };

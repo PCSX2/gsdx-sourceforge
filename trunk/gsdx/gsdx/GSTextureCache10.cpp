@@ -37,7 +37,7 @@ void GSTextureCache10::GSRenderTargetHW10::Update()
 
 	// FIXME: the union of the rects may also update wrong parts of the render target (but a lot faster :)
 
-	CRect r = m_dirty.GetDirtyRect(m_TEX0);
+	CRect r = m_dirty.GetDirtyRect(m_TEX0, m_texture.GetSize());
 
 	m_dirty.RemoveAll();
 
