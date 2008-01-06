@@ -353,6 +353,7 @@ if(s_dump)
 	vs_sel.bppz = 0;
 	vs_sel.tme = PRIM->TME;
 	vs_sel.fst = PRIM->FST;
+	vs_sel.prim = PRIM->PRIM;
 
 	if(om_dssel.zte && om_dssel.ztst > 0 && om_dssel.zwe)
 	{

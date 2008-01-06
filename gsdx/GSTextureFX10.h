@@ -45,11 +45,12 @@ public:
 			DWORD bppz:2;
 			DWORD tme:1;
 			DWORD fst:1;
+			DWORD prim:3;
 		};
 
 		DWORD dw;
 
-		operator DWORD() {return dw & 0xf;}
+		operator DWORD() {return dw & 0x7f;}
 	};
 
 	struct PSConstantBuffer

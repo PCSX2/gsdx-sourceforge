@@ -149,17 +149,19 @@ bool GSTextureFX10::SetupVS(VSSelector sel, const VSConstantBuffer* cb)
 
 	if(!(vs = m_vs.Lookup(sel)))
 	{
-		CStringA str[3];
+		CStringA str[4];
 
 		str[0].Format("%d", sel.bppz);
 		str[1].Format("%d", sel.tme);
 		str[2].Format("%d", sel.fst);
+		str[3].Format("%d", sel.prim);
 
 		D3D10_SHADER_MACRO macro[] =
 		{
 			{"VS_BPPZ", str[0]},
 			{"VS_TME", str[1]},
 			{"VS_FST", str[2]},
+			{"VS_PRIM", str[3]},
 			{NULL, NULL},
 		};
 
