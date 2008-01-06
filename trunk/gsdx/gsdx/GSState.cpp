@@ -2024,6 +2024,19 @@ bool GSC_AceCombat4(const GSFrameInfo& fi, int& skip)
 	return true;
 }
 
+bool GSC_Drakengard2(const GSFrameInfo& fi, int& skip)
+{
+	if(skip == 0)
+	{
+		if(fi.TME && fi.FBP == 0x026c0 && fi.FPSM == PSM_PSMCT32 && fi.TBP0 == 0x00a00 && fi.TPSM == PSM_PSMCT32)
+		{
+			skip = 64;
+		}
+	}
+
+	return true;
+}
+
 bool GSState::IsBadFrame(int& skip)
 {
 	GSFrameInfo fi;
@@ -2064,6 +2077,7 @@ bool GSState::IsBadFrame(int& skip)
 		m_crc2gsc[0x6BA2F6B9] = GSC_ResidentEvil4; // re4 ?
 		m_crc2gsc[0x72E1E60E] = GSC_Spartan; // spartan ntsc/us
 		m_crc2gsc[0x1B9B7563] = GSC_AceCombat4; // ace combat 4 ?
+		m_crc2gsc[0xEC432B24] = GSC_Drakengard2; //
 	}
 
 	if(CAtlMap<DWORD, GetSkipCount>::CPair* pair = m_crc2gsc.Lookup(m_crc))
@@ -2080,7 +2094,7 @@ bool GSState::IsBadFrame(int& skip)
 		{
 			if(HasSharedBits(fi.FBP, fi.FPSM, fi.TBP0, fi.TPSM))
 			{
-				skip = 1;
+//				skip = 1;
 			}
 
 			// depth textures (bully, mgs3s1 intro)

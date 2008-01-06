@@ -399,6 +399,63 @@ protected:
 
 		#pragma endregion
 
+		#pragma region tomoyo after, clannad (palette uploaded in a point list, pure genius...)
+
+		if(m_crc == 0x42E05BAF || m_crc == 0x7800DC84)
+		{
+			if(prim == GS_POINTLIST && !PRIM->TME)
+			{
+				DWORD bp = m_context->FRAME.Block();
+				DWORD bw = m_context->FRAME.FBW;
+
+				if(bp >= 0x03f40 && (bp & 0x1f) == 0)
+				{
+					if(m_count == 16)
+					{
+						for(int i = 0; i < 16; i++)
+						{
+							m_vertices[i].a = m_vertices[i].a >= 0x80 ? 0xff : m_vertices[i].a * 2;
+
+							int x = (m_vertices[i].p.x - m_context->XYOFFSET.OFX + 8) / 16;
+							int y = (m_vertices[i].p.y - m_context->XYOFFSET.OFY + 8) / 16;
+
+							ASSERT(x == (i & 7) && y == (i >> 3));
+
+							m_mem.writePixel32(i & 7, i >> 3, m_vertices[i].c0, bp, bw);
+						}
+
+						m_mem.InvalidateCLUT();
+
+						return false;
+					}
+					else if(m_count == 256)
+					{
+						for(int i = 0; i < 256; i++)
+						{
+							m_vertices[i].a = m_vertices[i].a >= 0x80 ? 0xff : m_vertices[i].a * 2;
+
+							int x = (m_vertices[i].p.x - m_context->XYOFFSET.OFX + 8) / 16;
+							int y = (m_vertices[i].p.y - m_context->XYOFFSET.OFY + 8) / 16;
+
+							ASSERT(x == (i & 15) && y == (i >> 4));
+
+							m_mem.writePixel32(i & 15, i >> 4, m_vertices[i].c0, bp, bw);
+						}
+
+						m_mem.InvalidateCLUT();
+
+						return false;
+					}
+					else
+					{
+						ASSERT(0);
+					}
+				}
+			}
+		}
+
+		#pragma endregion
+
 		return true;
 	}
 
