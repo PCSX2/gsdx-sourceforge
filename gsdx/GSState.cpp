@@ -2037,6 +2037,19 @@ bool GSC_Drakengard2(const GSFrameInfo& fi, int& skip)
 	return true;
 }
 
+bool GSC_Tekken5(const GSFrameInfo& fi, int& skip)
+{
+	if(skip == 0)
+	{
+		if(fi.TME && fi.FBP == 0x02ea0 && fi.FPSM == PSM_PSMCT32 && fi.TBP0 == 0x00000 && fi.TPSM == PSM_PSMCT32)
+		{
+			skip = 95;
+		}
+	}
+
+	return true;
+}
+
 bool GSState::IsBadFrame(int& skip)
 {
 	GSFrameInfo fi;
@@ -2078,6 +2091,7 @@ bool GSState::IsBadFrame(int& skip)
 		m_crc2gsc[0x72E1E60E] = GSC_Spartan; // spartan ntsc/us
 		m_crc2gsc[0x1B9B7563] = GSC_AceCombat4; // ace combat 4 ?
 		m_crc2gsc[0xEC432B24] = GSC_Drakengard2; //
+		m_crc2gsc[0x1F88EE37] = GSC_Tekken5; // tekken 5 ?
 	}
 
 	if(CAtlMap<DWORD, GetSkipCount>::CPair* pair = m_crc2gsc.Lookup(m_crc))
