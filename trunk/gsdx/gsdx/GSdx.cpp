@@ -438,6 +438,9 @@ EXPORT_C GSReplay(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow)
 				if(buff.GetCount() < size) buff.SetCount(size);
 				GSreadFIFO2(buff.GetData(), size / 16);
 				break;
+			case 3:
+				fread(regs, 0x2000, 1, fp);
+				break;
 			default:
 				return;
 			}

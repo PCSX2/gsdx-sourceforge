@@ -42,7 +42,7 @@ VS_OUTPUT vs_main(VS_INPUT input)
 	
 	if(VS_PRIM == 6) // sprite
 	{
-		input.p.xy = (input.p.xy + 15) & ~15; // HACK
+		//input.p.xy = (input.p.xy + 15) & ~15; // HACK
 	}
 
 	VS_OUTPUT output;

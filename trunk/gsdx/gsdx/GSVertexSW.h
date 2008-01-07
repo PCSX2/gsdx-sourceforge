@@ -69,6 +69,7 @@ __declspec(align(16)) union GSVertexSWFP
 
 		operator float() const {return val;}
 		operator int() const {return (int)val;}
+		operator DWORD() const {return (DWORD)val;}
 
 		void operator += (const Scalar& s) {val += s.val;}
 		void operator -= (const Scalar& s) {val -= s.val;}
@@ -216,7 +217,7 @@ __declspec(align(16)) union GSVertexSWFP
 
 	__forceinline DWORD GetZ() const 
 	{
-		return (int)p.z;
+		return (DWORD)p.z;
 	}
 
 	friend GSVertexSWFP operator + (const GSVertexSWFP& v1, const GSVertexSWFP& v2);

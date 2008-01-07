@@ -22,6 +22,7 @@
 #include "stdafx.h"
 #include "GSRendererHW10.h"
 #include "GSTextureCache10.h"
+#include "GSCrc.h"
 #include "resource.h"
 
 GSRendererHW10::GSRendererHW10(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync)
@@ -353,7 +354,7 @@ if(s_dump)
 	vs_sel.bppz = 0;
 	vs_sel.tme = PRIM->TME;
 	vs_sel.fst = PRIM->FST;
-	vs_sel.prim = PRIM->PRIM;
+	vs_sel.prim = prim;
 
 	if(om_dssel.zte && om_dssel.ztst > 0 && om_dssel.zwe)
 	{

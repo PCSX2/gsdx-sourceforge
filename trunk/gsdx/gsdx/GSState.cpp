@@ -21,6 +21,7 @@
 
 #include "stdafx.h"
 #include "GSState.h"
+#include "GSCrc.h"
 
 GSState::GSState(BYTE* base, bool mt, void (*irq)(), int nloophack)
 	: m_mt(mt)
@@ -579,6 +580,13 @@ template<int i> void GSState::GIFRegHandlerTEX0(GIFReg* r)
 		Flush(); 
 	}
 
+	bool invalidate = false;
+
+	if(m_env.CTXT[i].TEX0.TBP0 == r->TEX0.TBP0)
+	{
+		invalidate = true;
+	}
+
 	m_env.CTXT[i].TEX0 = r->TEX0;
 
 	// ASSERT(m_env.CTXT[i].TEX0.TW <= 10 && m_env.CTXT[i].TEX0.TH <= 10 && (m_env.CTXT[i].TEX0.CPSM & ~0xa) == 0);
@@ -592,7 +600,15 @@ template<int i> void GSState::GIFRegHandlerTEX0(GIFReg* r)
 
 	FlushWrite();
 
-	m_mem.WriteCLUT(r->TEX0, m_env.TEXCLUT);
+	if(m_mem.WriteCLUT(r->TEX0, m_env.TEXCLUT))
+	{
+		invalidate = true;
+	}
+
+	if(invalidate)
+	{
+		InvalidateTextureCache();
+	}
 }
 
 template<int i> void GSState::GIFRegHandlerCLAMP(GIFReg* r)
@@ -763,7 +779,7 @@ void GSState::GIFRegHandlerFOGCOL(GIFReg* r)
 
 void GSState::GIFRegHandlerTEXFLUSH(GIFReg* r)
 {
-	// TODO: invalidate the texture cache page (sw-only)
+	InvalidateTextureCache();
 }
 
 template<int i> void GSState::GIFRegHandlerSCISSOR(GIFReg* r)
@@ -1229,6 +1245,8 @@ void GSState::Transfer(BYTE* mem, int size, int index)
 
 			if(path.tag.PRE) // TODO: this should be ignored in image mode 
 			{
+				ASSERT(path.tag.FLG != GIF_FLG_IMAGE);
+
 				GIFReg r;
 				r.i64 = path.tag.PRIM;
 				(this->*m_fpGIFRegHandlers[GIF_A_D_REG_PRIM])(&r);
@@ -1288,6 +1306,8 @@ void GSState::Transfer(BYTE* mem, int size, int index)
 			break;
 
 		case GIF_FLG_IMAGE2: // hmmm
+
+			ASSERT(0);
 
 			path.tag.NLOOP = 0;
 
@@ -2050,6 +2070,30 @@ bool GSC_Tekken5(const GSFrameInfo& fi, int& skip)
 	return true;
 }
 
+bool GSC_IkkiTousen(const GSFrameInfo& fi, int& skip)
+{
+	if(skip == 0)
+	{
+		if(fi.TME && fi.FBP == 0x00a80 && fi.FPSM == PSM_PSMZ24 && fi.TBP0 == 0x01180 && fi.TPSM == PSM_PSMZ24)
+		{
+			skip = 1000; // shadow (result is broken without depth copy, also includes 16 bit)
+		}
+		else if(fi.TME && fi.FBP == 0x00700 && fi.FPSM == PSM_PSMZ24 && fi.TBP0 == 0x01180 && fi.TPSM == PSM_PSMZ24)
+		{
+			skip = 11; // blur
+		}
+	}
+	else if(skip > 7)
+	{
+		if(fi.TME && fi.FBP == 0x00700 && fi.FPSM == PSM_PSMCT16 && fi.TBP0 == 0x00700 && fi.TPSM == PSM_PSMCT16)
+		{
+			skip = 7; // the last steps of shadow drawing
+		}
+	}
+
+	return true;
+}
+
 bool GSState::IsBadFrame(int& skip)
 {
 	GSFrameInfo fi;
@@ -2060,41 +2104,42 @@ bool GSState::IsBadFrame(int& skip)
 	fi.TBP0 = m_context->TEX0.TBP0;
 	fi.TPSM = m_context->TEX0.PSM;
 
-	static CAtlMap<DWORD, GetSkipCount> m_crc2gsc;
+	static CAtlMap<int, GetSkipCount> m_crc2gsc;
 
 	if(m_crc2gsc.IsEmpty())
 	{
-		m_crc2gsc[0x21068223] = GSC_Okami; // okami ntsc/us
-		m_crc2gsc[0x891f223f] = GSC_Okami; // okami pal/fr
-		m_crc2gsc[0x053D2239] = GSC_MetalGearSolid3; // mgs3s1 ntsc/us (TODO: in-game has funny colors)
-		m_crc2gsc[0x086273D2] = GSC_MetalGearSolid3; // mgs3 snake eater pal/fr
-		m_crc2gsc[0xAA31B5BF] = GSC_MetalGearSolid3; // mgs3 snake eater 
-		m_crc2gsc[0x278722BF] = GSC_DBZBT2; // dbz bt2 ntsc/us
-		m_crc2gsc[0x428113C2] = GSC_DBZBT3; // dbz bt3 ntsc/us
-		m_crc2gsc[0xA422BB13] = GSC_DBZBT3; // dbz bt3 pal/eu
-		m_crc2gsc[0x72B3802A] = GSC_SFEX3; // sfex3 ntsc/us
-		m_crc2gsc[0x71521863] = GSC_SFEX3; // sfex3 ntsc/us (patched)
-		m_crc2gsc[0x28703748] = GSC_Bully; // bully ntsc/us
-		m_crc2gsc[0xC19A374E] = GSC_SoTC; // shadow of the colossus ntsc/us
-		m_crc2gsc[0x3122B508] = GSC_OnePieceGrandAdventure; // one piece grand adventure ntsc/us
-		m_crc2gsc[0x6F8545DB] = GSC_ICO; // ICO ntsc/us
-		m_crc2gsc[0x5C991F4E] = GSC_ICO; // ICO pal/eu + pal/ntsc selector
-		m_crc2gsc[0x44A61C8F] = GSC_GT4; // gt4 ? 
-		m_crc2gsc[0x0086E35B] = GSC_GT4; // gt4 ?
-		m_crc2gsc[0x77E61C8A] = GSC_GT4; // gt4 ?
-		m_crc2gsc[0xC164550A] = GSC_WildArms5; // wild arms 5 undub
-		m_crc2gsc[0xC1640D2C] = GSC_WildArms5; // wild arms 5 ntsc/us
-		m_crc2gsc[0x8B029334] = GSC_Manhunt2; // manhunt 2 ?
-		m_crc2gsc[0x09F49E37] = GSC_CrashBandicootWoC; // crash bandicoot wrath of cortex
-		m_crc2gsc[0x013E349D] = GSC_ResidentEvil4; // re4 ntsc/us
-		m_crc2gsc[0x6BA2F6B9] = GSC_ResidentEvil4; // re4 ?
-		m_crc2gsc[0x72E1E60E] = GSC_Spartan; // spartan ntsc/us
-		m_crc2gsc[0x1B9B7563] = GSC_AceCombat4; // ace combat 4 ?
-		m_crc2gsc[0xEC432B24] = GSC_Drakengard2; //
-		m_crc2gsc[0x1F88EE37] = GSC_Tekken5; // tekken 5 ?
+		m_crc2gsc[CRC::Okami_US] = GSC_Okami;
+		m_crc2gsc[CRC::Okami_FR] = GSC_Okami;
+		m_crc2gsc[CRC::MetalGearSolid3_US] = GSC_MetalGearSolid3;
+		m_crc2gsc[CRC::MetalGearSolid3_FR] = GSC_MetalGearSolid3;
+		m_crc2gsc[CRC::MetalGearSolid3] = GSC_MetalGearSolid3;
+		m_crc2gsc[CRC::DBZBT2_US] = GSC_DBZBT2;
+		m_crc2gsc[CRC::DBZBT3_US] = GSC_DBZBT3;
+		m_crc2gsc[CRC::DBZBT3_EU] = GSC_DBZBT3;
+		m_crc2gsc[CRC::SFEX3_US] = GSC_SFEX3;
+		m_crc2gsc[CRC::SFEX3_US2] = GSC_SFEX3;
+		m_crc2gsc[CRC::Bully_US] = GSC_Bully;
+		m_crc2gsc[CRC::SoTC_US] = GSC_SoTC;
+		m_crc2gsc[CRC::OnePieceGrandAdventure_US] = GSC_OnePieceGrandAdventure;
+		m_crc2gsc[CRC::ICO_US] = GSC_ICO;
+		m_crc2gsc[CRC::ICO_US2] = GSC_ICO;
+		m_crc2gsc[CRC::GT4_1] = GSC_GT4; 
+		m_crc2gsc[CRC::GT4_2] = GSC_GT4;
+		m_crc2gsc[CRC::GT4_3] = GSC_GT4;
+		m_crc2gsc[CRC::WildArms5_UNDUB] = GSC_WildArms5;
+		m_crc2gsc[CRC::WildArms5_US] = GSC_WildArms5;
+		m_crc2gsc[CRC::Manhunt2] = GSC_Manhunt2;
+		m_crc2gsc[CRC::CrashBandicootWoC] = GSC_CrashBandicootWoC;
+		m_crc2gsc[CRC::ResidentEvil4] = GSC_ResidentEvil4;
+		m_crc2gsc[CRC::ResidentEvil4_US] = GSC_ResidentEvil4;
+		m_crc2gsc[CRC::Spartan] = GSC_Spartan;
+		m_crc2gsc[CRC::AceCombat4] = GSC_AceCombat4;
+		m_crc2gsc[CRC::Drakengard2] = GSC_Drakengard2;
+		m_crc2gsc[CRC::Tekken5] = GSC_Tekken5;
+		m_crc2gsc[CRC::IkkiTousen_JP] = GSC_IkkiTousen;
 	}
 
-	if(CAtlMap<DWORD, GetSkipCount>::CPair* pair = m_crc2gsc.Lookup(m_crc))
+	if(CAtlMap<int, GetSkipCount>::CPair* pair = m_crc2gsc.Lookup(m_crc))
 	{
 		if(!pair->m_value(fi, skip))
 		{

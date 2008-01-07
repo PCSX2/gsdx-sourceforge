@@ -283,7 +283,6 @@
 		</Configuration>
 		<Configuration
 			Name="Debug SSE2|Win32"
-			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
 			InheritedPropertySheets="..\common.vsprops;..\debug.vsprops;..\sse2.vsprops"
 			UseOfMFC="1"
@@ -535,8 +534,6 @@
 		</Configuration>
 		<Configuration
 			Name="Release SSSE3|Win32"
-			OutputDirectory="$(ConfigurationName)"
-			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
 			InheritedPropertySheets="..\common.vsprops;..\release.vsprops;..\sse2.vsprops;..\ssse3.vsprops"
 			UseOfMFC="1"
@@ -604,6 +601,8 @@
 		</Configuration>
 		<Configuration
 			Name="Release SSSE3|x64"
+			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
+			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="1"
 			>
 			<Tool
@@ -660,8 +659,6 @@
 		</Configuration>
 		<Configuration
 			Name="Debug SSSE3|Win32"
-			OutputDirectory="$(ConfigurationName)"
-			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
 			InheritedPropertySheets="..\common.vsprops;..\debug.vsprops;..\sse2.vsprops;..\ssse3.vsprops"
 			UseOfMFC="1"
@@ -794,6 +791,10 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\GSCrc.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\GSDevice.cpp"
 				>
 			</File>
@@ -812,6 +813,14 @@
 			<File
 				RelativePath=".\GSdx.cpp"
 				>
+				<FileConfiguration
+					Name="Release SSSE3|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AssemblerOutput="4"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\GSdx.def"
@@ -1389,6 +1398,10 @@
 			>
 			<File
 				RelativePath=".\GS.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSCrc.h"
 				>
 			</File>
 			<File

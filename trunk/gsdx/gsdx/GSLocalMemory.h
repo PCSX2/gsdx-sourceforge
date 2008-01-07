@@ -143,12 +143,12 @@ public:
 
 	static DWORD pageAddress8(int x, int y, DWORD bp, DWORD bw)
 	{
-		return ((bp >> 5) + (y >> 6) * ((bw+1)>>1) + (x >> 7)) << 13; 
+		return ((bp >> 5) + (y >> 6) * ((bw + 1) >> 1) + (x >> 7)) << 13; 
 	}
 
 	static DWORD pageAddress4(int x, int y, DWORD bp, DWORD bw)
 	{
-		return ((bp >> 5) + (y >> 7) * ((bw+1)>>1) + (x >> 7)) << 14;
+		return ((bp >> 5) + (y >> 7) * ((bw + 1) >> 1) + (x >> 7)) << 14;
 	}
 
 	static DWORD blockAddress32(int x, int y, DWORD bp, DWORD bw)
@@ -256,7 +256,7 @@ public:
 	{
 		DWORD page = bp + (y & ~0x1f) * bw + ((x >> 1) & ~0x1f); 
 		DWORD block = blockTable32Z[(y >> 3) & 3][(x >> 3) & 7];
-		DWORD word = ((page + block) << 6) + ((y & 7) << 3) + (x & 7);
+		DWORD word = ((page + block) << 6) + columnTable32[y & 7][x & 7];
 		ASSERT(word < 1024*1024);
 		return word;
 	}
@@ -265,7 +265,7 @@ public:
 	{
 		DWORD page = bp + ((y >> 1) & ~0x1f) * bw + ((x >> 1) & ~0x1f); 
 		DWORD block = blockTable16Z[(y >> 3) & 7][(x >> 4) & 3];
-		DWORD word = ((page + block) << 7) + ((y & 7) << 4) + (x & 15);
+		DWORD word = ((page + block) << 7) + columnTable16[y & 7][x & 15];
 		ASSERT(word < 1024*1024*2);
 		return word;
 	}
@@ -274,7 +274,7 @@ public:
 	{
 		DWORD page = bp + ((y >> 1) & ~0x1f) * bw + ((x >> 1) & ~0x1f); 
 		DWORD block = blockTable16SZ[(y >> 3) & 7][(x >> 4) & 3];
-		DWORD word = ((page + block) << 7) + ((y & 7) << 4) + (x & 15);
+		DWORD word = ((page + block) << 7) + columnTable16[y & 7][x & 15];
 		ASSERT(word < 1024*1024*2);
 		return word;
 	}

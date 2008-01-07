@@ -99,10 +99,9 @@ GSLocalMemory::psm_t GSLocalMemory::m_psm[64];
 GSLocalMemory::GSLocalMemory()
 	: m_fCLUTMayBeDirty(true)
 {
-	int len = 1024*1024*4*2; // *2 for safety...
+	int len = 1024 * 1024 * 4 * 2; // second 4 mb is the texture cache
 
 	m_vm8 = (BYTE*)_aligned_malloc(len, 16);
-
 	memset(m_vm8, 0, len);
 
 	m_pCLUT = (WORD*)_aligned_malloc(256*2*sizeof(WORD)*2, 16);
@@ -417,7 +416,7 @@ GSLocalMemory::~GSLocalMemory()
 	_aligned_free(m_pCLUT64);	
 }
 
-////////////////////
+//
 
 bool GSLocalMemory::FillRect(const CRect& r, DWORD c, DWORD psm, DWORD fbp, DWORD fbw)
 {
