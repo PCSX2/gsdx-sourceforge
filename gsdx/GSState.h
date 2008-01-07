@@ -171,6 +171,9 @@ public:
 	ReadFIFO2 data (id == 2)
 	- [2/1] [size/?]
 
+	Regs data (id == 3)
+	- [PMODE/0x2000]
+
 	*/
 
 public:
@@ -203,6 +206,7 @@ public:
 	virtual void VertexKick(bool skip) = 0;
 	virtual void InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r) {}
 	virtual void InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r) {}
+	virtual void InvalidateTextureCache() {}
 
 	void Move();
 	void Write(BYTE* mem, int len);

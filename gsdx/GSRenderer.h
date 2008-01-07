@@ -333,6 +333,9 @@ public:
 		}
 		else
 		{
+			fputc(3, m_dumpfp);
+			fwrite(PMODE, 0x2000, 1, m_dumpfp);
+
 			fputc(1, m_dumpfp);
 			fputc(m_field, m_dumpfp);
 

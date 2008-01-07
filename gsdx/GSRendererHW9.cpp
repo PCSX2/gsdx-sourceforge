@@ -22,6 +22,7 @@
 #include "stdafx.h"
 #include "GSRendererHW9.h"
 #include "GSTextureCache9.h"
+#include "GSCrc.h"
 #include "resource.h"
 
 GSRendererHW9::GSRendererHW9(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync)

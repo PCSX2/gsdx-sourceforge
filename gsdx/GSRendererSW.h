@@ -640,14 +640,6 @@ protected:
 			(this->*m_pDrawVertexTFX)(Cf, v);
 		}
 
-		if(PRIM->FGE)
-		{
-			Vertex::Scalar a = Cf.a;
-			Vertex::Vector Cfog((DWORD)m_env.FOGCOL.ai32[0]);
-			Cf = Cfog + (Cf - Cfog) * v.t.z;
-			Cf.a = a;
-		}
-
 		BOOL ZMSK = m_context->ZBUF.ZMSK;
 		DWORD FBMSK = m_context->FRAME.FBMSK;
 
@@ -697,6 +689,14 @@ protected:
 				if(A ^ m_context->TEST.DATM) return;
 			}
 
+			if(PRIM->FGE)
+			{
+				Vertex::Scalar a = Cf.a;
+				Vertex::Vector Cfog((DWORD)m_env.FOGCOL.ai32[0]);
+				Cf = Cfog + (Cf - Cfog) * v.t.z;
+				Cf.a = a;
+			}
+
 			// FIXME: for AA1 the value of Af should be calculated from the pixel coverage...
 
 			bool fABE = (PRIM->ABE || PRIM->AA1 && (PRIM->PRIM == 1 || PRIM->PRIM == 2)) && (!m_env.PABE.PABE || (int)Cf.a >= 0x80);
@@ -735,6 +735,7 @@ protected:
 			else
 			{
 				__declspec(align(16)) union {struct {short Rf, Gf, Bf, Af;}; UINT64 Cui64;};
+				
 				Cui64 = Cf;
 
 				if(m_env.DTHE.DTHE)
@@ -836,12 +837,10 @@ protected:
 
 		if(fBiLinear)
 		{
-			for(int i = 0; i < 4; i++)
-			{
-				Ct[i] = m_mem.readTexelX(m_context->TEX0.PSM, ituv[i&1], ituv[(i>>1)|2], m_context->TEX0, m_env.TEXA);
-				// Ct[i] = (m_mem.*m_context->ttbl->rt)(ituv[i&1], ituv[(i>>1)|2], m_context->TEX0, m_env.TEXA);
-				// Ct[i] = m_pTexture[(ituv[(i>>1)|2] << m_context->TEX0.TW) + ituv[i&1]];
-			}
+			Ct[0] = ReadTexel(ituv[0], ituv[2]);
+			Ct[1] = ReadTexel(ituv[1], ituv[2]);
+			Ct[2] = ReadTexel(ituv[0], ituv[3]);
+			Ct[3] = ReadTexel(ituv[1], ituv[3]);
 
 			Vertex::Vector ft = t - t.floor();
 
@@ -851,9 +850,7 @@ protected:
 		}
 		else 
 		{
-			Ct[0] = m_mem.readTexelX(m_context->TEX0.PSM, ituv[0], ituv[2], m_context->TEX0, m_env.TEXA);
-			// Ct[0] = (m_mem.*m_context->ttbl->rt)(ituv[0], ituv[2], m_context->TEX0, m_env.TEXA);
-			// Ct[0] = m_pTexture[(ituv[2] << m_context->TEX0.TW) + ituv[0]];
+			Ct[0] = ReadTexel(ituv[0], ituv[2]);
 		}
 
 		Vertex::Scalar a = Cf.a;
@@ -922,6 +919,44 @@ protected:
 		m_uv->mask[3] = m_uv->mask[2];
 	}
 
+	DWORD* m_cache;
+	DWORD m_cache_page[(1024/32) * (1024/64)];
+
+	void InvalidateTextureCache() 
+	{
+		memset(m_cache_page, ~0, sizeof(m_cache_page));
+	}
+
+	void ReadTexture(int x, int y)
+	{
+		x &= ~63;
+		y &= ~31;
+
+		CRect r(x, y, x + 64, y + 32);
+
+		BYTE* dst = (BYTE*)&m_cache[y * 1024 + x];
+
+		(m_mem.*m_context->ttbl->ust)(r, dst, 1024 * 4, m_context->TEX0, m_env.TEXA);
+	}
+
+	__forceinline DWORD ReadTexel(int x, int y)
+	{
+		// - page size depends on psm, this is just the smallest for 32 bit
+		// - seems to be just enough to avoid recursive rendering errors
+		// - to be fully correct we need to fetch ttbl->pgs sized pages
+
+		DWORD* page = &m_cache_page[(y & ~31) + (x >> 6)];
+
+		if(*page != m_context->TEX0.ai32[0])
+		{
+			*page = m_context->TEX0.ai32[0];
+
+			ReadTexture(x, y);
+		}
+
+		return m_cache[y * 1024 + x];
+	}
+
 public:
 	GSRendererSW(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync)
 		: GSRendererT(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync)
@@ -931,6 +966,10 @@ public:
 		for(; i < 0; i++, j++) {m_clip[j] = 0; m_mask[j] = (BYTE)i;}
 		for(; i < 256; i++, j++) {m_clip[j] = (BYTE)i; m_mask[j] = (BYTE)i;}
 		for(; i <= SHRT_MAX; i++, j++) {m_clip[j] = 255; m_mask[j] = (BYTE)i;}
+
+		m_cache = (DWORD*)_aligned_malloc(1024 * 1024 * 4, 16);
+		
+		InvalidateTextureCache();
 
 		m_uv = (uv_wrap_t*)_aligned_malloc(sizeof(uv_wrap_t), 16);
 
@@ -986,6 +1025,7 @@ public:
 
 	virtual ~GSRendererSW()
 	{
+		_aligned_free(m_cache);
 		_aligned_free(m_uv);
 	}
 };

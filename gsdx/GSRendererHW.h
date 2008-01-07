@@ -23,6 +23,7 @@
 
 #include "GSRenderer.h"
 #include "GSTextureCache.h"
+#include "GSCrc.h"
 
 template<class Device, class Vertex> 
 class GSRendererHW : public GSRendererT<Device, Vertex>
@@ -278,6 +279,8 @@ protected:
 		TEX0.TBW = DISPFB[i]->FBW;
 		TEX0.PSM = DISPFB[i]->PSM;
 
+		TRACE(_T("[%d] GetOutput %d %05x (%d)\n"), (int)m_perfmon.GetFrame(), i, (int)TEX0.TBP0, (int)TEX0.PSM);
+
 		if(GSTextureCache<Device>::GSRenderTarget* rt = m_tc->GetRenderTarget(TEX0, m_width, m_height, true))
 		{
 			t = rt->m_texture;
@@ -313,7 +316,7 @@ protected:
 	{
 		#pragma region ffxii pal video conversion
 
-		if(m_crc == 0x78da0252 || m_crc == 0xc1274668 || m_crc == 0xdc2a467e || m_crc == 0xca284668)
+		if(m_crc == CRC::FFX_EU1 || m_crc == CRC::FFX_EU2 || m_crc == CRC::FFX_EU3 || m_crc == CRC::FFX_EU4)
 		{
 			static DWORD* video = NULL;
 			static bool ok = false;
@@ -386,7 +389,7 @@ protected:
 
 		#pragma region metal slug missing red channel fix
 		
-		if(m_crc == 0x2113EA2E)
+		if(m_crc == CRC::MetalSlug6)
 		{
 			for(int i = 0, j = m_count; i < j; i++)
 			{
@@ -401,7 +404,7 @@ protected:
 
 		#pragma region tomoyo after, clannad (palette uploaded in a point list, pure genius...)
 
-		if(m_crc == 0x42E05BAF || m_crc == 0x7800DC84)
+		if(m_crc == CRC::TomoyoAfter_JP || m_crc == CRC::Clannad_JP)
 		{
 			if(prim == GS_POINTLIST && !PRIM->TME)
 			{
@@ -416,11 +419,6 @@ protected:
 						{
 							m_vertices[i].a = m_vertices[i].a >= 0x80 ? 0xff : m_vertices[i].a * 2;
 
-							int x = (m_vertices[i].p.x - m_context->XYOFFSET.OFX + 8) / 16;
-							int y = (m_vertices[i].p.y - m_context->XYOFFSET.OFY + 8) / 16;
-
-							ASSERT(x == (i & 7) && y == (i >> 3));
-
 							m_mem.writePixel32(i & 7, i >> 3, m_vertices[i].c0, bp, bw);
 						}
 
@@ -433,11 +431,6 @@ protected:
 						for(int i = 0; i < 256; i++)
 						{
 							m_vertices[i].a = m_vertices[i].a >= 0x80 ? 0xff : m_vertices[i].a * 2;
-
-							int x = (m_vertices[i].p.x - m_context->XYOFFSET.OFX + 8) / 16;
-							int y = (m_vertices[i].p.y - m_context->XYOFFSET.OFY + 8) / 16;
-
-							ASSERT(x == (i & 15) && y == (i >> 4));
 
 							m_mem.writePixel32(i & 15, i >> 4, m_vertices[i].c0, bp, bw);
 						}
@@ -455,7 +448,7 @@ protected:
 		}
 
 		#pragma endregion
-
+		
 		return true;
 	}
 
