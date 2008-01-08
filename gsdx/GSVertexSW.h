@@ -69,7 +69,6 @@ __declspec(align(16)) union GSVertexSWFP
 
 		operator float() const {return val;}
 		operator int() const {return (int)val;}
-		operator DWORD() const {return (DWORD)val;}
 
 		void operator += (const Scalar& s) {val += s.val;}
 		void operator -= (const Scalar& s) {val -= s.val;}
@@ -129,7 +128,7 @@ __declspec(align(16)) union GSVertexSWFP
 		void sat() {xyzq = _mm_min_ps(_mm_max_ps(xyzq, _mm_setzero_ps()), _mm_set1_ps(255));}
 		void rcp() {xyzq = _mm_rcp_ps(xyzq);}
 
-		Vector floor()
+		__forceinline Vector floor()
 		{
 			const __m128i _80000000 = _mm_set1_epi32(0x80000000);
 			const __m128i _4b000000 = _mm_set1_epi32(0x4b000000);
@@ -217,7 +216,7 @@ __declspec(align(16)) union GSVertexSWFP
 
 	__forceinline DWORD GetZ() const 
 	{
-		return (DWORD)p.z;
+		return (DWORD)(float)p.z;
 	}
 
 	friend GSVertexSWFP operator + (const GSVertexSWFP& v1, const GSVertexSWFP& v2);

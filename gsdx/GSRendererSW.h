@@ -26,6 +26,9 @@
 template <class Device, class Vertex>
 class GSRendererSW : public GSRendererT<Device, Vertex>
 {
+	typedef typename Vertex::Scalar Scalar;
+	typedef typename Vertex::Vector Vector;
+
 protected:
 	DWORD m_faddr_x0, m_faddr;
 	DWORD m_zaddr_x0, m_zaddr;
@@ -33,10 +36,13 @@ protected:
 	int* m_zaddr_ro;
 	int m_fx, m_fy;
 
-	typedef void (GSRendererSW<Device, Vertex>::*DrawVertexPtr)(const Vertex& v);
-	DrawVertexPtr m_dv[4][8], m_pDrawVertex;
+	typedef void (GSRendererSW<Device, Vertex>::*DrawScanlinePtr)(int top, int left, int right, Vertex& v, const Vertex& dv);
+	DrawScanlinePtr m_ds[2][4][4], m_pDrawScanline;
 
-	typedef void (GSRendererSW<Device, Vertex>::*DrawVertexTFXPtr)(typename Vertex::Vector& Cf, const Vertex& v);
+	typedef bool (GSRendererSW<Device, Vertex>::*DrawVertexPtr)(const Vertex& v);
+	DrawVertexPtr m_dv[8][4][4], m_pDrawVertex;
+
+	typedef void (GSRendererSW<Device, Vertex>::*DrawVertexTFXPtr)(Vector& Cf, const Vertex& v);
 	DrawVertexTFXPtr m_dvtfx[4][2][2][4], m_pDrawVertexTFX;
 
 	struct uv_wrap_t {union {struct {short min[8], max[8];}; struct {short and[8], or[8];};}; unsigned short mask[8];}* m_uv;
@@ -45,8 +51,6 @@ protected:
 	BYTE m_clip[65536];
 	BYTE m_mask[65536];
 	BYTE* m_clamp;
-
-	int m_bZTE;
 
 	Texture m_texture[2];
 
@@ -165,10 +169,10 @@ protected:
 			return;
 		}
 
-		Vertex::Scalar sx0((int)m_context->SCISSOR.SCAX0);
-		Vertex::Scalar sy0((int)m_context->SCISSOR.SCAY0);
-		Vertex::Scalar sx1((int)m_context->SCISSOR.SCAX1);
-		Vertex::Scalar sy1((int)m_context->SCISSOR.SCAY1);
+		Scalar sx0((int)m_context->SCISSOR.SCAX0);
+		Scalar sy0((int)m_context->SCISSOR.SCAY0);
+		Scalar sx1((int)m_context->SCISSOR.SCAX1);
+		Scalar sy1((int)m_context->SCISSOR.SCAY1);
 
 		switch(nv)
 		{
@@ -206,7 +210,7 @@ protected:
 
 		if(PRIM->IIP == 0 || PRIM->PRIM == GS_SPRITE)
 		{
-			Vertex::Vector c = v[nv - 1].c;
+			Vector c = v[nv - 1].c;
 
 			for(int i = 0; i < nv - 1; i++) 
 			{
@@ -230,12 +234,35 @@ protected:
 			if(s_savez) {m_mem.SaveBMP(str, m_context->ZBUF.Block(), m_context->FRAME.FBW, m_context->ZBUF.PSM, GetFrameSize(1).cx, 512);}
 		}
 
-		m_bZTE = m_context->TEST.ZTE && m_context->TEST.ZTST >= 2 || !m_context->ZBUF.ZMSK;
-
+		int bZRW = (m_context->DepthRead() || m_context->DepthWrite()) ? 1 : 0;
 		int iZTST = !m_context->TEST.ZTE ? 1 : m_context->TEST.ZTST;
-		int iATST = !m_context->TEST.ATE ? 1 : m_context->TEST.ATST;
+		int iZPSM = 0;
 
-		m_pDrawVertex = m_dv[iZTST][iATST];
+		switch(m_context->ZBUF.PSM)
+		{
+		case PSM_PSMZ32: iZPSM = 0; break;
+		case PSM_PSMZ24: iZPSM = 1; break;
+		case PSM_PSMZ16: iZPSM = 2; break;
+		case PSM_PSMZ16S: iZPSM = 3; break;
+		default: ASSERT(0); iZPSM = 0; break;
+		}
+
+		m_pDrawScanline = m_ds[bZRW][iZTST][iZPSM];
+
+		int iATST = !m_context->TEST.ATE ? 1 : m_context->TEST.ATST;
+		int iAFAIL = m_context->TEST.AFAIL;
+		int iFPSM = 0;
+
+		switch(m_context->FRAME.PSM)
+		{
+		case PSM_PSMCT32: iFPSM = 0; break;
+		case PSM_PSMCT24: iFPSM = 1; break;
+		case PSM_PSMCT16: iFPSM = 2; break;
+		case PSM_PSMCT16S: iFPSM = 3; break;
+		default: ASSERT(0); iFPSM = 0; break;
+		}
+
+		m_pDrawVertex = m_dv[iATST][iAFAIL][iFPSM];
 
 		if(PRIM->TME)
 		{
@@ -314,44 +341,16 @@ protected:
 		}
 	}
 
-	void RowInit(int x, int y)
-	{
-		m_faddr_x0 = (m_context->ftbl->pa)(0, y, m_context->FRAME.Block(), m_context->FRAME.FBW);
-		m_faddr_ro = &m_context->ftbl->rowOffset[y&7][x];
-
-		if(m_bZTE)
-		{
-			m_zaddr_x0 = (m_context->ztbl->pa)(0, y, m_context->ZBUF.Block(), m_context->FRAME.FBW);
-			m_zaddr_ro = &m_context->ztbl->rowOffset[y&7][x];
-		}
-
-		m_fx = x-1; // -1 because RowStep() will do +1, yea lame...
-		m_fy = y;
-
-		RowStep();
-	}
-
-	void RowStep()
-	{
-		m_fx++;
-
-		m_faddr = m_faddr_x0 + *m_faddr_ro++;
-
-		if(m_bZTE)
-		{
-			m_zaddr = m_zaddr_x0 + *m_zaddr_ro++;
-		}
-	}
-
 	void DrawPoint(Vertex* v)
 	{
 		CPoint p = *v;
 
 		if(m_scissor.PtInRect(p))
 		{
-			RowInit(p.x, p.y);
+			Vertex scan = *v;
+			Vertex dscan;
 
-			(this->*m_pDrawVertex)(*v);
+			(this->*m_pDrawScanline)(p.y, p.x, p.x + 1, scan, dscan);
 		}
 	}
 
@@ -359,7 +358,7 @@ protected:
 	{
 		Vertex dv = v[1] - v[0];
 
-		Vertex::Vector dp = dv.p;
+		Vector dp = dv.p;
 
 		dp.x.abs();
 		dp.y.abs();
@@ -371,23 +370,18 @@ protected:
 
 		int i = dx > dy ? 0 : 1;
 
+		Scalar dd = dp.v[i];
+
 		Vertex edge = v[0];
-		Vertex dedge = dv / dp.v[i];
+		Vertex dedge = dv / dd;
 
-		// TODO: clip with the scissor
+		// TODO: prestep + clip with the scissor
 
-		int steps = (int)dp.v[i];
+		int steps = (int)dd;
 
 		while(steps-- > 0)
 		{
-			CPoint p = edge;
-
-			if(m_scissor.PtInRect(p))
-			{
-				RowInit(p.x, p.y);
-
-				(this->*m_pDrawVertex)(edge);
-			}
+			DrawPoint(&edge);
 
 			edge += dedge;
 		}
@@ -404,20 +398,20 @@ protected:
 		Vertex v01 = v[1] - v[0];
 		Vertex v02 = v[2] - v[0];
 
-		Vertex::Scalar temp = v01.p.y / v02.p.y;
-		Vertex::Scalar longest = temp * v02.p.x - v01.p.x;
+		Scalar temp = v01.p.y / v02.p.y;
+		Scalar longest = temp * v02.p.x - v01.p.x;
 
 		int ledge, redge;
-		if(Vertex::Scalar(0) < longest) {ledge = 0; redge = 1; if(longest < Vertex::Scalar(1)) longest = Vertex::Scalar(1);}
-		else if(longest < Vertex::Scalar(0)) {ledge = 1; redge = 0; if(Vertex::Scalar(-1) < longest) longest = Vertex::Scalar(-1);}
+		if(Scalar(0) < longest) {ledge = 0; redge = 1; if(longest < Scalar(1)) longest = Scalar(1);}
+		else if(longest < Scalar(0)) {ledge = 1; redge = 0; if(Scalar(-1) < longest) longest = Scalar(-1);}
 		else return;
 
 		Vertex edge[2] = {v[0], v[0]};
 
 		Vertex dedge[2];
-		dedge[0].p.y = dedge[1].p.y = Vertex::Scalar(1);
-		if(Vertex::Scalar(0) < v01.p.y) dedge[ledge] = v01 / v01.p.y;
-		if(Vertex::Scalar(0) < v02.p.y) dedge[redge] = v02 / v02.p.y;
+		dedge[0].p.y = dedge[1].p.y = Scalar(1);
+		if(Scalar(0) < v01.p.y) dedge[ledge] = v01 / v01.p.y;
+		if(Scalar(0) < v02.p.y) dedge[redge] = v02 / v02.p.y;
 
 		Vertex scan;
 
@@ -432,12 +426,12 @@ protected:
 			if(top < m_scissor.top) top = min(m_scissor.top, bottom);
 			if(bottom > m_scissor.bottom) bottom = m_scissor.bottom;
 
-			if(edge[0].p.y < Vertex::Scalar(top)) // for(int j = 0; j < 2; j++) edge[j] += dedge[j] * ((float)top - edge[0].p.y);
+			if(edge[0].p.y < Scalar(top)) // for(int j = 0; j < 2; j++) edge[j] += dedge[j] * ((float)top - edge[0].p.y);
 			{
-				Vertex::Scalar dy = Vertex::Scalar(top) - edge[0].p.y;
+				Scalar dy = Scalar(top) - edge[0].p.y;
 				edge[0] += dedge[0] * dy;
 				edge[1].p.x += dedge[1].p.x * dy;
-				edge[0].p.y = edge[1].p.y = Vertex::Scalar(top);
+				edge[0].p.y = edge[1].p.y = Scalar(top);
 			}
 
 			ASSERT(top >= bottom || (int)((edge[1].p.y - edge[0].p.y) * 10) == 0);
@@ -454,20 +448,13 @@ protected:
 				{
 					scan = edge[0];
 
-					if(edge[0].p.x < Vertex::Scalar(left))
+					if(edge[0].p.x < Scalar(left))
 					{
-						scan += dscan * (Vertex::Scalar(left) - edge[0].p.x);
-						scan.p.x = Vertex::Scalar(left);
+						scan += dscan * (Scalar(left) - edge[0].p.x);
+						scan.p.x = Scalar(left);
 					}
 
-					RowInit(left, top);
-
-					for(int steps = right - left; steps > 0; steps--)
-					{
-						(this->*m_pDrawVertex)(scan);
-						scan += dscan;
-						RowStep();
-					}
+					(this->*m_pDrawScanline)(top, left, right, scan, dscan);
 				}
 
 				// for(int j = 0; j < 2; j++) edge[j] += dedge[j];
@@ -505,7 +492,7 @@ protected:
 		if(top < m_scissor.top) top = min(m_scissor.top, bottom);
 		if(bottom > m_scissor.bottom) bottom = m_scissor.bottom;
 
-		if(v[0].p.y < Vertex::Scalar(top)) edge += dedge * (Vertex::Scalar(top) - v[0].p.y);
+		if(v[0].p.y < Scalar(top)) edge += dedge * (Scalar(top) - v[0].p.y);
 
 		int left = v[0].p.x.ceil_i();
 		int right = v[1].p.x.ceil_i();
@@ -515,7 +502,7 @@ protected:
 
 		if(left >= right || top >= bottom) return;
 
-		if(v[0].p.x < Vertex::Scalar(left)) edge += dscan * (Vertex::Scalar(left) - v[0].p.x);
+		if(v[0].p.x < Scalar(left)) edge += dscan * (Scalar(left) - v[0].p.x);
 
 		if(DrawFilledRect(left, top, right, bottom, edge))
 			return;
@@ -524,14 +511,7 @@ protected:
 		{
 			scan = edge;
 
-			RowInit(left, top);
-
-			for(int steps = right - left; steps > 0; steps--)
-			{
-				(this->*m_pDrawVertex)(scan);
-				scan += dscan;
-				RowStep();
-			}
+			(this->*m_pDrawScanline)(top, left, right, scan, dscan);
 
 			edge += dedge;
 		}
@@ -604,33 +584,86 @@ protected:
 		return true;
 	}
 
-	template <int iZTST, int iATST> 
-	void DrawVertex(const Vertex& v)
+	template<int bZRW, int iZTST, int iZPSM>
+	void DrawScanline(int top, int left, int right, Vertex& v, const Vertex& dv)
 	{
-		DWORD vz = 0;
+		int ZPSM;
 
-		switch(iZTST)
+		switch(iZPSM)
 		{
-		case 0: return;
-		case 1: break;
-		case 2: 
-			vz = v.GetZ(); 
-			if(vz < m_mem.readPixelX(m_context->ZBUF.PSM, m_zaddr)) return; 
-			// if(vz < (m_mem.*m_context->ztbl->rpa)(m_zaddr)) return; 
-			break;
-		case 3: 
-			vz = v.GetZ(); 
-			if(vz <= m_mem.readPixelX(m_context->ZBUF.PSM, m_zaddr)) return; 
-			// if(vz <= (m_mem.*m_context->ztbl->rpa)(m_zaddr)) return; 
-			break;
-		default:
-			__assume(0);
+		case 0: ZPSM = PSM_PSMZ32; break;
+		case 1: ZPSM = PSM_PSMZ24; break;
+		case 2: ZPSM = PSM_PSMZ16; break;
+		case 3: ZPSM = PSM_PSMZ16S; break;
+		default: ZPSM = PSM_PSMZ32; break;
+		}
+
+		m_faddr_x0 = (m_context->ftbl->pa)(0, top, m_context->FRAME.Block(), m_context->FRAME.FBW);
+		m_faddr_ro = m_context->ftbl->rowOffset[top & 7];
+
+		if(bZRW)
+		{
+			m_zaddr_x0 = (m_context->ztbl->pa)(0, top, m_context->ZBUF.Block(), m_context->FRAME.FBW);
+			m_zaddr_ro = m_context->ztbl->rowOffset[top & 7];
+		}
+
+		m_fx = left;
+		m_fy = top;
+
+		for(; left < right; left++, v += dv, m_fx++)
+		{
+			m_faddr = m_faddr_x0 + m_faddr_ro[left];
+
+			if(bZRW)
+			{
+				m_zaddr = m_zaddr_x0 + m_zaddr_ro[left];
+			}
+
+			DWORD z = v.GetZ();
+			
+			switch(iZTST)
+			{
+			case 0: 
+				continue;
+			case 1: 
+				break;
+			case 2: 
+				if(z < m_mem.readPixelX(ZPSM, m_zaddr)) 
+					continue; 
+				break;
+			case 3: 
+				if(z <= m_mem.readPixelX(ZPSM, m_zaddr))
+					continue;
+				break;
+			default:
+				__assume(0);
+			}
+
+			if((this->*m_pDrawVertex)(v))
+			{
+				m_mem.writePixelX(ZPSM, m_zaddr, z);
+			}
+		}
+	}
+
+	template <int iATST, int iAFAIL, int iFPSM> 
+	bool DrawVertex(const Vertex& v)
+	{
+		int FPSM;
+
+		switch(iFPSM)
+		{
+		case 0: FPSM = PSM_PSMCT32; break;
+		case 1: FPSM = PSM_PSMCT24; break;
+		case 2: FPSM = PSM_PSMCT16; break;
+		case 3: FPSM = PSM_PSMCT16S; break;
+		default: FPSM = PSM_PSMCT32; break;
 		}
 
 		union
 		{
-			struct {Vertex::Vector Cf, Cd, Ca;};
-			struct {Vertex::Vector Cfda[3];};
+			struct {Vector Cf, Cd, Ca;};
+			struct {Vector Cfda[3];};
 		};
 
 		Cf = v.c;
@@ -643,28 +676,28 @@ protected:
 		BOOL ZMSK = m_context->ZBUF.ZMSK;
 		DWORD FBMSK = m_context->FRAME.FBMSK;
 
-		bool fAlphaPass = true;
+		bool Apass = true;
 
 		BYTE Af = (BYTE)(int)Cf.a;
 
 		switch(iATST)
 		{
-		case 0: fAlphaPass = false; break;
-		case 1: fAlphaPass = true; break;
-		case 2: fAlphaPass = Af < m_context->TEST.AREF; break;
-		case 3: fAlphaPass = Af <= m_context->TEST.AREF; break;
-		case 4: fAlphaPass = Af == m_context->TEST.AREF; break;
-		case 5: fAlphaPass = Af >= m_context->TEST.AREF; break;
-		case 6: fAlphaPass = Af > m_context->TEST.AREF; break;
-		case 7: fAlphaPass = Af != m_context->TEST.AREF; break;
+		case 0: Apass = false; break;
+		case 1: Apass = true; break;
+		case 2: Apass = Af < m_context->TEST.AREF; break;
+		case 3: Apass = Af <= m_context->TEST.AREF; break;
+		case 4: Apass = Af == m_context->TEST.AREF; break;
+		case 5: Apass = Af >= m_context->TEST.AREF; break;
+		case 6: Apass = Af > m_context->TEST.AREF; break;
+		case 7: Apass = Af != m_context->TEST.AREF; break;
 		default: __assume(0);
 		}
 
-		if(!fAlphaPass)
+		if(!Apass)
 		{
-			switch(m_context->TEST.AFAIL)
+			switch(iAFAIL)
 			{
-			case 0: return;
+			case 0: return false;
 			case 1: ZMSK = 1; break; // RGBA
 			case 2: FBMSK = 0xffffffff; break; // Z
 			case 3: FBMSK = 0xff000000; ZMSK = 1; break; // RGB
@@ -672,123 +705,113 @@ protected:
 			}
 		}
 
-		if(!ZMSK)
+		if(m_context->TEST.DATE)
 		{
-			if(iZTST != 2 && iZTST != 3) vz = v.GetZ(); 
-			m_mem.writePixelX(m_context->ZBUF.PSM, m_zaddr, vz);
-			// (m_mem.*m_context->ztbl->wpa)(m_zaddr, vz);
+			DWORD c = m_mem.readPixelX(FPSM, m_faddr);
+			BYTE A = (BYTE)(c >> (m_context->FRAME.PSM == PSM_PSMCT32 ? 31 : 15));
+			if(A ^ m_context->TEST.DATM) return false;
 		}
 
-		if(FBMSK != ~0)
+		if(PRIM->FGE)
 		{
-			if(m_context->TEST.DATE && m_context->FRAME.PSM <= PSM_PSMCT16S && m_context->FRAME.PSM != PSM_PSMCT24)
-			{
-				DWORD c = m_mem.readPixelX(m_context->FRAME.PSM, m_faddr);
-				// DWORD c = (m_mem.*m_context->ftbl->rpa)(m_faddr);
-				BYTE A = (BYTE)(c >> (m_context->FRAME.PSM == PSM_PSMCT32 ? 31 : 15));
-				if(A ^ m_context->TEST.DATM) return;
-			}
-
-			if(PRIM->FGE)
-			{
-				Vertex::Scalar a = Cf.a;
-				Vertex::Vector Cfog((DWORD)m_env.FOGCOL.ai32[0]);
-				Cf = Cfog + (Cf - Cfog) * v.t.z;
-				Cf.a = a;
-			}
-
-			// FIXME: for AA1 the value of Af should be calculated from the pixel coverage...
-
-			bool fABE = (PRIM->ABE || PRIM->AA1 && (PRIM->PRIM == 1 || PRIM->PRIM == 2)) && (!m_env.PABE.PABE || (int)Cf.a >= 0x80);
-
-			if(FBMSK || fABE)
-			{
-				GIFRegTEXA TEXA;
-				/*
-				TEXA.AEM = 0;
-				TEXA.TA0 = 0;
-				TEXA.TA1 = 0x80;
-				*/
-				TEXA.ai32[0] = 0;
-				TEXA.ai32[1] = 0x80;
-
-				Cd = m_mem.readTexelX(m_context->FRAME.PSM, m_faddr, TEXA);
-				// Cd = (m_mem.*m_context->ftbl->rta)(m_faddr, TEXA);
-			}
-
-			if(fABE)
-			{
-				Ca = Vertex::Vector(Vertex::Scalar(0));
-				Ca.a = Vertex::Scalar((int)m_context->ALPHA.FIX);
-
-				Vertex::Scalar a = Cf.a;
-				Cf = ((Cfda[m_context->ALPHA.A] - Cfda[m_context->ALPHA.B]) * Cfda[m_context->ALPHA.C].a >> 7) + Cfda[m_context->ALPHA.D];
-				Cf.a = a;
-			}
-
-			DWORD Cdw; 
-
-			if(m_env.COLCLAMP.CLAMP && !m_env.DTHE.DTHE)
-			{
-				Cdw = Cf;
-			}
-			else
-			{
-				__declspec(align(16)) union {struct {short Rf, Gf, Bf, Af;}; UINT64 Cui64;};
-				
-				Cui64 = Cf;
-
-				if(m_env.DTHE.DTHE)
-				{
-					short DMxy = (signed char)((*((WORD*)&m_env.DIMX.i64 + (m_fy&3)) >> ((m_fx&3)<<2)) << 5) >> 5;
-					Rf = (short)(Rf + DMxy);
-					Gf = (short)(Gf + DMxy);
-					Bf = (short)(Bf + DMxy);
-				}
-
-				Rf = m_clamp[Rf];
-				Gf = m_clamp[Gf];
-				Bf = m_clamp[Bf];
-				Af |= m_context->FBA.FBA << 7;
-
-				#if _M_SSE >= 0x200
-				
-				__m128i r0 = _mm_load_si128((__m128i*)&Cui64);
-
-				Cdw = (DWORD)_mm_cvtsi128_si32(_mm_packus_epi16(r0, r0));
-
-				#else
-				
-				Cdw = ((DWORD)(Rf&0xff) << 0)
-					| ((DWORD)(Gf&0xff) << 8) 
-					| ((DWORD)(Bf&0xff) << 16) 
-					| ((DWORD)(Af&0xff) << 24);
-				
-				#endif
-			}
-
-			if(FBMSK != 0)
-			{
-				Cdw = (Cdw & ~FBMSK) | ((DWORD)Cd & FBMSK);
-			}
-
-			m_mem.writeFrameX(m_context->FRAME.PSM, m_faddr, Cdw);
-			// (m_mem.*m_context->ftbl->wfa)(m_faddr, Cdw);
+			Scalar a = Cf.a;
+			Vector Cfog((DWORD)m_env.FOGCOL.ai32[0]);
+			Cf = Cfog + (Cf - Cfog) * v.t.z;
+			Cf.a = a;
 		}
+
+		// FIXME: for AA1 the value of Af should be calculated from the pixel coverage...
+
+		bool fABE = (PRIM->ABE || PRIM->AA1 && (PRIM->PRIM == 1 || PRIM->PRIM == 2)) && (!m_env.PABE.PABE || (int)Cf.a >= 0x80);
+
+		if(FBMSK || fABE)
+		{
+			GIFRegTEXA TEXA;
+			/*
+			TEXA.AEM = 0;
+			TEXA.TA0 = 0;
+			TEXA.TA1 = 0x80;
+			*/
+			TEXA.ai32[0] = 0;
+			TEXA.ai32[1] = 0x80;
+
+			Cd = m_mem.readTexelX(FPSM, m_faddr, TEXA);
+		}
+
+		if(fABE)
+		{
+			Ca = Vector(Scalar(0));
+			Ca.a = Scalar((int)m_context->ALPHA.FIX);
+
+			Scalar a = Cf.a;
+			Cf = ((Cfda[m_context->ALPHA.A] - Cfda[m_context->ALPHA.B]) * Cfda[m_context->ALPHA.C].a >> 7) + Cfda[m_context->ALPHA.D];
+			Cf.a = a;
+		}
+
+		DWORD Cdw; 
+
+		if(m_env.COLCLAMP.CLAMP && !m_env.DTHE.DTHE)
+		{
+			Cdw = Cf;
+		}
+		else
+		{
+			__declspec(align(16)) union {struct {short Rf, Gf, Bf, Af;}; UINT64 Cui64;};
+			
+			Cui64 = Cf;
+
+			if(m_env.DTHE.DTHE)
+			{
+				short DMxy = (signed char)((*((WORD*)&m_env.DIMX.i64 + (m_fy&3)) >> ((m_fx&3)<<2)) << 5) >> 5;
+				
+				Rf = (short)(Rf + DMxy);
+				Gf = (short)(Gf + DMxy);
+				Bf = (short)(Bf + DMxy);
+			}
+
+			Rf = m_clamp[Rf];
+			Gf = m_clamp[Gf];
+			Bf = m_clamp[Bf];
+			Af |= m_context->FBA.FBA << 7;
+
+			#if _M_SSE >= 0x200
+			
+			__m128i r0 = _mm_load_si128((__m128i*)&Cui64);
+
+			Cdw = (DWORD)_mm_cvtsi128_si32(_mm_packus_epi16(r0, r0));
+
+			#else
+			
+			Cdw = ((DWORD)(Rf&0xff) << 0)
+				| ((DWORD)(Gf&0xff) << 8) 
+				| ((DWORD)(Bf&0xff) << 16) 
+				| ((DWORD)(Af&0xff) << 24);
+			
+			#endif
+		}
+
+		if(FBMSK != 0)
+		{
+			Cdw = (Cdw & ~FBMSK) | ((DWORD)Cd & FBMSK);
+		}
+
+		m_mem.writeFrameX(FPSM, m_faddr, Cdw);
+
+		return ZMSK == 0;
 	}
 
 	template <int iLOD, bool bLCM, bool bTCC, int iTFX>
-	void DrawVertexTFX(typename Vertex::Vector& Cf, const Vertex& v)
+	void DrawVertexTFX(Vector& Cf, const Vertex& v)
 	{
 		ASSERT(PRIM->TME);
 		
-		Vertex::Vector t = v.t;
+		Vector t = v.t;
 
-		bool fBiLinear = iLOD == 2; 
+		bool bilinear = iLOD == 2; 
 
 		if(iLOD == 3)
 		{
-			fBiLinear = !!bLCM;
+			bilinear = !!bLCM;
 		}
 		else
 		{
@@ -800,18 +823,18 @@ protected:
 				float lod = (float)(int)m_context->TEX1.K;
 				float one_over_log2 = 3.3219281f;
 				if(!bLCM) lod += log(fabs((float)t.q)) * one_over_log2 * (1 << m_context->TEX1.L);
-				fBiLinear = lod <= 0 && (m_context->TEX1.MMAG & 1) || lod > 0 && (m_context->TEX1.MMIN & 1);
+				bilinear = lod <= 0 && (m_context->TEX1.MMAG & 1) || lod > 0 && (m_context->TEX1.MMIN & 1);
 			}
 		}
 
-		if(fBiLinear) t -= Vertex::Scalar(0.5f);
+		if(bilinear) t -= Scalar(0.5f);
 
 		__declspec(align(16)) short ituv[8] = 
 		{
 			(short)(int)t.x, 
-			(short)(int)t.x+1, 
+			(short)(int)t.x + 1, 
 			(short)(int)t.y, 
-			(short)(int)t.y+1
+			(short)(int)t.y + 1
 		};
 
 		#if _M_SSE >= 0x200
@@ -833,16 +856,16 @@ protected:
 
 		#endif
 
-		Vertex::Vector Ct[4];
+		Vector Ct[4];
 
-		if(fBiLinear)
+		if(bilinear)
 		{
 			Ct[0] = ReadTexel(ituv[0], ituv[2]);
 			Ct[1] = ReadTexel(ituv[1], ituv[2]);
 			Ct[2] = ReadTexel(ituv[0], ituv[3]);
 			Ct[3] = ReadTexel(ituv[1], ituv[3]);
 
-			Vertex::Vector ft = t - t.floor();
+			Vector ft = t - t.floor();
 
 			Ct[0] = Ct[0] + (Ct[1] - Ct[0]) * ft.x;
 			Ct[2] = Ct[2] + (Ct[3] - Ct[2]) * ft.x;
@@ -853,7 +876,7 @@ protected:
 			Ct[0] = ReadTexel(ituv[0], ituv[2]);
 		}
 
-		Vertex::Scalar a = Cf.a;
+		Scalar a = Cf.a;
 
 		switch(iTFX)
 		{
@@ -920,7 +943,7 @@ protected:
 	}
 
 	DWORD* m_cache;
-	DWORD m_cache_page[(1024/32) * (1024/64)];
+	DWORD m_cache_page[(1024 / 32) * (1024 / 64)];
 
 	void InvalidateTextureCache() 
 	{
@@ -929,18 +952,23 @@ protected:
 
 	void ReadTexture(int x, int y)
 	{
-		x &= ~63;
-		y &= ~31;
+		const int xs = 64;
+		const int ys = 32;
 
-		CRect r(x, y, x + 64, y + 32);
+		x &= ~(xs - 1);
+		y &= ~(ys - 1);
 
-		BYTE* dst = (BYTE*)&m_cache[y * 1024 + x];
+		CRect r(x, y, x + xs, y + ys);
 
-		(m_mem.*m_context->ttbl->ust)(r, dst, 1024 * 4, m_context->TEX0, m_env.TEXA);
+		DWORD* dst = &m_cache[y * 1024 + x];
+
+		(m_mem.*m_context->ttbl->ust)(r, (BYTE*)dst, 1024 * 4, m_context->TEX0, m_env.TEXA);
 	}
 
 	__forceinline DWORD ReadTexel(int x, int y)
 	{
+		// return (m_mem.*m_context->ttbl->rt)(x, y, m_context->TEX0, m_env.TEXA);
+
 		// - page size depends on psm, this is just the smallest for 32 bit
 		// - seems to be just enough to avoid recursive rendering errors
 		// - to be fully correct we need to fetch ttbl->pgs sized pages
@@ -967,7 +995,7 @@ public:
 		for(; i < 256; i++, j++) {m_clip[j] = (BYTE)i; m_mask[j] = (BYTE)i;}
 		for(; i <= SHRT_MAX; i++, j++) {m_clip[j] = 255; m_mask[j] = (BYTE)i;}
 
-		m_cache = (DWORD*)_aligned_malloc(1024 * 1024 * 4, 16);
+		m_cache = (DWORD*)_aligned_malloc(1024 * 1024 * sizeof(m_cache[0]), 16);
 		
 		InvalidateTextureCache();
 
@@ -975,24 +1003,51 @@ public:
 
 		// w00t :P
 
-		#define InitATST(iZTST, iATST) \
-			m_dv[iZTST][iATST] = &GSRendererSW<Device, Vertex>::DrawVertex<iZTST, iATST>; \
+		#define InitZPSM(bZRW, iZTST, iZPSM) \
+			m_ds[bZRW][iZTST][iZPSM] = &GSRendererSW<Device, Vertex>::DrawScanline<bZRW, iZTST, iZPSM>; \
 
-		#define InitZTST(iZTST) \
-			InitATST(iZTST, 0) \
-			InitATST(iZTST, 1) \
-			InitATST(iZTST, 2) \
-			InitATST(iZTST, 3) \
-			InitATST(iZTST, 4) \
-			InitATST(iZTST, 5) \
-			InitATST(iZTST, 6) \
-			InitATST(iZTST, 7) \
+		#define InitZTST(bZRW, iZTST) \
+			InitZPSM(bZRW, iZTST, 0) \
+			InitZPSM(bZRW, iZTST, 1) \
+			InitZPSM(bZRW, iZTST, 2) \
+			InitZPSM(bZRW, iZTST, 3) \
+
+		#define InitZRW(bZRW) \
+			InitZTST(bZRW, 0) \
+			InitZTST(bZRW, 1) \
+			InitZTST(bZRW, 2) \
+			InitZTST(bZRW, 3) \
+
+		#define InitDS() \
+			InitZRW(0) \
+			InitZRW(1) \
+
+		InitDS();
+
+		#define InitFPSM(iATST, iAFAIL, iFPSM) \
+			m_dv[iATST][iAFAIL][iFPSM] = &GSRendererSW<Device, Vertex>::DrawVertex<iATST, iAFAIL, iFPSM>; \
+
+		#define InitAFAIL(iATST, iAFAIL) \
+			InitFPSM(iATST, iAFAIL, 0) \
+			InitFPSM(iATST, iAFAIL, 1) \
+			InitFPSM(iATST, iAFAIL, 2) \
+			InitFPSM(iATST, iAFAIL, 3) \
+
+		#define InitATST(iATST) \
+			InitAFAIL(iATST, 0) \
+			InitAFAIL(iATST, 1) \
+			InitAFAIL(iATST, 2) \
+			InitAFAIL(iATST, 3) \
 
 		#define InitDV() \
-			InitZTST(0) \
-			InitZTST(1) \
-			InitZTST(2) \
-			InitZTST(3) \
+			InitATST(0) \
+			InitATST(1) \
+			InitATST(2) \
+			InitATST(3) \
+			InitATST(4) \
+			InitATST(5) \
+			InitATST(6) \
+			InitATST(7) \
 
 		InitDV();
 
