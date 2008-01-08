@@ -148,6 +148,17 @@ __declspec(align(16)) union GSVertexSWFP
 		void operator *= (const Vector& v) {xyzq = _mm_mul_ps(xyzq, v);}
 		void operator /= (const Vector& v) {xyzq = _mm_div_ps(xyzq, v);}
 
+		void lnuv(short* uv)
+		{
+			const __m128i _00010000 = _mm_set1_epi32(0x00010000);
+
+			__m128i r0 = _mm_cvttps_epi32(xyzq);
+			r0 = _mm_unpacklo_epi32(r0, r0);
+			r0 = _mm_packs_epi32(r0, r0);
+			r0 = _mm_add_epi16(r0, _00010000);
+			*((__m128i*)uv) = r0;
+		}
+
 #else
 
 		void operator = (const Vector& v) {x = v.x; y = v.y; z = v.z; q = v.q;}
@@ -188,6 +199,14 @@ __declspec(align(16)) union GSVertexSWFP
 		void operator -= (const Vector& v) {*this = *this - v;}
 		void operator *= (const Vector& v) {*this = *this * v;}
 		void operator /= (const Vector& v) {*this = *this / v;}
+
+		void lnuv(short* uv)
+		{
+			uv[0] = (short)(int)x;
+			uv[1] = (short)(int)x + 1;
+			uv[2] = (short)(int)y;
+			uv[3] = (short)(int)y + 1;
+		};
 
 #endif
 

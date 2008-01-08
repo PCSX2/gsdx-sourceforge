@@ -673,9 +673,6 @@ protected:
 			(this->*m_pDrawVertexTFX)(Cf, v);
 		}
 
-		BOOL ZMSK = m_context->ZBUF.ZMSK;
-		DWORD FBMSK = m_context->FRAME.FBMSK;
-
 		bool Apass = true;
 
 		BYTE Af = (BYTE)(int)Cf.a;
@@ -692,6 +689,9 @@ protected:
 		case 7: Apass = Af != m_context->TEST.AREF; break;
 		default: __assume(0);
 		}
+
+		BOOL ZMSK = m_context->ZBUF.ZMSK;
+		DWORD FBMSK = m_context->FRAME.FBMSK;
 
 		if(!Apass)
 		{
@@ -829,13 +829,9 @@ protected:
 
 		if(bilinear) t -= Scalar(0.5f);
 
-		__declspec(align(16)) short ituv[8] = 
-		{
-			(short)(int)t.x, 
-			(short)(int)t.x + 1, 
-			(short)(int)t.y, 
-			(short)(int)t.y + 1
-		};
+		__declspec(align(16)) short ituv[8];
+		
+		t.lnuv(ituv);
 
 		#if _M_SSE >= 0x200
 
