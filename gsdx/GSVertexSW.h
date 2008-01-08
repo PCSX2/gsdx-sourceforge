@@ -150,12 +150,10 @@ __declspec(align(16)) union GSVertexSWFP
 
 		void lnuv(short* uv)
 		{
-			const __m128i _00010000 = _mm_set1_epi32(0x00010000);
-
 			__m128i r0 = _mm_cvttps_epi32(xyzq);
 			r0 = _mm_unpacklo_epi32(r0, r0);
 			r0 = _mm_packs_epi32(r0, r0);
-			r0 = _mm_add_epi16(r0, _00010000);
+			r0 = _mm_add_epi16(r0, _mm_set1_epi32(0x00010000));
 			*((__m128i*)uv) = r0;
 		}
 

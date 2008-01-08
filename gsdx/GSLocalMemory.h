@@ -279,7 +279,7 @@ public:
 		return word;
 	}
 
-	static DWORD pixelAddress32(int x, int y, DWORD bp, DWORD bw)
+	static __forceinline DWORD pixelAddress32(int x, int y, DWORD bp, DWORD bw)
 	{
 		DWORD page = (bp >> 5) + (y >> 5) * bw + (x >> 6); 
 		DWORD word = (page << 11) + pageOffset32[bp & 0x1f][y & 0x1f][x & 0x3f];
@@ -287,7 +287,7 @@ public:
 		return word;
 	}
 
-	static DWORD pixelAddress16(int x, int y, DWORD bp, DWORD bw)
+	static __forceinline DWORD pixelAddress16(int x, int y, DWORD bp, DWORD bw)
 	{
 		DWORD page = (bp >> 5) + (y >> 6) * bw + (x >> 6); 
 		DWORD word = (page << 12) + pageOffset16[bp & 0x1f][y & 0x3f][x & 0x3f];
@@ -295,7 +295,7 @@ public:
 		return word;
 	}
 
-	static DWORD pixelAddress16S(int x, int y, DWORD bp, DWORD bw)
+	static __forceinline DWORD pixelAddress16S(int x, int y, DWORD bp, DWORD bw)
 	{
 		DWORD page = (bp >> 5) + (y >> 6) * bw + (x >> 6); 
 		DWORD word = (page << 12) + pageOffset16S[bp & 0x1f][y & 0x3f][x & 0x3f];
@@ -303,7 +303,7 @@ public:
 		return word;
 	}
 
-	static DWORD pixelAddress8(int x, int y, DWORD bp, DWORD bw)
+	static __forceinline DWORD pixelAddress8(int x, int y, DWORD bp, DWORD bw)
 	{
 		DWORD page = (bp >> 5) + (y >> 6) * ((bw + 1)>>1) + (x >> 7); 
 		DWORD word = (page << 13) + pageOffset8[bp & 0x1f][y & 0x3f][x & 0x7f];
@@ -311,7 +311,7 @@ public:
 		return word;
 	}
 
-	static DWORD pixelAddress4(int x, int y, DWORD bp, DWORD bw)
+	static __forceinline DWORD pixelAddress4(int x, int y, DWORD bp, DWORD bw)
 	{
 		DWORD page = (bp >> 5) + (y >> 7) * ((bw + 1)>>1) + (x >> 7);
 		DWORD word = (page << 14) + pageOffset4[bp & 0x1f][y & 0x7f][x & 0x7f];
@@ -319,7 +319,7 @@ public:
 		return word;
 	}
 
-	static DWORD pixelAddress32Z(int x, int y, DWORD bp, DWORD bw)
+	static __forceinline DWORD pixelAddress32Z(int x, int y, DWORD bp, DWORD bw)
 	{
 		DWORD page = (bp >> 5) + (y >> 5) * bw + (x >> 6); 
 		DWORD word = (page << 11) + pageOffset32Z[bp & 0x1f][y & 0x1f][x & 0x3f];
@@ -327,7 +327,7 @@ public:
 		return word;
 	}
 
-	static DWORD pixelAddress16Z(int x, int y, DWORD bp, DWORD bw)
+	static __forceinline DWORD pixelAddress16Z(int x, int y, DWORD bp, DWORD bw)
 	{
 		DWORD page = (bp >> 5) + (y >> 6) * bw + (x >> 6); 
 		DWORD word = (page << 12) + pageOffset16Z[bp & 0x1f][y & 0x3f][x & 0x3f];
@@ -335,7 +335,7 @@ public:
 		return word;
 	}
 
-	static DWORD pixelAddress16SZ(int x, int y, DWORD bp, DWORD bw)
+	static __forceinline DWORD pixelAddress16SZ(int x, int y, DWORD bp, DWORD bw)
 	{
 		DWORD page = (bp >> 5) + (y >> 6) * bw + (x >> 6); 
 		DWORD word = (page << 12) + pageOffset16SZ[bp & 0x1f][y & 0x3f][x & 0x3f];
@@ -752,6 +752,27 @@ public:
 	}
 
 	//
+
+	__forceinline DWORD pixelAddressX(int PSM, int x, int y, DWORD bp, DWORD bw)
+	{
+		switch(PSM)
+		{
+		case PSM_PSMCT32: return pixelAddress32(x, y, bp, bw); 
+		case PSM_PSMCT24: return pixelAddress32(x, y, bp, bw); 
+		case PSM_PSMCT16: return pixelAddress16(x, y, bp, bw);
+		case PSM_PSMCT16S: return pixelAddress16S(x, y, bp, bw);
+		case PSM_PSMT8: return pixelAddress8(x, y, bp, bw);
+		case PSM_PSMT4: return pixelAddress4(x, y, bp, bw);
+		case PSM_PSMT8H: return pixelAddress32(x, y, bp, bw);
+		case PSM_PSMT4HL: return pixelAddress32(x, y, bp, bw);
+		case PSM_PSMT4HH: return pixelAddress32(x, y, bp, bw);
+		case PSM_PSMZ32: return pixelAddress32Z(x, y, bp, bw);
+		case PSM_PSMZ24: return pixelAddress32Z(x, y, bp, bw);
+		case PSM_PSMZ16: return pixelAddress16Z(x, y, bp, bw);
+		case PSM_PSMZ16S: return pixelAddress16SZ(x, y, bp, bw);
+		default: ASSERT(0); return pixelAddress32(x, y, bp, bw);
+		}
+	}
 
 	__forceinline DWORD readPixelX(int PSM, DWORD addr)
 	{

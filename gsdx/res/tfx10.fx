@@ -126,6 +126,10 @@ void gs_main(line VS_OUTPUT input[2], inout TriangleStream<VS_OUTPUT> stream)
 	input[0].p.z = input[1].p.z;
 	input[0].t.zw = input[1].t.zw;
 
+	#if IIP == 0
+	input[0].c = input[1].c;
+	#endif
+
 	VS_OUTPUT lb = input[1];
 
 	lb.p.x = input[0].p.x;
