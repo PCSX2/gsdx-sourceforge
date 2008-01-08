@@ -587,61 +587,57 @@ protected:
 	template<int bZRW, int iZTST, int iZPSM>
 	void DrawScanline(int top, int left, int right, Vertex& v, const Vertex& dv)
 	{
-		int ZPSM;
-
-		switch(iZPSM)
-		{
-		case 0: ZPSM = PSM_PSMZ32; break;
-		case 1: ZPSM = PSM_PSMZ24; break;
-		case 2: ZPSM = PSM_PSMZ16; break;
-		case 3: ZPSM = PSM_PSMZ16S; break;
-		default: ZPSM = PSM_PSMZ32; break;
-		}
-
 		m_faddr_x0 = (m_context->ftbl->pa)(0, top, m_context->FRAME.Block(), m_context->FRAME.FBW);
 		m_faddr_ro = m_context->ftbl->rowOffset[top & 7];
-
-		if(bZRW)
-		{
-			m_zaddr_x0 = (m_context->ztbl->pa)(0, top, m_context->ZBUF.Block(), m_context->FRAME.FBW);
-			m_zaddr_ro = m_context->ztbl->rowOffset[top & 7];
-		}
 
 		m_fx = left;
 		m_fy = top;
 
-		for(; left < right; left++, v += dv, m_fx++)
+		if(bZRW)
 		{
-			m_faddr = m_faddr_x0 + m_faddr_ro[left];
+			int ZPSM;
 
-			if(bZRW)
+			switch(iZPSM)
 			{
+			case 0: ZPSM = PSM_PSMZ32; break;
+			case 1: ZPSM = PSM_PSMZ24; break;
+			case 2: ZPSM = PSM_PSMZ16; break;
+			case 3: ZPSM = PSM_PSMZ16S; break;
+			default: ZPSM = PSM_PSMZ32; break;
+			}
+
+			m_zaddr_x0 = m_mem.pixelAddressX(ZPSM, 0, top, m_context->ZBUF.Block(), m_context->FRAME.FBW);
+			m_zaddr_ro = m_mem.m_psm[ZPSM].rowOffset[top & 7];
+
+			for(; left < right; left++, v.c += dv.c, v.p += dv.p, v.t += dv.t, m_fx++)
+			{
+				m_faddr = m_faddr_x0 + m_faddr_ro[left];
 				m_zaddr = m_zaddr_x0 + m_zaddr_ro[left];
-			}
 
-			DWORD z = v.GetZ();
-			
-			switch(iZTST)
-			{
-			case 0: 
-				continue;
-			case 1: 
-				break;
-			case 2: 
-				if(z < m_mem.readPixelX(ZPSM, m_zaddr)) 
-					continue; 
-				break;
-			case 3: 
-				if(z <= m_mem.readPixelX(ZPSM, m_zaddr))
-					continue;
-				break;
-			default:
-				__assume(0);
-			}
+				DWORD z = v.GetZ();
+				
+				switch(iZTST)
+				{
+				case 0: continue;
+				case 1: break;
+				case 2: if(z < m_mem.readPixelX(ZPSM, m_zaddr)) continue; break;
+				case 3: if(z <= m_mem.readPixelX(ZPSM, m_zaddr)) continue; break;
+				default: __assume(0);
+				}
 
-			if((this->*m_pDrawVertex)(v))
+				if((this->*m_pDrawVertex)(v))
+				{
+					m_mem.writePixelX(ZPSM, m_zaddr, z);
+				}
+			}
+		}
+		else
+		{
+			for(; left < right; left++, v.c += dv.c, v.t += dv.t, m_fx++)
 			{
-				m_mem.writePixelX(ZPSM, m_zaddr, z);
+				m_faddr = m_faddr_x0 + m_faddr_ro[left];
+
+				(this->*m_pDrawVertex)(v);
 			}
 		}
 	}
@@ -675,18 +671,18 @@ protected:
 
 		bool Apass = true;
 
-		BYTE Af = (BYTE)(int)Cf.a;
+		int Af = (int)Cf.a;
 
 		switch(iATST)
 		{
 		case 0: Apass = false; break;
 		case 1: Apass = true; break;
-		case 2: Apass = Af < m_context->TEST.AREF; break;
-		case 3: Apass = Af <= m_context->TEST.AREF; break;
-		case 4: Apass = Af == m_context->TEST.AREF; break;
-		case 5: Apass = Af >= m_context->TEST.AREF; break;
-		case 6: Apass = Af > m_context->TEST.AREF; break;
-		case 7: Apass = Af != m_context->TEST.AREF; break;
+		case 2: Apass = Af < (int)m_context->TEST.AREF; break;
+		case 3: Apass = Af <= (int)m_context->TEST.AREF; break;
+		case 4: Apass = Af == (int)m_context->TEST.AREF; break;
+		case 5: Apass = Af >= (int)m_context->TEST.AREF; break;
+		case 6: Apass = Af > (int)m_context->TEST.AREF; break;
+		case 7: Apass = Af != (int)m_context->TEST.AREF; break;
 		default: __assume(0);
 		}
 
@@ -705,26 +701,13 @@ protected:
 			}
 		}
 
-		if(m_context->TEST.DATE)
-		{
-			DWORD c = m_mem.readPixelX(FPSM, m_faddr);
-			BYTE A = (BYTE)(c >> (m_context->FRAME.PSM == PSM_PSMCT32 ? 31 : 15));
-			if(A ^ m_context->TEST.DATM) return false;
-		}
-
-		if(PRIM->FGE)
-		{
-			Scalar a = Cf.a;
-			Vector Cfog((DWORD)m_env.FOGCOL.ai32[0]);
-			Cf = Cfog + (Cf - Cfog) * v.t.z;
-			Cf.a = a;
-		}
+		DWORD Cddw;
 
 		// FIXME: for AA1 the value of Af should be calculated from the pixel coverage...
 
 		bool fABE = (PRIM->ABE || PRIM->AA1 && (PRIM->PRIM == 1 || PRIM->PRIM == 2)) && (!m_env.PABE.PABE || (int)Cf.a >= 0x80);
 
-		if(FBMSK || fABE)
+		if(FBMSK || fABE || m_context->TEST.DATE)
 		{
 			GIFRegTEXA TEXA;
 			/*
@@ -735,11 +718,29 @@ protected:
 			TEXA.ai32[0] = 0;
 			TEXA.ai32[1] = 0x80;
 
-			Cd = m_mem.readTexelX(FPSM, m_faddr, TEXA);
+			Cddw = m_mem.readTexelX(FPSM, m_faddr, TEXA);
+		}
+
+		if(m_context->TEST.DATE)
+		{
+			if((Cddw >> 31) ^ m_context->TEST.DATM) 
+			{
+				return false;
+			}
+		}
+
+		if(PRIM->FGE)
+		{
+			Scalar a = Cf.a;
+			Vector Cfog((DWORD)m_env.FOGCOL.ai32[0]);
+			Cf = Cfog + (Cf - Cfog) * v.t.z;
+			Cf.a = a;
 		}
 
 		if(fABE)
 		{
+			Cd = Cddw;
+
 			Ca = Vector(Scalar(0));
 			Ca.a = Scalar((int)m_context->ALPHA.FIX);
 
@@ -748,11 +749,11 @@ protected:
 			Cf.a = a;
 		}
 
-		DWORD Cdw; 
+		DWORD Cfdw; 
 
 		if(m_env.COLCLAMP.CLAMP && !m_env.DTHE.DTHE)
 		{
-			Cdw = Cf;
+			Cfdw = Cf;
 		}
 		else
 		{
@@ -778,24 +779,24 @@ protected:
 			
 			__m128i r0 = _mm_load_si128((__m128i*)&Cui64);
 
-			Cdw = (DWORD)_mm_cvtsi128_si32(_mm_packus_epi16(r0, r0));
+			Cfdw = (DWORD)_mm_cvtsi128_si32(_mm_packus_epi16(r0, r0));
 
 			#else
 			
-			Cdw = ((DWORD)(Rf&0xff) << 0)
-				| ((DWORD)(Gf&0xff) << 8) 
-				| ((DWORD)(Bf&0xff) << 16) 
-				| ((DWORD)(Af&0xff) << 24);
+			Cfdw = ((DWORD)(Rf & 0xff) << 0)
+				| ((DWORD)(Gf & 0xff) << 8) 
+				| ((DWORD)(Bf & 0xff) << 16) 
+				| ((DWORD)(Af & 0xff) << 24);
 			
 			#endif
 		}
 
 		if(FBMSK != 0)
 		{
-			Cdw = (Cdw & ~FBMSK) | ((DWORD)Cd & FBMSK);
+			Cfdw = (Cfdw & ~FBMSK) | (Cddw & FBMSK);
 		}
 
-		m_mem.writeFrameX(FPSM, m_faddr, Cdw);
+		m_mem.writeFrameX(FPSM, m_faddr, Cfdw);
 
 		return ZMSK == 0;
 	}
@@ -803,8 +804,6 @@ protected:
 	template <int iLOD, bool bLCM, bool bTCC, int iTFX>
 	void DrawVertexTFX(Vector& Cf, const Vertex& v)
 	{
-		ASSERT(PRIM->TME);
-		
 		Vector t = v.t;
 
 		bool bilinear = iLOD == 2; 
@@ -959,6 +958,8 @@ protected:
 		DWORD* dst = &m_cache[y * 1024 + x];
 
 		(m_mem.*m_context->ttbl->ust)(r, (BYTE*)dst, 1024 * 4, m_context->TEX0, m_env.TEXA);
+
+		m_perfmon.Put(GSPerfMon::Unswizzle, r.Width() * r.Height() * 4);
 	}
 
 	__forceinline DWORD ReadTexel(int x, int y)

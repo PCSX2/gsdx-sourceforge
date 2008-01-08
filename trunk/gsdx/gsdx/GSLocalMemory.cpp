@@ -445,14 +445,17 @@ bool GSLocalMemory::FillRect(const CRect& r, DWORD c, DWORD psm, DWORD fbp, DWOR
 		for(int x = r.left; x < r.right; x++)
 			(this->*wp)(x, y, c, fbp, fbw);
 
-	for(int y = clip.top; y < clip.bottom; y += h)
+	if(r.left < clip.left || clip.right < r.right)
 	{
-		for(int ys = y, ye = y + h; ys < ye; ys++)
+		for(int y = clip.top; y < clip.bottom; y += h)
 		{
-			for(int x = r.left; x < clip.left; x++)
-				(this->*wp)(x, ys, c, fbp, fbw);
-			for(int x = clip.right; x < r.right; x++)
-				(this->*wp)(x, ys, c, fbp, fbw);
+			for(int ys = y, ye = y + h; ys < ye; ys++)
+			{
+				for(int x = r.left; x < clip.left; x++)
+					(this->*wp)(x, ys, c, fbp, fbw);
+				for(int x = clip.right; x < r.right; x++)
+					(this->*wp)(x, ys, c, fbp, fbw);
+			}
 		}
 	}
 
