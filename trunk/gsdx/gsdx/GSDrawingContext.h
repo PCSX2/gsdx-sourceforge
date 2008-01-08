@@ -63,6 +63,11 @@ struct GSDrawingContext
 		fscissor.y1 = (float)(int)scissor.y1;
 	}
 
+	bool DepthRead()
+	{
+		return TEST.ZTE && TEST.ZTST >= 2;
+	}
+
 	bool DepthWrite()
 	{
 		if(TEST.ATE && TEST.ATST == 0 && TEST.AFAIL != 2) // alpha test, all pixels fail, z buffer is not updated
