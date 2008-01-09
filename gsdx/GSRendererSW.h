@@ -40,7 +40,7 @@ protected:
 	DrawScanlinePtr m_ds[2][4][4], m_pDrawScanline;
 
 	typedef bool (GSRendererSW<Device, Vertex>::*DrawVertexPtr)(const Vertex& v);
-	DrawVertexPtr m_dv[8][4][4], m_pDrawVertex;
+	DrawVertexPtr m_dv[3][8][4][4], m_pDrawVertex;
 
 	typedef void (GSRendererSW<Device, Vertex>::*DrawVertexTFXPtr)(Vector& Cf, const Vertex& v);
 	DrawVertexTFXPtr m_dvtfx[4][2][2][4], m_pDrawVertexTFX;
@@ -249,6 +249,7 @@ protected:
 
 		m_pDrawScanline = m_ds[bZRW][iZTST][iZPSM];
 
+		int iABE = m_env.PABE.PABE ? 2 : PRIM->ABE || PRIM->AA1 && (PRIM->PRIM == 1 || PRIM->PRIM == 2) ? 1 : 0;
 		int iATST = !m_context->TEST.ATE ? 1 : m_context->TEST.ATST;
 		int iAFAIL = m_context->TEST.AFAIL;
 		int iFPSM = 0;
@@ -262,7 +263,7 @@ protected:
 		default: ASSERT(0); iFPSM = 0; break;
 		}
 
-		m_pDrawVertex = m_dv[iATST][iAFAIL][iFPSM];
+		m_pDrawVertex = m_dv[iABE][iATST][iAFAIL][iFPSM];
 
 		if(PRIM->TME)
 		{
@@ -642,7 +643,7 @@ protected:
 		}
 	}
 
-	template <int iATST, int iAFAIL, int iFPSM> 
+	template <int iABE, int iATST, int iAFAIL, int iFPSM> 
 	bool DrawVertex(const Vertex& v)
 	{
 		int FPSM;
@@ -705,9 +706,9 @@ protected:
 
 		// FIXME: for AA1 the value of Af should be calculated from the pixel coverage...
 
-		bool fABE = (PRIM->ABE || PRIM->AA1 && (PRIM->PRIM == 1 || PRIM->PRIM == 2)) && (!m_env.PABE.PABE || (int)Cf.a >= 0x80);
+		bool ABE = iABE == 1 || iABE == 2 && (int)Cf.a >= 0x80;
 
-		if(FBMSK || fABE || m_context->TEST.DATE)
+		if(FBMSK || ABE || m_context->TEST.DATE)
 		{
 			GIFRegTEXA TEXA;
 			/*
@@ -737,7 +738,7 @@ protected:
 			Cf.a = a;
 		}
 
-		if(fABE)
+		if(ABE)
 		{
 			Cd = Cddw;
 
@@ -1021,30 +1022,35 @@ public:
 
 		InitDS();
 
-		#define InitFPSM(iATST, iAFAIL, iFPSM) \
-			m_dv[iATST][iAFAIL][iFPSM] = &GSRendererSW<Device, Vertex>::DrawVertex<iATST, iAFAIL, iFPSM>; \
+		#define InitFPSM(iABE, iATST, iAFAIL, iFPSM) \
+			m_dv[iABE][iATST][iAFAIL][iFPSM] = &GSRendererSW<Device, Vertex>::DrawVertex<iABE, iATST, iAFAIL, iFPSM>; \
 
-		#define InitAFAIL(iATST, iAFAIL) \
-			InitFPSM(iATST, iAFAIL, 0) \
-			InitFPSM(iATST, iAFAIL, 1) \
-			InitFPSM(iATST, iAFAIL, 2) \
-			InitFPSM(iATST, iAFAIL, 3) \
+		#define InitAFAIL(iABE, iATST, iAFAIL) \
+			InitFPSM(iABE, iATST, iAFAIL, 0) \
+			InitFPSM(iABE, iATST, iAFAIL, 1) \
+			InitFPSM(iABE, iATST, iAFAIL, 2) \
+			InitFPSM(iABE, iATST, iAFAIL, 3) \
 
-		#define InitATST(iATST) \
-			InitAFAIL(iATST, 0) \
-			InitAFAIL(iATST, 1) \
-			InitAFAIL(iATST, 2) \
-			InitAFAIL(iATST, 3) \
+		#define InitATST(iABE, iATST) \
+			InitAFAIL(iABE, iATST, 0) \
+			InitAFAIL(iABE, iATST, 1) \
+			InitAFAIL(iABE, iATST, 2) \
+			InitAFAIL(iABE, iATST, 3) \
+
+		#define InitABE(iABE) \
+			InitATST(iABE, 0) \
+			InitATST(iABE, 1) \
+			InitATST(iABE, 2) \
+			InitATST(iABE, 3) \
+			InitATST(iABE, 4) \
+			InitATST(iABE, 5) \
+			InitATST(iABE, 6) \
+			InitATST(iABE, 7) \
 
 		#define InitDV() \
-			InitATST(0) \
-			InitATST(1) \
-			InitATST(2) \
-			InitATST(3) \
-			InitATST(4) \
-			InitATST(5) \
-			InitATST(6) \
-			InitATST(7) \
+			InitABE(0) \
+			InitABE(1) \
+			InitABE(2) \
 
 		InitDV();
 
