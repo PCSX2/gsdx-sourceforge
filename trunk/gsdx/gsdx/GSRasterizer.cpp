@@ -983,9 +983,9 @@ void GSRasterizer::DrawScanlineT(int steps)
 					__m128 c10 = Unpack(ReadTexelNoFetch(uv0.m128i_u16[i], uv1.m128i_u16[i + 4]));
 					__m128 c11 = Unpack(ReadTexelNoFetch(uv1.m128i_u16[i], uv1.m128i_u16[i + 4]));
 
-					c00 = _mm_add_ps(c00, _mm_mul_ps(_mm_sub_ps(c01, c00), _mm_set1_ps(uf.m128_f32[i])));
-					c10 = _mm_add_ps(c10, _mm_mul_ps(_mm_sub_ps(c11, c10), _mm_set1_ps(uf.m128_f32[i])));
-					c00 = _mm_add_ps(c00, _mm_mul_ps(_mm_sub_ps(c10, c00), _mm_set1_ps(vf.m128_f32[i])));
+					c00 = Blend(c00, c01, _mm_set1_ps(uf.m128_f32[i]));
+					c10 = Blend(c10, c11, _mm_set1_ps(uf.m128_f32[i]));
+					c00 = Blend(c00, c10, _mm_set1_ps(vf.m128_f32[i]));
 
 					c[i] = c00;
 				}
@@ -1217,7 +1217,6 @@ void GSRasterizer::DrawScanlineOM(int steps)
 			b = sl->b[0];
 			a = sl->a[0];
 		}
-
 
 		_MM_TRANSPOSE4_PS(r, g, b, a);
 
