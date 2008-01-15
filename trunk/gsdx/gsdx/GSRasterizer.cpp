@@ -260,10 +260,7 @@ void GSRasterizer::DrawPoint(Vertex* v)
 
 	if(m_scissor.PtInRect(p))
 	{
-		Vertex scan = *v;
-		Vertex dscan;
-
-		(this->*m_dsf)(p.y, p.x, p.x + 1, scan, dscan);
+		(this->*m_dsf)(p.y, p.x, p.x + 1, *v);
 	}
 }
 
@@ -331,6 +328,8 @@ void GSRasterizer::DrawTriangle(Vertex* v)
 	Vertex dscan = (v02 * temp - v01) / longest;
 	dscan.p.y = 0;
 
+	SetupScanlineDelta(dscan);
+
 	for(int i = 0; i < 2; i++, v++)
 	{ 
 		int top = edge[0].p.y.ceil_i();
@@ -367,7 +366,7 @@ void GSRasterizer::DrawTriangle(Vertex* v)
 					scan.p.x = Scalar(left);
 				}
 
-				(this->*m_dsf)(top, left, right, scan, dscan);
+				(this->*m_dsf)(top, left, right, scan);
 			}
 
 			// for(int j = 0; j < 2; j++) edge[j] += dedge[j];
@@ -396,7 +395,6 @@ void GSRasterizer::DrawSprite(Vertex* v)
 
 	Vertex edge = v[0];
 	Vertex dedge = v02 / v02.p.y;
-	Vertex scan;
 	Vertex dscan = v01 / v01.p.x;
 
 	int top = v[0].p.y.ceil_i();
@@ -420,11 +418,11 @@ void GSRasterizer::DrawSprite(Vertex* v)
 	if(DrawSolidRect(left, top, right, bottom, edge))
 		return;
 
+	SetupScanlineDelta(dscan);
+
 	for(; top < bottom; top++)
 	{
-		scan = edge;
-
-		(this->*m_dsf)(top, left, right, scan, dscan);
+		(this->*m_dsf)(top, left, right, edge);
 
 		edge += dedge;
 	}
@@ -617,8 +615,44 @@ void GSRasterizer::SetupColumnOffset()
 	}
 }
 
+void GSRasterizer::SetupScanlineDelta(const Vertex& dv)
+{
+	__m128 dz = _mm_shuffle_ps(dv.p, dv.p, _MM_SHUFFLE(2, 2, 2, 2));
+
+	m_slenv->dz0123 = _mm_mul_ps(dz, _mm_set_ps(3, 2, 1, 0));	
+	m_slenv->dz = _mm_mul_ps(dz, _mm_set1_ps(4));
+
+	m_slenv->dt1 = dv.t;
+	m_slenv->dt2 = dv.t * Scalar(2);
+	m_slenv->dt3 = dv.t * Scalar(3);
+
+	__m128 ds = dv.t * Scalar(4);
+	__m128 dt = ds;
+	__m128 df = ds;
+	__m128 dq = ds;
+
+	_MM_TRANSPOSE4_PS(ds, dt, df, dq);
+
+	m_slenv->ds = ds;
+	m_slenv->dt = dt;
+	m_slenv->df = df;
+	m_slenv->dq = dq;
+
+	__m128 dr = dv.c * Scalar(4);
+	__m128 dg = dr;
+	__m128 db = dr;
+	__m128 da = dr;
+
+	_MM_TRANSPOSE4_PS(dr, dg, db, da);
+
+	m_slenv->dr = dr;
+	m_slenv->dg = dg;
+	m_slenv->db = db;
+	m_slenv->da = da;
+}
+
 template<int iTFX, int bFST, int bFGE, int bZRW>
-void GSRasterizer::PrepareScanline1(int x, int y, int steps, const Vertex& v, const Vertex& dv)
+void GSRasterizer::PrepareScanline1(int x, int y, int steps, const Vertex& v)
 {
 	Scanline* sl = m_sl;
 
@@ -671,66 +705,65 @@ void GSRasterizer::PrepareScanline1(int x, int y, int steps, const Vertex& v, co
 }
 
 template<int iTFX, int bFST, int bFGE, int bZRW>
-void GSRasterizer::PrepareScanline4(int x, int y, int steps, const Vertex& v, const Vertex& dv)
+void GSRasterizer::PrepareScanline4(int x, int y, int steps, const Vertex& v)
 {
-	Scanline* sl = m_sl;
-
-	__m128 z, dz;
-	__m128 t0, t1, t2, t3, dt = dv.t;
-	__m128 c0, c1, c2, c3, dc = dv.c;
-
-	if(bZRW)
-	{
-		z = _mm_shuffle_ps(v.p.xyzq, v.p.xyzq, _MM_SHUFFLE(2, 2, 2, 2));
-		dz = _mm_shuffle_ps(dv.p.xyzq, dv.p.xyzq, _MM_SHUFFLE(2, 2, 2, 2));
-		
-		z = _mm_add_ps(z, _mm_mul_ps(dz, _mm_set_ps(3, 2, 1, 0)));
-		dz = _mm_mul_ps(dz, _mm_set1_ps(4));
-	}
-
-	if(iTFX != 4 || bFGE)
-	{
-		__m128 dt2 = _mm_add_ps(dt, dt);
-		__m128 dt3 = _mm_add_ps(dt2, dt);
-
-		t0 = v.t.xyzq;
-		t1 = _mm_add_ps(v.t.xyzq, dt);
-		t2 = _mm_add_ps(v.t.xyzq, dt2);
-		t3 = _mm_add_ps(v.t.xyzq, dt3);
-
-		dt = _mm_add_ps(dt2, dt2);
-	}
-
-	if(iTFX != 1)
-	{
-		__m128 dc2 = _mm_add_ps(dc, dc);
-		__m128 dc3 = _mm_add_ps(dc2, dc);
-
-		c0 = v.c.xyzq;
-		c1 = _mm_add_ps(v.c.xyzq, dc);
-		c2 = _mm_add_ps(v.c.xyzq, dc2);
-		c3 = _mm_add_ps(v.c.xyzq, dc3);
-
-		dc = _mm_add_ps(dc2, dc2);
-	}
-
 	__m128i fa_base = m_fbco->addr[y];
 	int* fa_offset = &m_state->m_context->ftbl->rowOffset[y & 7][x];
 
-	__m128i za_base;
-	int* za_offset;
+	__m128i za_base = m_zbco->addr[y];
+	int* za_offset = &m_state->m_context->ztbl->rowOffset[y & 7][x];
+
+	__m128i fm =  m_slenv->fm;
+	__m128i zm =  m_slenv->zm;
+
+	//
+
+	__m128 z;
+	__m128 dz;
 
 	if(bZRW)
 	{
-		za_base = m_zbco->addr[y];
-		za_offset = &m_state->m_context->ztbl->rowOffset[y & 7][x];
+		z = _mm_add_ps(_mm_shuffle_ps(v.p, v.p, _MM_SHUFFLE(2, 2, 2, 2)), m_slenv->dz0123);
+		dz = m_slenv->dz;
 	}
+
+	//
+
+	__m128 s = v.t;
+	__m128 t = _mm_add_ps(v.t, m_slenv->dt1);
+	__m128 f = _mm_add_ps(v.t, m_slenv->dt2);
+	__m128 q = _mm_add_ps(v.t, m_slenv->dt3);
+
+	_MM_TRANSPOSE4_PS(s, t, f, q);
+
+	__m128 ds = m_slenv->ds;
+	__m128 dt = m_slenv->dt;
+	__m128 df = m_slenv->df;
+	__m128 dq = m_slenv->dq;
+
+	//
+
+	__m128 r = v.c;
+	__m128 g = _mm_add_ps(v.c, m_slenv->dc1);
+	__m128 b = _mm_add_ps(v.c, m_slenv->dc2);
+	__m128 a = _mm_add_ps(v.c, m_slenv->dc3);
+
+	_MM_TRANSPOSE4_PS(r, g, b, a);
+
+	__m128 dr = m_slenv->dr;
+	__m128 dg = m_slenv->dg;
+	__m128 db = m_slenv->db;
+	__m128 da = m_slenv->da;
+
+	//
+
+	Scanline* sl = m_sl;
 
 	for(int i = 0; i < steps; i += 4, sl++)
 	{
 		sl->fa = _mm_add_epi32(fa_base, _mm_loadu_si128((__m128i*)&fa_offset[i]));
-		sl->fm = m_slenv->fm;
-		sl->zm = m_slenv->zm;
+		sl->fm = fm;
+		sl->zm = zm;
 		sl->t = _mm_setzero_si128();
 
 		if(bZRW)
@@ -743,65 +776,51 @@ void GSRasterizer::PrepareScanline4(int x, int y, int steps, const Vertex& v, co
 
 		if(iTFX != 4 || bFGE)
 		{
-			__m128 r0 = t0;
-			__m128 r1 = t1;
-			__m128 r2 = t2;
-			__m128 r3 = t3;
-
-			_MM_TRANSPOSE4_PS(r0, r1, r2, r3); 
-
 			if(iTFX != 4)
 			{
+				sl->u = s;
+				sl->v = t;
+
 				if(!bFST)
 				{
-					sl->q = r3;
+					sl->q = q;
 				}
-
-				sl->u = r0;
-				sl->v = r1;
 			}
 
 			if(bFGE)
 			{
-				sl->f = r2;
+				sl->f = f;
 			}
 
-			t0 = _mm_add_ps(t0, dt);
-			t1 = _mm_add_ps(t1, dt);
-			t2 = _mm_add_ps(t2, dt);
-			t3 = _mm_add_ps(t3, dt);
+			s = _mm_add_ps(s, ds);
+			t = _mm_add_ps(t, dt);
+			f = _mm_add_ps(f, df);
+			q = _mm_add_ps(q, dq);
 		}
 
 		if(iTFX != 1)
 		{
-			__m128 r0 = c0;
-			__m128 r1 = c1;
-			__m128 r2 = c2;
-			__m128 r3 = c3;
+			sl->r[0] = r; 
+			sl->g[0] = g; 
+			sl->b[0] = b; 
+			sl->a[0] = a;
 
-			_MM_TRANSPOSE4_PS(r0, r1, r2, r3); 
-
-			sl->r[0] = r0; 
-			sl->g[0] = r1; 
-			sl->b[0] = r2; 
-			sl->a[0] = r3;
-
-			c0 = _mm_add_ps(c0, dc);
-			c1 = _mm_add_ps(c1, dc);
-			c2 = _mm_add_ps(c2, dc);
-			c3 = _mm_add_ps(c3, dc);
+			r = _mm_add_ps(r, dr);
+			g = _mm_add_ps(g, dg);
+			b = _mm_add_ps(b, db);
+			a = _mm_add_ps(a, da);
 		}
 	}
 }
 
 template<int iZTST, int iZPSM, int bTAF>
-void GSRasterizer::DrawScanline(int top, int left, int right, Vertex& v, const Vertex& dv)	
+void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)	
 {
 	int steps = right - left;
 
 	if(steps > 1)
 	{
-		(this->*m_ps4f)(left, top, steps, v, dv);
+		(this->*m_ps4f)(left, top, steps, v);
 
 		if(iZTST)
 		{
@@ -830,7 +849,7 @@ void GSRasterizer::DrawScanline(int top, int left, int right, Vertex& v, const V
 	}
 	else
 	{
-		(this->*m_ps1f)(left, top, steps, v, dv);
+		(this->*m_ps1f)(left, top, steps, v);
 
 		if(iZTST)
 		{

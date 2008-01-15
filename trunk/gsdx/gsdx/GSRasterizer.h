@@ -51,6 +51,10 @@ class GSRasterizer
 		struct {union {struct {__m128i min, max;}; struct {__m128i and, or;};}; __m128i mask;} t; // [u] x 4 [v] x 4
 		__m128 afix, aref;
 		__m128i datm;
+
+		__m128 dz0123, dz;
+		__m128 dt1, dt2, dt3, ds, dt, df, dq;
+		__m128 dc1, dc2, dc3, dr, dg, db, da;
 	};
 
 protected:
@@ -68,9 +72,10 @@ protected:
 
 	void SetupTexture();
 	void SetupColumnOffset();
+	void SetupScanlineDelta(const Vertex& dv);
 
-	typedef void (GSRasterizer::*PrepareScanlinePtr)(int x, int y, int steps, const Vertex& v, const Vertex& dv);
-	typedef void (GSRasterizer::*DrawScanlinePtr)(int top, int left, int right, Vertex& v, const Vertex& dv);
+	typedef void (GSRasterizer::*PrepareScanlinePtr)(int x, int y, int steps, const Vertex& v);
+	typedef void (GSRasterizer::*DrawScanlinePtr)(int top, int left, int right, const Vertex& v);
 	typedef void (GSRasterizer::*DrawScanlineZPtr)(int steps);
 	typedef void (GSRasterizer::*DrawScanlineTPtr)(int steps);
 	typedef void (GSRasterizer::*DrawScanlineOMPtr)(int steps);
@@ -84,11 +89,11 @@ protected:
 	DrawScanlineOMPtr m_dsom[8][4][2][2][3], m_dsomf;
 
 	template<int iTFX, int bFST, int bFGE, int bZRW>
-	void PrepareScanline1(int x, int y, int steps, const Vertex& v, const Vertex& dv);
+	void PrepareScanline1(int x, int y, int steps, const Vertex& v);
 	template<int iTFX, int bFST, int bFGE, int bZRW>
-	void PrepareScanline4(int x, int y, int steps, const Vertex& v, const Vertex& dv);
+	void PrepareScanline4(int x, int y, int steps, const Vertex& v);
 	template<int iZTST, int iZPSM, int bTAF>
-	void DrawScanline(int top, int left, int right, Vertex& v, const Vertex& dv);
+	void DrawScanline(int top, int left, int right, const Vertex& v);
 	template<int iTFX, bool bTCC, int bLTF, int bFST>
 	void DrawScanlineT(int steps);
 	template<int iFPSM, int iZPSM, int bRFB, int bDATE, int iABE>
