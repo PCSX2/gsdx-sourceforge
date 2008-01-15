@@ -638,6 +638,10 @@ void GSRasterizer::SetupScanlineDelta(const Vertex& dv)
 	m_slenv->df = df;
 	m_slenv->dq = dq;
 
+	m_slenv->dc1 = dv.c;
+	m_slenv->dc2 = dv.c * Scalar(2);
+	m_slenv->dc3 = dv.c * Scalar(3);
+
 	__m128 dr = dv.c * Scalar(4);
 	__m128 dg = dr;
 	__m128 db = dr;
@@ -779,7 +783,7 @@ void GSRasterizer::PrepareScanline4(int x, int y, int steps, const Vertex& v)
 			if(iTFX != 4)
 			{
 				sl->u = s;
-				sl->v = t;
+				sl->v = t; 
 
 				if(!bFST)
 				{
@@ -895,6 +899,7 @@ void GSRasterizer::DrawScanlineT(int steps)
 	c[3] = _mm_setzero_ps();
 
 	__m128 aref = m_slenv->aref;
+	__m128i upmask = _mm_set_epi32(0x80808003, 0x80808002, 0x80808001, 0x80808000);
 
 	for(int j = 0; j < steps; j += 4, sl++)
 	{
@@ -997,10 +1002,21 @@ void GSRasterizer::DrawScanlineT(int steps)
 					FetchTexel(uv0.m128i_u16[i], uv1.m128i_u16[i + 4]);
 					FetchTexel(uv1.m128i_u16[i], uv1.m128i_u16[i + 4]);
 
+					#if _M_SSE >= 0x301
+
+					__m128 c00 = _mm_cvtepi32_ps(_mm_shuffle_epi8(_mm_cvtsi32_si128(ReadTexelNoFetch(uv0.m128i_u16[i], uv0.m128i_u16[i + 4])), upmask));
+					__m128 c01 = _mm_cvtepi32_ps(_mm_shuffle_epi8(_mm_cvtsi32_si128(ReadTexelNoFetch(uv1.m128i_u16[i], uv0.m128i_u16[i + 4])), upmask));
+					__m128 c10 = _mm_cvtepi32_ps(_mm_shuffle_epi8(_mm_cvtsi32_si128(ReadTexelNoFetch(uv0.m128i_u16[i], uv1.m128i_u16[i + 4])), upmask));
+					__m128 c11 = _mm_cvtepi32_ps(_mm_shuffle_epi8(_mm_cvtsi32_si128(ReadTexelNoFetch(uv1.m128i_u16[i], uv1.m128i_u16[i + 4])), upmask));
+
+					#else
+
 					__m128 c00 = Unpack(ReadTexelNoFetch(uv0.m128i_u16[i], uv0.m128i_u16[i + 4]));
 					__m128 c01 = Unpack(ReadTexelNoFetch(uv1.m128i_u16[i], uv0.m128i_u16[i + 4]));
 					__m128 c10 = Unpack(ReadTexelNoFetch(uv0.m128i_u16[i], uv1.m128i_u16[i + 4]));
 					__m128 c11 = Unpack(ReadTexelNoFetch(uv1.m128i_u16[i], uv1.m128i_u16[i + 4]));
+
+					#endif
 
 					c00 = Blend(c00, c01, _mm_set1_ps(uf.m128_f32[i]));
 					c10 = Blend(c10, c11, _mm_set1_ps(uf.m128_f32[i]));
@@ -1146,6 +1162,7 @@ void GSRasterizer::DrawScanlineOM(int steps)
 	int zpsm = GSLocalMemory::DecodeZPSM(iZPSM);
 
 	__m128i datm = m_slenv->datm; 
+	__m128 afix = m_slenv->afix;
 
 	Scanline* sl = m_sl;
 
@@ -1203,7 +1220,7 @@ void GSRasterizer::DrawScanlineOM(int steps)
 			sl->r[2] = _mm_setzero_ps();
 			sl->g[2] = _mm_setzero_ps();
 			sl->b[2] = _mm_setzero_ps();
-			sl->a[2] = m_slenv->afix;
+			sl->a[2] = afix;
 
 			r = _mm_add_ps(Modulate(_mm_sub_ps(sl->r[iALPHA_A], sl->r[iALPHA_B]), sl->a[iALPHA_C]), sl->r[iALPHA_D]);
 			g = _mm_add_ps(Modulate(_mm_sub_ps(sl->g[iALPHA_A], sl->g[iALPHA_B]), sl->a[iALPHA_C]), sl->g[iALPHA_D]);
