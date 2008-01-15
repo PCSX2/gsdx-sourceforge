@@ -32,10 +32,10 @@
 #endif
 
 //
-// GSVertexSWFP
+// GSVertexSW
 //
 
-__declspec(align(16)) union GSVertexSWFP
+__declspec(align(16)) union GSVertexSW
 {
 	class __declspec(novtable) Scalar
 	{
@@ -110,7 +110,7 @@ __declspec(align(16)) union GSVertexSWFP
 		Vector(Scalar s0, Scalar s1, Scalar s2, Scalar s3) {x = s0; y = s1; z = s2; q = s3;}
 		explicit Vector(DWORD dw) {*this = dw;}
 #if _M_SSE >= 0x200
-		Vector(__m128 f0123) {*this = f0123;}
+		explicit Vector(__m128 f0123) {*this = f0123;}
 #endif
 
 #if _M_SSE >= 0x200
@@ -121,27 +121,16 @@ __declspec(align(16)) union GSVertexSWFP
 		void operator = (__m128 f0123) {xyzq = f0123;}
 		operator __m128() const {return xyzq;}
 
+#if _M_SSE >= 0x301
+		__forceinline void operator = (DWORD dw) {xyzq = _mm_cvtepi32_ps(_mm_shuffle_epi8(_mm_cvtsi32_si128(dw), _mm_set_epi32(0x80808003, 0x80808002, 0x80808001, 0x80808000)));}
+#else
 		void operator = (DWORD dw) {__m128i zero = _mm_setzero_si128(); xyzq = _mm_cvtepi32_ps(_mm_unpacklo_epi16(_mm_unpacklo_epi8(_mm_cvtsi32_si128(dw), zero), zero));}
+#endif
 		operator DWORD() const {__m128i r0 = _mm_cvttps_epi32(xyzq); r0 = _mm_packs_epi32(r0, r0); r0 = _mm_packus_epi16(r0, r0); return (DWORD)_mm_cvtsi128_si32(r0);}
 		operator UINT64() const {__m128i r0 = _mm_cvttps_epi32(xyzq); r0 = _mm_packs_epi32(r0, r0); return *(UINT64*)&r0;}
 
 		void sat() {xyzq = _mm_min_ps(_mm_max_ps(xyzq, _mm_setzero_ps()), _mm_set1_ps(255));}
 		void rcp() {xyzq = _mm_rcp_ps(xyzq);}
-
-		__forceinline Vector floor()
-		{
-			const __m128i _80000000 = _mm_set1_epi32(0x80000000);
-			const __m128i _4b000000 = _mm_set1_epi32(0x4b000000);
-			const __m128i _3f800000 = _mm_set1_epi32(0x3f800000);
-
-			__m128 sign = _mm_and_ps(xyzq, *(__m128*)&_80000000);
-			__m128 r0 = _mm_or_ps(sign, *(__m128*)&_4b000000);
-			__m128 r1 = _mm_sub_ps(_mm_add_ps(xyzq, r0), r0);
-			__m128 r2 = _mm_sub_ps(r1, xyzq);
-			__m128 r3 = _mm_and_ps(_mm_cmpnle_ps(r2, sign), *(__m128*)&_3f800000);
-			__m128 r4 = _mm_sub_ps(r1, r3);
-			return r4;
-		}
 
 		void operator += (const Vector& v) {xyzq = _mm_add_ps(xyzq, v);}
 		void operator -= (const Vector& v) {xyzq = _mm_sub_ps(xyzq, v);}
@@ -150,10 +139,10 @@ __declspec(align(16)) union GSVertexSWFP
 
 		void lnuv(short* uv)
 		{
-			__m128i r0 = _mm_cvttps_epi32(xyzq);
-			r0 = _mm_unpacklo_epi32(r0, r0);
-			r0 = _mm_packs_epi32(r0, r0);
-			r0 = _mm_add_epi16(r0, _mm_set1_epi32(0x00010000));
+			__m128i r0 = _mm_cvttps_epi32(xyzq); // u v _ _ (should be floor instead of truncate, u/v might be negative rarely)
+			r0 = _mm_unpacklo_epi32(r0, r0); // u u v v 
+			r0 = _mm_packs_epi32(r0, r0); // u u v v u u v v 
+			r0 = _mm_add_epi16(r0, _mm_set1_epi32(0x00010000)); // u u+1 v v+1 u u+1 v v+1
 			*((__m128i*)uv) = r0;
 		}
 
@@ -223,96 +212,110 @@ __declspec(align(16)) union GSVertexSWFP
 	struct {__declspec(align(16)) Vector sv[3];};
 	struct {__declspec(align(16)) Scalar s[12];};
 
-	GSVertexSWFP() {}
-	GSVertexSWFP(const GSVertexSWFP& v) {*this = v;}
+	GSVertexSW() {}
+	GSVertexSW(const GSVertexSW& v) {*this = v;}
 
-	void operator = (const GSVertexSWFP& v) {c = v.c; p = v.p; t = v.t;}
-	void operator += (const GSVertexSWFP& v) {c += v.c; p += v.p; t += v.t;}
+	void operator = (const GSVertexSW& v) {c = v.c; p = v.p; t = v.t;}
+	void operator += (const GSVertexSW& v) {c += v.c; p += v.p; t += v.t;}
 
 	operator CPoint() const {return CPoint((int)p.x, (int)p.y);}
 
-	__forceinline DWORD GetZ() const 
-	{
-		return (DWORD)(float)p.z;
-	}
+	friend GSVertexSW operator + (const GSVertexSW& v1, const GSVertexSW& v2);
+	friend GSVertexSW operator - (const GSVertexSW& v1, const GSVertexSW& v2);
+	friend GSVertexSW operator * (const GSVertexSW& v, Scalar s);
+	friend GSVertexSW operator / (const GSVertexSW& v, Scalar s);
 
-	friend GSVertexSWFP operator + (const GSVertexSWFP& v1, const GSVertexSWFP& v2);
-	friend GSVertexSWFP operator - (const GSVertexSWFP& v1, const GSVertexSWFP& v2);
-	friend GSVertexSWFP operator * (const GSVertexSWFP& v, Scalar s);
-	friend GSVertexSWFP operator / (const GSVertexSWFP& v, Scalar s);
-
-	static void Exchange(GSVertexSWFP* RESTRICT v1, GSVertexSWFP* RESTRICT v2)
+	static void Exchange(GSVertexSW* RESTRICT v1, GSVertexSW* RESTRICT v2)
 	{
 		Vector c = v1->c, p = v1->p, t = v1->t;
 		v1->c = v2->c; v1->p = v2->p; v1->t = v2->t;
 		v2->c = c; v2->p = p; v2->t = t;
 	}
+
+#if _M_SSE >= 0x200
+
+	__forceinline DWORD GetZ() const 
+	{
+		__m128 r0 = _mm_shuffle_ps(p.xyzq, p.xyzq, _MM_SHUFFLE(2, 2, 2, 2));
+		r0 = _mm_mul_ps(r0, _mm_set1_ps(0.5f));
+		__m128i r1 = _mm_cvttps_epi32(r0);
+		r1 = _mm_slli_epi32(r1, 1); // lsb lost
+		return (DWORD)_mm_cvtsi128_si32(r1);			
+	}
+
+#else
+	__forceinline DWORD GetZ() const 
+	{
+		return (DWORD)(float)p.z;
+	}
+
+#endif
 };
 
 #if _M_SSE >= 0x200
 
-__forceinline GSVertexSWFP::Vector operator + (const GSVertexSWFP::Vector& v1, const GSVertexSWFP::Vector& v2) {return GSVertexSWFP::Vector(_mm_add_ps(v1, v2));}
-__forceinline GSVertexSWFP::Vector operator - (const GSVertexSWFP::Vector& v1, const GSVertexSWFP::Vector& v2) {return GSVertexSWFP::Vector(_mm_sub_ps(v1, v2));}
-__forceinline GSVertexSWFP::Vector operator * (const GSVertexSWFP::Vector& v1, const GSVertexSWFP::Vector& v2) {return GSVertexSWFP::Vector(_mm_mul_ps(v1, v2));}
-__forceinline GSVertexSWFP::Vector operator / (const GSVertexSWFP::Vector& v1, const GSVertexSWFP::Vector& v2) {return GSVertexSWFP::Vector(_mm_div_ps(v1, v2));}
+__forceinline GSVertexSW::Vector operator + (const GSVertexSW::Vector& v1, const GSVertexSW::Vector& v2) {return GSVertexSW::Vector(_mm_add_ps(v1, v2));}
+__forceinline GSVertexSW::Vector operator - (const GSVertexSW::Vector& v1, const GSVertexSW::Vector& v2) {return GSVertexSW::Vector(_mm_sub_ps(v1, v2));}
+__forceinline GSVertexSW::Vector operator * (const GSVertexSW::Vector& v1, const GSVertexSW::Vector& v2) {return GSVertexSW::Vector(_mm_mul_ps(v1, v2));}
+__forceinline GSVertexSW::Vector operator / (const GSVertexSW::Vector& v1, const GSVertexSW::Vector& v2) {return GSVertexSW::Vector(_mm_div_ps(v1, v2));}
 
-__forceinline GSVertexSWFP::Vector operator + (const GSVertexSWFP::Vector& v, GSVertexSWFP::Scalar s) {return GSVertexSWFP::Vector(_mm_add_ps(v, _mm_set1_ps(s)));}
-__forceinline GSVertexSWFP::Vector operator - (const GSVertexSWFP::Vector& v, GSVertexSWFP::Scalar s) {return GSVertexSWFP::Vector(_mm_sub_ps(v, _mm_set1_ps(s)));}
-__forceinline GSVertexSWFP::Vector operator * (const GSVertexSWFP::Vector& v, GSVertexSWFP::Scalar s) {return GSVertexSWFP::Vector(_mm_mul_ps(v, _mm_set1_ps(s)));}
-__forceinline GSVertexSWFP::Vector operator / (const GSVertexSWFP::Vector& v, GSVertexSWFP::Scalar s) {return GSVertexSWFP::Vector(_mm_div_ps(v, _mm_set1_ps(s)));}
+__forceinline GSVertexSW::Vector operator + (const GSVertexSW::Vector& v, GSVertexSW::Scalar s) {return GSVertexSW::Vector(_mm_add_ps(v, _mm_set1_ps(s)));}
+__forceinline GSVertexSW::Vector operator - (const GSVertexSW::Vector& v, GSVertexSW::Scalar s) {return GSVertexSW::Vector(_mm_sub_ps(v, _mm_set1_ps(s)));}
+__forceinline GSVertexSW::Vector operator * (const GSVertexSW::Vector& v, GSVertexSW::Scalar s) {return GSVertexSW::Vector(_mm_mul_ps(v, _mm_set1_ps(s)));}
+__forceinline GSVertexSW::Vector operator / (const GSVertexSW::Vector& v, GSVertexSW::Scalar s) {return GSVertexSW::Vector(_mm_div_ps(v, _mm_set1_ps(s)));}
 
-__forceinline GSVertexSWFP::Vector operator << (const GSVertexSWFP::Vector& v, int i) {return GSVertexSWFP::Vector(_mm_mul_ps(v, _mm_set1_ps((float)(1 << i))));}
-__forceinline GSVertexSWFP::Vector operator >> (const GSVertexSWFP::Vector& v, int i) {return GSVertexSWFP::Vector(_mm_mul_ps(v, _mm_set1_ps(1.0f / (1 << i))));}
+__forceinline GSVertexSW::Vector operator << (const GSVertexSW::Vector& v, int i) {return GSVertexSW::Vector(_mm_mul_ps(v, _mm_set1_ps((float)(1 << i))));}
+__forceinline GSVertexSW::Vector operator >> (const GSVertexSW::Vector& v, int i) {return GSVertexSW::Vector(_mm_mul_ps(v, _mm_set1_ps(1.0f / (1 << i))));}
 
 #else
 
-__forceinline GSVertexSWFP::Vector operator + (const GSVertexSWFP::Vector& v1, const GSVertexSWFP::Vector& v2) {return GSVertexSWFP::Vector(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z, v1.q + v2.q);}
-__forceinline GSVertexSWFP::Vector operator - (const GSVertexSWFP::Vector& v1, const GSVertexSWFP::Vector& v2) {return GSVertexSWFP::Vector(v1.x - v2.x, v1.y - v2.y, v1.z - v2.z, v1.q - v2.q);}
-__forceinline GSVertexSWFP::Vector operator * (const GSVertexSWFP::Vector& v1, const GSVertexSWFP::Vector& v2) {return GSVertexSWFP::Vector(v1.x * v2.x, v1.y * v2.y, v1.z * v2.z, v1.q * v2.q);}
-__forceinline GSVertexSWFP::Vector operator / (const GSVertexSWFP::Vector& v1, const GSVertexSWFP::Vector& v2) {return GSVertexSWFP::Vector(v1.x / v2.x, v1.y / v2.y, v1.z / v2.z, v1.q / v2.q);}
+__forceinline GSVertexSW::Vector operator + (const GSVertexSW::Vector& v1, const GSVertexSW::Vector& v2) {return GSVertexSW::Vector(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z, v1.q + v2.q);}
+__forceinline GSVertexSW::Vector operator - (const GSVertexSW::Vector& v1, const GSVertexSW::Vector& v2) {return GSVertexSW::Vector(v1.x - v2.x, v1.y - v2.y, v1.z - v2.z, v1.q - v2.q);}
+__forceinline GSVertexSW::Vector operator * (const GSVertexSW::Vector& v1, const GSVertexSW::Vector& v2) {return GSVertexSW::Vector(v1.x * v2.x, v1.y * v2.y, v1.z * v2.z, v1.q * v2.q);}
+__forceinline GSVertexSW::Vector operator / (const GSVertexSW::Vector& v1, const GSVertexSW::Vector& v2) {return GSVertexSW::Vector(v1.x / v2.x, v1.y / v2.y, v1.z / v2.z, v1.q / v2.q);}
 
-__forceinline GSVertexSWFP::Vector operator + (const GSVertexSWFP::Vector& v, GSVertexSWFP::Scalar s) {return GSVertexSWFP::Vector(v.x + s, v.y + s, v.z + s, v.q + s);}
-__forceinline GSVertexSWFP::Vector operator - (const GSVertexSWFP::Vector& v, GSVertexSWFP::Scalar s) {return GSVertexSWFP::Vector(v.x - s, v.y - s, v.z - s, v.q - s);}
-__forceinline GSVertexSWFP::Vector operator * (const GSVertexSWFP::Vector& v, GSVertexSWFP::Scalar s) {return GSVertexSWFP::Vector(v.x * s, v.y * s, v.z * s, v.q * s);}
-__forceinline GSVertexSWFP::Vector operator / (const GSVertexSWFP::Vector& v, GSVertexSWFP::Scalar s) {return GSVertexSWFP::Vector(v.x / s, v.y / s, v.z / s, v.q / s);}
+__forceinline GSVertexSW::Vector operator + (const GSVertexSW::Vector& v, GSVertexSW::Scalar s) {return GSVertexSW::Vector(v.x + s, v.y + s, v.z + s, v.q + s);}
+__forceinline GSVertexSW::Vector operator - (const GSVertexSW::Vector& v, GSVertexSW::Scalar s) {return GSVertexSW::Vector(v.x - s, v.y - s, v.z - s, v.q - s);}
+__forceinline GSVertexSW::Vector operator * (const GSVertexSW::Vector& v, GSVertexSW::Scalar s) {return GSVertexSW::Vector(v.x * s, v.y * s, v.z * s, v.q * s);}
+__forceinline GSVertexSW::Vector operator / (const GSVertexSW::Vector& v, GSVertexSW::Scalar s) {return GSVertexSW::Vector(v.x / s, v.y / s, v.z / s, v.q / s);}
 
-__forceinline GSVertexSWFP::Vector operator << (const GSVertexSWFP::Vector& v, int i) {return GSVertexSWFP::Vector(v.x << i, v.y << i, v.z << i, v.q << i);}
-__forceinline GSVertexSWFP::Vector operator >> (const GSVertexSWFP::Vector& v, int i) {return GSVertexSWFP::Vector(v.x >> i, v.y >> i, v.z >> i, v.q >> i);}
+__forceinline GSVertexSW::Vector operator << (const GSVertexSW::Vector& v, int i) {return GSVertexSW::Vector(v.x << i, v.y << i, v.z << i, v.q << i);}
+__forceinline GSVertexSW::Vector operator >> (const GSVertexSW::Vector& v, int i) {return GSVertexSW::Vector(v.x >> i, v.y >> i, v.z >> i, v.q >> i);}
 
 #endif
 
-__forceinline GSVertexSWFP operator + (const GSVertexSWFP& v1, const GSVertexSWFP& v2)
+__forceinline GSVertexSW operator + (const GSVertexSW& v1, const GSVertexSW& v2)
 {
-	GSVertexSWFP v0;
+	GSVertexSW v0;
 	v0.c = v1.c + v2.c;
 	v0.p = v1.p + v2.p;
 	v0.t = v1.t + v2.t;
 	return v0;
 }
 
-__forceinline GSVertexSWFP operator - (const GSVertexSWFP& v1, const GSVertexSWFP& v2)
+__forceinline GSVertexSW operator - (const GSVertexSW& v1, const GSVertexSW& v2)
 {
-	GSVertexSWFP v0;
+	GSVertexSW v0;
 	v0.c = v1.c - v2.c;
 	v0.p = v1.p - v2.p;
 	v0.t = v1.t - v2.t;
 	return v0;
 }
 
-__forceinline GSVertexSWFP operator * (const GSVertexSWFP& v, GSVertexSWFP::Scalar s)
+__forceinline GSVertexSW operator * (const GSVertexSW& v, GSVertexSW::Scalar s)
 {
-	GSVertexSWFP v0;
-	GSVertexSWFP::Vector vs(s);
+	GSVertexSW v0;
+	GSVertexSW::Vector vs(s);
 	v0.c = v.c * vs;
 	v0.p = v.p * vs;
 	v0.t = v.t * vs;
 	return v0;
 }
 
-__forceinline GSVertexSWFP operator / (const GSVertexSWFP& v, GSVertexSWFP::Scalar s)
+__forceinline GSVertexSW operator / (const GSVertexSW& v, GSVertexSW::Scalar s)
 {
-	GSVertexSWFP v0;
-	GSVertexSWFP::Vector vs(s);
+	GSVertexSW v0;
+	GSVertexSW::Vector vs(s);
 	v0.c = v.c / vs;
 	v0.p = v.p / vs;
 	v0.t = v.t / vs;
