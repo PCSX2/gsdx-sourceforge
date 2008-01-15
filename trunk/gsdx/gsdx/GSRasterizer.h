@@ -38,8 +38,10 @@ class GSRasterizer
 
 	struct Scanline
 	{
-		__m128i fa, fm, t, za, zm, z;
-		__m128 u, v, q, r[3], g[3], b[3], a[3], f;
+		__m128i fa, fm, t;
+		__m128i za, zm, z;
+		__m128 u, v, q, f;
+		__m128 r[3], g[3], b[3], a[3];
 	};
 
 	struct ScanlineEnv
