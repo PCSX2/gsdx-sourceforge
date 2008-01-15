@@ -171,10 +171,8 @@ void GSTextureCache9::GSRenderTarget9::Read(CRect r)
 				}
 			}
 		}
-		else
+		else if(m_TEX0.PSM == PSM_PSMCT16 || m_TEX0.PSM == PSM_PSMCT16S)
 		{
-			GSLocalMemory::writeFrameAddr wfa = GSLocalMemory::m_psm[m_TEX0.PSM].wfa;
-
 			for(int y = r.top; y < r.bottom; y++, bits += pitch)
 			{
 				DWORD addr = pa(0, y, bp, bw);
@@ -182,9 +180,13 @@ void GSTextureCache9::GSRenderTarget9::Read(CRect r)
 
 				for(int x = r.left, i = 0; x < r.right; x++, i++)
 				{
-					(m_renderer->m_mem.*wfa)(addr + offset[x], ((DWORD*)bits)[i]);
+					m_renderer->m_mem.writeFrame16(addr + offset[x], ((DWORD*)bits)[i]);
 				}
 			}
+		}
+		else
+		{
+			ASSERT(0);
 		}
 
 		offscreen.Unmap();

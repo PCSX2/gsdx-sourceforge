@@ -172,7 +172,7 @@ void GSTextureCache10::GSRenderTargetHW10::Read(CRect r)
 				}
 			}
 		}
-		else if(m_TEX0.PSM == PSM_PSMCT16)
+		else if(m_TEX0.PSM == PSM_PSMCT16 || m_TEX0.PSM == PSM_PSMCT16S)
 		{
 			for(int y = r.top; y < r.bottom; y++, bits += pitch)
 			{
@@ -182,19 +182,6 @@ void GSTextureCache10::GSRenderTargetHW10::Read(CRect r)
 				for(int x = r.left, i = 0; x < r.right; x++, i++)
 				{
 					m_renderer->m_mem.writePixel16(addr + offset[x], ((WORD*)bits)[i]);
-				}
-			}
-		}
-		else if(m_TEX0.PSM == PSM_PSMCT16S)
-		{
-			for(int y = r.top; y < r.bottom; y++, bits += pitch)
-			{
-				DWORD addr = pa(0, y, bp, bw);
-				int* offset = GSLocalMemory::m_psm[m_TEX0.PSM].rowOffset[y & 7];
-
-				for(int x = r.left, i = 0; x < r.right; x++, i++)
-				{
-					m_renderer->m_mem.writePixel16S(addr + offset[x], ((WORD*)bits)[i]);
 				}
 			}
 		}

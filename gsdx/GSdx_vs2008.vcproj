@@ -814,6 +814,14 @@
 				RelativePath=".\GSdx.cpp"
 				>
 				<FileConfiguration
+					Name="Release|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AssemblerOutput="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
 					Name="Release SSSE3|Win32"
 					>
 					<Tool
@@ -849,6 +857,18 @@
 			<File
 				RelativePath=".\GSPerfMon.cpp"
 				>
+			</File>
+			<File
+				RelativePath=".\GSRasterizer.cpp"
+				>
+				<FileConfiguration
+					Name="Release SSSE3|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AssemblerOutput="4"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\GSRenderer.cpp"
@@ -1438,6 +1458,10 @@
 			</File>
 			<File
 				RelativePath=".\GSPerfMon.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSRasterizer.h"
 				>
 			</File>
 			<File

@@ -256,7 +256,7 @@ GSLocalMemory::GSLocalMemory()
 	m_psm[PSM_PSMCT32].wpa = &GSLocalMemory::writePixel32;
 	m_psm[PSM_PSMCT24].wpa = &GSLocalMemory::writePixel24;
 	m_psm[PSM_PSMCT16].wpa = &GSLocalMemory::writePixel16;
-	m_psm[PSM_PSMCT16S].wpa = &GSLocalMemory::writePixel16S;
+	m_psm[PSM_PSMCT16S].wpa = &GSLocalMemory::writePixel16;
 	m_psm[PSM_PSMT8].wpa = &GSLocalMemory::writePixel8;
 	m_psm[PSM_PSMT4].wpa = &GSLocalMemory::writePixel4;
 	m_psm[PSM_PSMT8H].wpa = &GSLocalMemory::writePixel8H;
@@ -265,7 +265,7 @@ GSLocalMemory::GSLocalMemory()
 	m_psm[PSM_PSMZ32].wpa = &GSLocalMemory::writePixel32;
 	m_psm[PSM_PSMZ24].wpa = &GSLocalMemory::writePixel24;
 	m_psm[PSM_PSMZ16].wpa = &GSLocalMemory::writePixel16;
-	m_psm[PSM_PSMZ16S].wpa = &GSLocalMemory::writePixel16S;
+	m_psm[PSM_PSMZ16S].wpa = &GSLocalMemory::writePixel16;
 
 	m_psm[PSM_PSMCT24].rt = &GSLocalMemory::readTexel24;
 	m_psm[PSM_PSMCT16].rt = &GSLocalMemory::readTexel16;
@@ -282,7 +282,7 @@ GSLocalMemory::GSLocalMemory()
 
 	m_psm[PSM_PSMCT24].rta = &GSLocalMemory::readTexel24;
 	m_psm[PSM_PSMCT16].rta = &GSLocalMemory::readTexel16;
-	m_psm[PSM_PSMCT16S].rta = &GSLocalMemory::readTexel16S;
+	m_psm[PSM_PSMCT16S].rta = &GSLocalMemory::readTexel16;
 	m_psm[PSM_PSMT8].rta = &GSLocalMemory::readTexel8;
 	m_psm[PSM_PSMT4].rta = &GSLocalMemory::readTexel4;
 	m_psm[PSM_PSMT8H].rta = &GSLocalMemory::readTexel8H;
@@ -290,14 +290,14 @@ GSLocalMemory::GSLocalMemory()
 	m_psm[PSM_PSMT4HH].rta = &GSLocalMemory::readTexel4HH;
 	m_psm[PSM_PSMZ24].rta = &GSLocalMemory::readTexel24;
 	m_psm[PSM_PSMZ16].rta = &GSLocalMemory::readTexel16;
-	m_psm[PSM_PSMZ16S].rta = &GSLocalMemory::readTexel16S;
+	m_psm[PSM_PSMZ16S].rta = &GSLocalMemory::readTexel16;
 
 	m_psm[PSM_PSMCT24].wfa = &GSLocalMemory::writePixel24;
 	m_psm[PSM_PSMCT16].wfa = &GSLocalMemory::writeFrame16;
-	m_psm[PSM_PSMCT16S].wfa = &GSLocalMemory::writeFrame16S;
+	m_psm[PSM_PSMCT16S].wfa = &GSLocalMemory::writeFrame16;
 	m_psm[PSM_PSMZ24].wfa = &GSLocalMemory::writePixel24;
 	m_psm[PSM_PSMZ16].wfa = &GSLocalMemory::writeFrame16;
-	m_psm[PSM_PSMZ16S].wfa = &GSLocalMemory::writeFrame16S;
+	m_psm[PSM_PSMZ16S].wfa = &GSLocalMemory::writeFrame16;
 
 	m_psm[PSM_PSMCT16].rtP = &GSLocalMemory::readTexel16P;
 	m_psm[PSM_PSMCT16S].rtP = &GSLocalMemory::readTexel16SP;

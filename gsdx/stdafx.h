@@ -44,8 +44,6 @@
 #include <d3dx9.h>
 #include <d3d10.h>
 #include <d3dx10.h>
-#include <xmmintrin.h>
-#include <emmintrin.h>
 #include <math.h>
 
 #define countof(a) (sizeof(a)/sizeof(a[0]))
@@ -60,4 +58,13 @@
 
 #if !defined(_M_SSE) && (defined(_M_AMD64) || _M_IX86_FP >= 2)
 #define _M_SSE 0x200
+#endif
+
+#if _M_SSE >= 0x200
+#include <xmmintrin.h>
+#include <emmintrin.h>
+#endif
+
+#if _M_SSE >= 0x300
+#include <tmmintrin.h>
 #endif

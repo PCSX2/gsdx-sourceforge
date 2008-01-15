@@ -204,10 +204,10 @@ EXPORT_C_(INT32) __GSopen(void* dsp, char* title, int mt, int renderer)
 	{
 	default: 
 	case 0: s_gs = new GSRendererHW9(s_basemem, !!mt, s_irq, nloophack, interlace, aspectratio, filter, vsync); break;
-	case 1: s_gs = new GSRendererSWFP<GSDevice9>(s_basemem, !!mt, s_irq, nloophack, interlace, aspectratio, filter, vsync); break;
+	case 1: s_gs = new GSRendererSW<GSDevice9>(s_basemem, !!mt, s_irq, nloophack, interlace, aspectratio, filter, vsync); break;
 	case 2: s_gs = new GSRendererNull<GSDevice9>(s_basemem, !!mt, s_irq, nloophack, interlace, aspectratio, filter, vsync); break;
 	case 3: s_gs = new GSRendererHW10(s_basemem, !!mt, s_irq, nloophack, interlace, aspectratio, filter, vsync); break;
-	case 4: s_gs = new GSRendererSWFP<GSDevice10>(s_basemem, !!mt, s_irq, nloophack, interlace, aspectratio, filter, vsync); break;
+	case 4: s_gs = new GSRendererSW<GSDevice10>(s_basemem, !!mt, s_irq, nloophack, interlace, aspectratio, filter, vsync); break;
 	case 5: s_gs = new GSRendererNull<GSDevice10>(s_basemem, !!mt, s_irq, nloophack, interlace, aspectratio, filter, vsync); break;
 	}
 
@@ -394,7 +394,7 @@ EXPORT_C GSReplay(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow)
 
 		long start = ftell(fp);
 
-		int index, size, addr;
+		unsigned int index, size, addr;
 
 		GSvsync(1);
 
