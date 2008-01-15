@@ -138,9 +138,8 @@ protected:
 
 	__forceinline __m128 Unpack(DWORD c)
 	{
-		__m128i zero = _mm_setzero_si128(); 
 		__m128i r0 = _mm_cvtsi32_si128(c);
-		r0 = _mm_unpacklo_epi16(_mm_unpacklo_epi8(r0, zero), zero);
+		r0 = _mm_unpacklo_epi16(_mm_unpacklo_epi8(r0, _mm_setzero_si128()), _mm_setzero_si128());
 		return _mm_cvtepi32_ps(r0);
 	}
 
