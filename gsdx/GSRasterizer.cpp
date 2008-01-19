@@ -30,124 +30,47 @@ GSRasterizer::GSRasterizer(GSState* state)
 	m_cache = (DWORD*)_aligned_malloc(1024 * 1024 * sizeof(m_cache[0]), 16);
 	m_pagehash = 0;
 
-	m_sl = (Scanline*)_aligned_malloc(sizeof(Scanline) * 1024, 16);
 	m_slenv = (ScanlineEnv*)_aligned_malloc(sizeof(ScanlineEnv), 16);
 
 	InvalidateTextureCache();
 
 	// w00t :P
 
-	#define InitPS_ZRW(iTFX, bFST, bFGE, bZRW) \
-		m_ps1[iTFX][bFST][bFGE][bZRW] = &GSRasterizer::PrepareScanline1<iTFX, bFST, bFGE, bZRW>; \
-		m_ps4[iTFX][bFST][bFGE][bZRW] = &GSRasterizer::PrepareScanline4<iTFX, bFST, bFGE, bZRW>; \
+	#define InitDS_ABE(iFPSM, iZPSM, iZTST, iABE) \
+		m_ds[iFPSM][iZPSM][iZTST][iABE] = &GSRasterizer::DrawScanline<iFPSM, iZPSM, iZTST, iABE>; \
 
-	#define InitPS_FGE(iTFX, bFST, bFGE) \
-		InitPS_ZRW(iTFX, bFST, bFGE, 0) \
-		InitPS_ZRW(iTFX, bFST, bFGE, 1) \
+	#define InitDS_ZTST(iFPSM, iZPSM, iZTST) \
+		InitDS_ABE(iFPSM, iZPSM, iZTST, 0) \
+		InitDS_ABE(iFPSM, iZPSM, iZTST, 1) \
+		InitDS_ABE(iFPSM, iZPSM, iZTST, 2) \
 
-	#define InitPS_FST(iTFX, bFST) \
-		InitPS_FGE(iTFX, bFST, 0) \
-		InitPS_FGE(iTFX, bFST, 1) \
+	#define InitDS_ZPSM(iFPSM, iZPSM) \
+		InitDS_ZTST(iFPSM, iZPSM, 0) \
+		InitDS_ZTST(iFPSM, iZPSM, 1) \
+		InitDS_ZTST(iFPSM, iZPSM, 2) \
 
-	#define InitPS_TFX(iTFX) \
-		InitPS_FST(iTFX, 0) \
-		InitPS_FST(iTFX, 1) \
-
-	#define InitPS() \
-		InitPS_TFX(0) \
-		InitPS_TFX(1) \
-		InitPS_TFX(2) \
-		InitPS_TFX(3) \
-		InitPS_FGE(4, 0, 0) \
-		InitPS_FGE(4, 0, 1) \
-
-	InitPS();
-
-	#define InitDS_TAF(iZTST, iZPSM, bTAF) \
-		m_ds[iZTST][iZPSM][bTAF] = &GSRasterizer::DrawScanline<iZTST, iZPSM, bTAF>; \
-
-	#define InitDS_ZPSM(iZTST, iZPSM) \
-		InitDS_TAF(iZTST, iZPSM, 0) \
-		InitDS_TAF(iZTST, iZPSM, 1) \
-
-	#define InitDS_ZTST(iZTST) \
-		InitDS_ZPSM(iZTST, 0) \
-		InitDS_ZPSM(iZTST, 1) \
-		InitDS_ZPSM(iZTST, 2) \
-		InitDS_ZPSM(iZTST, 3) \
+	#define InitDS_FPSM(iFPSM) \
+		InitDS_ZPSM(iFPSM, 0) \
+		InitDS_ZPSM(iFPSM, 1) \
+		InitDS_ZPSM(iFPSM, 2) \
+		InitDS_ZPSM(iFPSM, 3) \
 
 	#define InitDS() \
-		InitDS_ZTST(0) \
-		InitDS_ZTST(1) \
-		InitDS_ZTST(2) \
+		InitDS_FPSM(0) \
+		InitDS_FPSM(1) \
+		InitDS_FPSM(2) \
+		InitDS_FPSM(3) \
+		InitDS_FPSM(4) \
+		InitDS_FPSM(5) \
+		InitDS_FPSM(6) \
+		InitDS_FPSM(7) \
 
 	InitDS();
-
-	#define InitDST_FST(iTFX, bTCC, bLTF, bFST) \
-		m_dst[iTFX][bTCC][bLTF][bFST] = &GSRasterizer::DrawScanlineT<iTFX, bTCC, bLTF, bFST>; \
-
-	#define InitDST_LTF(iTFX, bTCC, bLTF) \
-		InitDST_FST(iTFX, bTCC, bLTF, 0) \
-		InitDST_FST(iTFX, bTCC, bLTF, 1) \
-
-	#define InitDST_TCC(iTFX, bTCC) \
-		InitDST_LTF(iTFX, bTCC, 0) \
-		InitDST_LTF(iTFX, bTCC, 1) \
-
-	#define InitDST_TFX(iTFX) \
-		InitDST_TCC(iTFX, 0) \
-		InitDST_TCC(iTFX, 1) \
-
-	#define InitDST() \
-		InitDST_TFX(0) \
-		InitDST_TFX(1) \
-		InitDST_TFX(2) \
-		InitDST_TFX(3) \
-		InitDST_LTF(4, 0, 0) \
-
-	InitDST();
-
-	#define InitDSOM_ABE(iFPSM, iZPSM, bRFB, bDATE, iABE) \
-		m_dsom[iFPSM][iZPSM][bRFB][bDATE][iABE] = &GSRasterizer::DrawScanlineOM<iFPSM, iZPSM, bRFB, bDATE, iABE>; \
-
-	#define InitDSOM_DATE(iFPSM, iZPSM, bRFB, bDATE) \
-		InitDSOM_ABE(iFPSM, iZPSM, bRFB, bDATE, 0) \
-		InitDSOM_ABE(iFPSM, iZPSM, bRFB, bDATE, 1) \
-		InitDSOM_ABE(iFPSM, iZPSM, bRFB, bDATE, 2) \
-
-	#define InitDSOM_RFB(iFPSM, iZPSM, bRFB) \
-		InitDSOM_DATE(iFPSM, iZPSM, bRFB, 0) \
-		InitDSOM_DATE(iFPSM, iZPSM, bRFB, 1) \
-
-	#define InitDSOM_ZPSM(iFPSM, iZPSM) \
-		InitDSOM_RFB(iFPSM, iZPSM, 0) \
-		InitDSOM_RFB(iFPSM, iZPSM, 1) \
-
-	#define InitDSOM_FPSM(iFPSM) \
-		InitDSOM_ZPSM(iFPSM, 0) \
-		InitDSOM_ZPSM(iFPSM, 1) \
-		InitDSOM_ZPSM(iFPSM, 2) \
-		InitDSOM_ZPSM(iFPSM, 3) \
-
-	#define InitDSOM() \
-		InitDSOM_FPSM(0) \
-		InitDSOM_FPSM(1) \
-		InitDSOM_FPSM(2) \
-		InitDSOM_FPSM(3) \
-		InitDSOM_FPSM(4) \
-		InitDSOM_FPSM(5) \
-		InitDSOM_FPSM(6) \
-		InitDSOM_FPSM(7) \
-		InitDSOM_FPSM(8) \
-		InitDSOM_FPSM(9) \
-
-	InitDSOM();
 }
 
 GSRasterizer::~GSRasterizer()
 {
 	_aligned_free(m_cache);
-	_aligned_free(m_sl);
 	_aligned_free(m_slenv);
 
 	for(int i = 0, j = m_comap.GetSize(); i < j; i++)
@@ -163,6 +86,18 @@ void GSRasterizer::InvalidateTextureCache()
 	memset(m_page, ~0, sizeof(m_page));
 }
 
+// int iFPSM;
+// int iZPSM;
+// int iZTST;
+int bZRW;
+int iTFX, bTCC, bFST, bLTF;
+int bFGE;
+int iATST, iAFAIL;
+int bRFB;
+int bDATE;
+// int iABE;
+int iALPHA_A, iALPHA_B, iALPHA_C, iALPHA_D;
+
 void GSRasterizer::BeginDraw()
 {
 	GSDrawingEnvironment& env = m_state->m_env;
@@ -175,24 +110,23 @@ void GSRasterizer::BeginDraw()
 	m_scissor.bottom = min(context->SCISSOR.SCAY1 + 1, 4096);
 
 	int iFPSM = GSLocalMemory::EncodeFPSM(context->FRAME.PSM);
-	int iTFX = PRIM->TME ? (int)context->TEX0.TFX : 4;
-	int bTCC = 0;
-	int bFST = 0;
-	int bLTF = 0;
-	int bFGE = PRIM->FGE ? 1 : 0;
 	int iZPSM = GSLocalMemory::EncodeZPSM(context->ZBUF.PSM);
-	int bZRW = (context->DepthRead() || context->DepthWrite()) ? 1 : 0;
 	int iZTST = context->TEST.ZTE && context->TEST.ZTST > 0 ? context->TEST.ZTST - 1 : 0;
-	int iATST = context->TEST.ATE ? context->TEST.ATST : 1;
-	int iAFAIL = context->TEST.AFAIL;
-	int bTAF = PRIM->TME || context->TEST.ATE && context->TEST.ATST != 1 || PRIM->FGE;
-	int bRFB = m_state->PRIM->ABE || m_state->m_env.PABE.PABE || m_state->m_context->FRAME.FBMSK || m_state->m_context->TEST.ATE && m_state->m_context->TEST.ATST != 1 && m_state->m_context->TEST.AFAIL == 3;
-	int bDATE = context->TEST.DATE;
+	bZRW = (context->DepthRead() || context->DepthWrite()) ? 1 : 0;
+	iTFX = PRIM->TME ? (int)context->TEX0.TFX : 4;
+	bTCC = 0;
+	bFST = 0;
+	bLTF = 0;
+	bFGE = PRIM->FGE ? 1 : 0;
+	iATST = context->TEST.ATE ? context->TEST.ATST : 1;
+	iAFAIL = context->TEST.AFAIL;
+	bRFB = m_state->PRIM->ABE || m_state->m_env.PABE.PABE || m_state->m_context->FRAME.FBMSK || m_state->m_context->TEST.ATE && m_state->m_context->TEST.ATST != 1 && m_state->m_context->TEST.AFAIL == 3;
+	bDATE = context->TEST.DATE;
 	int iABE = env.PABE.PABE ? 2 : PRIM->ABE ? 1 : 0; // AA1 && prim == line
-	int iALPHA_A = 0;
-	int iALPHA_B = 0;
-	int iALPHA_C = 0;
-	int iALPHA_D = 0;
+	iALPHA_A = 0;
+	iALPHA_B = 0;
+	iALPHA_C = 0;
+	iALPHA_D = 0;
 
 	if(iTFX != 4)
 	{
@@ -208,19 +142,15 @@ void GSRasterizer::BeginDraw()
 
 	if(iABE)
 	{
-		iALPHA_A = min(context->ALPHA.A, 2);
-		iALPHA_B = min(context->ALPHA.B, 2);
-		iALPHA_C = min(context->ALPHA.C, 2);
-		iALPHA_D = min(context->ALPHA.D, 2);
+		iALPHA_A = context->ALPHA.A;
+		iALPHA_B = context->ALPHA.B;
+		iALPHA_C = context->ALPHA.C;
+		iALPHA_D = context->ALPHA.D;
 
 		if(iALPHA_A == iALPHA_B) iALPHA_C = 0;
 	}
 
-	m_ps1f = m_ps1[iTFX][bFST][bFGE][bZRW];
-	m_ps4f = m_ps4[iTFX][bFST][bFGE][bZRW];
-	m_dsf = m_ds[iZTST][iZPSM][bTAF];
-	m_dstf = m_dst[iTFX][bTCC][bLTF][bFST];
-	m_dsomf = m_dsom[iFPSM][iZPSM][bRFB][bDATE][iABE];
+	m_dsf = m_ds[iFPSM][iZPSM][iZTST][iABE];
 
 	m_slenv->fm = _mm_set1_epi32(context->FRAME.FBMSK);
 	m_slenv->zm = _mm_set1_epi32(context->ZBUF.ZMSK ? 0xffffffff : 0);
@@ -655,83 +585,20 @@ void GSRasterizer::SetupScanlineDelta(const Vertex& dv)
 	m_slenv->da = da;
 }
 
-template<int iTFX, int bFST, int bFGE, int bZRW>
-void GSRasterizer::PrepareScanline1(int x, int y, int steps, const Vertex& v)
+template<int iFPSM, int iZPSM, int iZTST, int iABE>
+void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)	
 {
-	Scanline* sl = m_sl;
+	int fpsm = GSLocalMemory::DecodeFPSM(iFPSM);
+	int zpsm = GSLocalMemory::DecodeZPSM(iZPSM);
 
-	sl->fa.m128i_u32[0] = m_fbco->addr[y].m128i_u32[0] + m_state->m_context->ftbl->rowOffset[y & 7][x];
-	sl->fm = m_slenv->fm;
-	sl->zm = m_slenv->zm;
-	sl->t = _mm_setzero_si128();
+	__m128i fa_base = m_fbco->addr[top];
+	int* fa_offset = &m_state->m_context->ftbl->rowOffset[top & 7][left];
 
-	if(bZRW)
-	{
-		__m128 r0 = v.p.xyzq;
+	__m128i za_base = m_zbco->addr[top];
+	int* za_offset = &m_state->m_context->ztbl->rowOffset[top & 7][left];
 
-		sl->za.m128i_u32[0] = m_zbco->addr[y].m128i_u32[0] + m_state->m_context->ztbl->rowOffset[y & 7][x];
-		// sl->z.m128i_u32[0] = (DWORD)r0.m128_f32[2];
-		sl->z = _mm_slli_epi32(_mm_cvttps_epi32(_mm_mul_ps(_mm_shuffle_ps(r0, r0, _MM_SHUFFLE(2, 2, 2, 2)), _mm_set1_ps(0.5f))), 1);
-	}
-
-	if(iTFX != 4 || bFGE)
-	{
-		if(iTFX != 4)
-		{
-			__m128 r0 = v.t.xyzq;
-
-			if(!bFST)
-			{
-				sl->q = _mm_shuffle_ps(r0, r0, _MM_SHUFFLE(3, 3, 3, 3));
-			}
-
-			sl->u = _mm_shuffle_ps(r0, r0, _MM_SHUFFLE(0, 0, 0, 0));
-			sl->v = _mm_shuffle_ps(r0, r0, _MM_SHUFFLE(1, 1, 1, 1));
-		}
-
-		if(bFGE)
-		{
-			__m128 r0 = v.t.xyzq;
-
-			sl->f = _mm_shuffle_ps(r0, r0, _MM_SHUFFLE(2, 2, 2, 2));
-		}
-	}
-
-	if(iTFX != 1)
-	{
-		__m128 r0 = v.c.xyzq;
-
-		sl->r[0] = _mm_shuffle_ps(r0, r0, _MM_SHUFFLE(0, 0, 0, 0));
-		sl->g[0] = _mm_shuffle_ps(r0, r0, _MM_SHUFFLE(1, 1, 1, 1));
-		sl->b[0] = _mm_shuffle_ps(r0, r0, _MM_SHUFFLE(2, 2, 2, 2));
-		sl->a[0] = _mm_shuffle_ps(r0, r0, _MM_SHUFFLE(3, 3, 3, 3));
-	}
-}
-
-template<int iTFX, int bFST, int bFGE, int bZRW>
-void GSRasterizer::PrepareScanline4(int x, int y, int steps, const Vertex& v)
-{
-	__m128i fa_base = m_fbco->addr[y];
-	int* fa_offset = &m_state->m_context->ftbl->rowOffset[y & 7][x];
-
-	__m128i za_base = m_zbco->addr[y];
-	int* za_offset = &m_state->m_context->ztbl->rowOffset[y & 7][x];
-
-	__m128i fm =  m_slenv->fm;
-	__m128i zm =  m_slenv->zm;
-
-	//
-
-	__m128 z;
-	__m128 dz;
-
-	if(bZRW)
-	{
-		z = _mm_add_ps(_mm_shuffle_ps(v.p, v.p, _MM_SHUFFLE(2, 2, 2, 2)), m_slenv->dz0123);
-		dz = m_slenv->dz;
-	}
-
-	//
+	__m128 z = _mm_add_ps(_mm_shuffle_ps(v.p, v.p, _MM_SHUFFLE(2, 2, 2, 2)), m_slenv->dz0123);
+	__m128 dz = m_slenv->dz;
 
 	__m128 s = v.t;
 	__m128 t = _mm_add_ps(v.t, m_slenv->dt1);
@@ -745,8 +612,6 @@ void GSRasterizer::PrepareScanline4(int x, int y, int steps, const Vertex& v)
 	__m128 df = m_slenv->df;
 	__m128 dq = m_slenv->dq;
 
-	//
-
 	__m128 r = v.c;
 	__m128 g = _mm_add_ps(v.c, m_slenv->dc1);
 	__m128 b = _mm_add_ps(v.c, m_slenv->dc2);
@@ -759,240 +624,94 @@ void GSRasterizer::PrepareScanline4(int x, int y, int steps, const Vertex& v)
 	__m128 db = m_slenv->db;
 	__m128 da = m_slenv->da;
 
-	//
+	__m128 aref = m_slenv->aref;
+	__m128i datm = m_slenv->datm; 
 
-	Scanline* sl = m_sl;
+#if _M_SSE >= 0x301
+	__m128i upmask = _mm_set_epi32(0x80808003, 0x80808002, 0x80808001, 0x80808000);
+#endif
 
-	for(int i = 0; i < steps; i += 4, sl++)
+	__m128 c[12];
+
+	c[8] = _mm_setzero_ps();
+	c[9] = _mm_setzero_ps();
+	c[10] = _mm_setzero_ps();
+	c[11] = m_slenv->afix;
+
+	for(int j = 0, steps = right - left; j < steps; j += 4, 
+		z = _mm_add_ps(z, dz),
+		s = _mm_add_ps(s, ds),
+		t = _mm_add_ps(t, dt),
+		f = _mm_add_ps(f, df),
+		q = _mm_add_ps(q, dq),
+		r = _mm_add_ps(r, dr),
+		g = _mm_add_ps(g, dg),
+		b = _mm_add_ps(b, db),
+		a = _mm_add_ps(a, da)
+		)
 	{
-		sl->fa = _mm_add_epi32(fa_base, _mm_loadu_si128((__m128i*)&fa_offset[i]));
-		sl->fm = fm;
-		sl->zm = zm;
-		sl->t = _mm_setzero_si128();
-
-		if(bZRW)
-		{
-			sl->za = _mm_add_epi32(za_base, _mm_loadu_si128((__m128i*)&za_offset[i]));
-			sl->z = _mm_slli_epi32(_mm_cvttps_epi32(_mm_mul_ps(z, _mm_set1_ps(0.5f))), 1);
-
-			z = _mm_add_ps(z, dz);
-		}
-
-		if(iTFX != 4 || bFGE)
-		{
-			if(iTFX != 4)
-			{
-				sl->u = s;
-				sl->v = t; 
-
-				if(!bFST)
-				{
-					sl->q = q;
-				}
-			}
-
-			if(bFGE)
-			{
-				sl->f = f;
-			}
-
-			s = _mm_add_ps(s, ds);
-			t = _mm_add_ps(t, dt);
-			f = _mm_add_ps(f, df);
-			q = _mm_add_ps(q, dq);
-		}
-
-		if(iTFX != 1)
-		{
-			sl->r[0] = r; 
-			sl->g[0] = g; 
-			sl->b[0] = b; 
-			sl->a[0] = a;
-
-			r = _mm_add_ps(r, dr);
-			g = _mm_add_ps(g, dg);
-			b = _mm_add_ps(b, db);
-			a = _mm_add_ps(a, da);
-		}
-	}
-}
-
-template<int iZTST, int iZPSM, int bTAF>
-void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)	
-{
-	int steps = right - left;
-
-	if(steps > 1)
-	{
-		(this->*m_ps4f)(left, top, steps, v);
+		__m128i fa = _mm_add_epi32(fa_base, _mm_loadu_si128((__m128i*)&fa_offset[j]));
+		__m128i za = _mm_add_epi32(za_base, _mm_loadu_si128((__m128i*)&za_offset[j]));
+		
+		__m128i fm =  m_slenv->fm;
+		__m128i zm =  m_slenv->zm;
+		__m128i test = _mm_setzero_si128();
+		
+		__m128i zi = _mm_slli_epi32(_mm_cvttps_epi32(_mm_mul_ps(z, _mm_set1_ps(0.5f))), 1);
 
 		if(iZTST)
 		{
-			int psm = GSLocalMemory::DecodeZPSM(iZPSM);
+			DWORD zd0 = m_state->m_mem.readPixelX(zpsm, za.m128i_u32[0]);
+			DWORD zd1 = m_state->m_mem.readPixelX(zpsm, za.m128i_u32[1]);
+			DWORD zd2 = m_state->m_mem.readPixelX(zpsm, za.m128i_u32[2]);
+			DWORD zd3 = m_state->m_mem.readPixelX(zpsm, za.m128i_u32[3]);
 
-			Scanline* sl = m_sl;
-
-			for(int i = 0; i < steps; i += 4, sl++)
-			{
-				DWORD zd0 = m_state->m_mem.readPixelX(psm, sl->za.m128i_u32[0]);
-				DWORD zd1 = m_state->m_mem.readPixelX(psm, sl->za.m128i_u32[1]);
-				DWORD zd2 = m_state->m_mem.readPixelX(psm, sl->za.m128i_u32[2]);
-				DWORD zd3 = m_state->m_mem.readPixelX(psm, sl->za.m128i_u32[3]);
-
-				__m128i zs = _mm_sub_epi32(sl->z, _mm_set1_epi32(0x80000000));
-				__m128i zd = _mm_sub_epi32(_mm_set_epi32(zd3, zd2, zd1, zd0), _mm_set1_epi32(0x80000000));
-
-				switch(iZTST)
-				{
-				case 1: sl->t = _mm_cmplt_epi32(zs, zd); break; // ge
-				case 2: sl->t = _mm_cmpgt_epi32(zd, zs); break; // g
-				default: __assume(0);
-				}
-			}
-		}
-	}
-	else
-	{
-		(this->*m_ps1f)(left, top, steps, v);
-
-		if(iZTST)
-		{
-			int psm = GSLocalMemory::DecodeZPSM(iZPSM);
-
-			Scanline* sl = m_sl;
-
-			DWORD zs = sl->z.m128i_u32[0];
-			DWORD zd = m_state->m_mem.readPixelX(psm, sl->za.m128i_u32[0]);
+			__m128i zs = _mm_sub_epi32(zi, _mm_set1_epi32(0x80000000));
+			__m128i zd = _mm_sub_epi32(_mm_set_epi32(zd3, zd2, zd1, zd0), _mm_set1_epi32(0x80000000));
 
 			switch(iZTST)
 			{
-			case 1: if(zs < zd) sl->t.m128i_u32[0] = 0xffffffff; break; // ge
-			case 2: if(zs <= zd) sl->t.m128i_u32[0] = 0xffffffff; break; // g
+			case 1: test = _mm_cmplt_epi32(zs, zd); break; // ge
+			case 2: test = _mm_cmpgt_epi32(zd, zs); break; // g
 			default: __assume(0);
 			}
-		}
-	}
 
-	if(bTAF)
-	{
-		(this->*m_dstf)(steps);
-	}
-
-	(this->*m_dsomf)(steps);
-}
-
-template<int iTFX, bool bTCC, int bLTF, int bFST>
-void GSRasterizer::DrawScanlineT(int steps)
-{
-	int iATST = m_state->m_context->TEST.ATE ? m_state->m_context->TEST.ATST : 1;
-	int iAFAIL = m_state->m_context->TEST.AFAIL;
-	int bZTST = m_state->m_context->TEST.ZTE && m_state->m_context->TEST.ZTST != 1 ? 1 : 0;
-	int bFGE = m_state->PRIM->FGE;
-
-	Scanline* sl = m_sl;
-
-	__m128 c[4];
-
-	c[0] = _mm_setzero_ps();
-	c[1] = _mm_setzero_ps();
-	c[2] = _mm_setzero_ps();
-	c[3] = _mm_setzero_ps();
-
-	__m128 aref = m_slenv->aref;
-	__m128i upmask = _mm_set_epi32(0x80808003, 0x80808002, 0x80808001, 0x80808000);
-
-	for(int j = 0; j < steps; j += 4, sl++)
-	{
-		if(bZTST && _mm_movemask_epi8(sl->t) == 0xffff)
-		{
-			continue;
+			if(_mm_movemask_epi8(test) == 0xffff)
+			{
+				continue;
+			}
 		}
 
 		if(iTFX < 4)
 		{
-			__m128 u = sl->u;
-			__m128 v = sl->v;
+			__m128 u = s;
+			__m128 v = t;
 
 			if(!bFST)
 			{
-				__m128 w = _mm_rcp_ps(sl->q);
+				__m128 w = _mm_rcp_ps(q);
 
 				u = _mm_mul_ps(u, w);
 				v = _mm_mul_ps(v, w);
 			}
-/*
-			if(bLTF)
-			{
-				__m128i uif = _mm_cvtps_epi32(_mm_mul_ps(u, _mm_set1_ps(65535.5f)));
-				__m128i vif = _mm_cvtps_epi32(_mm_mul_ps(v, _mm_set1_ps(65535.5f)));
 
-				__m128i uv = _mm_packs_epi32(_mm_srai_epi32(uif, 16), _mm_srai_epi32(vif, 16));
-
-				__m128i uv0 = Wrap(uv);
-				__m128i uv1 = Wrap(_mm_add_epi16(uv, _mm_set1_epi32(0x00010001)));
-
-				uif = _mm_srli_epi16(uif, 9);
-				vif = _mm_srli_epi16(vif, 9);
-
-				uif = _mm_or_si128(_mm_slli_epi32(uif, 16), _mm_sub_epi32(_mm_set1_epi32(0x00000080), uif));
-				vif = _mm_or_si128(_mm_slli_epi32(vif, 16), _mm_sub_epi32(_mm_set1_epi32(0x00000080), vif));
-
-				for(int i = 0, k = min(steps - j, 4); i < k; i++)
-				{
-					if(bZTST && sl->t.m128i_u32[i])
-					{
-						continue;
-					}
-
-					FetchTexel(uv0.m128i_u16[i], uv0.m128i_u16[i + 4]);
-					FetchTexel(uv1.m128i_u16[i], uv0.m128i_u16[i + 4]);
-					FetchTexel(uv0.m128i_u16[i], uv1.m128i_u16[i + 4]);
-					FetchTexel(uv1.m128i_u16[i], uv1.m128i_u16[i + 4]);
-
-					__m128i s;
-
-					s.m128i_u32[0] = ReadTexelNoFetch(uv0.m128i_u16[i], uv0.m128i_u16[i + 4]);
-					s.m128i_u32[1] = ReadTexelNoFetch(uv1.m128i_u16[i], uv0.m128i_u16[i + 4]);
-					s.m128i_u32[2] = ReadTexelNoFetch(uv0.m128i_u16[i], uv1.m128i_u16[i + 4]);
-					s.m128i_u32[3] = ReadTexelNoFetch(uv1.m128i_u16[i], uv1.m128i_u16[i + 4]);
-
-					__m128i zero = _mm_setzero_si128();
-
-					__m128i s0 = _mm_unpacklo_epi8(s, zero);
-					__m128i s1 = _mm_unpackhi_epi8(s, zero);
-
-					__m128i s2 = _mm_unpacklo_epi16(s0, s1);
-					__m128i s3 = _mm_unpackhi_epi16(s0, s1);
-
-					s0 = _mm_madd_epi16(s2, _mm_set1_epi32(vif.m128i_u32[i]));
-					s1 = _mm_madd_epi16(s3, _mm_set1_epi32(vif.m128i_u32[i]));
-
-					s0 = _mm_unpacklo_epi16(_mm_packs_epi32(s0, s0), _mm_packs_epi32(s1, s1));
-
-					s0 = _mm_srli_epi32(_mm_madd_epi16(s0, _mm_set1_epi32(uif.m128i_u32[i])), 14);
-
-					c[i] = _mm_cvtepi32_ps(s0);
-				}
-
-				_MM_TRANSPOSE4_PS(c[0], c[1], c[2], c[3]); 
-			}
-*/
 			if(bLTF)
 			{
 				u = _mm_sub_ps(u, _mm_set1_ps(0.5f));
 				v = _mm_sub_ps(v, _mm_set1_ps(0.5f));
 
-				__m128i ui = _mm_cvttps_epi32(u);
-				__m128i vi = _mm_cvttps_epi32(v);
-				__m128 uf = _mm_sub_ps(u, _mm_cvtepi32_ps(ui));
-				__m128 vf = _mm_sub_ps(v, _mm_cvtepi32_ps(vi));
+				// hmmm
+				__m128i ui = _mm_cvttps_epi32(u);//Vector(u).floor());
+				__m128i vi = _mm_cvttps_epi32(v);//Vector(v).floor());
+				__m128 uf = _mm_sub_ps(u, Vector(u).floor());//_mm_cvtepi32_ps(ui));
+				__m128 vf = _mm_sub_ps(v, Vector(v).floor());//_mm_cvtepi32_ps(vi));
 				__m128i uv = _mm_packs_epi32(ui, vi);
 				__m128i uv0 = Wrap(uv);
 				__m128i uv1 = Wrap(_mm_add_epi16(uv, _mm_set1_epi32(0x00010001)));
 
 				for(int i = 0, k = min(steps - j, 4); i < k; i++)
 				{
-					if(bZTST && sl->t.m128i_u32[i])
+					if(iZTST && test.m128i_u32[i])
 					{
 						continue;
 					}
@@ -1027,7 +746,6 @@ void GSRasterizer::DrawScanlineT(int steps)
 
 				_MM_TRANSPOSE4_PS(c[0], c[1], c[2], c[3]); 
 			}
-
 			else
 			{
 				__m128i ui = _mm_cvttps_epi32(u);
@@ -1035,34 +753,34 @@ void GSRasterizer::DrawScanlineT(int steps)
 				__m128i uv = _mm_packs_epi32(ui, vi);
 				__m128i uv0 = Wrap(uv);
 
-				__m128i s;
+				__m128i c00;
 
 				for(int i = 0, k = min(steps - j, 4); i < k; i++)
 				{
-					if(bZTST && sl->t.m128i_u32[i])
+					if(iZTST && test.m128i_u32[i])
 					{
 						continue;
 					}
 
-					s.m128i_u32[i] = ReadTexel(uv0.m128i_u16[i], uv0.m128i_u16[i + 4]);
+					c00.m128i_u32[i] = ReadTexel(uv0.m128i_u16[i], uv0.m128i_u16[i + 4]);
 				}
 
 				__m128i mask = _mm_set1_epi32(0xff);
 
-				c[0] = _mm_cvtepi32_ps(_mm_and_si128(s, mask));
-				c[1] = _mm_cvtepi32_ps(_mm_and_si128(_mm_srli_epi32(s, 8), mask));
-				c[2] = _mm_cvtepi32_ps(_mm_and_si128(_mm_srli_epi32(s, 16), mask));
-				c[3] = _mm_cvtepi32_ps(_mm_srli_epi32(s, 24));
+				c[0] = _mm_cvtepi32_ps(_mm_and_si128(c00, mask));
+				c[1] = _mm_cvtepi32_ps(_mm_and_si128(_mm_srli_epi32(c00, 8), mask));
+				c[2] = _mm_cvtepi32_ps(_mm_and_si128(_mm_srli_epi32(c00, 16), mask));
+				c[3] = _mm_cvtepi32_ps(_mm_srli_epi32(c00, 24));
 			}
 		}
 
 		switch(iTFX)
 		{
-		case 0: c[3] = bTCC ? Saturate(Modulate(c[3], sl->a[0])) : sl->a[0]; break;
+		case 0: c[3] = bTCC ? Saturate(Modulate(c[3], a)) : a; break;
 		case 1: break;
-		case 2: c[3] = bTCC ? Saturate(_mm_add_ps(c[3], sl->a[0])) : sl->a[0]; break;
-		case 3: if(bTCC) c[3] = sl->a[0]; break;
-		case 4: c[3] = sl->a[0]; break; 
+		case 2: c[3] = bTCC ? Saturate(_mm_add_ps(c[3], a)) : a; break;
+		case 3: if(!bTCC) c[3] = a; break;
+		case 4: c[3] = a; break; 
 		default: __assume(0);
 		}
 
@@ -1088,20 +806,20 @@ void GSRasterizer::DrawScanlineT(int steps)
 			switch(iAFAIL)
 			{
 			case 0:
-				sl->fm = _mm_or_si128(sl->fm, ti);
-				sl->zm = _mm_or_si128(sl->zm, ti);
-				sl->t = _mm_or_si128(sl->t, ti);
-				if(_mm_movemask_epi8(sl->t) == 0xffff) continue;
+				fm = _mm_or_si128(fm, ti);
+				zm = _mm_or_si128(zm, ti);
+				test = _mm_or_si128(test, ti);
+				if(_mm_movemask_epi8(test) == 0xffff) continue;
 				break;
 			case 1:
-				sl->zm = _mm_or_si128(sl->zm, ti);
+				zm = _mm_or_si128(zm, ti);
 				break;
 			case 2:
-				sl->fm = _mm_or_si128(sl->fm, ti);
+				fm = _mm_or_si128(fm, ti);
 				break;
 			case 3: 
-				sl->fm = _mm_or_si128(sl->fm, _mm_and_si128(ti, _mm_set1_epi32(0xff000000)));
-				sl->zm = _mm_or_si128(sl->zm, ti);
+				fm = _mm_or_si128(fm, _mm_and_si128(ti, _mm_set1_epi32(0xff000000)));
+				zm = _mm_or_si128(zm, ti);
 				break;
 			default: 
 				__assume(0);
@@ -1111,26 +829,26 @@ void GSRasterizer::DrawScanlineT(int steps)
 		switch(iTFX)
 		{
 		case 0:
-			c[0] = Saturate(Modulate(c[0], sl->r[0]));
-			c[1] = Saturate(Modulate(c[1], sl->g[0]));
-			c[2] = Saturate(Modulate(c[2], sl->b[0]));
+			c[0] = Saturate(Modulate(c[0], r));
+			c[1] = Saturate(Modulate(c[1], g));
+			c[2] = Saturate(Modulate(c[2], b));
 			break;
 		case 1:
 			break;
 		case 2:
-			c[0] = Saturate(_mm_add_ps(Modulate(c[0], sl->r[0]), sl->a[0]));
-			c[1] = Saturate(_mm_add_ps(Modulate(c[1], sl->g[0]), sl->a[0]));
-			c[2] = Saturate(_mm_add_ps(Modulate(c[2], sl->b[0]), sl->a[0]));
+			c[0] = Saturate(_mm_add_ps(Modulate(c[0], r), a));
+			c[1] = Saturate(_mm_add_ps(Modulate(c[1], g), a));
+			c[2] = Saturate(_mm_add_ps(Modulate(c[2], b), a));
 			break;
 		case 3:
-			c[0] = Saturate(_mm_add_ps(Modulate(c[0], sl->r[0]), sl->a[0]));
-			c[1] = Saturate(_mm_add_ps(Modulate(c[1], sl->g[0]), sl->a[0]));
-			c[2] = Saturate(_mm_add_ps(Modulate(c[2], sl->b[0]), sl->a[0]));
+			c[0] = Saturate(_mm_add_ps(Modulate(c[0], r), a));
+			c[1] = Saturate(_mm_add_ps(Modulate(c[1], g), a));
+			c[2] = Saturate(_mm_add_ps(Modulate(c[2], b), a));
 			break;
 		case 4:
-			c[0] = sl->r[0];
-			c[1] = sl->g[0];
-			c[2] = sl->b[0];
+			c[0] = r;
+			c[1] = g;
+			c[2] = b;
 			break;
 		default:
 			__assume(0);
@@ -1138,41 +856,9 @@ void GSRasterizer::DrawScanlineT(int steps)
 
 		if(bFGE)
 		{
-			c[0] = Blend(m_slenv->f.r, c[0], sl->f);
-			c[1] = Blend(m_slenv->f.g, c[1], sl->f);
-			c[2] = Blend(m_slenv->f.b, c[2], sl->f);
-		}
-
-		sl->r[0] = c[0];
-		sl->g[0] = c[1];
-		sl->b[0] = c[2];
-		sl->a[0] = c[3];
-	}
-}
-
-template<int iFPSM, int iZPSM, int bRFB, int bDATE, int iABE>
-void GSRasterizer::DrawScanlineOM(int steps)
-{
-	int iALPHA_A = min(m_state->m_context->ALPHA.A, 2);
-	int iALPHA_B = min(m_state->m_context->ALPHA.B, 2);
-	int iALPHA_C = min(m_state->m_context->ALPHA.C, 2);
-	int iALPHA_D = min(m_state->m_context->ALPHA.D, 2);
-
-	int fpsm = GSLocalMemory::DecodeFPSM(iFPSM);
-	int zpsm = GSLocalMemory::DecodeZPSM(iZPSM);
-
-	__m128i datm = m_slenv->datm; 
-	__m128 afix = m_slenv->afix;
-
-	Scanline* sl = m_sl;
-
-	for(int j = 0; j < steps; j += 4, sl++)
-	{
-		__m128i t = sl->t;
-
-		if(_mm_movemask_epi8(t) == 0xffff)
-		{
-			continue;
+			c[0] = Blend(m_slenv->f.r, c[0], f);
+			c[1] = Blend(m_slenv->f.g, c[1], f);
+			c[2] = Blend(m_slenv->f.b, c[2], f);
 		}
 
 		__m128i d = _mm_setzero_si128();
@@ -1181,83 +867,71 @@ void GSRasterizer::DrawScanlineOM(int steps)
 		{
 			for(int i = 0, k = min(steps - j, 4); i < k; i++)
 			{
-				if(t.m128i_u32[i])
+				if(test.m128i_u32[i])
 				{
 					continue;
 				}
 
-				d.m128i_u32[i] = m_state->m_mem.readFrameX(fpsm, sl->fa.m128i_u32[i]);
+				d.m128i_u32[i] = m_state->m_mem.readFrameX(fpsm, fa.m128i_u32[i]);
 			}
 		}
 
-		__m128i fm = sl->fm;
-		__m128i zm = sl->zm;
-
 		if(bDATE)
 		{
-			t = _mm_or_si128(t, _mm_srai_epi32(_mm_xor_si128(d, datm), 31));
+			test = _mm_or_si128(test, _mm_srai_epi32(_mm_xor_si128(d, datm), 31));
 
-			if(_mm_movemask_epi8(t) == 0xffff)
+			if(_mm_movemask_epi8(test) == 0xffff)
 			{
 				continue;
 			}
 		}
 
-		fm = _mm_or_si128(fm, t);
-		zm = _mm_or_si128(zm, t);
-
-		__m128 r, g, b, a;
+		fm = _mm_or_si128(fm, test);
+		zm = _mm_or_si128(zm, test);
 
 		if(iABE)
 		{
 			__m128i mask = _mm_set1_epi32(0xff);
 
-			sl->r[1] = _mm_cvtepi32_ps(_mm_and_si128(d, mask));
-			sl->g[1] = _mm_cvtepi32_ps(_mm_and_si128(_mm_srli_epi32(d, 8), mask));
-			sl->b[1] = _mm_cvtepi32_ps(_mm_and_si128(_mm_srli_epi32(d, 16), mask));
-			sl->a[1] = _mm_cvtepi32_ps(_mm_srli_epi32(d, 24));
+			c[4] = _mm_cvtepi32_ps(_mm_and_si128(d, mask));
+			c[5] = _mm_cvtepi32_ps(_mm_and_si128(_mm_srli_epi32(d, 8), mask));
+			c[6] = _mm_cvtepi32_ps(_mm_and_si128(_mm_srli_epi32(d, 16), mask));
+			c[7] = _mm_cvtepi32_ps(_mm_srli_epi32(d, 24));
 
-			sl->r[2] = _mm_setzero_ps();
-			sl->g[2] = _mm_setzero_ps();
-			sl->b[2] = _mm_setzero_ps();
-			sl->a[2] = afix;
-
-			r = _mm_add_ps(Modulate(_mm_sub_ps(sl->r[iALPHA_A], sl->r[iALPHA_B]), sl->a[iALPHA_C]), sl->r[iALPHA_D]);
-			g = _mm_add_ps(Modulate(_mm_sub_ps(sl->g[iALPHA_A], sl->g[iALPHA_B]), sl->a[iALPHA_C]), sl->g[iALPHA_D]);
-			b = _mm_add_ps(Modulate(_mm_sub_ps(sl->b[iALPHA_A], sl->b[iALPHA_B]), sl->a[iALPHA_C]), sl->b[iALPHA_D]);
-			a = sl->a[0];
+			__m128 r = _mm_add_ps(Modulate(_mm_sub_ps(c[iALPHA_A*4 + 0], c[iALPHA_B*4 + 0]), c[iALPHA_C*4 + 3]), c[iALPHA_D*4 + 0]);
+			__m128 g = _mm_add_ps(Modulate(_mm_sub_ps(c[iALPHA_A*4 + 1], c[iALPHA_B*4 + 1]), c[iALPHA_C*4 + 3]), c[iALPHA_D*4 + 1]);
+			__m128 b = _mm_add_ps(Modulate(_mm_sub_ps(c[iALPHA_A*4 + 2], c[iALPHA_B*4 + 2]), c[iALPHA_C*4 + 3]), c[iALPHA_D*4 + 2]);
 
 			if(iABE == 2)
 			{
-				__m128 mask = _mm_cmpge_ps(a, _mm_set1_ps(128));
+				__m128 mask = _mm_cmpge_ps(c[3], _mm_set1_ps(128));
 
 				#if _M_SSE >= 0x400
 
-				r = _mm_blendv_ps(sl->r[0], r, mask);
-				g = _mm_blendv_ps(sl->g[0], g, mask);
-				b = _mm_blendv_ps(sl->b[0], b, mask);
+				c[0] = _mm_blendv_ps(c[0], r, mask);
+				c[1] = _mm_blendv_ps(c[1], g, mask);
+				c[2] = _mm_blendv_ps(c[2], b, mask);
 
 				#else
 
-				r = _mm_or_ps(_mm_andnot_ps(mask, sl->r[0]), _mm_and_ps(mask, r));
-				g = _mm_or_ps(_mm_andnot_ps(mask, sl->g[0]), _mm_and_ps(mask, g));
-				b = _mm_or_ps(_mm_andnot_ps(mask, sl->b[0]), _mm_and_ps(mask, b));
+				c[0] = _mm_or_ps(_mm_andnot_ps(mask, c[0]), _mm_and_ps(mask, r));
+				c[1] = _mm_or_ps(_mm_andnot_ps(mask, c[1]), _mm_and_ps(mask, g));
+				c[2] = _mm_or_ps(_mm_andnot_ps(mask, c[2]), _mm_and_ps(mask, b));
 
 				#endif
 			}
-		}
-		else
-		{
-			r = sl->r[0];
-			g = sl->g[0];
-			b = sl->b[0];
-			a = sl->a[0];
+			else
+			{
+				c[0] = r;
+				c[1] = g;
+				c[2] = b;
+			}
 		}
 
-		_MM_TRANSPOSE4_PS(r, g, b, a);
+		_MM_TRANSPOSE4_PS(c[0], c[1], c[2], c[3]);
 
-		__m128i s01 = _mm_packs_epi32(_mm_cvtps_epi32(r), _mm_cvtps_epi32(g));
-		__m128i s23 = _mm_packs_epi32(_mm_cvtps_epi32(b), _mm_cvtps_epi32(a));
+		__m128i s01 = _mm_packs_epi32(_mm_cvtps_epi32(c[0]), _mm_cvtps_epi32(c[1]));
+		__m128i s23 = _mm_packs_epi32(_mm_cvtps_epi32(c[2]), _mm_cvtps_epi32(c[3]));
 		__m128i s = _mm_packus_epi16(s01, s23);
 
 		s = _mm_or_si128(_mm_andnot_si128(fm, s), _mm_and_si128(fm, d));
@@ -1266,13 +940,14 @@ void GSRasterizer::DrawScanlineOM(int steps)
 		{
 			if(fm.m128i_u32[i] != 0xffffffff)
 			{
-				m_state->m_mem.writeFrameX(fpsm, sl->fa.m128i_u32[i], s.m128i_u32[i]);
+				m_state->m_mem.writeFrameX(fpsm, fa.m128i_u32[i], s.m128i_u32[i]);
 			}
 
 			if(zm.m128i_u32[i] != 0xffffffff)
 			{
-				m_state->m_mem.writePixelX(zpsm, sl->za.m128i_u32[i], sl->z.m128i_u32[i]);
+				m_state->m_mem.writePixelX(zpsm, za.m128i_u32[i], zi.m128i_u32[i]);
 			}
 		}
 	}
 }
+

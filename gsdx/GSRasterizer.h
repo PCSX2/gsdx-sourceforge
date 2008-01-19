@@ -36,14 +36,6 @@ class GSRasterizer
 		DWORD hash;
 	};
 
-	struct Scanline
-	{
-		__m128i fa, fm, t;
-		__m128i za, zm, z;
-		__m128 u, v, q, f;
-		__m128 r[3], g[3], b[3], a[3];
-	};
-
 	struct ScanlineEnv
 	{
 		__m128i fm, zm;
@@ -66,7 +58,6 @@ protected:
 	CSimpleMap<DWORD, ColumnOffset*> m_comap;
 	ColumnOffset* m_fbco;
 	ColumnOffset* m_zbco;
-	Scanline* m_sl;
 	ScanlineEnv* m_slenv;
 	bool m_solidrect;
 
@@ -74,30 +65,12 @@ protected:
 	void SetupColumnOffset();
 	void SetupScanlineDelta(const Vertex& dv);
 
-	typedef void (GSRasterizer::*PrepareScanlinePtr)(int x, int y, int steps, const Vertex& v);
 	typedef void (GSRasterizer::*DrawScanlinePtr)(int top, int left, int right, const Vertex& v);
-	typedef void (GSRasterizer::*DrawScanlineZPtr)(int steps);
-	typedef void (GSRasterizer::*DrawScanlineTPtr)(int steps);
-	typedef void (GSRasterizer::*DrawScanlineOMPtr)(int steps);
 
-	PrepareScanlinePtr m_ps1[5][2][2][2], m_ps1f;
-	PrepareScanlinePtr m_ps4[5][2][2][2], m_ps4f;
-	DrawScanlinePtr m_ds[3][4][2], m_dsf;
-	DrawScanlineZPtr m_dsz1[4], m_dsz1f;
-	DrawScanlineZPtr m_dsz4[2][4], m_dsz4f;
-	DrawScanlineTPtr m_dst[5][2][2][2], m_dstf;
-	DrawScanlineOMPtr m_dsom[8][4][2][2][3], m_dsomf;
+	DrawScanlinePtr m_ds[8][4][3][3], m_dsf;
 
-	template<int iTFX, int bFST, int bFGE, int bZRW>
-	void PrepareScanline1(int x, int y, int steps, const Vertex& v);
-	template<int iTFX, int bFST, int bFGE, int bZRW>
-	void PrepareScanline4(int x, int y, int steps, const Vertex& v);
-	template<int iZTST, int iZPSM, int bTAF>
+	template<int iFPSM, int iZPSM, int iZTST, int iABE>
 	void DrawScanline(int top, int left, int right, const Vertex& v);
-	template<int iTFX, bool bTCC, int bLTF, int bFST>
-	void DrawScanlineT(int steps);
-	template<int iFPSM, int iZPSM, int bRFB, int bDATE, int iABE>
-	void DrawScanlineOM(int steps);
 
 	void FetchTexture(int x, int y);
 

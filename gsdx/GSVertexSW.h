@@ -132,19 +132,26 @@ __declspec(align(16)) union GSVertexSW
 		void sat() {xyzq = _mm_min_ps(_mm_max_ps(xyzq, _mm_setzero_ps()), _mm_set1_ps(255));}
 		void rcp() {xyzq = _mm_rcp_ps(xyzq);}
 
+		__forceinline Vector floor()
+		{
+			const __m128i _80000000 = _mm_set1_epi32(0x80000000);
+			const __m128i _4b000000 = _mm_set1_epi32(0x4b000000);
+			const __m128i _3f800000 = _mm_set1_epi32(0x3f800000);
+
+			__m128 sign = _mm_and_ps(xyzq, *(__m128*)&_80000000);
+			__m128 r0 = _mm_or_ps(sign, *(__m128*)&_4b000000);
+			__m128 r1 = _mm_sub_ps(_mm_add_ps(xyzq, r0), r0);
+			__m128 r2 = _mm_sub_ps(r1, xyzq);
+			__m128 r3 = _mm_and_ps(_mm_cmpnle_ps(r2, sign), *(__m128*)&_3f800000);
+			__m128 r4 = _mm_sub_ps(r1, r3);
+			
+			return Vector(r4);
+		}
+
 		void operator += (const Vector& v) {xyzq = _mm_add_ps(xyzq, v);}
 		void operator -= (const Vector& v) {xyzq = _mm_sub_ps(xyzq, v);}
 		void operator *= (const Vector& v) {xyzq = _mm_mul_ps(xyzq, v);}
 		void operator /= (const Vector& v) {xyzq = _mm_div_ps(xyzq, v);}
-
-		void lnuv(short* uv)
-		{
-			__m128i r0 = _mm_cvttps_epi32(xyzq); // u v _ _ (should be floor instead of truncate, u/v might be negative rarely)
-			r0 = _mm_unpacklo_epi32(r0, r0); // u u v v 
-			r0 = _mm_packs_epi32(r0, r0); // u u v v u u v v 
-			r0 = _mm_add_epi16(r0, _mm_set1_epi32(0x00010000)); // u u+1 v v+1 u u+1 v v+1
-			*((__m128i*)uv) = r0;
-		}
 
 #else
 
@@ -186,14 +193,6 @@ __declspec(align(16)) union GSVertexSW
 		void operator -= (const Vector& v) {*this = *this - v;}
 		void operator *= (const Vector& v) {*this = *this * v;}
 		void operator /= (const Vector& v) {*this = *this / v;}
-
-		void lnuv(short* uv)
-		{
-			uv[0] = (short)(int)x;
-			uv[1] = (short)(int)x + 1;
-			uv[2] = (short)(int)y;
-			uv[3] = (short)(int)y + 1;
-		};
 
 #endif
 

@@ -801,7 +801,16 @@ template<int i> void GSState::GIFRegHandlerALPHA(GIFReg* r)
 		Flush();
 	}
 
+	ASSERT(r->ALPHA.A != 3);
+	ASSERT(r->ALPHA.B != 3);
+	ASSERT(r->ALPHA.C != 3);
+	ASSERT(r->ALPHA.D != 3);
+
 	m_env.CTXT[i].ALPHA = r->ALPHA;
+
+	// A/B/C/D == 3? => 2
+
+	m_env.CTXT[i].ALPHA.ai32[0] = ((~m_env.CTXT[i].ALPHA.ai32[0] >> 1) | 0xAA) & m_env.CTXT[i].ALPHA.ai32[0];
 }
 
 void GSState::GIFRegHandlerDIMX(GIFReg* r)
