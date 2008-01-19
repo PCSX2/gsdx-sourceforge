@@ -413,12 +413,7 @@ void GSTextureFX9::UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, 
 			// 1211 Cd*(1 + Ad) => Source * Dest color + Dest * Dest alpha
 			// 1221 Cd*(1 + F) => Source * Dest color + Dest * Factor
 
-			int i = (((bsel.a & 3) * 3 + (bsel.b & 3)) * 3 + (bsel.c & 3)) * 3 + (bsel.d & 3);
-
-			ASSERT(bsel.a != 3);
-			ASSERT(bsel.b != 3);
-			ASSERT(bsel.c != 3);
-			ASSERT(bsel.d != 3);
+			int i = ((bsel.a * 3 + bsel.b) * 3 + bsel.c) * 3 + bsel.d;
 
 			bs->BlendOp = map[i].op;
 			bs->SrcBlend = map[i].src;

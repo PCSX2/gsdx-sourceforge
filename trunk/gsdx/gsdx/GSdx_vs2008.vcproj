@@ -862,6 +862,14 @@
 				RelativePath=".\GSRasterizer.cpp"
 				>
 				<FileConfiguration
+					Name="Release|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AssemblerOutput="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
 					Name="Release SSSE3|Win32"
 					>
 					<Tool
