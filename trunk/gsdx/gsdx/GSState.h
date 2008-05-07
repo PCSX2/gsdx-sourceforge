@@ -52,6 +52,7 @@ class GSState
 	void GIFPackedRegHandlerXYZF3(GIFPackedReg* r);
 	void GIFPackedRegHandlerXYZ3(GIFPackedReg* r);
 	void GIFPackedRegHandlerA_D(GIFPackedReg* r);
+	void GIFPackedRegHandlerA_D(GIFPackedReg* r, int size);
 	void GIFPackedRegHandlerNOP(GIFPackedReg* r);
 
 	typedef void (GSState::*GIFRegHandler)(GIFReg* r);
@@ -212,6 +213,7 @@ public:
 	void Write(BYTE* mem, int len);
 	void Read(BYTE* mem, int len);
 
+	void SoftReset(BYTE mask);
 	void WriteCSR(UINT32 csr) {CSR->ai32[1] = csr;}
 	void ReadFIFO(BYTE* mem, int size);
 	void Transfer(BYTE* mem, int size, int index);

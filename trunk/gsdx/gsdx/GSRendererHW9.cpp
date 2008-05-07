@@ -25,8 +25,8 @@
 #include "GSCrc.h"
 #include "resource.h"
 
-GSRendererHW9::GSRendererHW9(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync)
-	: GSRendererHW<GSDevice9, GSVertexHW9>(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync, false)
+GSRendererHW9::GSRendererHW9(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs)
+	: GSRendererHW<GSDevice9, GSVertexHW9>(base, mt, irq, nloophack, rs, false)
 {
 	m_tc = new GSTextureCache9(this, !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("nativeres"), FALSE));
 

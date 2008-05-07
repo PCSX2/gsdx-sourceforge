@@ -7,6 +7,5 @@
 	<Tool
 		Name="VCCLCompilerTool"
 		PreprocessorDefinitions="_M_SSE=0x301"
-		EnableEnhancedInstructionSet="2"
 	/>
 </VisualStudioPropertySheet>

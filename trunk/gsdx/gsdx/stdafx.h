@@ -45,26 +45,40 @@
 #include <d3d10.h>
 #include <d3dx10.h>
 #include <math.h>
+#include "sse.h"
 
 #define countof(a) (sizeof(a)/sizeof(a[0]))
 
 #define EXPORT_C extern "C" __declspec(dllexport) void __stdcall
 #define EXPORT_C_(type) extern "C" __declspec(dllexport) type __stdcall
 
+#ifndef RESTRICT
+	#ifdef __INTEL_COMPILER
+		#define RESTRICT restrict
+	#elif _MSC_VER >= 1400
+		#define RESTRICT __restrict
+	#else
+		#define RESTRICT
+	#endif
+#endif
+
 #pragma warning(disable : 4995 4324 4100)
 
 #define D3DCOLORWRITEENABLE_RGB (D3DCOLORWRITEENABLE_RED|D3DCOLORWRITEENABLE_GREEN|D3DCOLORWRITEENABLE_BLUE)
 #define D3DCOLORWRITEENABLE_RGBA (D3DCOLORWRITEENABLE_RGB|D3DCOLORWRITEENABLE_ALPHA)
 
-#if !defined(_M_SSE) && (defined(_M_AMD64) || _M_IX86_FP >= 2)
-#define _M_SSE 0x200
-#endif
+#define QI(i) (riid == __uuidof(i)) ? GetInterface((i*)this, ppv) :
 
-#if _M_SSE >= 0x200
-#include <xmmintrin.h>
-#include <emmintrin.h>
-#endif
+#define BeginEnumSysDev(clsid, pMoniker) \
+	{CComPtr<ICreateDevEnum> pDevEnum4$##clsid; \
+	pDevEnum4$##clsid.CoCreateInstance(CLSID_SystemDeviceEnum); \
+	CComPtr<IEnumMoniker> pClassEnum4$##clsid; \
+	if(SUCCEEDED(pDevEnum4$##clsid->CreateClassEnumerator(clsid, &pClassEnum4$##clsid, 0)) \
+	&& pClassEnum4$##clsid) \
+	{ \
+		for(CComPtr<IMoniker> pMoniker; pClassEnum4$##clsid->Next(1, &pMoniker, 0) == S_OK; pMoniker = NULL) \
+		{ \
 
-#if _M_SSE >= 0x300
-#include <tmmintrin.h>
-#endif
+#define EndEnumSysDev }}}
+
+

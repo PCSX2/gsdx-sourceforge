@@ -25,8 +25,8 @@
 #include "GSCrc.h"
 #include "resource.h"
 
-GSRendererHW10::GSRendererHW10(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync)
-	: GSRendererHW<GSDevice10, GSVertexHW10>(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync, true)
+GSRendererHW10::GSRendererHW10(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs)
+	: GSRendererHW<GSDevice10, GSVertexHW10>(base, mt, irq, nloophack, rs, true)
 {
 	m_tc = new GSTextureCache10(this, !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("nativeres"), FALSE));
 
@@ -398,27 +398,7 @@ if(s_dump)
 	GSTextureFX10::GSSelector gs_sel;
 
 	gs_sel.iip = PRIM->IIP;
-
-	switch(prim)
-	{
-	case GS_POINTLIST:
-		gs_sel.prim = 0;
-		break;
-	case GS_LINELIST: 
-	case GS_LINESTRIP:
-		gs_sel.prim = 1;
-		break;
-	case GS_TRIANGLELIST: 
-	case GS_TRIANGLESTRIP: 
-	case GS_TRIANGLEFAN: 
-		gs_sel.prim = 2;
-		break;
-	case GS_SPRITE:
-		gs_sel.prim = 3;
-		break;
-	default:
-		__assume(0);
-	}	
+	gs_sel.prim = GetPrimClass(prim);
 
 	// ps
 

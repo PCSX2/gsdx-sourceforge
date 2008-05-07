@@ -192,26 +192,29 @@ EXPORT_C_(INT32) __GSopen(void* dsp, char* title, int mt, int renderer)
 
 	GSclose();
 
-	// TODO: wrap constructor params into a GSOptions class 
+	// TODO
 
 	int nloophack = AfxGetApp()->GetProfileInt(_T("Settings"), _T("nloophack"), 2);
-	int interlace = AfxGetApp()->GetProfileInt(_T("Settings"), _T("interlace"), 0);
-	int aspectratio = AfxGetApp()->GetProfileInt(_T("Settings"), _T("aspectratio"), 1);
-	int filter = AfxGetApp()->GetProfileInt(_T("Settings"), _T("filter"), 1);
-	bool vsync = !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("vsync"), FALSE);
+
+	GSRendererSettings rs;
+
+	rs.m_interlace = AfxGetApp()->GetProfileInt(_T("Settings"), _T("interlace"), 0);
+	rs.m_aspectratio = AfxGetApp()->GetProfileInt(_T("Settings"), _T("aspectratio"), 1);
+	rs.m_filter = AfxGetApp()->GetProfileInt(_T("Settings"), _T("filter"), 1);
+	rs.m_vsync = !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("vsync"), FALSE);
 
 	switch(renderer)
 	{
 	default: 
-	case 0: s_gs = new GSRendererHW9(s_basemem, !!mt, s_irq, nloophack, interlace, aspectratio, filter, vsync); break;
-	case 1: s_gs = new GSRendererSW<GSDevice9>(s_basemem, !!mt, s_irq, nloophack, interlace, aspectratio, filter, vsync); break;
-	case 2: s_gs = new GSRendererNull<GSDevice9>(s_basemem, !!mt, s_irq, nloophack, interlace, aspectratio, filter, vsync); break;
-	case 3: s_gs = new GSRendererHW10(s_basemem, !!mt, s_irq, nloophack, interlace, aspectratio, filter, vsync); break;
-	case 4: s_gs = new GSRendererSW<GSDevice10>(s_basemem, !!mt, s_irq, nloophack, interlace, aspectratio, filter, vsync); break;
-	case 5: s_gs = new GSRendererNull<GSDevice10>(s_basemem, !!mt, s_irq, nloophack, interlace, aspectratio, filter, vsync); break;
+	case 0: s_gs = new GSRendererHW9(s_basemem, !!mt, s_irq, nloophack, rs); break;
+	case 1: s_gs = new GSRendererSW<GSDevice9>(s_basemem, !!mt, s_irq, nloophack, rs); break;
+	case 2: s_gs = new GSRendererNull<GSDevice9>(s_basemem, !!mt, s_irq, nloophack, rs); break;
+	case 3: s_gs = new GSRendererHW10(s_basemem, !!mt, s_irq, nloophack, rs); break;
+	case 4: s_gs = new GSRendererSW<GSDevice10>(s_basemem, !!mt, s_irq, nloophack, rs); break;
+	case 5: s_gs = new GSRendererNull<GSDevice10>(s_basemem, !!mt, s_irq, nloophack, rs); break;
 	}
 
-	s_hr = ::CoInitialize(0);
+	s_hr = ::CoInitializeEx(NULL, COINIT_MULTITHREADED);
 
 	if(!s_gs->Create(CString(title)))
 	{
@@ -238,6 +241,11 @@ EXPORT_C_(INT32) GSopen(void* dsp, char* title, int mt)
 EXPORT_C GSreset()
 {
 	s_gs->Reset();
+}
+
+EXPORT_C GSgifSoftReset(int mask)
+{
+	s_gs->SoftReset((BYTE)mask);
 }
 
 EXPORT_C GSwriteCSR(UINT32 csr)

@@ -370,7 +370,7 @@ bool GSTextureCache10::GSTextureHW10::Create(GSRenderTarget* rt)
 
 	m_renderer->m_dev.CreateRenderTarget(*dt, w, h);
 
-	if(src == dst)
+	if(src.x == dst.x && src.y == dst.y && src.z == dst.z && src.w == dst.w)
 	{
 		D3D10_BOX box = {0, 0, 0, w, h, 1};
 
