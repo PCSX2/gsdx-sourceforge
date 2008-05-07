@@ -73,6 +73,20 @@ GSRasterizer::GSRasterizer(GSState* state)
 
 	#pragma region our little "profile guided optimization", gathered from different games
 
+	m_dsmap[0x2429b418] = &GSRasterizer::DrawScanline2<0x2429b418>;
+	m_dsmap[0x2229b418] = &GSRasterizer::DrawScanline2<0x2229b418>;
+	m_dsmap[0x01283438] = &GSRasterizer::DrawScanline2<0x01283438>;
+	m_dsmap[0x2129b418] = &GSRasterizer::DrawScanline2<0x2129b418>;
+	m_dsmap[0x2229b438] = &GSRasterizer::DrawScanline2<0x2229b438>;
+	m_dsmap[0x2229a438] = &GSRasterizer::DrawScanline2<0x2229a438>;
+	m_dsmap[0x22292218] = &GSRasterizer::DrawScanline2<0x22292218>;
+	m_dsmap[0x24283438] = &GSRasterizer::DrawScanline2<0x24283438>;
+	m_dsmap[0x22292238] = &GSRasterizer::DrawScanline2<0x22292238>;
+	m_dsmap[0x00012218] = &GSRasterizer::DrawScanline2<0x00012218>;
+	m_dsmap[0x0529b418] = &GSRasterizer::DrawScanline2<0x0529b418>;
+	m_dsmap[0x34283438] = &GSRasterizer::DrawScanline2<0x34283438>;
+	m_dsmap[0x05292218] = &GSRasterizer::DrawScanline2<0x05292218>;
+	m_dsmap[0x00092218] = &GSRasterizer::DrawScanline2<0x00092218>;
 	m_dsmap[0x22290c08] = &GSRasterizer::DrawScanline2<0x22290c08>;
 	m_dsmap[0x242d1428] = &GSRasterizer::DrawScanline2<0x242d1428>;
 	m_dsmap[0x222d1028] = &GSRasterizer::DrawScanline2<0x222d1028>;
