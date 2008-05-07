@@ -369,7 +369,7 @@ bool GSTextureCache9::GSTexture9::Create(GSRenderTarget* rt)
 
 	m_renderer->m_dev.CreateRenderTarget(*dt, w, h);
 
-	if(src == dst)
+	if(src.x == dst.x && src.y == dst.y && src.z == dst.z && src.w == dst.w)
 	{
 		CRect r(0, 0, w, h);
 

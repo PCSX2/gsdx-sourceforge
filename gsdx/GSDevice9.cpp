@@ -226,6 +226,8 @@ bool GSDevice9::Reset(int w, int h, bool fs)
 	}
 
 	m_swapchain = NULL;
+	m_backbuffer = GSTexture9();
+	if(m_font) m_font->OnLostDevice();
 	m_font = NULL;
 
 	delete [] m_vs_cb;
@@ -933,6 +935,29 @@ void GSDevice9::StretchRect(GSTexture9& st, const GSVector4& sr, GSTexture9& dt,
 	EndScene();
 }
 
+// FIXME: D3DXCompileShaderFromResource of d3dx9 v37 (march 2008) calls GetFullPathName on id for some reason and then crashes
+
+static HRESULT LoadShader(UINT id, LPCSTR& data, DWORD& size)
+{
+	CComPtr<ID3DXBuffer> shader, error;
+
+	HRSRC hRes = FindResource(AfxGetResourceHandle(), MAKEINTRESOURCE(id), RT_RCDATA);
+
+	if(!hRes) return E_FAIL;
+
+	size = SizeofResource(AfxGetResourceHandle(), hRes);
+
+	if(size == 0) return E_FAIL;
+
+	HGLOBAL hResData  = LoadResource(AfxGetResourceHandle(), hRes);
+
+	if(!hResData) return E_FAIL;
+
+	data = (LPCSTR)LockResource(hResData);
+
+	return S_OK;
+}
+
 HRESULT GSDevice9::CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro, IDirect3DVertexShader9** vs, const D3DVERTEXELEMENT9* layout, int count, IDirect3DVertexDeclaration9** il)
 {
 	LPCSTR target;
@@ -950,9 +975,20 @@ HRESULT GSDevice9::CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro, 
 		return E_FAIL;
 	}
 
+	HRESULT hr;
+
 	CComPtr<ID3DXBuffer> shader, error;
 
-	HRESULT hr = D3DXCompileShaderFromResource(AfxGetResourceHandle(), MAKEINTRESOURCE(id), macro, NULL, entry, target, 0, &shader, &error, NULL);
+	// FIXME: hr = D3DXCompileShaderFromResource(AfxGetResourceHandle(), MAKEINTRESOURCE(id), macro, NULL, entry, target, 0, &shader, &error, NULL);
+
+	LPCSTR data;
+	DWORD size;
+
+	hr = LoadShader(id, data, size);
+
+	if(FAILED(hr)) return E_FAIL;
+
+	hr = D3DXCompileShader(data, size, macro, NULL, entry, target, 0, &shader, &error, NULL);
 
 	if(SUCCEEDED(hr))
 	{
@@ -1001,9 +1037,20 @@ HRESULT GSDevice9::CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro, 
 		return false;
 	}
 
+	HRESULT hr;
+
 	CComPtr<ID3DXBuffer> shader, error;
 
-	HRESULT hr = D3DXCompileShaderFromResource(AfxGetResourceHandle(), MAKEINTRESOURCE(id), macro, NULL, entry, target, flags, &shader, &error, NULL);
+	// FIXME: hr = D3DXCompileShaderFromResource(AfxGetResourceHandle(), MAKEINTRESOURCE(id), macro, NULL, entry, target, flags, &shader, &error, NULL);
+
+	LPCSTR data;
+	DWORD size;
+
+	hr = LoadShader(id, data, size);
+
+	if(FAILED(hr)) return E_FAIL;
+
+	hr = D3DXCompileShader(data, size, macro, NULL, entry, target, 0, &shader, &error, NULL);
 
 	if(SUCCEEDED(hr))
 	{

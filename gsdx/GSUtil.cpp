@@ -22,31 +22,59 @@
 #include "stdafx.h"
 #include "GS.h"
 
-bool HasSharedBits(DWORD spsm, DWORD dpsm)
+static struct GSUtilMaps
 {
-	switch(spsm)
+	int PrimClassField[8];
+	bool CompatibleBitsField[64][64];
+	bool SharedBitsField[64][64];
+
+	struct GSUtilMaps()
 	{
-	case PSM_PSMCT32:
-	case PSM_PSMCT16:
-	case PSM_PSMCT16S:
-	case PSM_PSMT8:
-	case PSM_PSMT4:
-	case PSM_PSMZ32:
-	case PSM_PSMZ16:
-	case PSM_PSMZ16S:
-		return true;
-	case PSM_PSMCT24:
-	case PSM_PSMZ24:
-		return !(dpsm == PSM_PSMT8H || dpsm == PSM_PSMT4HL || dpsm == PSM_PSMT4HH);
-	case PSM_PSMT8H:
-		return !(dpsm == PSM_PSMCT24 || dpsm == PSM_PSMZ24);
-	case PSM_PSMT4HL:
-		return !(dpsm == PSM_PSMCT24 || dpsm == PSM_PSMZ24 || dpsm == PSM_PSMT4HH);
-	case PSM_PSMT4HH:
-		return !(dpsm == PSM_PSMCT24 || dpsm == PSM_PSMZ24 || dpsm == PSM_PSMT4HL);
+		memset(PrimClassField, -1, sizeof(PrimClassField));
+
+		PrimClassField[GS_POINTLIST] = 0;
+		PrimClassField[GS_LINELIST] = 1;
+		PrimClassField[GS_LINESTRIP] = 1;
+		PrimClassField[GS_TRIANGLELIST] = 2;
+		PrimClassField[GS_TRIANGLESTRIP] = 2;
+		PrimClassField[GS_TRIANGLEFAN] = 2;
+		PrimClassField[GS_SPRITE] = 3;
+		PrimClassField[GS_INVALID] = -1;
+
+		memset(CompatibleBitsField, 0, sizeof(CompatibleBitsField));
+
+		CompatibleBitsField[PSM_PSMCT32][PSM_PSMCT24] = true;
+		CompatibleBitsField[PSM_PSMCT24][PSM_PSMCT32] = true;
+		CompatibleBitsField[PSM_PSMCT16][PSM_PSMCT16S] = true;
+		CompatibleBitsField[PSM_PSMCT16S][PSM_PSMCT16] = true;
+		CompatibleBitsField[PSM_PSMZ32][PSM_PSMZ24] = true;
+		CompatibleBitsField[PSM_PSMZ24][PSM_PSMZ32] = true;
+		CompatibleBitsField[PSM_PSMZ16][PSM_PSMZ16S] = true;
+		CompatibleBitsField[PSM_PSMZ16S][PSM_PSMZ16] = true;
+
+		memset(SharedBitsField, 1, sizeof(SharedBitsField));
+
+		SharedBitsField[PSM_PSMCT24][PSM_PSMT8H] = false;
+		SharedBitsField[PSM_PSMCT24][PSM_PSMT4HL] = false;
+		SharedBitsField[PSM_PSMCT24][PSM_PSMT4HH] = false;
+		SharedBitsField[PSM_PSMZ24][PSM_PSMT8H] = false;
+		SharedBitsField[PSM_PSMZ24][PSM_PSMT4HL] = false;
+		SharedBitsField[PSM_PSMZ24][PSM_PSMT4HH] = false;
+		SharedBitsField[PSM_PSMT8H][PSM_PSMCT24] = false;
+		SharedBitsField[PSM_PSMT8H][PSM_PSMZ24] = false;
+		SharedBitsField[PSM_PSMT4HL][PSM_PSMCT24] = false;
+		SharedBitsField[PSM_PSMT4HL][PSM_PSMZ24] = false;
+		SharedBitsField[PSM_PSMT4HL][PSM_PSMT4HH] = false;
+		SharedBitsField[PSM_PSMT4HH][PSM_PSMCT24] = false;
+		SharedBitsField[PSM_PSMT4HH][PSM_PSMZ24] = false;
+		SharedBitsField[PSM_PSMT4HH][PSM_PSMT4HL] = false;
 	}
 
-	return true;
+} s_maps;
+
+bool HasSharedBits(DWORD spsm, DWORD dpsm)
+{
+	return s_maps.SharedBitsField[spsm][dpsm];
 }
 
 bool HasSharedBits(DWORD sbp, DWORD spsm, DWORD dbp, DWORD dpsm)
@@ -60,47 +88,12 @@ bool HasCompatibleBits(DWORD spsm, DWORD dpsm)
 {
 	if(spsm == dpsm) return true;
 
-	switch(spsm)
-	{
-	case PSM_PSMCT32:
-	case PSM_PSMCT24:
-		return dpsm == PSM_PSMCT32 || dpsm == PSM_PSMCT24;
-	case PSM_PSMCT16:
-	case PSM_PSMCT16S:
-		return dpsm == PSM_PSMCT16 || dpsm == PSM_PSMCT16S;
-	case PSM_PSMZ32:
-	case PSM_PSMZ24:
-		return dpsm == PSM_PSMZ32 || dpsm == PSM_PSMZ24;
-	case PSM_PSMZ16:
-	case PSM_PSMZ16S:
-		return dpsm == PSM_PSMZ16 || dpsm == PSM_PSMZ16S;
-	}
-
-	return false;
+	return s_maps.CompatibleBitsField[spsm][dpsm];
 }
 
 int GetPrimClass(DWORD prim)
 {
-	switch(prim)
-	{
-	case GS_POINTLIST:
-		return 0;
-		break;
-	case GS_LINELIST:
-	case GS_LINESTRIP:
-		return 1;
-		break;
-	case GS_TRIANGLELIST:
-	case GS_TRIANGLESTRIP:
-	case GS_TRIANGLEFAN:
-		return 2;
-		break;
-	case GS_SPRITE:
-		return 3;
-		break;
-	}
-
-	return -1;
+	return s_maps.PrimClassField[prim];
 }
 
 bool IsRectInRect(const CRect& inner, const CRect& outer)

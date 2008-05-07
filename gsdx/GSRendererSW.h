@@ -29,7 +29,6 @@ template <class Device>
 class GSRendererSW : public GSRendererT<Device, GSVertexSW>
 {
 	typedef GSVertexSW Vertex;
-	typedef GSVertexSW::Scalar Scalar;
 	typedef GSVertexSW::Vector Vector;
 
 protected:
@@ -92,9 +91,9 @@ protected:
 	{
 		GSVertexSW& v = m_vl.AddTail();
 
-		v.p.x = (int)m_v.XYZ.X - (int)m_context->XYOFFSET.OFX;
-		v.p.y = (int)m_v.XYZ.Y - (int)m_context->XYOFFSET.OFY;
-		v.p *= GSVertexSW::Scalar(1.0f / 16);
+		v.p.x = (float)((int)m_v.XYZ.X - (int)m_context->XYOFFSET.OFX);
+		v.p.y = (float)((int)m_v.XYZ.Y - (int)m_context->XYOFFSET.OFY);
+		v.p *= 1.0f / 16;
 		v.p.z = (float)m_v.XYZ.Z;
 
 		v.c = (DWORD)m_v.RGBAQ.ai32[0];
@@ -105,14 +104,15 @@ protected:
 			{
 				v.t.x = (float)(int)m_v.UV.U;
 				v.t.y = (float)(int)m_v.UV.V;
-				v.t *= GSVertexSW::Scalar(1.0f / 16);
-				v.t.q = 1.0f;
+				v.t *= 1.0f / 16;
+				v.t.w = 1.0f;
 			}
 			else
 			{
-				v.t.x = m_v.ST.S * (1 << m_context->TEX0.TW);
-				v.t.y = m_v.ST.T * (1 << m_context->TEX0.TH);
-				v.t.q = m_v.RGBAQ.Q;
+				v.t.x = m_v.ST.S;
+				v.t.y = m_v.ST.T;
+				v.t *= GSVector4((float)(1 << m_context->TEX0.TW), (float)(1 << m_context->TEX0.TH));
+				v.t.w = m_v.RGBAQ.Q;
 			}
 		}
 
@@ -168,7 +168,7 @@ protected:
 			m_vl.RemoveAt(0, v[1]);
 			nv = 4;
 			v[0].p.z = v[1].p.z;
-			v[0].p.q = v[1].p.q;
+			v[0].p.w = v[1].p.w;
 			v[0].t.z = v[1].t.z;
 			v[2] = v[1];
 			v[3] = v[1];
@@ -187,10 +187,10 @@ protected:
 			return;
 		}
 
-		Scalar sx0((int)m_context->SCISSOR.SCAX0);
-		Scalar sy0((int)m_context->SCISSOR.SCAY0);
-		Scalar sx1((int)m_context->SCISSOR.SCAX1);
-		Scalar sy1((int)m_context->SCISSOR.SCAY1);
+		float sx0 = (float)(int)m_context->SCISSOR.SCAX0;
+		float sy0 = (float)(int)m_context->SCISSOR.SCAY0;
+		float sx1 = (float)(int)m_context->SCISSOR.SCAX1;
+		float sy1 = (float)(int)m_context->SCISSOR.SCAY1;
 
 		switch(nv)
 		{
@@ -241,6 +241,10 @@ protected:
 
 	void Draw()
 	{
+if(s_n == 12)
+{
+	s_save = true;
+}
 		if(s_dump)
 		{
 			CString str;
@@ -252,46 +256,12 @@ protected:
 			if(s_savez) {m_mem.SaveBMP(str, m_context->ZBUF.Block(), m_context->FRAME.FBW, m_context->ZBUF.PSM, GetFrameSize(1).cx, 512);}
 		}
 
-		// sanity check
-
-		if(m_context->TEST.ZTE && m_context->TEST.ZTST == 0)
+		if(PRIM->TME)
 		{
-			return;
+			m_mem.SetupCLUT32(m_context->TEX0, m_env.TEXA);
 		}
 
-		m_rasterizer.BeginDraw();
-
-		int prims = 0;
-
-		Vertex* vertices = m_vertices;
-
-		switch(PRIM->PRIM)
-		{
-		case GS_POINTLIST:
-			prims = m_count;
-			for(int i = 0; i < prims; i++, vertices++) m_rasterizer.DrawPoint(vertices);
-			break;
-		case GS_LINELIST: 
-		case GS_LINESTRIP: 
-			ASSERT(!(m_count & 1));
-			prims = m_count / 2;
-			for(int i = 0; i < prims; i++, vertices += 2) m_rasterizer.DrawLine(vertices);
-			break;
-		case GS_TRIANGLELIST: 
-		case GS_TRIANGLESTRIP: 
-		case GS_TRIANGLEFAN:
-			ASSERT(!(m_count % 3));
-			prims = m_count / 3;
-			for(int i = 0; i < prims; i++, vertices += 3) m_rasterizer.DrawTriangle(vertices);
-			break;
-		case GS_SPRITE:
-			ASSERT(!(m_count & 3));
-			prims = m_count / 4;
-			for(int i = 0; i < prims; i++, vertices += 4) m_rasterizer.DrawSprite(vertices);
-			break;
-		default:
-			__assume(0);
-		}
+		int prims = m_rasterizer.Draw(m_vertices, m_count);
 
 		m_perfmon.Put(GSPerfMon::Prim, prims);
 		m_perfmon.Put(GSPerfMon::Draw, 1);
@@ -312,13 +282,9 @@ protected:
 	}
 
 public:
-	GSRendererSW(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync)
-		: GSRendererT(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync)
+	GSRendererSW(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs)
+		: GSRendererT(base, mt, irq, nloophack, rs)
 		, m_rasterizer(this)
-	{
-	}
-
-	virtual ~GSRendererSW()
 	{
 	}
 };

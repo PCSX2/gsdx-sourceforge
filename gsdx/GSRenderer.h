@@ -26,13 +26,17 @@
 #include "GSVertexList.h"
 #include "GSSettingsDlg.h"
 
-class GSRendererBase :  public GSWnd, public GSState
+struct GSRendererSettings
 {
-protected:
 	int m_interlace;
 	int m_aspectratio;
 	int m_filter;
 	bool m_vsync;
+};
+
+class GSRendererBase :  public GSWnd, public GSState, protected GSRendererSettings
+{
+protected:
 	bool m_osd;
 	int m_field;
 
@@ -74,15 +78,15 @@ protected:
 	}
 
 public:
-	GSRendererBase(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync)
+	GSRendererBase(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs)
 		: GSState(base, mt, irq, nloophack)
-		, m_interlace(interlace)
-		, m_aspectratio(aspectratio)
-		, m_filter(filter)
-		, m_vsync(vsync)
 		, m_osd(true)
 		, m_field(0)
 	{
+		m_interlace = rs.m_interlace;
+		m_aspectratio = rs.m_aspectratio;
+		m_filter = rs.m_filter;
+		m_vsync = rs.m_vsync;
 	};
 
 	virtual void VSync(int field) = 0;
@@ -206,8 +210,8 @@ public:
 	bool s_savez;
 
 public:
-	GSRenderer(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync, bool psrr)
-		: GSRendererBase(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync)
+	GSRenderer(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs, bool psrr)
+		: GSRendererBase(base, mt, irq, nloophack, rs)
 		, m_psrr(psrr)
 	{
 		s_n = 0;
@@ -300,7 +304,7 @@ public:
 
 		//
 
-		static int ar[][2] = {{0, 0}, {4, 3}, {16, 9}};
+		static const int ar[][2] = {{0, 0}, {4, 3}, {16, 9}};
 
 		int arx = ar[m_aspectratio][0];
 		int ary = ar[m_aspectratio][1];
@@ -439,8 +443,8 @@ protected:
 	virtual void Draw() = 0;
 
 public:
-	GSRendererT(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync, bool psrr = true)
-		: GSRenderer<Device>(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync, psrr)
+	GSRendererT(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs, bool psrr = true)
+		: GSRenderer<Device>(base, mt, irq, nloophack, rs, psrr)
 		, m_vertices(NULL)
 		, m_count(0)
 		, m_maxcount(0)

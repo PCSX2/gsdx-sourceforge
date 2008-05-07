@@ -91,8 +91,8 @@ protected:
 	}
 
 public:
-	GSRendererNull(BYTE* base, bool mt, void (*irq)(), int nloophack, int interlace, int aspectratio, int filter, bool vsync)
-		: GSRendererT<Device, GSVertexNull>(base, mt, irq, nloophack, interlace, aspectratio, filter, vsync)
+	GSRendererNull(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs)
+		: GSRendererT<Device, GSVertexNull>(base, mt, irq, nloophack, rs)
 	{
 	}
 };
