@@ -56,9 +56,9 @@ private:
 		struct {GSVector4 r, g, b;} f;
 
 		GSVector4 dz0123, dz;
+		GSVector4 df0123, df;
 		GSVector4 dt0123, dt;
 		GSVector4 ds0123, ds;
-		GSVector4 df0123, df;
 		GSVector4 dq0123, dq;
 		GSVector4 dr0123, dr;
 		GSVector4 dg0123, dg;
@@ -72,26 +72,27 @@ private:
 		{
 			DWORD fpsm:3; // 0
 			DWORD zpsm:2; // 3
-			DWORD ztst:2; // 5
-			DWORD tfx:3; // 7
-			DWORD tcc:1; // 10
-			DWORD fst:1; // 11
-			DWORD ltf:1; // 12
-			DWORD atst:3; // 13
-			DWORD afail:2; // 16
-			DWORD fge:1; // 18
-			DWORD rfb:1; // 19
-			DWORD date:1; // 20
-			DWORD abe:2; // 21
-			DWORD abea:2; // 23
-			DWORD abeb:2; // 25
-			DWORD abec:2; // 27
-			DWORD abed:2; // 29
+			DWORD ztst:2; // 5 (0: off, 1: write, 2: write + test (ge), 3: write + test (g))
+			DWORD iip:1; // 7
+			DWORD tfx:3; // 8
+			DWORD tcc:1; // 11
+			DWORD fst:1; // 12
+			DWORD ltf:1; // 13
+			DWORD atst:3; // 14
+			DWORD afail:2; // 17
+			DWORD fge:1; // 19
+			DWORD rfb:1; // 20
+			DWORD date:1; // 21
+			DWORD abe:2; // 22
+			DWORD abea:2; // 24
+			DWORD abeb:2; // 26
+			DWORD abec:2; // 28
+			DWORD abed:2; // 30
 		};
 
 		DWORD dw;
 
-		operator DWORD() {return dw & 0x7fffffff;}
+		operator DWORD() {return dw & 0xffffffff;}
 	};
 
 	GSState* m_state;
@@ -108,18 +109,22 @@ private:
 	bool m_solidrect;
 
 	void SetupColumnOffset();
+
+	template<bool pos, bool tex, bool col> 
 	void SetupScanline(const Vertex& dv);
 
 	typedef void (GSRasterizer::*DrawScanlinePtr)(int top, int left, int right, const Vertex& v);
 
-	DrawScanlinePtr m_ds[8][4][3]/*[3]*/, m_dsf;
+	DrawScanlinePtr m_ds[8][4][4][2], m_dsf;
 	CAtlMap<DWORD, DrawScanlinePtr> m_dsmap, m_dsmap2;
 
-	template<int iFPSM, int iZPSM, int iZTST>//, int iABE>
+	template<int iFPSM, int iZPSM, int iZTST, int iIIP>
 	void DrawScanline(int top, int left, int right, const Vertex& v);
 
-	template<DWORD sel>
-	void DrawScanline2(int top, int left, int right, const Vertex& v);
+	void InitEx();
+
+	template<DWORD sel> 
+	void DrawScanlineEx(int top, int left, int right, const Vertex& v);
 
 	void FetchTexture(int x, int y);
 
