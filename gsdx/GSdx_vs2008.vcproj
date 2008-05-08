@@ -1172,6 +1172,26 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath=".\GSRasterizerEx.cpp"
+				>
+				<FileConfiguration
+					Name="Release SSSE3|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AssemblerOutput="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release SSSE3|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AssemblerOutput="4"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
 				RelativePath=".\GSRenderer.cpp"
 				>
 			</File>

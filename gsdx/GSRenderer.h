@@ -253,7 +253,7 @@ public:
 
 		if(!Merge()) return;
 
-//s_dump = m_perfmon.GetFrame() >= 5002;
+// s_dump = m_perfmon.GetFrame() >= 5002;
 
 		// osd 
 
@@ -293,6 +293,11 @@ public:
 		if(m_osd)
 		{
 			m_dev.Draw(s_stats + _T("\n\nF5: interlace mode\nF6: aspect ratio\nF7: OSD"));
+		}
+
+		if(m_frameskip)
+		{
+			return;
 		}
 
 		//

@@ -15,8 +15,10 @@
 
 	#if  _MSC_VER < 1500
 
-	__forceinline __m128i _mm_castps_si128(__m128 r) {return *(__m128i*)&r;}
-	__forceinline __m128 _mm_castsi128_ps(__m128i r) {return *(__m128*)&r;}
+	__forceinline __m128i _mm_castps_si128(__m128 a) {return *(__m128i*)&a;}
+	__forceinline __m128 _mm_castsi128_ps(__m128i a) {return *(__m128*)&a;}
+	__forceinline __m128d _mm_castps_pd(__m128 a) {return *(__m128d*)&a;}
+	__forceinline __m128 _mm_castpd_ps(__m128d a) {return *(__m128*)&a;}
 
 	#endif
 
