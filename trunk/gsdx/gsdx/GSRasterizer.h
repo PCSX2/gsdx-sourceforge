@@ -37,6 +37,10 @@ protected:
 	typedef GSVertexSW Vertex;
 	typedef GSVertexSW::Vector Vector;
 
+	GSState* m_state;
+	int m_id;
+	int m_threads;
+
 private:
 	struct ColumnOffset
 	{
@@ -95,7 +99,6 @@ private:
 		operator DWORD() {return dw & 0xffffffff;}
 	};
 
-	GSState* m_state;
 	CRect m_scissor;
 	DWORD* m_cache;
 	DWORD m_page[(1024 / (1 << TEXTURE_CACHE_HEIGHT)) * (1024 / (1 << TEXTURE_CACHE_WIDTH))];
@@ -174,7 +177,7 @@ private:
 	bool DrawSolidRect(int left, int top, int right, int bottom, const Vertex& v);
 
 public:
-	GSRasterizer(GSState* state);
+	GSRasterizer(GSState* state, int id = 0, int idmask = 0);
 	virtual ~GSRasterizer();
 
 	void InvalidateTextureCache();
@@ -266,3 +269,75 @@ public:
 	}
 };
 */
+
+class GSRasterizerMT : public GSRasterizer
+{
+	Vertex* m_vertices;
+	int m_count;
+	long* m_sync;
+	bool m_exit;
+    DWORD m_ThreadId;
+    HANDLE m_hThread;
+
+	DWORD ThreadProc()
+	{
+		// _mm_setcsr(MXCSR);
+
+		while(!m_exit)
+		{
+			if(*m_sync & (1 << m_id))
+			{
+				Draw(m_vertices, m_count);
+
+				InterlockedBitTestAndReset(m_sync, m_id);
+			}
+			else
+			{
+				SwitchToThread();
+
+				_mm_pause();
+			}
+		}
+
+		return 0;
+	}
+
+	static DWORD WINAPI StaticThreadProc(LPVOID lpParam)
+	{
+		return ((GSRasterizerMT*)lpParam)->ThreadProc();
+	}
+
+public:
+	GSRasterizerMT(GSState* state, int id, int idmask, long* sync)
+		: GSRasterizer(state, id, idmask)
+		, m_vertices(NULL)
+		, m_count(0)
+		, m_sync(sync)
+		, m_exit(false)
+		, m_ThreadId(0)
+		, m_hThread(NULL)
+	{
+		m_hThread = CreateThread(NULL, 0, StaticThreadProc, (LPVOID)this, 0, &m_ThreadId);
+	}
+
+	virtual ~GSRasterizerMT()
+	{
+		if(m_hThread != NULL)
+		{
+			m_exit = true;
+
+			if(WaitForSingleObject(m_hThread, 5000) != WAIT_OBJECT_0)
+			{
+				TerminateThread(m_hThread, 1);
+			}
+
+			CloseHandle(m_hThread);
+		}
+	}
+
+	void BeginDraw(Vertex* vertices, int count)
+	{
+		m_vertices = vertices;
+		m_count = count;
+	}
+};

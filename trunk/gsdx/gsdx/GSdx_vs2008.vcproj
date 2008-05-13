@@ -1190,6 +1190,14 @@
 						AssemblerOutput="4"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release SSE4|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AssemblerOutput="4"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\GSRenderer.cpp"
@@ -1349,6 +1357,10 @@
 			</File>
 			<File
 				RelativePath=".\GSWnd.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\sse.cpp"
 				>
 			</File>
 			<File

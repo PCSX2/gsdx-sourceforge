@@ -226,6 +226,8 @@ EXPORT_C_(INT32) __GSopen(void* dsp, char* title, int mt, int renderer)
 
 	*(HWND*)dsp = *s_gs;
 
+	// if(mt) _mm_setcsr(MXCSR);
+
 	return 0;
 }
 

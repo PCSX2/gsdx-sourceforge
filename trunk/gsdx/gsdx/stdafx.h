@@ -45,6 +45,11 @@
 #include <d3d10.h>
 #include <d3dx10.h>
 #include <math.h>
+
+#if !defined(_M_SSE) && (defined(_M_AMD64) || defined(_M_IX86_FP) && _M_IX86_FP >= 2)
+#define _M_SSE 0x200
+#endif
+
 #include "sse.h"
 
 #define countof(a) (sizeof(a)/sizeof(a[0]))
@@ -80,5 +85,3 @@
 		{ \
 
 #define EndEnumSysDev }}}
-
-

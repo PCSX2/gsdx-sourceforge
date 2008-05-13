@@ -21,3 +21,5 @@
 
 #include "StdAfx.h"
 #include "GSRendererSW.h"
+
+const GSVector4 g_pos_scale(1.0f / 16, 1.0f / 16, 1.0f, 1.0f / 256);

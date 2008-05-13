@@ -119,9 +119,11 @@ void GSSettingsDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_CHECK6, m_nloophack);	
 	DDX_Control(pDX, IDC_SPIN1, m_resx);
 	DDX_Control(pDX, IDC_SPIN2, m_resy);
+	DDX_Control(pDX, IDC_SPIN3, m_swthreads);
 	DDX_Check(pDX, IDC_CHECK1, m_nativeres);
 	DDX_Control(pDX, IDC_EDIT1, m_resxedit);
 	DDX_Control(pDX, IDC_EDIT2, m_resyedit);
+	DDX_Control(pDX, IDC_EDIT3, m_swthreadsedit);
 	DDX_Check(pDX, IDC_CHECK2, m_vsync);
 	DDX_Check(pDX, IDC_CHECK5, m_logz);
 	DDX_Check(pDX, IDC_CHECK7, m_fba);
@@ -241,6 +243,9 @@ BOOL GSSettingsDlg::OnInitDialog()
 	m_resxedit.EnableWindow(!m_nativeres);
 	m_resyedit.EnableWindow(!m_nativeres);
 
+	m_swthreads.SetRange(1, 16);
+	m_swthreads.SetPos(pApp->GetProfileInt(_T("Settings"), _T("swthreads"), 1));
+
 	//
 
 	UpdateData(FALSE);
@@ -292,6 +297,7 @@ void GSSettingsDlg::OnOK()
 
 	pApp->WriteProfileInt(_T("Settings"), _T("resx"), m_resx.GetPos());
 	pApp->WriteProfileInt(_T("Settings"), _T("resy"), m_resy.GetPos());
+	pApp->WriteProfileInt(_T("Settings"), _T("swthreads"), m_swthreads.GetPos());
 	pApp->WriteProfileInt(_T("Settings"), _T("nativeres"), m_nativeres);
 
 	__super::OnOK();

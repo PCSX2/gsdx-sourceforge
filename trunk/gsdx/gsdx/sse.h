@@ -1,10 +1,25 @@
+/* 
+ *	Copyright (C) 2007 Gabest
+ *	http://www.gabest.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *   
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *   
+ *  You should have received a copy of the GNU General Public License
+ *  along with GNU Make; see the file COPYING.  If not, write to
+ *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA. 
+ *  http://www.gnu.org/copyleft/gpl.html
+ *
+ */
+
 #pragma once
-
-#if !defined(_M_SSE) && (defined(_M_AMD64) || defined(_M_IX86_FP) && _M_IX86_FP >= 2)
-
-	#define _M_SSE 0x200
-
-#endif
 
 // sse2
 
@@ -13,7 +28,13 @@
 	#include <xmmintrin.h>
 	#include <emmintrin.h>
 
-	#if  _MSC_VER < 1500
+	#ifndef _MM_DENORMALS_ARE_ZERO
+	#define _MM_DENORMALS_ARE_ZERO 0x0040
+	#endif
+
+	#define MXCSR (_MM_DENORMALS_ARE_ZERO | _MM_MASK_MASK | _MM_ROUND_NEAREST | _MM_FLUSH_ZERO_ON)
+
+	#if _MSC_VER < 1500
 
 	__forceinline __m128i _mm_castps_si128(__m128 a) {return *(__m128i*)&a;}
 	__forceinline __m128 _mm_castsi128_ps(__m128i a) {return *(__m128*)&a;}
@@ -22,23 +43,33 @@
 
 	#endif
 
+	#define epi32_ffffffff _mm_cmpeq_epi32(_mm_setzero_si128(), _mm_setzero_si128())
+	#define epi32_000000ff _mm_srli_epi32(epi32_ffffffff, 24)
+	#define epi32_ff000000 _mm_slli_epi32(epi32_ffffffff, 24)
+	#define epi32_00000001 _mm_srli_epi32(epi32_ffffffff, 31)
+	#define epi32_80000000 _mm_slli_epi32(epi32_ffffffff, 31)
+	#define epi32_00010001 _mm_srli_epi16(epi32_ffffffff, 15)	
+	#define epi32_7fffffff _mm_srli_epi32(epi32_ffffffff,  1)
+
+	const __m128 ps_3f800000 = _mm_castsi128_ps(_mm_set1_epi32(0x3f800000));
+	const __m128 ps_4b000000 = _mm_castsi128_ps(_mm_set1_epi32(0x4b000000));
+	const __m128 ps_7fffffff = _mm_castsi128_ps(_mm_set1_epi32(0x7fffffff));
+	const __m128 ps_80000000 = _mm_castsi128_ps(_mm_set1_epi32(0x80000000));
+	const __m128 ps_ffffffff = _mm_castsi128_ps(_mm_set1_epi32(0xffffffff));
+
 	__forceinline __m128 _mm_neg_ps(__m128 r)
 	{
-		const __m128 _80000000 = _mm_castsi128_ps(_mm_set1_epi32(0x80000000));
-
-		r = _mm_xor_ps(_80000000, r);
-		
-		return r;
+		return _mm_xor_ps(ps_80000000, r);
 	}
 
 	__forceinline __m128 _mm_abs_ps(__m128 r)
 	{
-		const __m128 _7fffffff = _mm_castsi128_ps(_mm_set1_epi32(0x7fffffff));
-		
-		r = _mm_and_ps(_7fffffff, r);
-		
-		return r;
+		return _mm_and_ps(ps_7fffffff, r);
 	}
+
+#else
+
+#error TODO: GSVector4 and GSRasterizer needs SSE2
 
 #endif
 
@@ -67,30 +98,23 @@
 
 	__forceinline __m128 _mm_round_ps(__m128 x)
 	{
-		const __m128 _80000000 = _mm_castsi128_ps(_mm_set1_epi32(0x80000000));
-		const __m128 _4b000000 = _mm_castsi128_ps(_mm_set1_epi32(0x4b000000));
-
-		__m128 t = _mm_or_ps(_mm_and_ps(_80000000, x), _4b000000);
+		__m128 t = _mm_or_ps(_mm_and_ps(ps_80000000, x), ps_4b000000);
 
 		return _mm_sub_ps(_mm_add_ps(x, t), t);
 	}
 
 	__forceinline __m128 _mm_floor_ps(__m128 x)
 	{
-		const __m128 _3f800000 = _mm_castsi128_ps(_mm_set1_epi32(0x3f800000));
-
 		__m128 t = _mm_round_ps(x);
 
-		return _mm_sub_ps(t, _mm_and_ps(_mm_cmplt_ps(x, t), _3f800000));
+		return _mm_sub_ps(t, _mm_and_ps(_mm_cmplt_ps(x, t), ps_3f800000));
 	}
 
 	__forceinline __m128 _mm_ceil_ps(__m128 x)
 	{
-		const __m128 _3f800000 = _mm_castsi128_ps(_mm_set1_epi32(0x3f800000));
-
 		__m128 t = _mm_round_ps(x);
 
-		return _mm_add_ps(t, _mm_and_ps(_mm_cmpgt_ps(x, t), _3f800000));
+		return _mm_add_ps(t, _mm_and_ps(_mm_cmpgt_ps(x, t), ps_3f800000));
 	}
 
 #endif
