@@ -25,6 +25,8 @@
 #include "GSVertexSW.h"
 #include "GSRasterizer.h"
 
+extern const GSVector4 g_pos_scale;
+
 template <class Device>
 class GSRendererSW : public GSRendererT<Device, GSVertexSW>
 {
@@ -32,7 +34,10 @@ class GSRendererSW : public GSRendererT<Device, GSVertexSW>
 	typedef GSVertexSW::Vector Vector;
 
 protected:
-	GSRasterizer m_rasterizer;
+	long m_sync;
+	long m_threads;
+	GSRasterizer* m_rst;
+	CAtlList<GSRasterizerMT*> m_rmt;
 	Texture m_texture[2];
 
 	void ResetDevice() 
@@ -87,10 +92,11 @@ protected:
 		return true;
 	}
 
+
 	void VertexKick(bool skip)
 	{
 		GSVertexSW& v = m_vl.AddTail();
-
+/*
 		v.p.x = (float)((int)m_v.XYZ.X - (int)m_context->XYOFFSET.OFX);
 		v.p.y = (float)((int)m_v.XYZ.Y - (int)m_context->XYOFFSET.OFY);
 		v.p.z = (float)min(m_v.XYZ.Z, 0xffffff00); // max value which can survive the DWORD=>float=>DWORD conversion
@@ -100,7 +106,13 @@ protected:
 			v.p.w = (float)(int)m_v.FOG.F;
 		}
 
-		v.p *= Vector(1.0f / 16, 1.0f / 16, 1.0f, 1.0f / 256);
+		v.p *= g_pos_scale;
+*/
+		int x = (int)m_v.XYZ.X - (int)m_context->XYOFFSET.OFX;
+		int y = (int)m_v.XYZ.Y - (int)m_context->XYOFFSET.OFY;
+
+		v.p = Vector(_mm_set_epi32((int)m_v.FOG.F, 0, y, x)) * g_pos_scale;
+		v.p.z = (float)min(m_v.XYZ.Z, 0xffffff00); // max value which can survive the DWORD=>float=>DWORD conversion
 
 		v.c = (DWORD)m_v.RGBAQ.ai32[0];
 
@@ -258,7 +270,29 @@ protected:
 			m_mem.SetupCLUT32(m_context->TEX0, m_env.TEXA);
 		}
 
-		int prims = m_rasterizer.Draw(m_vertices, m_count);
+		POSITION pos = m_rmt.GetHeadPosition();
+
+		while(pos)
+		{
+			GSRasterizerMT* r = m_rmt.GetNext(pos);
+
+			r->BeginDraw(m_vertices, m_count);
+		}
+
+		m_sync = (1 << m_threads) - 1;
+
+		// 1st thread is this thread
+
+		int prims = m_rst->Draw(m_vertices, m_count);
+
+		InterlockedBitTestAndReset(&m_sync, 0); 
+
+		// wait for the other threads to finish
+
+		while(m_sync)
+		{
+			_mm_pause();
+		}
 
 		m_perfmon.Put(GSPerfMon::Prim, prims);
 		m_perfmon.Put(GSPerfMon::Draw, 1);
@@ -275,13 +309,42 @@ protected:
 
 	void InvalidateTextureCache()
 	{
-		m_rasterizer.InvalidateTextureCache();
+		m_rst->InvalidateTextureCache();
+
+		POSITION pos = m_rmt.GetHeadPosition();
+
+		while(pos)
+		{
+			GSRasterizerMT* r = m_rmt.GetNext(pos);
+
+			r->InvalidateTextureCache();
+		}
 	}
 
 public:
 	GSRendererSW(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs)
 		: GSRendererT(base, mt, irq, nloophack, rs)
-		, m_rasterizer(this)
+		, m_sync(0)
 	{
+		m_threads = AfxGetApp()->GetProfileInt(_T("Settings"), _T("swthreads"), 1);
+
+		m_rst = new GSRasterizer(this, 0, m_threads);
+
+		for(int i = 1; i < m_threads; i++) 
+		{
+			GSRasterizerMT* r = new GSRasterizerMT(this, i, m_threads, &m_sync);
+
+			m_rmt.AddTail(r);
+		}
+	}
+
+	virtual ~GSRendererSW()
+	{
+		delete m_rst;
+
+		while(!m_rmt.IsEmpty()) 
+		{
+			delete m_rmt.RemoveHead();
+		}
 	}
 };

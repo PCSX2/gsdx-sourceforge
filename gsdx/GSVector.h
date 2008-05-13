@@ -57,22 +57,17 @@ public:
 	GSVector4 lerp(const GSVector4& v, const GSVector4& f) const {return *this + (v - *this) * f;}
 	GSVector4 lerp(const GSVector4& v, float f) const {return lerp(v, GSVector4(f));}
 	GSVector4 sat(const GSVector4& a, const GSVector4& b) const {return GSVector4(_mm_min_ps(_mm_max_ps(m, a), b));}
-	GSVector4 sat(float a = 0, float b = 255) const {return sat(GSVector4(a), GSVector4(b));}
+	GSVector4 sat(const float scale = 255) const {return sat(zero(), GSVector4(scale));}
 	GSVector4 blend(const GSVector4& a, const GSVector4& mask) {return GSVector4(_mm_blendv_ps(m, a, mask));}
 
 	static GSVector4 zero() 
 	{
-		return GSVector4(_mm_setzero_ps());
-	}
-
-	static GSVector4 invzero() 
-	{
-		return GSVector4(_mm_castsi128_ps(_mm_set1_epi32(0xffffffff)));
+		return GSVector4(_mm_castsi128_ps(_mm_setzero_si128())); // pxor is faster than xorps
 	}
 
 	static void expand(__m128i m, GSVector4& a, GSVector4& b, GSVector4& c, GSVector4& d)
 	{
-		__m128i mask = _mm_set1_epi32(0xff);
+		__m128i mask = epi32_000000ff;
 
 		a = _mm_cvtepi32_ps(_mm_and_si128(m, mask));
 		b = _mm_cvtepi32_ps(_mm_and_si128(_mm_srli_epi32(m, 8), mask));
@@ -82,17 +77,7 @@ public:
 
 	static void transpose(GSVector4& a, GSVector4& b, GSVector4& c, GSVector4& d)
 	{
-		__m128 aa = a;
-		__m128 bb = b;
-		__m128 cc = c;
-		__m128 dd = d;
-
-		_MM_TRANSPOSE4_PS(aa, bb, cc, dd);
-
-		a.m = aa;
-		b.m = bb;
-		c.m = cc;
-		d.m = dd;
+		_MM_TRANSPOSE4_PS(a.m, b.m, c.m, d.m);
 	}
 
 	void operator += (const GSVector4& v) {m = _mm_add_ps(m, v);}

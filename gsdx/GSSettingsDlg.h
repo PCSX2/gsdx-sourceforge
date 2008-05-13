@@ -54,9 +54,11 @@ public:
 	int m_nloophack;
 	CSpinButtonCtrl m_resx;
 	CSpinButtonCtrl m_resy;
+	CSpinButtonCtrl m_swthreads;
 	BOOL m_nativeres;
 	CEdit m_resxedit;
 	CEdit m_resyedit;
+	CEdit m_swthreadsedit;
 	BOOL m_vsync;
 	BOOL m_logz;
 	BOOL m_fba;

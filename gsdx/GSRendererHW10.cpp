@@ -630,12 +630,7 @@ void GSRendererHW10::SetupDATE(Texture& rt, Texture& ds)
 	if(mm.z > +1) mm.z = +1;
 	if(mm.w > +1) mm.w = +1;
 */
-	GSVector4 uv;
-
-	uv.x = (mm.x + 1) / 2;
-	uv.y = (mm.y + 1) / 2;
-	uv.z = (mm.z + 1) / 2;
-	uv.w = (mm.w + 1) / 2;
+	GSVector4 uv = (mm + 1.0f) / 2.0f;
 
 	//
 

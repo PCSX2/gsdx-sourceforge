@@ -21,14 +21,15 @@
 
 // TODO: avx (256 bit regs, 8 pixels, 3-4 op instructions), DrawScanline ~50-70% of total time
 // TODO: sse is a waste for 1 pixel
-// TODO: +/-1 aref when atst is gt/lt => remove extra eq test
 // TODO: sprite doesn't need z/f interpolation, q could be eliminated by premultiplying s/t
 
 #include "StdAfx.h"
 #include "GSRasterizer.h"
 
-GSRasterizer::GSRasterizer(GSState* state)
+GSRasterizer::GSRasterizer(GSState* state, int id, int threads)
 	: m_state(state)
+	, m_id(id)
+	, m_threads(threads)
 	, m_fbco(NULL)
 	, m_zbco(NULL)
 {
@@ -344,7 +345,10 @@ void GSRasterizer::DrawPoint(Vertex* v)
 
 	if(m_scissor.left <= x && x < m_scissor.right && m_scissor.top <= y && y < m_scissor.bottom)
 	{
-		(this->*m_dsf)(y, x, x + 1, *v);
+		if((y % m_threads) == m_id) 
+		{
+			(this->*m_dsf)(y, x, x + 1, *v);
+		}
 	}
 }
 
@@ -377,8 +381,11 @@ void GSRasterizer::DrawLine(Vertex* v)
 	}
 }
 
-void GSRasterizer::DrawTriangle(Vertex* v)
+void GSRasterizer::DrawTriangle(Vertex* vertices)
 {
+	Vertex vv[3] = {vertices[0], vertices[1], vertices[2]};
+	Vertex* v = vv;
+
 	if(v[1].p.y < v[0].p.y) {Vertex::Exchange(&v[0], &v[1]);}
 	if(v[2].p.y < v[0].p.y) {Vertex::Exchange(&v[0], &v[2]);}
 	if(v[2].p.y < v[1].p.y) {Vertex::Exchange(&v[1], &v[2]);}
@@ -432,25 +439,28 @@ void GSRasterizer::DrawTriangle(Vertex* v)
 
 		for(; top < bottom; top++)
 		{
-			__m128i lr = Vector(_mm_unpacklo_ps(edge[0].p, edge[1].p)).ceil();
-
-			int left = lr.m128i_i32[0];
-			int right = lr.m128i_i32[1];
-
-			if(left < m_scissor.left) left = m_scissor.left;
-			if(right > m_scissor.right) right = m_scissor.right;
-
-			if(right > left)
+			if((top % m_threads) == m_id) 
 			{
-				scan = edge[0];
+				__m128i lr = Vector(_mm_unpacklo_ps(edge[0].p, edge[1].p)).ceil();
 
-				if(edge[0].p.x < (float)left)
+				int left = lr.m128i_i32[0];
+				int right = lr.m128i_i32[1];
+
+				if(left < m_scissor.left) left = m_scissor.left;
+				if(right > m_scissor.right) right = m_scissor.right;
+
+				if(right > left)
 				{
-					scan += dscan * ((float)left - edge[0].p.x);
-					scan.p.x = (float)left; // ?
-				}
+					scan = edge[0];
 
-				(this->*m_dsf)(top, left, right, scan);
+					if(edge[0].p.x < (float)left)
+					{
+						scan += dscan * ((float)left - edge[0].p.x);
+						scan.p.x = (float)left; // ?
+					}
+
+					(this->*m_dsf)(top, left, right, scan);
+				}
 			}
 
 			// for(int j = 0; j < 2; j++) edge[j] += dedge[j];
@@ -467,8 +477,10 @@ void GSRasterizer::DrawTriangle(Vertex* v)
 	}
 }
 
-void GSRasterizer::DrawSprite(Vertex* v)
+void GSRasterizer::DrawSprite(Vertex* vertices)
 {
+	Vertex v[4] = {vertices[0], vertices[1], vertices[2], vertices[3]};
+
 	if(v[2].p.y < v[0].p.y) {Vertex::Exchange(&v[0], &v[2]); Vertex::Exchange(&v[1], &v[3]);}
 	if(v[1].p.x < v[0].p.x) {Vertex::Exchange(&v[0], &v[1]); Vertex::Exchange(&v[2], &v[3]);}
 
@@ -514,7 +526,10 @@ void GSRasterizer::DrawSprite(Vertex* v)
 
 		for(; top < bottom; top++, scan.t += dedge.t)
 		{
-			(this->*m_dsf)(top, left, right, scan);
+			if((top % m_threads) == m_id) 
+			{
+				(this->*m_dsf)(top, left, right, scan);
+			}
 		}
 	}
 	else
@@ -523,7 +538,10 @@ void GSRasterizer::DrawSprite(Vertex* v)
 
 		for(; top < bottom; top++)
 		{
-			(this->*m_dsf)(top, left, right, scan);
+			if((top % m_threads) == m_id) 
+			{
+				(this->*m_dsf)(top, left, right, scan);
+			}
 		}
 	}
 }
@@ -533,6 +551,11 @@ bool GSRasterizer::DrawSolidRect(int left, int top, int right, int bottom, const
 	if(left >= right || top >= bottom || !m_solidrect)
 	{
 		return false;
+	}
+
+	if(m_id != 0)
+	{
+		return true;
 	}
 
 	ASSERT(top >= 0);

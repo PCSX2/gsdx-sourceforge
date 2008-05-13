@@ -14,6 +14,7 @@
 #define IDC_EDIT2                       2010
 #define IDC_BUTTON1                     2011
 #define IDC_BUTTON2                     2012
+#define IDC_EDIT3                       2012
 #define IDC_CUSTOM1                     2013
 #define IDC_CHECK4                      2014
 #define IDC_COMBO2                      2015
@@ -22,6 +23,7 @@
 #define IDC_SPIN1                       2018
 #define IDC_SPIN2                       2019
 #define IDD_CONFIG                      2020
+#define IDC_SPIN3                       2020
 #define IDB_LOGO9                       2021
 #define IDB_LOGO10                      2022
 #define IDC_CHECK7                      2023
@@ -40,7 +42,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        10008
+#define _APS_NEXT_RESOURCE_VALUE        10009
 #define _APS_NEXT_COMMAND_VALUE         32771
 #define _APS_NEXT_CONTROL_VALUE         2026
 #define _APS_NEXT_SYMED_VALUE           5000
