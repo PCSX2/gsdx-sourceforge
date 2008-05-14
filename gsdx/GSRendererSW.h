@@ -31,10 +31,9 @@ template <class Device>
 class GSRendererSW : public GSRendererT<Device, GSVertexSW>
 {
 	typedef GSVertexSW Vertex;
-	typedef GSVertexSW::Vector Vector;
 
 protected:
-	long m_sync;
+	long* m_sync;
 	long m_threads;
 	GSRasterizer* m_rst;
 	CAtlList<GSRasterizerMT*> m_rmt;
@@ -96,22 +95,13 @@ protected:
 	void VertexKick(bool skip)
 	{
 		GSVertexSW& v = m_vl.AddTail();
-/*
-		v.p.x = (float)((int)m_v.XYZ.X - (int)m_context->XYOFFSET.OFX);
-		v.p.y = (float)((int)m_v.XYZ.Y - (int)m_context->XYOFFSET.OFY);
-		v.p.z = (float)min(m_v.XYZ.Z, 0xffffff00); // max value which can survive the DWORD=>float=>DWORD conversion
 
-		if(PRIM->FGE)
-		{
-			v.p.w = (float)(int)m_v.FOG.F;
-		}
-
-		v.p *= g_pos_scale;
-*/
 		int x = (int)m_v.XYZ.X - (int)m_context->XYOFFSET.OFX;
 		int y = (int)m_v.XYZ.Y - (int)m_context->XYOFFSET.OFY;
 
-		v.p = Vector(_mm_set_epi32((int)m_v.FOG.F, 0, y, x)) * g_pos_scale;
+		GSVector4i p(x, y, 0, (int)m_v.FOG.F);
+
+		v.p = GSVector4(p) * g_pos_scale;
 		v.p.z = (float)min(m_v.XYZ.Z, 0xffffff00); // max value which can survive the DWORD=>float=>DWORD conversion
 
 		v.c = (DWORD)m_v.RGBAQ.ai32[0];
@@ -241,7 +231,7 @@ protected:
 
 		if(PRIM->IIP == 0 || PRIM->PRIM == GS_SPRITE)
 		{
-			Vector c = v[nv - 1].c;
+			GSVector4 c = v[nv - 1].c;
 
 			for(int i = 0; i < nv - 1; i++) 
 			{
@@ -279,17 +269,17 @@ protected:
 			r->BeginDraw(m_vertices, m_count);
 		}
 
-		m_sync = (1 << m_threads) - 1;
+		*m_sync = (1 << m_threads) - 1;
 
 		// 1st thread is this thread
 
 		int prims = m_rst->Draw(m_vertices, m_count);
 
-		InterlockedBitTestAndReset(&m_sync, 0); 
+		InterlockedBitTestAndReset(m_sync, 0); 
 
 		// wait for the other threads to finish
 
-		while(m_sync)
+		while(*m_sync)
 		{
 			_mm_pause();
 		}
@@ -324,15 +314,15 @@ protected:
 public:
 	GSRendererSW(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs)
 		: GSRendererT(base, mt, irq, nloophack, rs)
-		, m_sync(0)
 	{
+		m_sync = (long*)_aligned_malloc(sizeof(*m_sync), 128); // get a whole cache line
 		m_threads = AfxGetApp()->GetProfileInt(_T("Settings"), _T("swthreads"), 1);
 
 		m_rst = new GSRasterizer(this, 0, m_threads);
 
 		for(int i = 1; i < m_threads; i++) 
 		{
-			GSRasterizerMT* r = new GSRasterizerMT(this, i, m_threads, &m_sync);
+			GSRasterizerMT* r = new GSRasterizerMT(this, i, m_threads, m_sync);
 
 			m_rmt.AddTail(r);
 		}

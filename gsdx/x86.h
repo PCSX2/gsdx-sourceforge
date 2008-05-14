@@ -45,9 +45,11 @@ extern void __fastcall SwizzleColumn16_c(int y, BYTE* dst, BYTE* src, int srcpit
 extern void __fastcall SwizzleColumn8_c(int y, BYTE* dst, BYTE* src, int srcpitch);
 extern void __fastcall SwizzleColumn4_c(int y, BYTE* dst, BYTE* src, int srcpitch);
 
+extern void __fastcall ExpandBlock24_sse2(BYTE* src, int srcpitch, DWORD* dst);
 extern void __fastcall ExpandBlock24_sse2(DWORD* src, DWORD* dst, int dstpitch, GIFRegTEXA* pTEXA);
 extern void __fastcall ExpandBlock16_sse2(WORD* src, DWORD* dst, int dstpitch, GIFRegTEXA* pTEXA);
 extern void __fastcall Expand16_sse2(WORD* src, DWORD* dst, int w, GIFRegTEXA* pTEXA);
+extern void __fastcall ExpandBlock24_c(BYTE* src, int srcpitch, DWORD* dst);
 extern void __fastcall ExpandBlock24_c(DWORD* src, DWORD* dst, int dstpitch, GIFRegTEXA* pTEXA);
 extern void __fastcall ExpandBlock16_c(WORD* src, DWORD* dst, int dstpitch, GIFRegTEXA* pTEXA);
 extern void __fastcall Expand16_c(WORD* src, DWORD* dst, int w, GIFRegTEXA* pTEXA);

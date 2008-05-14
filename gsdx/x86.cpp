@@ -226,6 +226,50 @@ static __m128i s_bm = _mm_set1_epi32(0x00007c00);
 static __m128i s_gm = _mm_set1_epi32(0x000003e0);
 static __m128i s_rm = _mm_set1_epi32(0x0000001f);
 
+void __fastcall ExpandBlock24_sse2(BYTE* src, int srcpitch, DWORD* dst)
+{
+	__m128i* d = (__m128i*)dst;
+
+	const __m128i mask = _mm_set1_epi32(0x00ffffff);
+
+	for(int i = 0; i < 8; i += 2, src += srcpitch * 2, d += 4)
+	{
+		__m128i r0 = _mm_loadu_si128((__m128i*)(src));
+		__m128i r1 = _mm_or_si128(_mm_loadl_epi64((__m128i*)(src + 16)), _mm_slli_si128(_mm_loadl_epi64((__m128i*)(src + srcpitch)), 8));
+		__m128i r2 = _mm_loadu_si128((__m128i*)(src + srcpitch + 8));
+
+		__m128i r3 = _mm_unpacklo_epi32(r0, _mm_srli_si128(r0, 3));
+		__m128i r4 = _mm_unpacklo_epi32(_mm_srli_si128(r0, 6), _mm_srli_si128(r0, 9));
+		__m128i r5 = _mm_and_si128(_mm_unpacklo_epi64(r3, r4), mask);
+
+		d[0] = r5;
+
+		r0 = _mm_or_si128(_mm_srli_si128(r0, 12), _mm_slli_si128(r1, 4));
+
+		r3 = _mm_unpacklo_epi32(r0, _mm_srli_si128(r0, 3));
+		r4 = _mm_unpacklo_epi32(_mm_srli_si128(r0, 6), _mm_srli_si128(r0, 9));
+		r5 = _mm_and_si128(_mm_unpacklo_epi64(r3, r4), mask);
+
+		d[1] = r5;
+
+		r0 = _mm_or_si128(_mm_srli_si128(r1, 8), _mm_slli_si128(r2, 8));
+
+		r3 = _mm_unpacklo_epi32(r0, _mm_srli_si128(r0, 3));
+		r4 = _mm_unpacklo_epi32(_mm_srli_si128(r0, 6), _mm_srli_si128(r0, 9));
+		r5 = _mm_and_si128(_mm_unpacklo_epi64(r3, r4), mask);
+
+		d[2] = r5;
+
+		r0 = _mm_srli_si128(r2, 4);
+
+		r3 = _mm_unpacklo_epi32(r0, _mm_srli_si128(r0, 3));
+		r4 = _mm_unpacklo_epi32(_mm_srli_si128(r0, 6), _mm_srli_si128(r0, 9));
+		r5 = _mm_and_si128(_mm_unpacklo_epi64(r3, r4), mask);
+
+		d[3] = r5;
+	}
+}
+
 void __fastcall ExpandBlock24_sse2(DWORD* src, DWORD* dst, int dstpitch, GIFRegTEXA* pTEXA)
 {
 	__m128i TA0 = _mm_set1_epi32((DWORD)pTEXA->TA0 << 24);
@@ -433,6 +477,13 @@ void __fastcall Expand16_sse2(WORD* src, DWORD* dst, int w, GIFRegTEXA* pTEXA)
 			_mm_store_si128((__m128i*)&dst[i+4], ch);
 		}
 	}
+}
+
+void __fastcall ExpandBlock24_c(BYTE* src, int srcpitch, DWORD* dst)
+{
+	for(int j = 0, diff = srcpitch - 8*3; j < 8; j++, src += diff, dst += 8)
+		for(int i = 0; i < 8; i++, src += 3)
+			dst[i] = (src[2] << 16) | (src[1] << 8) | src[0];
 }
 
 void __fastcall ExpandBlock24_c(DWORD* src, DWORD* dst, int dstpitch, GIFRegTEXA* pTEXA)

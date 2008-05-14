@@ -78,10 +78,10 @@ protected:
 				max = _mm_max_ps(m_vertices[i+0].m128[0], max);
 			}
 
-			mm.x = min.m128_f32[0];
-			mm.y = min.m128_f32[1];
-			mm.z = max.m128_f32[0];
-			mm.w = max.m128_f32[1];
+			mm.x = ((float*)&min)[0];
+			mm.y = ((float*)&min)[1];
+			mm.z = ((float*)&max)[0];
+			mm.w = ((float*)&max)[1];
 
 			#else
 

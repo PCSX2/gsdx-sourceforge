@@ -26,6 +26,7 @@
 
 #include "GS.h"
 #include "GSTables.h"
+#include "GSVector.h"
 
 class GSLocalMemory
 {
@@ -969,6 +970,72 @@ public:
 		case PSM_PSMZ16: writeFrame16(addr, c); break;
 		case PSM_PSMZ16S: writeFrame16(addr, c); break;
 		default: ASSERT(0); writePixel32(addr, c); break;
+		}
+	}
+
+	__forceinline GSVector4i readFrameX(int PSM, const GSVector4i& addr)
+	{
+		GSVector4i c, r, g, b, a;
+
+		switch(PSM)
+		{
+		case PSM_PSMCT32: case PSM_PSMZ32: 
+			c.u32[0] = readPixel32(addr.u32[0]);
+			c.u32[1] = readPixel32(addr.u32[1]);
+			c.u32[2] = readPixel32(addr.u32[2]);
+			c.u32[3] = readPixel32(addr.u32[3]);
+			break;
+		case PSM_PSMCT24: case PSM_PSMZ24: 
+			c.u32[0] = readPixel32(addr.u32[0]);
+			c.u32[1] = readPixel32(addr.u32[1]);
+			c.u32[2] = readPixel32(addr.u32[2]);
+			c.u32[3] = readPixel32(addr.u32[3]);
+			c = (c & 0x00ffffff) | 0x80000000;
+			break;
+		case PSM_PSMCT16: case PSM_PSMCT16S: 
+		case PSM_PSMZ16: case PSM_PSMZ16S: 
+			c.u32[0] = readPixel16(addr.u32[0]);
+			c.u32[1] = readPixel16(addr.u32[1]);
+			c.u32[2] = readPixel16(addr.u32[2]);
+			c.u32[3] = readPixel16(addr.u32[3]);
+			c = ((c & 0x001f) << 3) | ((c & 0x03e0) << 6) | ((c & 0x7c00) << 9) | ((c & 0x8000) << 16); 
+			break;
+		default: 
+			ASSERT(0); 
+			c = GSVector4i::zero();
+		}
+		
+		return c;
+	}
+
+	__forceinline void writeFrameX(int PSM, const GSVector4i& addr, const GSVector4i& c, const GSVector4i& mask, int pixels)
+	{
+		GSVector4i rb, ga, tmp;
+
+		switch(PSM)
+		{
+		case PSM_PSMCT32: case PSM_PSMZ32: 
+			for(int i = 0; i < pixels; i++)
+				if(mask.u32[i] != 0xffffffff)
+					writePixel32(addr.u32[i], c.u32[i]); 
+			break; 
+		case PSM_PSMCT24: case PSM_PSMZ24: 
+			for(int i = 0; i < pixels; i++)
+				if(mask.u32[i] != 0xffffffff)
+					writePixel24(addr.u32[i], c.u32[i]); 
+			break; 
+		case PSM_PSMCT16: case PSM_PSMCT16S: 
+		case PSM_PSMZ16: case PSM_PSMZ16S: 
+			rb = c & 0x00f800f8;
+			ga = c & 0x8000f800;
+			tmp = (rb >> 3) | (ga >> 6) | (rb >> 9) | (ga >> 16);
+			for(int i = 0; i < pixels; i++)
+				if(mask.u32[i] != 0xffffffff)
+					writePixel16(addr.u32[i], tmp.u16[i*2]); 
+			break;
+		default: 
+			ASSERT(0); 
+			break;
 		}
 	}
 
