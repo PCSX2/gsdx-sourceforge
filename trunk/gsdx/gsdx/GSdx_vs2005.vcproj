@@ -673,10 +673,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\sse.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\stdafx.cpp"
 				>
 				<FileConfiguration

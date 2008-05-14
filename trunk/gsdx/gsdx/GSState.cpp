@@ -1046,6 +1046,12 @@ void GSState::FlushWrite(BYTE* mem, int len)
 		r.bottom = min(m_x == m_env.TRXPOS.DSAX ? m_y : m_y + 1, m_env.TRXREG.RRH);
 
 		InvalidateVideoMem(m_env.BITBLTBUF, r);
+/*
+		static int n = 0;
+		CString str;
+		str.Format(_T("c:\\temp1\\[%04d]_%d_%d_%d_%d.bmp"), n++, r.left, r.top, r.right, r.bottom);
+		m_mem.SaveBMP(str, m_context->FRAME.Block(), m_context->FRAME.FBW, m_context->FRAME.PSM, 640, 448);
+*/
 	}
 }
 

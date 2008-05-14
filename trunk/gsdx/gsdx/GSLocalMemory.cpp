@@ -875,12 +875,7 @@ void GSLocalMemory::SwizzleTexture24(int& tx, int& ty, BYTE* src, int len, GIFRe
 		{
 			for(int x = tx; x < tw; x += 8)
 			{
-				BYTE* s = src + (x - tx)*3;
-				DWORD* d = block;
-
-				for(int j = 0, diff = srcpitch - 8*3; j < 8; j++, s += diff, d += 8)
-					for(int i = 0; i < 8; i++, s += 3)
-						d[i] = (s[2]<<16)|(s[1]<<8)|s[0];
+				ExpandBlock24(src + (x - tx)*3, srcpitch, block);
 
 				SwizzleBlock32((BYTE*)&m_vm32[blockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], (BYTE*)block, sizeof(block)/8, 0x00ffffff);
 			}
@@ -1411,12 +1406,7 @@ void GSLocalMemory::SwizzleTexture24Z(int& tx, int& ty, BYTE* src, int len, GIFR
 		{
 			for(int x = tx; x < tw; x += 8)
 			{
-				BYTE* s = src + (x - tx)*3;
-				DWORD* d = block;
-
-				for(int j = 0, diff = srcpitch - 8*3; j < 8; j++, s += diff, d += 8)
-					for(int i = 0; i < 8; i++, s += 3)
-						d[i] = (s[2]<<16)|(s[1]<<8)|s[0];
+				ExpandBlock24(src + (x - tx)*3, srcpitch, block);
 
 				SwizzleBlock32((BYTE*)&m_vm32[blockAddress32Z(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], (BYTE*)block, sizeof(block)/8, 0x00ffffff);
 			}

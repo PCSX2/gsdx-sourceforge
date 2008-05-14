@@ -1191,6 +1191,14 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
+					Name="Release SSE4|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AssemblerOutput="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
 					Name="Release SSE4|x64"
 					>
 					<Tool
@@ -1357,10 +1365,6 @@
 			</File>
 			<File
 				RelativePath=".\GSWnd.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\sse.cpp"
 				>
 			</File>
 			<File
@@ -1654,6 +1658,14 @@
 			<File
 				RelativePath=".\x86.cpp"
 				>
+				<FileConfiguration
+					Name="Release SSSE3|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AssemblerOutput="4"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\x86_sse2.asm"

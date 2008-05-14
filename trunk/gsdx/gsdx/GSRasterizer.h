@@ -35,7 +35,6 @@ class GSRasterizer
 {
 protected:
 	typedef GSVertexSW Vertex;
-	typedef GSVertexSW::Vector Vector;
 
 	GSState* m_state;
 	int m_id;
@@ -44,18 +43,18 @@ protected:
 private:
 	struct ColumnOffset
 	{
-		__m128i addr[1024]; 
+		GSVector4i addr[1024]; 
 		DWORD hash;
 	};
 
 	struct ScanlineEnvironment
 	{
-		__m128i fm, zm;
-		struct {__m128i min, max, mask;} t; // [u] x 4 [v] x 4
-		__m128i datm;
-		__m128i colclamp;
-		__m128i fba;
-		__m128i aref;
+		GSVector4i fm, zm;
+		struct {GSVector4i min, max, mask;} t; // [u] x 4 [v] x 4
+		GSVector4i datm;
+		GSVector4i colclamp;
+		GSVector4i fba;
+		GSVector4i aref;
 		GSVector4 afix;
 		struct {GSVector4 r, g, b;} f;
 
@@ -162,12 +161,12 @@ private:
 		return ReadTexelNoFetch(x, y);
 	}
 
-	__forceinline __m128i Wrap(__m128i t)
+	__forceinline GSVector4i Wrap(const GSVector4i& t)
 	{
-		__m128i clamp = _mm_min_epi16(_mm_max_epi16(t, m_slenv->t.min), m_slenv->t.max);
-		__m128i repeat = _mm_or_si128(_mm_and_si128(t, m_slenv->t.min), m_slenv->t.max);
+		GSVector4i clamp = t.sat_i16(m_slenv->t.min, m_slenv->t.max);
+		GSVector4i repeat = (t & m_slenv->t.min) | m_slenv->t.max;
 
-		return _mm_blendv_epi8(clamp, repeat, m_slenv->t.mask);
+ 		return clamp.blend8(repeat, m_slenv->t.mask);
 	}
 
 	void DrawPoint(Vertex* v);
@@ -293,8 +292,6 @@ class GSRasterizerMT : public GSRasterizer
 			}
 			else
 			{
-				SwitchToThread();
-
 				_mm_pause();
 			}
 		}
