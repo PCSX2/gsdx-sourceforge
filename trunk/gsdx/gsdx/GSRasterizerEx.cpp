@@ -140,6 +140,19 @@ void GSRasterizer::InitEx()
 	m_dsmap[0x445068a8] = &GSRasterizer::DrawScanlineEx<0x445068a8>;
 	m_dsmap[0x445044a8] = &GSRasterizer::DrawScanlineEx<0x445044a8>;
 	m_dsmap[0x00160428] = &GSRasterizer::DrawScanlineEx<0x00160428>;
+	m_dsmap[0x48562848] = &GSRasterizer::DrawScanlineEx<0x48562848>;
+	m_dsmap[0x495228c8] = &GSRasterizer::DrawScanlineEx<0x495228c8>;
+	m_dsmap[0x49520448] = &GSRasterizer::DrawScanlineEx<0x49520448>;
+	m_dsmap[0x465228a8] = &GSRasterizer::DrawScanlineEx<0x465228a8>;
+	m_dsmap[0x445b44c8] = &GSRasterizer::DrawScanlineEx<0x445b44c8>;
+	m_dsmap[0x00022808] = &GSRasterizer::DrawScanlineEx<0x00022808>;
+	m_dsmap[0x445068e8] = &GSRasterizer::DrawScanlineEx<0x445068e8>;
+	m_dsmap[0x445204c8] = &GSRasterizer::DrawScanlineEx<0x445204c8>;
+	m_dsmap[0x445604a8] = &GSRasterizer::DrawScanlineEx<0x445604a8>;
+	m_dsmap[0x42560488] = &GSRasterizer::DrawScanlineEx<0x42560488>;
+	m_dsmap[0x445668c8] = &GSRasterizer::DrawScanlineEx<0x445668c8>;
+	m_dsmap[0x44522808] = &GSRasterizer::DrawScanlineEx<0x44522808>;
+	m_dsmap[0x425b68c8] = &GSRasterizer::DrawScanlineEx<0x425b68c8>;
 
 	// culdcept
 
@@ -702,7 +715,7 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 		GSVector4i zm = slenv->zm;
 		GSVector4i test = GSVector4i::zero();
 
-		GSVector4i zi = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i(1));
+		GSVector4i zi = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & 1);
 
 		if(ztst > 1)
 		{

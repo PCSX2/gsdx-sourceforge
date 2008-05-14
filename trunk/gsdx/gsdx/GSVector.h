@@ -453,35 +453,43 @@ public:
 		return m;
 	}
 
+	#if _M_SSE >= 0x400
 	GSVector4i sat_i8(const GSVector4i& a, const GSVector4i& b) const 
 	{
 		return GSVector4i(_mm_min_epi8(_mm_max_epi8(m, a), b));
 	}
+	#endif
 
 	GSVector4i sat_i16(const GSVector4i& a, const GSVector4i& b) const 
 	{
 		return GSVector4i(_mm_min_epi16(_mm_max_epi16(m, a), b));
 	}
 
+	#if _M_SSE >= 0x400
 	GSVector4i sat_i32(const GSVector4i& a, const GSVector4i& b) const 
 	{
 		return GSVector4i(_mm_min_epi32(_mm_max_epi32(m, a), b));
 	}
+	#endif
 
 	GSVector4i sat_u8(const GSVector4i& a, const GSVector4i& b) const 
 	{
 		return GSVector4i(_mm_min_epu8(_mm_max_epu8(m, a), b));
 	}
 
+	#if _M_SSE >= 0x400
 	GSVector4i sat_u16(const GSVector4i& a, const GSVector4i& b) const 
 	{
 		return GSVector4i(_mm_min_epu16(_mm_max_epu16(m, a), b));
 	}
+	#endif
 
+	#if _M_SSE >= 0x400
 	GSVector4i sat_u32(const GSVector4i& a, const GSVector4i& b) const 
 	{
 		return GSVector4i(_mm_min_epu32(_mm_max_epu32(m, a), b));
 	}
+	#endif
 
 	GSVector4i blend8(const GSVector4i& a, const GSVector4i& mask) 
 	{

@@ -130,8 +130,6 @@ typedef struct {
 
 #include <initguid.h>
 
-#pragma 
-
 #pragma warning(disable:4201) // warning C4201: nonstandard extension used : nameless struct/union
 #include <strmif.h>     // Generated IDL header file for streams interfaces
 
