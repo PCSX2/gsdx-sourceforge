@@ -761,7 +761,7 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 		GSVector4i zm = slenv->zm;
 		GSVector4i test = GSVector4i::zero();
 
-		GSVector4i zi = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i(1));
+		GSVector4i zi = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & 1);
 
 		if(ztst > 1)
 		{
