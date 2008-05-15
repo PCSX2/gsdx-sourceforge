@@ -576,6 +576,8 @@ void GSRasterizer::InitEx()
 	m_dsmap[0x48537869] = &GSRasterizer::DrawScanlineEx<0x48537869>;
 	m_dsmap[0x44504409] = &GSRasterizer::DrawScanlineEx<0x44504409>;
 	m_dsmap[0x44504489] = &GSRasterizer::DrawScanlineEx<0x44504489>;
+	m_dsmap[0x0010510a] = &GSRasterizer::DrawScanlineEx<0x0010510a>;
+	m_dsmap[0x000b6be9] = &GSRasterizer::DrawScanlineEx<0x000b6be9>;
 
 	// wild arms 5
 
