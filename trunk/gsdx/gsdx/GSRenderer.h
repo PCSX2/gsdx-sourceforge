@@ -241,6 +241,19 @@ public:
 	{
 		GSPerfMonAutoTimer pmat(m_perfmon);
 
+extern UINT64 g_slp1;
+extern UINT64 g_slp2;
+extern UINT64 g_slp3;
+extern UINT64 g_slp4;
+UINT64 n = g_slp1 + g_slp2 + g_slp3 + g_slp4;
+if(n) printf("%.3f %.3f %.3f %.3f %d%%\n", 
+				  (float)((double)g_slp1 / n), 
+				  (float)((double)g_slp2 / n), 
+				  (float)((double)g_slp3 / n), 
+				  (float)((double)g_slp4 / n),
+				  (int)(((double)g_slp1 * 1 + (double)g_slp2 * 2 + (double)g_slp3 * 3 + (double)g_slp4 * 4) / 4 / n * 100));
+g_slp1 = g_slp2 = g_slp3 = g_slp4 = 0;
+
 		m_field = !!field;
 
 		Flush();

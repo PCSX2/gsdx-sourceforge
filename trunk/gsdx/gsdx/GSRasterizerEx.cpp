@@ -231,7 +231,10 @@ void GSRasterizer::InitEx()
 	m_dsmap[0x4251a888] = &GSRasterizer::DrawScanlineEx<0x4251a888>;
 	m_dsmap[0x4251a808] = &GSRasterizer::DrawScanlineEx<0x4251a808>;
 	m_dsmap[0x4451b048] = &GSRasterizer::DrawScanlineEx<0x4451b048>;
-
+	m_dsmap[0x00120408] = &GSRasterizer::DrawScanlineEx<0x00120408>;
+	m_dsmap[0x00120448] = &GSRasterizer::DrawScanlineEx<0x00120448>;
+	m_dsmap[0x44523808] = &GSRasterizer::DrawScanlineEx<0x44523808>;
+	
 	// resident evil 4
 
 	m_dsmap[0x4851a848] = &GSRasterizer::DrawScanlineEx<0x4851a848>;
@@ -676,12 +679,25 @@ void GSRasterizer::InitEx()
 	m_dsmap[0x4857a888] = &GSRasterizer::DrawScanlineEx<0x4857a888>;
 	m_dsmap[0x44579808] = &GSRasterizer::DrawScanlineEx<0x44579808>;
 	m_dsmap[0x4857a8c8] = &GSRasterizer::DrawScanlineEx<0x4857a8c8>;
-
 }
+
+UINT64 g_slp1 = 0;
+UINT64 g_slp2 = 0;
+UINT64 g_slp3 = 0;
+UINT64 g_slp4 = 0;
 
 template<DWORD sel>
 void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 {
+/*
+{
+int steps = right - left;
+for(; steps >= 4; steps -= 4) g_slp4++;
+if(steps == 1) g_slp1++;
+else if(steps == 2) g_slp2++;
+else if(steps == 3) g_slp3++;
+}
+*/
 	const DWORD ztst = (sel >> 5) & 3;
 	const DWORD iip = (sel >> 7) & 1;
 	const DWORD tfx = (sel >> 8) & 7;
@@ -705,10 +721,10 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 	int zpsm = GSLocalMemory::DecodeZPSM(((sel >> 3) & 3));
 
 	GSVector4i fa_base = m_fbco->addr[top];
-	GSVector4i* fa_offset = (GSVector4i*)&m_state->m_context->ftbl->rowOffset[top & 7][left];
+	GSVector4i* fa_offset = (GSVector4i*)&slenv->fo[top & 7][left];
 
 	GSVector4i za_base = m_zbco->addr[top];
-	GSVector4i* za_offset = (GSVector4i*)&m_state->m_context->ztbl->rowOffset[top & 7][left];
+	GSVector4i* za_offset = (GSVector4i*)&slenv->zo[top & 7][left];
 
 	GSVector4 vp = v.p;
 	GSVector4 z = vp.zzzz(); z += slenv->dz0123;
@@ -870,7 +886,7 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 		{
 			GSVector4i t;
 
-			switch(m_sel.atst)
+			switch(atst)
 			{
 			case 0: t = GSVector4i::invzero(); break; // never 
 			case 1: t = GSVector4i::zero(); break; // always
@@ -949,7 +965,7 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 
 			if(date)
 			{
-				test |= GSVector4i(_mm_srai_epi32(d ^ slenv->datm, 31)); // TODO
+				test |= (d ^ slenv->datm).sra32(31);
 
 				if(_mm_movemask_epi8(test) == 0xffff)
 				{

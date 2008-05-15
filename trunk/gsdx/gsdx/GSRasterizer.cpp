@@ -20,7 +20,7 @@
  */
 
 // TODO: avx (256 bit regs, 8 pixels, 3-4 op instructions), DrawScanline ~50-70% of total time
-// TODO: sse is a waste for 1 pixel
+// TODO: sse is a waste for 1 pixel (not that bad, sse register utilization is 90-95%)
 // TODO: sprite doesn't need z/f interpolation, q could be eliminated by premultiplying s/t
 
 #include "StdAfx.h"
@@ -204,6 +204,8 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 
 	ScanlineEnvironment* slenv = m_slenv;
 
+	slenv->fo = m_state->m_context->ftbl->rowOffset;
+	slenv->zo = m_state->m_context->ztbl->rowOffset;
 	slenv->fm = GSVector4i(context->FRAME.FBMSK);
 	slenv->zm = GSVector4i(context->ZBUF.ZMSK ? 0xffffffff : 0);
 	slenv->datm = GSVector4i(context->TEST.DATM ? 0x80000000 : 0);
@@ -718,16 +720,29 @@ void GSRasterizer::SetupScanline(const Vertex& dv)
 template<int iFPSM, int iZPSM, int ztst, int iip>
 void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)	
 {
+/*
+extern UINT64 g_slp1;
+extern UINT64 g_slp2;
+extern UINT64 g_slp3;
+extern UINT64 g_slp4;
+{
+int steps = right - left;
+for(; steps >= 4; steps -= 4) g_slp4++;
+if(steps == 1) g_slp1++;
+else if(steps == 2) g_slp2++;
+else if(steps == 3) g_slp3++;
+}
+*/
 	ScanlineEnvironment* slenv = m_slenv;
 
 	int fpsm = GSLocalMemory::DecodeFPSM(iFPSM);
 	int zpsm = GSLocalMemory::DecodeZPSM(iZPSM);
 
 	GSVector4i fa_base = m_fbco->addr[top];
-	GSVector4i* fa_offset = (GSVector4i*)&m_state->m_context->ftbl->rowOffset[top & 7][left];
+	GSVector4i* fa_offset = (GSVector4i*)&slenv->fo[top & 7][left];
 
 	GSVector4i za_base = m_zbco->addr[top];
-	GSVector4i* za_offset = (GSVector4i*)&m_state->m_context->ztbl->rowOffset[top & 7][left];
+	GSVector4i* za_offset = (GSVector4i*)&slenv->zo[top & 7][left];
 
 	GSVector4 vp = v.p;
 	GSVector4 z = vp.zzzz(); z += slenv->dz0123;
@@ -968,7 +983,7 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 
 			if(m_sel.date)
 			{
-				test |= GSVector4i(_mm_srai_epi32(d ^ slenv->datm, 31)); // TODO
+				test |= (d ^ slenv->datm).sra32(31);
 
 				if(_mm_movemask_epi8(test) == 0xffff)
 				{
@@ -1053,4 +1068,3 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 		if(iip) a += slenv->da;
 	}
 }
-

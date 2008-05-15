@@ -49,6 +49,9 @@ private:
 
 	struct ScanlineEnvironment
 	{
+		int** fo;
+		int** zo;
+
 		GSVector4i fm, zm;
 		struct {GSVector4i min, max, mask;} t; // [u] x 4 [v] x 4
 		GSVector4i datm;

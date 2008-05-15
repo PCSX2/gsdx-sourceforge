@@ -27,16 +27,6 @@ void GSVector4::operator = (const GSVector4i& v)
 	m = _mm_cvtepi32_ps(v);
 }
 
-void GSVector4::expand(const GSVector4i& v, GSVector4& a, GSVector4& b, GSVector4& c, GSVector4& d)
-{
-	GSVector4i mask = GSVector4i(epi32_000000ff);
-
-	a = v & mask;
-	b = (v >> 8) & mask;
-	c = (v >> 16) & mask;
-	d = (v >> 24);
-}
-
 void GSVector4i::operator = (const GSVector4& v)
 {
 	m = _mm_cvttps_epi32(v);
