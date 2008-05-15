@@ -22,7 +22,6 @@
 #pragma once
 
 #pragma warning(disable: 4100) // warning C4100: 'TEXA' : unreferenced formal parameter
-#pragma warning(disable: 4244) // warning C4244: '=' : conversion from 'const UINT64' to 'int', possible loss of data (really???)
 
 #include "GS.h"
 #include "GSTables.h"

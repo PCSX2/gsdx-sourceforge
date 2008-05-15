@@ -331,7 +331,7 @@ if(s_dump)
 	om_dssel.zte = m_context->TEST.ZTE;
 	om_dssel.ztst = m_context->TEST.ZTST;
 	om_dssel.zwe = !m_context->ZBUF.ZMSK;
-	om_dssel.date = m_context->TEST.DATE;
+	om_dssel.date = m_context->FRAME.PSM != PSM_PSMCT24 ? m_context->TEST.DATE : 0;
 
 	GSTextureFX10::OMBlendSelector om_bsel;
 
@@ -345,7 +345,7 @@ if(s_dump)
 	om_bsel.wb = (m_context->FRAME.FBMSK & 0x00ff0000) != 0x00ff0000;
 	om_bsel.wa = (m_context->FRAME.FBMSK & 0xff000000) != 0xff000000;
 
-	float factor = (float)(int)m_context->ALPHA.FIX / 0x80;
+	float bf = (float)(int)m_context->ALPHA.FIX / 0x80;
 
 	// vs
 
@@ -383,8 +383,8 @@ if(s_dump)
 	float ox = (float)(int)m_context->XYOFFSET.OFX;
 	float oy = (float)(int)m_context->XYOFFSET.OFY;
 
-	vs_cb.VertexScale = GSVector4(sx, -sy, 1.0f / UINT_MAX, 0);
-	vs_cb.VertexOffset = GSVector4(ox * sx + 1, -(oy * sy + 1), 0, -1);
+	vs_cb.VertexScale = GSVector4(sx, -sy, 1.0f / UINT_MAX, 0.0f);
+	vs_cb.VertexOffset = GSVector4(ox * sx + 1, -(oy * sy + 1), 0.0f, -1.0f);
 	vs_cb.TextureScale = GSVector2(1.0f, 1.0f);
 
 	if(PRIM->TME && PRIM->FST)
@@ -427,7 +427,7 @@ if(s_dump)
 
 	GSTextureFX10::PSConstantBuffer ps_cb;
 
-	ps_cb.FogColor = GSVector4((float)(int)m_env.FOGCOL.FCR / 255, (float)(int)m_env.FOGCOL.FCG / 255, (float)(int)m_env.FOGCOL.FCB / 255, 0);
+	ps_cb.FogColor = GSVector4(m_env.FOGCOL.FCR, m_env.FOGCOL.FCG, m_env.FOGCOL.FCB, 0) / 255.0f;
 	ps_cb.TA0 = (float)(int)m_env.TEXA.TA0 / 255;
 	ps_cb.TA1 = (float)(int)m_env.TEXA.TA1 / 255;
 	ps_cb.AREF = (float)(int)m_context->TEST.AREF / 255;
@@ -515,7 +515,7 @@ if(s_dump)
 
 	//
 
-	m_tfx.SetupOM(om_dssel, om_bsel, factor, rt->m_texture, ds->m_texture);
+	m_tfx.SetupOM(om_dssel, om_bsel, bf, rt->m_texture, ds->m_texture);
 	m_tfx.SetupIA(m_vertices, m_count, topology);
 	m_tfx.SetupVS(vs_sel, &vs_cb);
 	m_tfx.SetupGS(gs_sel);
@@ -564,7 +564,7 @@ if(s_dump)
 			om_bsel.wb = b;
 			om_bsel.wa = a;
 
-			m_tfx.UpdateOM(om_dssel, om_bsel, factor);
+			m_tfx.UpdateOM(om_dssel, om_bsel, bf);
 
 			m_tfx.Draw();
 		}

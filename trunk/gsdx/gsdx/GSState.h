@@ -151,7 +151,7 @@ public:
 	GSPerfMon m_perfmon;
 	bool m_nloophack;
 	bool m_ffx;
-	int m_crc;
+	DWORD m_crc;
 	int m_options;
 	int m_frameskip;
 
@@ -220,7 +220,7 @@ public:
 	int Freeze(freezeData* fd, bool sizeonly);
 	int Defrost(const freezeData* fd);
 	void GetLastTag(UINT32* tag) {*tag = m_path3hack; m_path3hack = 0;}
-	void SetGameCRC(int crc, int options);
+	void SetGameCRC(DWORD crc, int options);
 	void SetFrameSkip(int frameskip);
 };
 

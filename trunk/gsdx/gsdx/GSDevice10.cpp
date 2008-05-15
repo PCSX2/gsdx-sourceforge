@@ -474,7 +474,7 @@ void GSDevice10::DoMerge(GSTexture10* st, GSVector4* sr, GSVector4* dr, GSTextur
 void GSDevice10::DoInterlace(GSTexture10& st, GSTexture10& dt, int shader, bool linear, float yoffset)
 {
 	GSVector4 sr(0, 0, 1, 1);
-	GSVector4 dr(0, yoffset, (float)dt.GetWidth(), (float)dt.GetHeight() + yoffset);
+	GSVector4 dr(0.0f, yoffset, (float)dt.GetWidth(), (float)dt.GetHeight() + yoffset);
 
 	InterlaceConstantBuffer cb;
 
@@ -855,11 +855,11 @@ bool GSDevice10::SaveToFileD32S8X24(ID3D10Texture2D* ds, LPCTSTR fn)
 	BYTE* s = (BYTE*)sm.pData;
 	BYTE* d = (BYTE*)dm.pData;
 
-	for(int y = 0; y < desc.Height; y++, s += sm.RowPitch, d += dm.RowPitch)
+	for(UINT y = 0; y < desc.Height; y++, s += sm.RowPitch, d += dm.RowPitch)
 	{
-		for(int x = 0; x < desc.Width; x++)
+		for(UINT x = 0; x < desc.Width; x++)
 		{
-			((UINT*)d)[x] = ((float*)s)[x*2] * UINT_MAX;
+			((UINT*)d)[x] = (UINT)(((float*)s)[x*2] * UINT_MAX);
 		}
 	}
 

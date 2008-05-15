@@ -1745,7 +1745,7 @@ m_perfmon.SetFrame(5000);
 	return 0;
 }
 
-void GSState::SetGameCRC(int crc, int options)
+void GSState::SetGameCRC(DWORD crc, int options)
 {
 	m_crc = crc;
 	m_options = options;
@@ -2200,7 +2200,7 @@ bool GSState::IsBadFrame(int& skip)
 	fi.TBP0 = m_context->TEX0.TBP0;
 	fi.TPSM = m_context->TEX0.PSM;
 
-	static CAtlMap<int, GetSkipCount> m_crc2gsc;
+	static CAtlMap<DWORD, GetSkipCount> m_crc2gsc;
 
 	if(m_crc2gsc.IsEmpty())
 	{
@@ -2235,7 +2235,7 @@ bool GSState::IsBadFrame(int& skip)
 		m_crc2gsc[CRC::IkkiTousen_JP] = GSC_IkkiTousen;
 	}
 
-	if(CAtlMap<int, GetSkipCount>::CPair* pair = m_crc2gsc.Lookup(m_crc))
+	if(CAtlMap<DWORD, GetSkipCount>::CPair* pair = m_crc2gsc.Lookup(m_crc))
 	{
 		if(!pair->m_value(fi, skip))
 		{

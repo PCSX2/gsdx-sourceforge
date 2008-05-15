@@ -344,7 +344,7 @@ if(s_dump)
 	om_dssel.zte = m_context->TEST.ZTE;
 	om_dssel.ztst = m_context->TEST.ZTST;
 	om_dssel.zwe = !m_context->ZBUF.ZMSK;
-	om_dssel.date = m_context->TEST.DATE;
+	om_dssel.date = m_context->FRAME.PSM != PSM_PSMCT24 ? m_context->TEST.DATE : 0;
 	om_dssel.fba = m_fba.enabled ? m_context->FBA.FBA : 0;
 
 	GSTextureFX9::OMBlendSelector om_bsel;
@@ -359,7 +359,7 @@ if(s_dump)
 	om_bsel.wb = (m_context->FRAME.FBMSK & 0x00ff0000) != 0x00ff0000;
 	om_bsel.wa = (m_context->FRAME.FBMSK & 0xff000000) != 0xff000000;
 
-	BYTE factor = m_context->ALPHA.FIX >= 0x80 ? 0xff : m_context->ALPHA.FIX * 2;
+	BYTE bf = m_context->ALPHA.FIX >= 0x80 ? 0xff : (BYTE)(m_context->ALPHA.FIX * 2);
 
 	// vs
 
@@ -397,8 +397,8 @@ if(s_dump)
 	float ox = (float)(int)m_context->XYOFFSET.OFX;
 	float oy = (float)(int)m_context->XYOFFSET.OFY;
 
-	vs_cb.VertexScale = GSVector4(sx, -sy, 1.0f / UINT_MAX, 0);
-	vs_cb.VertexOffset = GSVector4(ox * sx + 1, -(oy * sy + 1), 0, -1);
+	vs_cb.VertexScale = GSVector4(sx, -sy, 1.0f / UINT_MAX, 0.0f);
+	vs_cb.VertexOffset = GSVector4(ox * sx + 1, -(oy * sy + 1), 0.0f, -1.0f);
 	vs_cb.TextureScale = GSVector2(1.0f, 1.0f);
 
 	if(PRIM->TME && PRIM->FST)
@@ -433,7 +433,7 @@ if(s_dump)
 
 	GSTextureFX9::PSConstantBuffer ps_cb;
 
-	ps_cb.FogColor = GSVector4((float)(int)m_env.FOGCOL.FCR / 255, (float)(int)m_env.FOGCOL.FCG / 255, (float)(int)m_env.FOGCOL.FCB / 255, 0);
+	ps_cb.FogColor = GSVector4(m_env.FOGCOL.FCR, m_env.FOGCOL.FCG, m_env.FOGCOL.FCB, 0) / 255.0f;
 	ps_cb.TA0 = (float)(int)m_env.TEXA.TA0 / 255;
 	ps_cb.TA1 = (float)(int)m_env.TEXA.TA1 / 255;
 	ps_cb.AREF = (float)(int)m_context->TEST.AREF / 255;
@@ -521,7 +521,7 @@ if(s_dump)
 
 	//
 
-	m_tfx.SetupOM(om_dssel, om_bsel, factor, rt->m_texture, ds->m_texture);
+	m_tfx.SetupOM(om_dssel, om_bsel, bf, rt->m_texture, ds->m_texture);
 	m_tfx.SetupIA(m_vertices, m_count, topology);
 	m_tfx.SetupVS(vs_sel, &vs_cb);
 	m_tfx.SetupPS(ps_sel, &ps_cb, ps_ssel, 
@@ -570,7 +570,7 @@ if(s_dump)
 			om_bsel.wb = b;
 			om_bsel.wa = a;
 
-			m_tfx.UpdateOM(om_dssel, om_bsel, factor);
+			m_tfx.UpdateOM(om_dssel, om_bsel, bf);
 
 			m_dev.DrawPrimitive();
 		}
@@ -719,10 +719,10 @@ void GSRendererHW9::UpdateFBA(Texture& rt)
 
 	GSVertexP vertices[] =
 	{
-		{GSVector4(0, 0)},
-		{GSVector4(w, 0)},
-		{GSVector4(0, h)},
-		{GSVector4(w, h)},
+		{GSVector4(0, 0, 0, 0)},
+		{GSVector4(w, 0, 0, 0)},
+		{GSVector4(0, h, 0, 0)},
+		{GSVector4(w, h, 0, 0)},
 	};
 
 	m_dev->SetFVF(D3DFVF_XYZRHW);

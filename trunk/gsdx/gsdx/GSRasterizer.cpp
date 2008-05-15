@@ -22,7 +22,6 @@
 // TODO: avx (256 bit regs, 8 pixels, 3-4 op instructions), DrawScanline ~50-70% of total time
 // TODO: sse is a waste for 1 pixel
 // TODO: sprite doesn't need z/f interpolation, q could be eliminated by premultiplying s/t
-// TODO: 24 bpp frame buffer format should disable destination alpha test (gsuser 3.7.3)
 
 #include "StdAfx.h"
 #include "GSRasterizer.h"
@@ -144,10 +143,10 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 	m_sel.afail = context->TEST.AFAIL;
 	m_sel.fge = PRIM->FGE;
 	m_sel.rfb = 
-		m_state->PRIM->ABE || m_state->m_env.PABE.PABE || 
-		m_state->m_context->FRAME.FBMSK != 0 && m_state->m_context->FRAME.FBMSK != 0xffffffff || 
-		m_state->m_context->TEST.ATE && m_state->m_context->TEST.ATST != 1 && m_state->m_context->TEST.AFAIL == 3;
-	m_sel.date = context->TEST.DATE;
+		PRIM->ABE || env.PABE.PABE || 
+		context->FRAME.FBMSK != 0 && context->FRAME.FBMSK != 0xffffffff || 
+		context->TEST.ATE && context->TEST.ATST != 1 && context->TEST.AFAIL == 3;
+	m_sel.date = context->FRAME.PSM != PSM_PSMCT24 ? context->TEST.DATE : 0;
 	m_sel.abe = env.PABE.PABE ? 2 : PRIM->ABE ? 1 : 0;
 	m_sel.abea = m_sel.abe ? context->ALPHA.A : 0;
 	m_sel.abeb = m_sel.abe ? context->ALPHA.B : 0;
@@ -280,10 +279,8 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 			__assume(0);
 		}
 
-		slenv->t.min = slenv->t.min.xxxxl();
-		slenv->t.min = slenv->t.min.xxxxh();
-		slenv->t.max = slenv->t.max.xxxxl();
-		slenv->t.max = slenv->t.max.xxxxh();
+		slenv->t.min = slenv->t.min.xxxxl().xxxxh();
+		slenv->t.max = slenv->t.max.xxxxl().xxxxh();
 		slenv->t.mask = slenv->t.mask.xxzz();
 	}
 
@@ -491,7 +488,7 @@ void GSRasterizer::DrawSprite(Vertex* vertices)
 	int top = tblr.x;
 	int bottom = tblr.y;
 
-	if(top < m_scissor.top) top = min(m_scissor.top, bottom);
+	if(top < m_scissor.top) top = m_scissor.top;
 	if(bottom > m_scissor.bottom) bottom = m_scissor.bottom;
 	if(top >= bottom) return;
 

@@ -21,6 +21,7 @@
 
 #include "stdafx.h"
 #include "GSTables.h"
+#include "GSVector.h"
 #include "x86.h"
 
 // unswizzling
@@ -219,176 +220,127 @@ void __fastcall SwizzleColumn4_c(int y, BYTE* dst, BYTE* src, int srcpitch)
 
 //
 
-static __m128i s_zero = _mm_setzero_si128();
-static __m128i s_bgrm = _mm_set1_epi32(0x00ffffff);
-static __m128i s_am = _mm_set1_epi32(0x00008000);
-static __m128i s_bm = _mm_set1_epi32(0x00007c00);
-static __m128i s_gm = _mm_set1_epi32(0x000003e0);
-static __m128i s_rm = _mm_set1_epi32(0x0000001f);
+static const GSVector4i s_rgbm(0x00ffffff);
+static const GSVector4i s_am(0x00008000);
+static const GSVector4i s_bm(0x00007c00);
+static const GSVector4i s_gm(0x000003e0);
+static const GSVector4i s_rm(0x0000001f);
+
+// TODO: ssse3 version with pshufb and palignr
 
 void __fastcall ExpandBlock24_sse2(BYTE* src, int srcpitch, DWORD* dst)
 {
-	__m128i* d = (__m128i*)dst;
+	const GSVector4i rgbm = s_rgbm;
 
-	const __m128i mask = _mm_set1_epi32(0x00ffffff);
+	GSVector4i* d = (GSVector4i*)dst;
 
 	for(int i = 0; i < 8; i += 2, src += srcpitch * 2, d += 4)
 	{
-		__m128i r0 = _mm_loadu_si128((__m128i*)(src));
-		__m128i r1 = _mm_or_si128(_mm_loadl_epi64((__m128i*)(src + 16)), _mm_slli_si128(_mm_loadl_epi64((__m128i*)(src + srcpitch)), 8));
-		__m128i r2 = _mm_loadu_si128((__m128i*)(src + srcpitch + 8));
+		GSVector4i r0 = GSVector4i::loadu(src);
+		GSVector4i r1 = GSVector4i::loadu(src + 16, src + srcpitch);
+		GSVector4i r2 = GSVector4i::loadu(src + srcpitch + 8);
 
-		__m128i r3 = _mm_unpacklo_epi32(r0, _mm_srli_si128(r0, 3));
-		__m128i r4 = _mm_unpacklo_epi32(_mm_srli_si128(r0, 6), _mm_srli_si128(r0, 9));
-		__m128i r5 = _mm_and_si128(_mm_unpacklo_epi64(r3, r4), mask);
+		d[0] = r0.upl32(r0.srl<3>()).upl64(r0.srl<6>().upl32(r0.srl<9>())) & rgbm;
 
-		d[0] = r5;
+		r0 = r0.srl<12>() | r1.sll<4>();
 
-		r0 = _mm_or_si128(_mm_srli_si128(r0, 12), _mm_slli_si128(r1, 4));
+		d[1] = r0.upl32(r0.srl<3>()).upl64(r0.srl<6>().upl32(r0.srl<9>())) & rgbm;
 
-		r3 = _mm_unpacklo_epi32(r0, _mm_srli_si128(r0, 3));
-		r4 = _mm_unpacklo_epi32(_mm_srli_si128(r0, 6), _mm_srli_si128(r0, 9));
-		r5 = _mm_and_si128(_mm_unpacklo_epi64(r3, r4), mask);
+		r0 = r1.srl<8>() | r2.sll<8>();
 
-		d[1] = r5;
+		d[2] = r0.upl32(r0.srl<3>()).upl64(r0.srl<6>().upl32(r0.srl<9>())) & rgbm;
 
-		r0 = _mm_or_si128(_mm_srli_si128(r1, 8), _mm_slli_si128(r2, 8));
+		r0 = r2.srl<4>();
 
-		r3 = _mm_unpacklo_epi32(r0, _mm_srli_si128(r0, 3));
-		r4 = _mm_unpacklo_epi32(_mm_srli_si128(r0, 6), _mm_srli_si128(r0, 9));
-		r5 = _mm_and_si128(_mm_unpacklo_epi64(r3, r4), mask);
-
-		d[2] = r5;
-
-		r0 = _mm_srli_si128(r2, 4);
-
-		r3 = _mm_unpacklo_epi32(r0, _mm_srli_si128(r0, 3));
-		r4 = _mm_unpacklo_epi32(_mm_srli_si128(r0, 6), _mm_srli_si128(r0, 9));
-		r5 = _mm_and_si128(_mm_unpacklo_epi64(r3, r4), mask);
-
-		d[3] = r5;
+		d[3] = r0.upl32(r0.srl<3>()).upl64(r0.srl<6>().upl32(r0.srl<9>())) & rgbm;
 	}
 }
 
 void __fastcall ExpandBlock24_sse2(DWORD* src, DWORD* dst, int dstpitch, GIFRegTEXA* pTEXA)
 {
-	__m128i TA0 = _mm_set1_epi32((DWORD)pTEXA->TA0 << 24);
+	const GSVector4i rgbm = s_rgbm;
+
+	GSVector4i TA0(pTEXA->TA0 << 24);
+
+	GSVector4i c;
 
 	if(!pTEXA->AEM)
 	{
-		for(int j = 0; j < 8; j++, src += 8, dst += dstpitch>>2)
+		for(int j = 0; j < 8; j++, src += 8, dst += dstpitch >> 2)
 		{
-			for(int i = 0; i < 8; i += 4)
-			{
-				__m128i c = _mm_load_si128((__m128i*)&src[i]);
-				c = _mm_and_si128(c, s_bgrm);
-				c = _mm_or_si128(c, TA0);
-				_mm_store_si128((__m128i*)&dst[i], c);
-			}
+			GSVector4i* s = (GSVector4i*)src;
+			GSVector4i* d = (GSVector4i*)dst;
+
+			d[0] = (s[0] & rgbm) | TA0;
+			d[1] = (s[1] & rgbm) | TA0;
 		}
 	}
 	else
 	{
-		for(int j = 0; j < 8; j++, src += 8, dst += dstpitch>>2)
+		for(int j = 0; j < 8; j++, src += 8, dst += dstpitch >> 2)
 		{
-			for(int i = 0; i < 8; i += 4)
-			{
-				__m128i c = _mm_load_si128((__m128i*)&src[i]);
-				c = _mm_and_si128(c, s_bgrm);
-				__m128i a = _mm_andnot_si128(_mm_cmpeq_epi32(c, s_zero), TA0);
-				c = _mm_or_si128(c, a);
-				_mm_store_si128((__m128i*)&dst[i], c);
-			}
+			GSVector4i* s = (GSVector4i*)src;
+			GSVector4i* d = (GSVector4i*)dst;
+
+			c = s[0] & rgbm;
+			d[0] = c | TA0.andnot(c == GSVector4i::zero()); // TA0 & (c != GSVector4i::zero())
+
+			c = s[1] & rgbm;
+			d[1] = c | TA0.andnot(c == GSVector4i::zero()); // TA0 & (c != GSVector4i::zero())
 		}
 	}
 }
 
 void __fastcall ExpandBlock16_sse2(WORD* src, DWORD* dst, int dstpitch, GIFRegTEXA* pTEXA)
 {
-	__m128i TA0 = _mm_set1_epi32((DWORD)pTEXA->TA0 << 24);
-	__m128i TA1 = _mm_set1_epi32((DWORD)pTEXA->TA1 << 24);
-	__m128i a, b, g, r;
+	const GSVector4i rm = s_rm;
+	const GSVector4i gm = s_gm;
+	const GSVector4i bm = s_bm;
+	const GSVector4i am = s_am;
+
+	GSVector4i TA0(pTEXA->TA0 << 24);
+	GSVector4i TA1(pTEXA->TA1 << 24);
+
+	GSVector4i c, cl, ch;
 
 	if(!pTEXA->AEM)
 	{
-		for(int j = 0; j < 8; j++, src += 16, dst += dstpitch>>2)
+		for(int j = 0; j < 8; j++, src += 16, dst += dstpitch >> 2)
 		{
-			for(int i = 0; i < 16; i += 8)
-			{
-				__m128i c = _mm_load_si128((__m128i*)&src[i]);
+			GSVector4i* s = (GSVector4i*)src;
+			GSVector4i* d = (GSVector4i*)dst;
 
-				__m128i cl = _mm_unpacklo_epi16(c, s_zero);
-				__m128i ch = _mm_unpackhi_epi16(c, s_zero);
+			c = s[0];
+			cl = c.upl16();
+			ch = c.uph16();
+			d[0] = ((cl & rm) << 3) | ((cl & gm) << 6) | ((cl & bm) << 9) | TA1.blend(TA0, cl < am);
+			d[1] = ((ch & rm) << 3) | ((ch & gm) << 6) | ((ch & bm) << 9) | TA1.blend(TA0, ch < am);
 
-				__m128i alm = _mm_cmplt_epi32(cl, s_am);
-				__m128i ahm = _mm_cmplt_epi32(ch, s_am);
-
-				// lo
-
-				b = _mm_slli_epi32(_mm_and_si128(cl, s_bm), 9);
-				g = _mm_slli_epi32(_mm_and_si128(cl, s_gm), 6);
-				r = _mm_slli_epi32(_mm_and_si128(cl, s_rm), 3);
-				a = _mm_or_si128(_mm_and_si128(alm, TA0), _mm_andnot_si128(alm, TA1));
-
-				cl = _mm_or_si128(_mm_or_si128(a, b), _mm_or_si128(g, r));
-
-				_mm_store_si128((__m128i*)&dst[i], cl);
-
-				// hi
-
-				b = _mm_slli_epi32(_mm_and_si128(ch, s_bm), 9);
-				g = _mm_slli_epi32(_mm_and_si128(ch, s_gm), 6);
-				r = _mm_slli_epi32(_mm_and_si128(ch, s_rm), 3);
-				a = _mm_or_si128(_mm_and_si128(ahm, TA0), _mm_andnot_si128(ahm, TA1));
-
-				ch = _mm_or_si128(_mm_or_si128(a, b), _mm_or_si128(g, r));
-
-				_mm_store_si128((__m128i*)&dst[i+4], ch);
-			}
+			c = s[1];
+			cl = c.upl16();
+			ch = c.uph16();
+			d[2] = ((cl & rm) << 3) | ((cl & gm) << 6) | ((cl & bm) << 9) | TA1.blend(TA0, cl < am);
+			d[3] = ((ch & rm) << 3) | ((ch & gm) << 6) | ((ch & bm) << 9) | TA1.blend(TA0, ch < am);
 		}
 	}
 	else
 	{
-		for(int j = 0; j < 8; j++, src += 16, dst += dstpitch>>2)
+		for(int j = 0; j < 8; j++, src += 16, dst += dstpitch >> 2)
 		{
-			for(int i = 0; i < 16; i += 8)
-			{
-				__m128i c = _mm_load_si128((__m128i*)&src[i]);
+			GSVector4i* s = (GSVector4i*)src;
+			GSVector4i* d = (GSVector4i*)dst;
 
-				__m128i cl = _mm_unpacklo_epi16(c, s_zero);
-				__m128i ch = _mm_unpackhi_epi16(c, s_zero);
+			c = s[0];
+			cl = c.upl16();
+			ch = c.uph16();
+			d[0] = ((cl & rm) << 3) | ((cl & gm) << 6) | ((cl & bm) << 9) | TA1.blend(TA0, cl < am).andnot(cl == GSVector4i::zero());
+			d[1] = ((ch & rm) << 3) | ((ch & gm) << 6) | ((ch & bm) << 9) | TA1.blend(TA0, ch < am).andnot(ch == GSVector4i::zero());
 
-				__m128i alm = _mm_cmplt_epi32(cl, s_am);
-				__m128i ahm = _mm_cmplt_epi32(ch, s_am);
-
-				__m128i trm = _mm_cmpeq_epi16(c, s_zero);
-				__m128i trlm = _mm_unpacklo_epi16(trm, trm);
-				__m128i trhm = _mm_unpackhi_epi16(trm, trm);
-
-				// lo
-
-				b = _mm_slli_epi32(_mm_and_si128(cl, s_bm), 9);
-				g = _mm_slli_epi32(_mm_and_si128(cl, s_gm), 6);
-				r = _mm_slli_epi32(_mm_and_si128(cl, s_rm), 3);
-				a = _mm_or_si128(_mm_and_si128(alm, TA0), _mm_andnot_si128(alm, TA1));
-				a = _mm_andnot_si128(trlm, a);
-
-				cl = _mm_or_si128(_mm_or_si128(a, b), _mm_or_si128(g, r));
-
-				_mm_store_si128((__m128i*)&dst[i], cl);
-
-				// hi
-
-				b = _mm_slli_epi32(_mm_and_si128(ch, s_bm), 9);
-				g = _mm_slli_epi32(_mm_and_si128(ch, s_gm), 6);
-				r = _mm_slli_epi32(_mm_and_si128(ch, s_rm), 3);
-				a = _mm_or_si128(_mm_and_si128(ahm, TA0), _mm_andnot_si128(ahm, TA1));
-				a = _mm_andnot_si128(trhm, a);
-
-				ch = _mm_or_si128(_mm_or_si128(a, b), _mm_or_si128(g, r));
-
-				_mm_store_si128((__m128i*)&dst[i+4], ch);
-			}
+			c = s[1];
+			cl = c.upl16();
+			ch = c.uph16();
+			d[2] = ((cl & rm) << 3) | ((cl & gm) << 6) | ((cl & bm) << 9) | TA1.blend(TA0, cl < am).andnot(cl == GSVector4i::zero());
+			d[3] = ((ch & rm) << 3) | ((ch & gm) << 6) | ((ch & bm) << 9) | TA1.blend(TA0, ch < am).andnot(ch == GSVector4i::zero());
 		}
 	}
 }
@@ -397,84 +349,39 @@ void __fastcall Expand16_sse2(WORD* src, DWORD* dst, int w, GIFRegTEXA* pTEXA)
 {
 	ASSERT(!(w&7));
 
-	__m128i TA0 = _mm_set1_epi32((DWORD)pTEXA->TA0 << 24);
-	__m128i TA1 = _mm_set1_epi32((DWORD)pTEXA->TA1 << 24);
-	__m128i a, b, g, r;
+	const GSVector4i rm = s_rm;
+	const GSVector4i gm = s_gm;
+	const GSVector4i bm = s_bm;
+	const GSVector4i am = s_am;
+
+	GSVector4i TA0(pTEXA->TA0 << 24);
+	GSVector4i TA1(pTEXA->TA1 << 24);
+
+	GSVector4i c, cl, ch;
+
+	GSVector4i* s = (GSVector4i*)src;
+	GSVector4i* d = (GSVector4i*)dst;
 
 	if(!pTEXA->AEM)
 	{
-		for(int i = 0; i < w; i += 8)
+		for(int i = 0, j = w >> 3; i < j; i++)
 		{
-			__m128i c = _mm_load_si128((__m128i*)&src[i]);
-
-			__m128i cl = _mm_unpacklo_epi16(c, s_zero);
-			__m128i ch = _mm_unpackhi_epi16(c, s_zero);
-
-			__m128i alm = _mm_cmplt_epi32(cl, s_am);
-			__m128i ahm = _mm_cmplt_epi32(ch, s_am);
-
-			// lo
-
-			b = _mm_slli_epi32(_mm_and_si128(cl, s_bm), 9);
-			g = _mm_slli_epi32(_mm_and_si128(cl, s_gm), 6);
-			r = _mm_slli_epi32(_mm_and_si128(cl, s_rm), 3);
-			a = _mm_or_si128(_mm_and_si128(alm, TA0), _mm_andnot_si128(alm, TA1));
-
-			cl = _mm_or_si128(_mm_or_si128(a, b), _mm_or_si128(g, r));
-
-			_mm_store_si128((__m128i*)&dst[i], cl);
-
-			// hi
-
-			b = _mm_slli_epi32(_mm_and_si128(ch, s_bm), 9);
-			g = _mm_slli_epi32(_mm_and_si128(ch, s_gm), 6);
-			r = _mm_slli_epi32(_mm_and_si128(ch, s_rm), 3);
-			a = _mm_or_si128(_mm_and_si128(ahm, TA0), _mm_andnot_si128(ahm, TA1));
-
-			ch = _mm_or_si128(_mm_or_si128(a, b), _mm_or_si128(g, r));
-
-			_mm_store_si128((__m128i*)&dst[i+4], ch);
+			c = s[i];
+			cl = c.upl16();
+			ch = c.uph16();
+			d[i*2+0] = ((cl & rm) << 3) | ((cl & gm) << 6) | ((cl & bm) << 9) | TA1.blend(TA0, cl < am);
+			d[i*2+1] = ((ch & rm) << 3) | ((ch & gm) << 6) | ((ch & bm) << 9) | TA1.blend(TA0, ch < am);
 		}
 	}
 	else
 	{
-		for(int i = 0; i < w; i += 8)
+		for(int i = 0, j = w >> 3; i < j; i++)
 		{
-			__m128i c = _mm_load_si128((__m128i*)&src[i]);
-
-			__m128i cl = _mm_unpacklo_epi16(c, s_zero);
-			__m128i ch = _mm_unpackhi_epi16(c, s_zero);
-
-			__m128i alm = _mm_cmplt_epi32(cl, s_am);
-			__m128i ahm = _mm_cmplt_epi32(ch, s_am);
-
-			__m128i trm = _mm_cmpeq_epi16(c, s_zero);
-			__m128i trlm = _mm_unpacklo_epi16(trm, trm);
-			__m128i trhm = _mm_unpackhi_epi16(trm, trm);
-
-			// lo
-
-			b = _mm_slli_epi32(_mm_and_si128(cl, s_bm), 9);
-			g = _mm_slli_epi32(_mm_and_si128(cl, s_gm), 6);
-			r = _mm_slli_epi32(_mm_and_si128(cl, s_rm), 3);
-			a = _mm_or_si128(_mm_and_si128(alm, TA0), _mm_andnot_si128(alm, TA1));
-			a = _mm_andnot_si128(trlm, a);
-
-			cl = _mm_or_si128(_mm_or_si128(a, b), _mm_or_si128(g, r));
-
-			_mm_store_si128((__m128i*)&dst[i], cl);
-
-			// hi
-
-			b = _mm_slli_epi32(_mm_and_si128(ch, s_bm), 9);
-			g = _mm_slli_epi32(_mm_and_si128(ch, s_gm), 6);
-			r = _mm_slli_epi32(_mm_and_si128(ch, s_rm), 3);
-			a = _mm_or_si128(_mm_and_si128(ahm, TA0), _mm_andnot_si128(ahm, TA1));
-			a = _mm_andnot_si128(trhm, a);
-
-			ch = _mm_or_si128(_mm_or_si128(a, b), _mm_or_si128(g, r));
-
-			_mm_store_si128((__m128i*)&dst[i+4], ch);
+			c = s[i];
+			cl = c.upl16();
+			ch = c.uph16();
+			d[i*2+0] = ((cl & rm) << 3) | ((cl & gm) << 6) | ((cl & bm) << 9) | TA1.blend(TA0, cl < am).andnot(cl == GSVector4i::zero());
+			d[i*2+1] = ((ch & rm) << 3) | ((ch & gm) << 6) | ((ch & bm) << 9) | TA1.blend(TA0, ch < am).andnot(ch == GSVector4i::zero());
 		}
 	}
 }
@@ -546,115 +453,96 @@ void __fastcall Expand16_c(WORD* src, DWORD* dst, int w, GIFRegTEXA* pTEXA)
 
 //
 
-static __m128i s_clut[64];
-
 void __fastcall WriteCLUT_T32_I8_CSM1_sse2(DWORD* vm, WORD* clut)
 {
-	__m128i* src = (__m128i*)vm;
-	__m128i* dst = s_clut;
+	GSVector4i tmp[64];
 
-	for(int j = 0; j < 64; j += 32, src += 32, dst += 32)
+	GSVector4i* s = (GSVector4i*)vm;
+	GSVector4i* d = tmp;
+
+	for(int j = 0; j < 2; j++, s += 32, d += 32)
 	{
 		for(int i = 0; i < 16; i += 4)
 		{
-			__m128i r0 = _mm_load_si128(&src[i+0]);
-			__m128i r1 = _mm_load_si128(&src[i+1]);
-			__m128i r2 = _mm_load_si128(&src[i+2]);
-			__m128i r3 = _mm_load_si128(&src[i+3]);
-
-			_mm_store_si128(&dst[i*2+0], _mm_unpacklo_epi64(r0, r1));
-			_mm_store_si128(&dst[i*2+1], _mm_unpacklo_epi64(r2, r3));
-			_mm_store_si128(&dst[i*2+2], _mm_unpackhi_epi64(r0, r1));
-			_mm_store_si128(&dst[i*2+3], _mm_unpackhi_epi64(r2, r3));
-
-			__m128i r4 = _mm_load_si128(&src[i+0+16]);
-			__m128i r5 = _mm_load_si128(&src[i+1+16]);
-			__m128i r6 = _mm_load_si128(&src[i+2+16]);
-			__m128i r7 = _mm_load_si128(&src[i+3+16]);
-
-			_mm_store_si128(&dst[i*2+4], _mm_unpacklo_epi64(r4, r5));
-			_mm_store_si128(&dst[i*2+5], _mm_unpacklo_epi64(r6, r7));
-			_mm_store_si128(&dst[i*2+6], _mm_unpackhi_epi64(r4, r5));
-			_mm_store_si128(&dst[i*2+7], _mm_unpackhi_epi64(r6, r7));
+			d[i*2+0] = s[i+0].upl64(s[i+1]);
+			d[i*2+1] = s[i+2].upl64(s[i+3]);
+			d[i*2+2] = s[i+0].uph64(s[i+1]);
+			d[i*2+3] = s[i+2].uph64(s[i+3]);
+			d[i*2+4] = s[i+0+16].upl64(s[i+1+16]);
+			d[i*2+5] = s[i+2+16].upl64(s[i+3+16]);
+			d[i*2+6] = s[i+0+16].uph64(s[i+1+16]);
+			d[i*2+7] = s[i+2+16].uph64(s[i+3+16]);
 		}
 	}
 
+	s = tmp;
+	d = (GSVector4i*)clut;
+
 	for(int i = 0; i < 32; i++)
 	{
-		__m128i r0 = s_clut[i*2];
-		__m128i r1 = s_clut[i*2+1];
-		__m128i r2 = _mm_unpacklo_epi16(r0, r1);
-		__m128i r3 = _mm_unpackhi_epi16(r0, r1);
-		r0 = _mm_unpacklo_epi16(r2, r3);
-		r1 = _mm_unpackhi_epi16(r2, r3);
-		r2 = _mm_unpacklo_epi16(r0, r1);
-		r3 = _mm_unpackhi_epi16(r0, r1);
-		_mm_store_si128(&((__m128i*)clut)[i], r2);
-		_mm_store_si128(&((__m128i*)clut)[i+32], r3);
+		GSVector4i r0, r1, r2, r3;
+
+		r0 = s[i*2+0];
+		r1 = s[i*2+1];
+		r2 = r0.upl16(r1);
+		r3 = r0.uph16(r1);
+		r0 = r2.upl16(r3);
+		r1 = r2.uph16(r3);
+		d[i+0] = r0.upl16(r1);
+		d[i+32] = r0.uph16(r1);
 	}
 }
 
 void __fastcall WriteCLUT_T32_I4_CSM1_sse2(DWORD* vm, WORD* clut)
 {
-	__m128i* src = (__m128i*)vm;
-	__m128i* dst = s_clut;
+	GSVector4i* s = (GSVector4i*)vm;
+	GSVector4i* d = (GSVector4i*)clut;
 
-	__m128i r0 = _mm_load_si128(&src[0]);
-	__m128i r1 = _mm_load_si128(&src[1]);
-	__m128i r2 = _mm_load_si128(&src[2]);
-	__m128i r3 = _mm_load_si128(&src[3]);
+	GSVector4i r0, r1, r2, r3;
+	GSVector4i r4, r5, r6, r7;
 
-	_mm_store_si128(&dst[0], _mm_unpacklo_epi64(r0, r1));
-	_mm_store_si128(&dst[1], _mm_unpacklo_epi64(r2, r3));
-	_mm_store_si128(&dst[2], _mm_unpackhi_epi64(r0, r1));
-	_mm_store_si128(&dst[3], _mm_unpackhi_epi64(r2, r3));
-
-	for(int i = 0; i < 2; i++)
-	{
-		__m128i r0 = s_clut[i*2];
-		__m128i r1 = s_clut[i*2+1];
-		__m128i r2 = _mm_unpacklo_epi16(r0, r1);
-		__m128i r3 = _mm_unpackhi_epi16(r0, r1);
-		r0 = _mm_unpacklo_epi16(r2, r3);
-		r1 = _mm_unpackhi_epi16(r2, r3);
-		r2 = _mm_unpacklo_epi16(r0, r1);
-		r3 = _mm_unpackhi_epi16(r0, r1);
-		_mm_store_si128(&((__m128i*)clut)[i], r2);
-		_mm_store_si128(&((__m128i*)clut)[i+32], r3);
-	}
+	r0 = s[0].upl64(s[1]);
+	r1 = s[2].upl64(s[3]);
+	r4 = s[0].uph64(s[1]);
+	r5 = s[2].uph64(s[3]);
+	r2 = r0.upl16(r1);
+	r3 = r0.uph16(r1);
+	r6 = r4.upl16(r5);
+	r7 = r4.uph16(r5);
+	r0 = r2.upl16(r3);
+	r1 = r2.uph16(r3);
+	r4 = r6.upl16(r7);
+	r5 = r6.uph16(r7);
+	d[0] = r0.upl16(r1);
+	d[1] = r4.upl16(r5);
+	d[32] = r0.uph16(r1);
+	d[33] = r4.uph16(r5);
 }
 
 void __fastcall WriteCLUT_T16_I8_CSM1_sse2(WORD* vm, WORD* clut)
 {
-	__m128i* src = (__m128i*)vm;
-	__m128i* dst = (__m128i*)clut;
+	GSVector4i* s = (GSVector4i*)vm;
+	GSVector4i* d = (GSVector4i*)clut;
 
 	for(int i = 0; i < 32; i += 4)
 	{
-		__m128i r0 = _mm_load_si128(&src[i+0]);
-		__m128i r1 = _mm_load_si128(&src[i+1]);
-		__m128i r2 = _mm_load_si128(&src[i+2]);
-		__m128i r3 = _mm_load_si128(&src[i+3]);
+		GSVector4i r0, r1, r2, r3;
+		GSVector4i r4, r5, r6, r7;
 
-		__m128i r4 = _mm_unpacklo_epi16(r0, r1);
-		__m128i r5 = _mm_unpackhi_epi16(r0, r1);
-		__m128i r6 = _mm_unpacklo_epi16(r2, r3);
-		__m128i r7 = _mm_unpackhi_epi16(r2, r3);
+		r0 = s[i+0].upl16(s[i+1]);
+		r1 = s[i+2].upl16(s[i+3]);
+		r2 = s[i+0].uph16(s[i+1]);
+		r3 = s[i+2].uph16(s[i+3]);
 
-		r0 = _mm_unpacklo_epi32(r4, r6);
-		r1 = _mm_unpackhi_epi32(r4, r6);
-		r2 = _mm_unpacklo_epi32(r5, r7);
-		r3 = _mm_unpackhi_epi32(r5, r7);
+		r4 = r0.upl32(r1);
+		r5 = r0.uph32(r1);
+		r6 = r2.upl32(r3);
+		r7 = r2.uph32(r3);
 
-		r4 = _mm_unpacklo_epi16(r0, r1);
-		r5 = _mm_unpackhi_epi16(r0, r1);
-		r6 = _mm_unpacklo_epi16(r2, r3);
-		r7 = _mm_unpackhi_epi16(r2, r3);
-
-		_mm_store_si128(&dst[i+0], r4);
-		_mm_store_si128(&dst[i+1], r6);
-		_mm_store_si128(&dst[i+2], r5);
-		_mm_store_si128(&dst[i+3], r7);
+		d[i+0] = r4.upl16(r5);
+		d[i+1] = r6.upl16(r7);
+		d[i+2] = r4.uph16(r5);
+		d[i+3] = r6.uph16(r7);
 	}
 }
 
@@ -718,14 +606,18 @@ void __fastcall ReadCLUT32_T32_I8_sse2(WORD* src, DWORD* dst)
 
 void __fastcall ReadCLUT32_T32_I4_sse2(WORD* src, DWORD* dst)
 {
-	__m128i r0 = ((__m128i*)src)[0];
-	__m128i r1 = ((__m128i*)src)[1];
-	__m128i r2 = ((__m128i*)src)[0+32];
-	__m128i r3 = ((__m128i*)src)[1+32];
-	_mm_store_si128(&((__m128i*)dst)[0], _mm_unpacklo_epi16(r0, r2));
-	_mm_store_si128(&((__m128i*)dst)[1], _mm_unpackhi_epi16(r0, r2));
-	_mm_store_si128(&((__m128i*)dst)[2], _mm_unpacklo_epi16(r1, r3));
-	_mm_store_si128(&((__m128i*)dst)[3], _mm_unpackhi_epi16(r1, r3));
+	GSVector4i* s = (GSVector4i*)src;
+	GSVector4i* d = (GSVector4i*)dst;
+
+	GSVector4i r0 = s[0];
+	GSVector4i r1 = s[1];
+	GSVector4i r2 = s[32];
+	GSVector4i r3 = s[33];
+
+	d[0] = r0.upl16(r2);
+	d[1] = r0.uph16(r2);
+	d[2] = r1.upl16(r3);
+	d[3] = r1.uph16(r3);
 }
 
 void __fastcall ReadCLUT32_T16_I8_sse2(WORD* src, DWORD* dst)
@@ -738,12 +630,18 @@ void __fastcall ReadCLUT32_T16_I8_sse2(WORD* src, DWORD* dst)
 
 void __fastcall ReadCLUT32_T16_I4_sse2(WORD* src, DWORD* dst)
 {
-	__m128i r0 = ((__m128i*)src)[0];
-	__m128i r1 = ((__m128i*)src)[1];
-	_mm_store_si128(&((__m128i*)dst)[0], _mm_unpacklo_epi16(r0, s_zero));
-	_mm_store_si128(&((__m128i*)dst)[1], _mm_unpackhi_epi16(r0, s_zero));
-	_mm_store_si128(&((__m128i*)dst)[2], _mm_unpacklo_epi16(r1, s_zero));
-	_mm_store_si128(&((__m128i*)dst)[3], _mm_unpackhi_epi16(r1, s_zero));
+	GSVector4i* s = (GSVector4i*)src;
+	GSVector4i* d = (GSVector4i*)dst;
+
+	GSVector4i r0 = s[0];
+	GSVector4i r1 = s[1];
+
+	d[0] = r0.upl16();
+	d[1] = r0.uph16();
+	d[2] = r1.upl16();
+	d[3] = r1.uph16();
+
+printf("****\n");
 }
 
 void __fastcall ReadCLUT32_T32_I8_c(WORD* src, DWORD* dst)
