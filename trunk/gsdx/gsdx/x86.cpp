@@ -640,8 +640,6 @@ void __fastcall ReadCLUT32_T16_I4_sse2(WORD* src, DWORD* dst)
 	d[1] = r0.uph16();
 	d[2] = r1.upl16();
 	d[3] = r1.uph16();
-
-printf("****\n");
 }
 
 void __fastcall ReadCLUT32_T32_I8_c(WORD* src, DWORD* dst)
