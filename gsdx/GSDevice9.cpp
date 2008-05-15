@@ -41,7 +41,7 @@ GSDevice9::GSDevice9()
 	, m_dss(NULL)
 	, m_sref(0)
 	, m_bs(NULL)
-	, m_bf(~0)
+	, m_bf(0xffffffff)
 	, m_rtv(NULL)
 	, m_dsv(NULL)
 {
@@ -247,7 +247,7 @@ bool GSDevice9::Reset(int w, int h, bool fs)
 	m_dss = NULL;
 	m_sref = 0;
 	m_bs = NULL;
-	m_bf = -1;
+	m_bf = 0xffffffff;
 	m_rtv = NULL;
 	m_dsv = NULL;
 
@@ -566,7 +566,7 @@ void GSDevice9::DoMerge(GSTexture9* st, GSVector4* sr, GSVector4* dr, GSTexture9
 void GSDevice9::DoInterlace(GSTexture9& st, GSTexture9& dt, int shader, bool linear, float yoffset)
 {
 	GSVector4 sr(0, 0, 1, 1);
-	GSVector4 dr(0, yoffset, (float)dt.GetWidth(), (float)dt.GetHeight() + yoffset);
+	GSVector4 dr(0.0f, yoffset, (float)dt.GetWidth(), (float)dt.GetHeight() + yoffset);
 
 	InterlaceConstantBuffer cb;
 
@@ -848,9 +848,9 @@ bool GSDevice9::SaveToFileD24S8(IDirect3DSurface9* ds, LPCTSTR fn)
 	BYTE* s = (BYTE*)slr.pBits;
 	BYTE* d = (BYTE*)dlr.pBits;
 
-	for(int y = 0; y < desc.Height; y++, s += slr.Pitch, d += dlr.Pitch)
+	for(UINT y = 0; y < desc.Height; y++, s += slr.Pitch, d += dlr.Pitch)
 	{
-		for(int x = 0; x < desc.Width; x++)
+		for(UINT x = 0; x < desc.Width; x++)
 		{
 			((float*)d)[x] = ((float*)s)[x];
 		}

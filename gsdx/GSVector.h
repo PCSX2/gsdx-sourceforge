@@ -76,6 +76,11 @@ public:
 		m = _mm_set_ps(w, z, y, x);
 	}
 
+	GSVector4(int x, int y, int z, int w)
+	{
+		m = _mm_cvtepi32_ps(_mm_set_epi32(w, z, y, x));
+	}
+
 	GSVector4(const GSVector4& v) 
 	{
 		*this = v;
@@ -563,6 +568,61 @@ public:
 		return GSVector4i(_mm_unpackhi_epi64(m, a));
 	}
 
+	GSVector4i upl8()
+	{
+		return GSVector4i(_mm_unpacklo_epi8(m, _mm_setzero_si128()));
+	}
+
+	GSVector4i uph8()
+	{
+		return GSVector4i(_mm_unpackhi_epi8(m, _mm_setzero_si128()));
+	}
+
+	GSVector4i upl16()
+	{
+		return GSVector4i(_mm_unpacklo_epi16(m, _mm_setzero_si128()));
+	}
+
+	GSVector4i uph16()
+	{
+		return GSVector4i(_mm_unpackhi_epi16(m, _mm_setzero_si128()));
+	}
+
+	GSVector4i upl32()
+	{
+		return GSVector4i(_mm_unpacklo_epi32(m, _mm_setzero_si128()));
+	}
+
+	GSVector4i uph32()
+	{
+		return GSVector4i(_mm_unpackhi_epi32(m, _mm_setzero_si128()));
+	}
+
+	GSVector4i upl64()
+	{
+		return GSVector4i(_mm_unpacklo_epi64(m, _mm_setzero_si128()));
+	}
+
+	GSVector4i uph64()
+	{
+		return GSVector4i(_mm_unpackhi_epi64(m, _mm_setzero_si128()));
+	}
+
+	template<int i> GSVector4i srl()
+	{
+		return GSVector4i(_mm_srli_si128(m, i));
+	}
+
+	template<int i> GSVector4i sll()
+	{
+		return GSVector4i(_mm_slli_si128(m, i));
+	}
+
+	GSVector4i andnot(const GSVector4i& v)
+	{
+		return GSVector4i(_mm_andnot_si128(v.m, m));
+	}
+
 	static GSVector4i zero() 
 	{
 		return GSVector4i(_mm_setzero_si128());
@@ -573,9 +633,24 @@ public:
 		return GSVector4i(0) == GSVector4i(0);
 	}
 
-	static GSVector4i loadu(const void* v)
+	static GSVector4i loadl(const void* p)
 	{
-		return GSVector4i(_mm_loadu_si128((__m128i*)v));
+		return GSVector4i(_mm_loadl_epi64((__m128i*)p));
+	}
+
+	static GSVector4i loadh(const void* p)
+	{
+		return GSVector4i(_mm_slli_si128(_mm_loadl_epi64((__m128i*)p), 8));
+	}
+
+	static GSVector4i loadu(const void* p)
+	{
+		return GSVector4i(_mm_loadu_si128((__m128i*)p));
+	}
+
+	static GSVector4i loadu(const void* pl, const void* ph)
+	{
+		return loadl(pl) | loadh(ph);
 	}
 
 	void operator += (const GSVector4i& v) 
@@ -598,12 +673,12 @@ public:
 		*this -= GSVector4i(i);
 	}
 
-	void operator <<= (int i) 
+	void operator <<= (const int i) 
 	{
 		m = _mm_slli_epi32(m, i);
 	}
 
-	void operator >>= (int i) 
+	void operator >>= (const int i) 
 	{
 		m = _mm_srli_epi32(m, i);
 	}
@@ -643,12 +718,12 @@ public:
 		return v - GSVector4i(i);
 	}
 	
-	friend GSVector4i operator << (const GSVector4i& v, int i) 
+	friend GSVector4i operator << (const GSVector4i& v, const int i) 
 	{
 		return GSVector4i(_mm_slli_epi32(v, i));
 	}
 	
-	friend GSVector4i operator >> (const GSVector4i& v, int i) 
+	friend GSVector4i operator >> (const GSVector4i& v, const int i) 
 	{
 		return GSVector4i(_mm_srli_epi32(v, i));
 	}

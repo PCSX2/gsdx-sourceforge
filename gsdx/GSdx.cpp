@@ -349,7 +349,7 @@ EXPORT_C GSirqCallback(void (*irq)())
 	s_irq = irq;
 }
 
-EXPORT_C GSsetGameCRC(int crc, int options)
+EXPORT_C GSsetGameCRC(DWORD crc, int options)
 {
 	s_gs->SetGameCRC(crc, options);
 }
@@ -389,7 +389,7 @@ EXPORT_C GSReplay(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow)
 		HWND hWnd = NULL;
 		__GSopen(&hWnd, _T(""), true, renderer);
 
-		int crc;
+		DWORD crc;
 		fread(&crc, 4, 1, fp);
 		GSsetGameCRC(crc, 0);
 

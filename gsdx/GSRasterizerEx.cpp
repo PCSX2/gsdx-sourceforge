@@ -653,6 +653,28 @@ void GSRasterizer::InitEx()
 	m_dsmap[0x4459a8e0] = &GSRasterizer::DrawScanlineEx<0x4459a8e0>;
 	m_dsmap[0x44540420] = &GSRasterizer::DrawScanlineEx<0x44540420>;
 	m_dsmap[0x4451c460] = &GSRasterizer::DrawScanlineEx<0x4451c460>;
+
+	// the punisher
+
+	m_dsmap[0x44578408] = &GSRasterizer::DrawScanlineEx<0x44578408>;
+	m_dsmap[0x4457840a] = &GSRasterizer::DrawScanlineEx<0x4457840a>;
+	m_dsmap[0x4457aac8] = &GSRasterizer::DrawScanlineEx<0x4457aac8>;
+	m_dsmap[0xa857aac8] = &GSRasterizer::DrawScanlineEx<0xa857aac8>;
+	m_dsmap[0x4457a8c8] = &GSRasterizer::DrawScanlineEx<0x4457a8c8>;
+	m_dsmap[0xa857a8c8] = &GSRasterizer::DrawScanlineEx<0xa857a8c8>;
+	m_dsmap[0x4257a8c8] = &GSRasterizer::DrawScanlineEx<0x4257a8c8>;
+	m_dsmap[0x68578408] = &GSRasterizer::DrawScanlineEx<0x68578408>;
+	m_dsmap[0x4257a0c8] = &GSRasterizer::DrawScanlineEx<0x4257a0c8>;
+	m_dsmap[0xa857848a] = &GSRasterizer::DrawScanlineEx<0xa857848a>;
+	m_dsmap[0x6857a8c8] = &GSRasterizer::DrawScanlineEx<0x6857a8c8>;
+	m_dsmap[0x4857b848] = &GSRasterizer::DrawScanlineEx<0x4857b848>;
+	m_dsmap[0x4457abc8] = &GSRasterizer::DrawScanlineEx<0x4457abc8>;
+	m_dsmap[0x4457b808] = &GSRasterizer::DrawScanlineEx<0x4457b808>;
+	m_dsmap[0x4457b848] = &GSRasterizer::DrawScanlineEx<0x4457b848>;
+	m_dsmap[0x4857a888] = &GSRasterizer::DrawScanlineEx<0x4857a888>;
+	m_dsmap[0x44579808] = &GSRasterizer::DrawScanlineEx<0x44579808>;
+	m_dsmap[0x4857a8c8] = &GSRasterizer::DrawScanlineEx<0x4857a8c8>;
+
 }
 
 template<DWORD sel>
@@ -814,7 +836,7 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 			}
 			else
 			{
-				GSVector4i uv = GSVector4i(u).ps32(GSVector4i(v));
+				GSVector4i uv = Wrap(GSVector4i(u).ps32(GSVector4i(v)));
 
 				GSVector4i c00;
 

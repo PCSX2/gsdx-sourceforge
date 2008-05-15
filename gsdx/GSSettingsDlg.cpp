@@ -187,9 +187,9 @@ BOOL GSSettingsDlg::OnInitDialog()
 
 	if(CComPtr<IDirect3D9> d3d = Direct3DCreate9(D3D_SDK_VERSION))
 	{
-		int ModeWidth = pApp->GetProfileInt(_T("Settings"), _T("ModeWidth"), 0);
-		int ModeHeight = pApp->GetProfileInt(_T("Settings"), _T("ModeHeight"), 0);
-		int ModeRefreshRate = pApp->GetProfileInt(_T("Settings"), _T("ModeRefreshRate"), 0);
+		UINT ModeWidth = pApp->GetProfileInt(_T("Settings"), _T("ModeWidth"), 0);
+		UINT ModeHeight = pApp->GetProfileInt(_T("Settings"), _T("ModeHeight"), 0);
+		UINT ModeRefreshRate = pApp->GetProfileInt(_T("Settings"), _T("ModeRefreshRate"), 0);
 
 		UINT nModes = d3d->GetAdapterModeCount(D3DADAPTER_DEFAULT, D3DFMT_X8R8G8B8);
 
