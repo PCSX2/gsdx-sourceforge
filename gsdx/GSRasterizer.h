@@ -179,7 +179,7 @@ private:
 	bool DrawSolidRect(int left, int top, int right, int bottom, const Vertex& v);
 
 public:
-	GSRasterizer(GSState* state, int id = 0, int idmask = 0);
+	GSRasterizer(GSState* state, int id = 0, int threads = 0);
 	virtual ~GSRasterizer();
 
 	void InvalidateTextureCache();
@@ -308,8 +308,8 @@ class GSRasterizerMT : public GSRasterizer
 	}
 
 public:
-	GSRasterizerMT(GSState* state, int id, int idmask, long* sync)
-		: GSRasterizer(state, id, idmask)
+	GSRasterizerMT(GSState* state, int id, int threads, long* sync)
+		: GSRasterizer(state, id, threads)
 		, m_vertices(NULL)
 		, m_count(0)
 		, m_sync(sync)

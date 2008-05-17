@@ -176,6 +176,16 @@ public:
 		return GSVector4i(_mm_or_si128(_mm_andnot_si128(mask, m), _mm_and_si128(mask, a)));
 	}
 
+	GSVector4i ps16(const GSVector4i& a)
+	{
+		return GSVector4i(_mm_packs_epi16(m, a));
+	}
+
+	GSVector4i pu16(const GSVector4i& a)
+	{
+		return GSVector4i(_mm_packus_epi16(m, a));
+	}
+
 	GSVector4i ps32(const GSVector4i& a)
 	{
 		return GSVector4i(_mm_packs_epi32(m, a));
@@ -187,16 +197,6 @@ public:
 		return GSVector4i(_mm_packus_epi32(m, a));
 	}
 	#endif
-
-	GSVector4i ps16(const GSVector4i& a)
-	{
-		return GSVector4i(_mm_packs_epi16(m, a));
-	}
-
-	GSVector4i pu16(const GSVector4i& a)
-	{
-		return GSVector4i(_mm_packus_epi16(m, a));
-	}
 
 	GSVector4i upl8(const GSVector4i& a)
 	{

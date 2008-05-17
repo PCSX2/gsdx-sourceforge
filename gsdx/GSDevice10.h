@@ -26,6 +26,10 @@
 
 class GSDevice10 : public GSDevice<GSTexture10>
 {
+public:
+	typedef GSTexture10 Texture;
+
+private:
 	// state cache
 
 	ID3D10Buffer* m_vb;
@@ -51,11 +55,12 @@ class GSDevice10 : public GSDevice<GSTexture10>
 
 	//
 
-	bool Create(int type, GSTexture10& t, int w, int h, int format);
-	void DoMerge(GSTexture10* st, GSVector4* sr, GSVector4* dr, GSTexture10& dt, bool slbg, bool mmod, GSVector4& c);
-	void DoInterlace(GSTexture10& st, GSTexture10& dt, int shader, bool linear, float yoffset = 0);
+	bool Create(int type, Texture& t, int w, int h, int format);
+	void DoMerge(Texture* st, GSVector4* sr, GSVector4* dr, Texture& dt, bool slbg, bool mmod, GSVector4& c);
+	void DoInterlace(Texture& st, Texture& dt, int shader, bool linear, float yoffset = 0);
 
-private:
+	//
+
 	CComPtr<ID3D10Device> m_dev;
 	CComPtr<IDXGISwapChain> m_swapchain;
 	CComPtr<ID3DX10Font> m_font;
@@ -88,8 +93,6 @@ public: // TODO
 		CComPtr<ID3D10Buffer> cb;
 	} m_interlace;
 
-	typedef GSTexture10 Texture;
-
 public:
 	GSDevice10();
 	virtual ~GSDevice10();
@@ -107,10 +110,10 @@ public:
 	void ClearDepth(Texture& t, float c);
 	void ClearStencil(Texture& t, BYTE c);
 
-	bool CreateRenderTarget(GSTexture10& t, int w, int h, int format = 0);
-	bool CreateDepthStencil(GSTexture10& t, int w, int h, int format = 0);
-	bool CreateTexture(GSTexture10& t, int w, int h, int format = 0);
-	bool CreateOffscreen(GSTexture10& t, int w, int h, int format = 0);
+	bool CreateRenderTarget(Texture& t, int w, int h, int format = 0);
+	bool CreateDepthStencil(Texture& t, int w, int h, int format = 0);
+	bool CreateTexture(Texture& t, int w, int h, int format = 0);
+	bool CreateOffscreen(Texture& t, int w, int h, int format = 0);
 
 	ID3D10Device* operator->() {return m_dev;}
 	operator ID3D10Device*() {return m_dev;}
@@ -129,10 +132,10 @@ public:
 	void OMSetRenderTargets(ID3D10RenderTargetView* rtv, ID3D10DepthStencilView* dsv);
 	void DrawPrimitive(UINT count, UINT start = 0);
 
-	void StretchRect(GSTexture10& st, GSTexture10& dt, const GSVector4& dr, bool linear = true);
-	void StretchRect(GSTexture10& st, const GSVector4& sr, GSTexture10& dt, const GSVector4& dr, bool linear = true);
-	void StretchRect(GSTexture10& st, const GSVector4& sr, GSTexture10& dt, const GSVector4& dr, ID3D10PixelShader* ps, ID3D10Buffer* ps_cb, bool linear = true);
-	void StretchRect(GSTexture10& st, const GSVector4& sr, GSTexture10& dt, const GSVector4& dr, ID3D10PixelShader* ps, ID3D10Buffer* ps_cb, ID3D10BlendState* bs, bool linear = true);
+	void StretchRect(Texture& st, Texture& dt, const GSVector4& dr, bool linear = true);
+	void StretchRect(Texture& st, const GSVector4& sr, Texture& dt, const GSVector4& dr, bool linear = true);
+	void StretchRect(Texture& st, const GSVector4& sr, Texture& dt, const GSVector4& dr, ID3D10PixelShader* ps, ID3D10Buffer* ps_cb, bool linear = true);
+	void StretchRect(Texture& st, const GSVector4& sr, Texture& dt, const GSVector4& dr, ID3D10PixelShader* ps, ID3D10Buffer* ps_cb, ID3D10BlendState* bs, bool linear = true);
 
 	HRESULT CompileShader(UINT id, LPCSTR entry, D3D10_SHADER_MACRO* macro, ID3D10VertexShader** vs, D3D10_INPUT_ELEMENT_DESC* layout, int count, ID3D10InputLayout** il);
 	HRESULT CompileShader(UINT id, LPCSTR entry, D3D10_SHADER_MACRO* macro, ID3D10GeometryShader** gs);

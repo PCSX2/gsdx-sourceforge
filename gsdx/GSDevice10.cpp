@@ -257,7 +257,7 @@ bool GSDevice10::Reset(int w, int h, bool fs)
 	
 	CComPtr<ID3D10Texture2D> backbuffer;
 	m_swapchain->GetBuffer(0, __uuidof(ID3D10Texture2D), (void**)&backbuffer);
-	m_backbuffer = GSTexture10(backbuffer);
+	m_backbuffer = Texture(backbuffer);
 
 	return true;
 }
@@ -376,7 +376,7 @@ void GSDevice10::ClearStencil(Texture& t, BYTE c)
 	m_dev->ClearDepthStencilView(t, D3D10_CLEAR_STENCIL, 0, c);
 }
 
-bool GSDevice10::Create(int type, GSTexture10& t, int w, int h, int format)
+bool GSDevice10::Create(int type, Texture& t, int w, int h, int format)
 {
 	HRESULT hr;
 
@@ -416,7 +416,7 @@ bool GSDevice10::Create(int type, GSTexture10& t, int w, int h, int format)
 
 	if(SUCCEEDED(hr))
 	{
-		t = GSTexture10(texture);
+		t = Texture(texture);
 
 		switch(type)
 		{
@@ -434,27 +434,27 @@ bool GSDevice10::Create(int type, GSTexture10& t, int w, int h, int format)
 	return false;
 }
 
-bool GSDevice10::CreateRenderTarget(GSTexture10& t, int w, int h, int format)
+bool GSDevice10::CreateRenderTarget(Texture& t, int w, int h, int format)
 {
 	return __super::CreateRenderTarget(t, w, h, format ? format : DXGI_FORMAT_R8G8B8A8_UNORM);
 }
 
-bool GSDevice10::CreateDepthStencil(GSTexture10& t, int w, int h, int format)
+bool GSDevice10::CreateDepthStencil(Texture& t, int w, int h, int format)
 {
 	return __super::CreateDepthStencil(t, w, h, format ? format : DXGI_FORMAT_D32_FLOAT_S8X24_UINT);
 }
 
-bool GSDevice10::CreateTexture(GSTexture10& t, int w, int h, int format)
+bool GSDevice10::CreateTexture(Texture& t, int w, int h, int format)
 {
 	return __super::CreateTexture(t, w, h, format ? format : DXGI_FORMAT_R8G8B8A8_UNORM);
 }
 
-bool GSDevice10::CreateOffscreen(GSTexture10& t, int w, int h, int format)
+bool GSDevice10::CreateOffscreen(Texture& t, int w, int h, int format)
 {
 	return __super::CreateOffscreen(t, w, h, format ? format : DXGI_FORMAT_R8G8B8A8_UNORM);
 }
 
-void GSDevice10::DoMerge(GSTexture10* st, GSVector4* sr, GSVector4* dr, GSTexture10& dt, bool slbg, bool mmod, GSVector4& c)
+void GSDevice10::DoMerge(Texture* st, GSVector4* sr, GSVector4* dr, Texture& dt, bool slbg, bool mmod, GSVector4& c)
 {
 	ClearRenderTarget(dt, c);
 
@@ -471,7 +471,7 @@ void GSDevice10::DoMerge(GSTexture10* st, GSVector4* sr, GSVector4* dr, GSTextur
 	}
 }
 
-void GSDevice10::DoInterlace(GSTexture10& st, GSTexture10& dt, int shader, bool linear, float yoffset)
+void GSDevice10::DoInterlace(Texture& st, Texture& dt, int shader, bool linear, float yoffset)
 {
 	GSVector4 sr(0, 0, 1, 1);
 	GSVector4 dr(0.0f, yoffset, (float)dt.GetWidth(), (float)dt.GetHeight() + yoffset);
@@ -656,22 +656,22 @@ void GSDevice10::DrawPrimitive(UINT count, UINT start)
 	m_dev->Draw(count, start);
 }
 
-void GSDevice10::StretchRect(GSTexture10& st, GSTexture10& dt, const GSVector4& dr, bool linear)
+void GSDevice10::StretchRect(Texture& st, Texture& dt, const GSVector4& dr, bool linear)
 {
 	StretchRect(st, GSVector4(0, 0, 1, 1), dt, dr, linear);
 }
 
-void GSDevice10::StretchRect(GSTexture10& st, const GSVector4& sr, GSTexture10& dt, const GSVector4& dr, bool linear)
+void GSDevice10::StretchRect(Texture& st, const GSVector4& sr, Texture& dt, const GSVector4& dr, bool linear)
 {
 	StretchRect(st, sr, dt, dr, m_convert.ps[0], NULL, linear);
 }
 
-void GSDevice10::StretchRect(GSTexture10& st, const GSVector4& sr, GSTexture10& dt, const GSVector4& dr, ID3D10PixelShader* ps, ID3D10Buffer* ps_cb, bool linear)
+void GSDevice10::StretchRect(Texture& st, const GSVector4& sr, Texture& dt, const GSVector4& dr, ID3D10PixelShader* ps, ID3D10Buffer* ps_cb, bool linear)
 {
 	StretchRect(st, sr, dt, dr, ps, ps_cb, m_convert.bs, linear);
 }
 
-void GSDevice10::StretchRect(GSTexture10& st, const GSVector4& sr, GSTexture10& dt, const GSVector4& dr, ID3D10PixelShader* ps, ID3D10Buffer* ps_cb, ID3D10BlendState* bs, bool linear)
+void GSDevice10::StretchRect(Texture& st, const GSVector4& sr, Texture& dt, const GSVector4& dr, ID3D10PixelShader* ps, ID3D10Buffer* ps_cb, ID3D10BlendState* bs, bool linear)
 {
 	BeginScene();
 

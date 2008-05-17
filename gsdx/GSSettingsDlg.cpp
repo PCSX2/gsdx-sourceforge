@@ -33,6 +33,8 @@ GSSetting g_renderers[] =
 	{3, _T("Direct3D10 (Hardware)"), NULL},
 	{4, _T("Direct3D10 (Software)"), NULL},
 	{5, _T("Direct3D10 (Null)"), NULL},
+	{6, _T("Null (Software)"), NULL},
+	{7, _T("Null (Null)"), NULL},
 };
 
 GSSetting g_psversion[] =
@@ -139,6 +141,8 @@ BEGIN_MESSAGE_MAP(GSSettingsDlg, CDialog)
 	ON_UPDATE_COMMAND_UI(IDC_CHECK3, OnUpdateD3D9Options)
 	ON_UPDATE_COMMAND_UI(IDC_CHECK5, OnUpdateD3D9Options)
 	ON_UPDATE_COMMAND_UI(IDC_CHECK7, OnUpdateD3D9Options)
+	ON_UPDATE_COMMAND_UI(IDC_SPIN3, OnUpdateSWOptions)
+	ON_UPDATE_COMMAND_UI(IDC_EDIT3, OnUpdateSWOptions)
 	ON_CBN_SELCHANGE(IDC_COMBO1, &GSSettingsDlg::OnCbnSelchangeCombo1)
 END_MESSAGE_MAP()
 
@@ -216,7 +220,18 @@ BOOL GSSettingsDlg::OnInitDialog()
 		d3d->GetDeviceCaps(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, &caps);
 	}
 
-	InitComboBox(m_renderer, g_renderers, countof(g_renderers), pApp->GetProfileInt(_T("Settings"), _T("Renderer"), 0), IsDirect3D10Available() ? ~0 : 2);
+	bool isdx10avail = IsDirect3D10Available();
+
+	CAtlArray<GSSetting> renderers;
+
+	for(size_t i = 0; i < countof(g_renderers); i++)
+	{
+		if(i >= 3 && i <= 5 && !isdx10avail) continue;
+
+		renderers.Add(g_renderers[i]);
+	}
+
+	InitComboBox(m_renderer, renderers.GetData(), renderers.GetCount(), pApp->GetProfileInt(_T("Settings"), _T("Renderer"), 0));
 	InitComboBox(m_psversion, g_psversion, countof(g_psversion), pApp->GetProfileInt(_T("Settings"), _T("PixelShaderVersion2"), D3DPS_VERSION(2, 0)), caps.PixelShaderVersion);
 	InitComboBox(m_interlace, g_interlace, countof(g_interlace), pApp->GetProfileInt(_T("Settings"), _T("Interlace"), 0));
 	InitComboBox(m_aspectratio, g_aspectratio, countof(g_aspectratio), pApp->GetProfileInt(_T("Settings"), _T("AspectRatio"), 1));
@@ -307,20 +322,29 @@ void GSSettingsDlg::OnUpdateResolution(CCmdUI* pCmdUI)
 {
 	UpdateData();
 
-	int i = m_renderer.GetCurSel();
+	int i = (int)m_renderer.GetItemData(m_renderer.GetCurSel());
 
 	pCmdUI->Enable(!m_nativeres && (i == 0 || i == 3));
 }
 
 void GSSettingsDlg::OnUpdateD3D9Options(CCmdUI* pCmdUI)
 {
-	pCmdUI->Enable(m_renderer.GetCurSel() <= 2);
+	int i = (int)m_renderer.GetItemData(m_renderer.GetCurSel());
+
+	pCmdUI->Enable(i >= 0 && i <= 2);
+}
+
+void GSSettingsDlg::OnUpdateSWOptions(CCmdUI* pCmdUI)
+{
+	int i = (int)m_renderer.GetItemData(m_renderer.GetCurSel());
+
+	pCmdUI->Enable(i == 1 || i == 4 || i == 6);
 }
 
 void GSSettingsDlg::OnCbnSelchangeCombo1()
 {
-	int i = m_renderer.GetCurSel();
+	int i = (int)m_renderer.GetItemData(m_renderer.GetCurSel());
 
-	GetDlgItem(IDC_LOGO9)->ShowWindow(i <= 2 ? SW_SHOW : SW_HIDE);
-	GetDlgItem(IDC_LOGO10)->ShowWindow(i >= 3 ? SW_SHOW : SW_HIDE);
+	GetDlgItem(IDC_LOGO9)->ShowWindow(i >= 0 && i <= 2 ? SW_SHOW : SW_HIDE);
+	GetDlgItem(IDC_LOGO10)->ShowWindow(i >= 3 && i <= 5 ? SW_SHOW : SW_HIDE);
 }

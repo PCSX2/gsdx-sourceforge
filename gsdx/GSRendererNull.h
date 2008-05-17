@@ -22,6 +22,7 @@
 #pragma once
 
 #include "GSRenderer.h"
+#include "GSDeviceNull.h"
 
 template<class Device> class GSRendererNull : public GSRendererT<Device, GSVertexNull>
 {
