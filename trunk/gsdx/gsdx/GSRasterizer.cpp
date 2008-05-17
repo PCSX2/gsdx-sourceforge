@@ -781,21 +781,10 @@ else if(steps == 3) g_slp3++;
 
 			// TODO: benchmark this, it may not be faster, but compiles to only 3 instructions per line for a 32 bit z buffer (extract, mov, insert)
 
-			#if 0 // _M_SSE >= 0x400
-
-			zd0123 = _mm_insert_epi32(zd0123, m_state->m_mem.readPixelX(zpsm, _mm_extract_epi32(za, 0)), 0);
-			zd0123 = _mm_insert_epi32(zd0123, m_state->m_mem.readPixelX(zpsm, _mm_extract_epi32(za, 1)), 1);
-			zd0123 = _mm_insert_epi32(zd0123, m_state->m_mem.readPixelX(zpsm, _mm_extract_epi32(za, 2)), 2);
-			zd0123 = _mm_insert_epi32(zd0123, m_state->m_mem.readPixelX(zpsm, _mm_extract_epi32(za, 3)), 3);
-
-			#else
-
 			for(int i = 0; i < pixels; i++)
 			{
 				zd0123.u32[i] = m_state->m_mem.readPixelX(zpsm, za.u32[i]);
 			}
-
-			#endif
 
 			GSVector4i zs = zi - 0x80000000;
 			GSVector4i zd = zd0123 - 0x80000000;

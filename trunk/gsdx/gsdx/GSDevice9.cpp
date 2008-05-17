@@ -220,13 +220,13 @@ bool GSDevice9::Reset(int w, int h, bool fs)
 
 		CComPtr<IDirect3DSurface9> backbuffer;
 		hr = m_swapchain->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &backbuffer);
-		m_backbuffer = GSTexture9(backbuffer);
+		m_backbuffer = Texture(backbuffer);
 
 		return true;
 	}
 
 	m_swapchain = NULL;
-	m_backbuffer = GSTexture9();
+	m_backbuffer = Texture();
 	if(m_font) m_font->OnLostDevice();
 	m_font = NULL;
 
@@ -333,7 +333,7 @@ bool GSDevice9::Reset(int w, int h, bool fs)
 		hr = m_dev->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backbuffer);
 	}
 
-	m_backbuffer = GSTexture9(backbuffer);
+	m_backbuffer = Texture(backbuffer);
 
 	D3DXFONT_DESC fd;
 	memset(&fd, 0, sizeof(fd));
@@ -473,7 +473,7 @@ void GSDevice9::ClearStencil(Texture& t, BYTE c)
 	m_dev->SetDepthStencilSurface(surface);
 }
 
-bool GSDevice9::Create(int type, GSTexture9& t, int w, int h, int format)
+bool GSDevice9::Create(int type, Texture& t, int w, int h, int format)
 {
 	HRESULT hr;
 
@@ -498,12 +498,12 @@ bool GSDevice9::Create(int type, GSTexture9& t, int w, int h, int format)
 
 	if(surface)
 	{
-		t = GSTexture9(surface);
+		t = Texture(surface);
 	}
 
 	if(texture)
 	{
-		t = GSTexture9(texture);
+		t = Texture(texture);
 	}
 
 	if(t)
@@ -524,27 +524,27 @@ bool GSDevice9::Create(int type, GSTexture9& t, int w, int h, int format)
 	return false;
 }
 
-bool GSDevice9::CreateRenderTarget(GSTexture9& t, int w, int h, int format)
+bool GSDevice9::CreateRenderTarget(Texture& t, int w, int h, int format)
 {
 	return __super::CreateRenderTarget(t, w, h, format ? format : D3DFMT_A8R8G8B8);
 }
 
-bool GSDevice9::CreateDepthStencil(GSTexture9& t, int w, int h, int format)
+bool GSDevice9::CreateDepthStencil(Texture& t, int w, int h, int format)
 {
 	return __super::CreateDepthStencil(t, w, h, format ? format : D3DFMT_D24S8);
 }
 
-bool GSDevice9::CreateTexture(GSTexture9& t, int w, int h, int format)
+bool GSDevice9::CreateTexture(Texture& t, int w, int h, int format)
 {
 	return __super::CreateTexture(t, w, h, format ? format : D3DFMT_A8R8G8B8);
 }
 
-bool GSDevice9::CreateOffscreen(GSTexture9& t, int w, int h, int format)
+bool GSDevice9::CreateOffscreen(Texture& t, int w, int h, int format)
 {
 	return __super::CreateOffscreen(t, w, h, format ? format : D3DFMT_A8R8G8B8);
 }
 
-void GSDevice9::DoMerge(GSTexture9* st, GSVector4* sr, GSVector4* dr, GSTexture9& dt, bool slbg, bool mmod, GSVector4& c)
+void GSDevice9::DoMerge(Texture* st, GSVector4* sr, GSVector4* dr, Texture& dt, bool slbg, bool mmod, GSVector4& c)
 {
 	ClearRenderTarget(dt, c);
 
@@ -563,7 +563,7 @@ void GSDevice9::DoMerge(GSTexture9* st, GSVector4* sr, GSVector4* dr, GSTexture9
 	}
 }
 
-void GSDevice9::DoInterlace(GSTexture9& st, GSTexture9& dt, int shader, bool linear, float yoffset)
+void GSDevice9::DoInterlace(Texture& st, Texture& dt, int shader, bool linear, float yoffset)
 {
 	GSVector4 sr(0, 0, 1, 1);
 	GSVector4 dr(0.0f, yoffset, (float)dt.GetWidth(), (float)dt.GetHeight() + yoffset);
@@ -862,22 +862,22 @@ bool GSDevice9::SaveToFileD24S8(IDirect3DSurface9* ds, LPCTSTR fn)
 	return SUCCEEDED(D3DXSaveSurfaceToFile(fn, D3DXIFF_BMP, surface, NULL, NULL));
 }
 
-void GSDevice9::StretchRect(GSTexture9& st, GSTexture9& dt, const GSVector4& dr, bool linear)
+void GSDevice9::StretchRect(Texture& st, Texture& dt, const GSVector4& dr, bool linear)
 {
 	StretchRect(st, GSVector4(0, 0, 1, 1), dt, dr, linear);
 }
 
-void GSDevice9::StretchRect(GSTexture9& st, const GSVector4& sr, GSTexture9& dt, const GSVector4& dr, bool linear)
+void GSDevice9::StretchRect(Texture& st, const GSVector4& sr, Texture& dt, const GSVector4& dr, bool linear)
 {
 	StretchRect(st, sr, dt, dr, m_convert.ps[0], NULL, 0, linear);
 }
 
-void GSDevice9::StretchRect(GSTexture9& st, const GSVector4& sr, GSTexture9& dt, const GSVector4& dr, IDirect3DPixelShader9* ps, const float* ps_cb, int ps_cb_len, bool linear)
+void GSDevice9::StretchRect(Texture& st, const GSVector4& sr, Texture& dt, const GSVector4& dr, IDirect3DPixelShader9* ps, const float* ps_cb, int ps_cb_len, bool linear)
 {
 	StretchRect(st, sr, dt, dr, ps, ps_cb, ps_cb_len, &m_convert.bs, linear);
 }
 
-void GSDevice9::StretchRect(GSTexture9& st, const GSVector4& sr, GSTexture9& dt, const GSVector4& dr, IDirect3DPixelShader9* ps, const float* ps_cb, int ps_cb_len, Direct3DBlendState9* bs, bool linear)
+void GSDevice9::StretchRect(Texture& st, const GSVector4& sr, Texture& dt, const GSVector4& dr, IDirect3DPixelShader9* ps, const float* ps_cb, int ps_cb_len, Direct3DBlendState9* bs, bool linear)
 {
 	BeginScene();
 

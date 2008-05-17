@@ -93,6 +93,11 @@ void GSRasterizer::InitEx()
 	m_dsmap[0x4859f8e9] = &GSRasterizer::DrawScanlineEx<0x4859f8e9>;
 	m_dsmap[0x8850400b] = &GSRasterizer::DrawScanlineEx<0x8850400b>;
 	m_dsmap[0x64507149] = &GSRasterizer::DrawScanlineEx<0x64507149>;
+	m_dsmap[0x44518409] = &GSRasterizer::DrawScanlineEx<0x44518409>;
+	m_dsmap[0x0001b809] = &GSRasterizer::DrawScanlineEx<0x0001b809>;
+	m_dsmap[0x42504489] = &GSRasterizer::DrawScanlineEx<0x42504489>;
+	m_dsmap[0x44518489] = &GSRasterizer::DrawScanlineEx<0x44518489>;
+	m_dsmap[0x0001b00b] = &GSRasterizer::DrawScanlineEx<0x0001b00b>;
 
 	// ffxii
 
@@ -679,6 +684,33 @@ void GSRasterizer::InitEx()
 	m_dsmap[0x4857a888] = &GSRasterizer::DrawScanlineEx<0x4857a888>;
 	m_dsmap[0x44579808] = &GSRasterizer::DrawScanlineEx<0x44579808>;
 	m_dsmap[0x4857a8c8] = &GSRasterizer::DrawScanlineEx<0x4857a8c8>;
+
+	// sfex3
+
+	m_dsmap[0x4451abf8] = &GSRasterizer::DrawScanlineEx<0x4451abf8>;
+	m_dsmap[0x44505012] = &GSRasterizer::DrawScanlineEx<0x44505012>;
+	m_dsmap[0x44505838] = &GSRasterizer::DrawScanlineEx<0x44505838>;
+	m_dsmap[0x00007012] = &GSRasterizer::DrawScanlineEx<0x00007012>;
+	m_dsmap[0x4851c4f8] = &GSRasterizer::DrawScanlineEx<0x4851c4f8>;
+	m_dsmap[0x000184f8] = &GSRasterizer::DrawScanlineEx<0x000184f8>;
+	m_dsmap[0x44518bd8] = &GSRasterizer::DrawScanlineEx<0x44518bd8>;
+	m_dsmap[0x445068d8] = &GSRasterizer::DrawScanlineEx<0x445068d8>;
+	m_dsmap[0x44519838] = &GSRasterizer::DrawScanlineEx<0x44519838>;
+	m_dsmap[0x4851a8f8] = &GSRasterizer::DrawScanlineEx<0x4851a8f8>;
+	m_dsmap[0x6a504438] = &GSRasterizer::DrawScanlineEx<0x6a504438>;
+	m_dsmap[0x00005012] = &GSRasterizer::DrawScanlineEx<0x00005012>;
+	m_dsmap[0x4851f878] = &GSRasterizer::DrawScanlineEx<0x4851f878>;
+	m_dsmap[0x485044f8] = &GSRasterizer::DrawScanlineEx<0x485044f8>;
+	m_dsmap[0x4271c498] = &GSRasterizer::DrawScanlineEx<0x4271c498>;
+	m_dsmap[0x44518438] = &GSRasterizer::DrawScanlineEx<0x44518438>;
+	m_dsmap[0x00018bd8] = &GSRasterizer::DrawScanlineEx<0x00018bd8>;
+	m_dsmap[0xa9518478] = &GSRasterizer::DrawScanlineEx<0xa9518478>;
+	m_dsmap[0x44505978] = &GSRasterizer::DrawScanlineEx<0x44505978>;
+	m_dsmap[0x000044b8] = &GSRasterizer::DrawScanlineEx<0x000044b8>;
+	m_dsmap[0x48506878] = &GSRasterizer::DrawScanlineEx<0x48506878>;
+	m_dsmap[0x645044b8] = &GSRasterizer::DrawScanlineEx<0x645044b8>;
+	m_dsmap[0x4271cb98] = &GSRasterizer::DrawScanlineEx<0x4271cb98>;
+	m_dsmap[0x4851b878] = &GSRasterizer::DrawScanlineEx<0x4851b878>;
 }
 
 UINT64 g_slp1 = 0;
@@ -761,23 +793,10 @@ else if(steps == 3) g_slp3++;
 		{
 			GSVector4i zd0123;
 
-			// TODO: benchmark this, it may not be faster, but compiles to only 3 instructions per line for a 32 bit z buffer (extract, mov, insert)
-
-			#if 0 // _M_SSE >= 0x400
-
-			zd0123 = _mm_insert_epi32(zd0123, m_state->m_mem.readPixelX(zpsm, _mm_extract_epi32(za, 0)), 0);
-			zd0123 = _mm_insert_epi32(zd0123, m_state->m_mem.readPixelX(zpsm, _mm_extract_epi32(za, 1)), 1);
-			zd0123 = _mm_insert_epi32(zd0123, m_state->m_mem.readPixelX(zpsm, _mm_extract_epi32(za, 2)), 2);
-			zd0123 = _mm_insert_epi32(zd0123, m_state->m_mem.readPixelX(zpsm, _mm_extract_epi32(za, 3)), 3);
-
-			#else
-
 			for(int i = 0; i < pixels; i++)
 			{
 				zd0123.u32[i] = m_state->m_mem.readPixelX(zpsm, za.u32[i]);
 			}
-
-			#endif
 
 			GSVector4i zs = zi - 0x80000000;
 			GSVector4i zd = zd0123 - 0x80000000;

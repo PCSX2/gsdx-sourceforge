@@ -75,6 +75,7 @@ public:
 	afx_msg void OnKickIdle();
 	afx_msg void OnUpdateResolution(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateD3D9Options(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateSWOptions(CCmdUI* pCmdUI);
 	afx_msg void OnCbnSelchangeCombo1();
 };
 

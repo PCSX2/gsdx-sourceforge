@@ -1068,6 +1068,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\GSDeviceNull.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\GSDirtyRect.cpp"
 				>
 			</File>
@@ -1349,6 +1353,10 @@
 			</File>
 			<File
 				RelativePath=".\GSTextureFX9.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GSTextureNull.cpp"
 				>
 			</File>
 			<File
@@ -1996,6 +2004,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\GSDeviceNull.h"
+				>
+			</File>
+			<File
 				RelativePath=".\GSDirtyRect.h"
 				>
 			</File>
@@ -2093,6 +2105,10 @@
 			</File>
 			<File
 				RelativePath=".\GSTextureFX9.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSTextureNull.h"
 				>
 			</File>
 			<File

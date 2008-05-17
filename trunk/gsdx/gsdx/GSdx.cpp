@@ -108,7 +108,9 @@ EXPORT_C_(char*) PS2EgetLibName()
 	sl.AddTail(s);
 #endif
 
-#if _M_SSE >= 0x301
+#if _M_SSE >= 0x400
+	sl.AddTail(_T("SSE4"));
+#elif _M_SSE >= 0x301
 	sl.AddTail(_T("SSSE3"));
 #elif _M_SSE >= 0x200
 	sl.AddTail(_T("SSE2"));
@@ -212,6 +214,8 @@ EXPORT_C_(INT32) __GSopen(void* dsp, char* title, int mt, int renderer)
 	case 3: s_gs = new GSRendererHW10(s_basemem, !!mt, s_irq, nloophack, rs); break;
 	case 4: s_gs = new GSRendererSW<GSDevice10>(s_basemem, !!mt, s_irq, nloophack, rs); break;
 	case 5: s_gs = new GSRendererNull<GSDevice10>(s_basemem, !!mt, s_irq, nloophack, rs); break;
+	case 6: s_gs = new GSRendererSW<GSDeviceNull>(s_basemem, !!mt, s_irq, nloophack, rs); break;
+	case 7: s_gs = new GSRendererNull<GSDeviceNull>(s_basemem, !!mt, s_irq, nloophack, rs); break;
 	}
 
 	s_hr = ::CoInitializeEx(NULL, COINIT_MULTITHREADED);
@@ -376,6 +380,8 @@ EXPORT_C GSReplay(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow)
 	}
 
 	while(*lpszCmdLine == ' ') lpszCmdLine++;
+
+	//::SetPriorityClass(::GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 
 	CAtlArray<BYTE> buff;
 
