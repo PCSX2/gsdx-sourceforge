@@ -228,7 +228,7 @@ GSLocalMemory::GSLocalMemory()
 
 	m_psm[PSM_PSMCT24].rpa = &GSLocalMemory::readPixel24;
 	m_psm[PSM_PSMCT16].rpa = &GSLocalMemory::readPixel16;
-	m_psm[PSM_PSMCT16S].rpa = &GSLocalMemory::readPixel16S;
+	m_psm[PSM_PSMCT16S].rpa = &GSLocalMemory::readPixel16;
 	m_psm[PSM_PSMT8].rpa = &GSLocalMemory::readPixel8;
 	m_psm[PSM_PSMT4].rpa = &GSLocalMemory::readPixel4;
 	m_psm[PSM_PSMT8H].rpa = &GSLocalMemory::readPixel8H;
@@ -237,7 +237,7 @@ GSLocalMemory::GSLocalMemory()
 	m_psm[PSM_PSMZ32].rpa = &GSLocalMemory::readPixel32;
 	m_psm[PSM_PSMZ24].rpa = &GSLocalMemory::readPixel24;
 	m_psm[PSM_PSMZ16].rpa = &GSLocalMemory::readPixel16;
-	m_psm[PSM_PSMZ16S].rpa = &GSLocalMemory::readPixel16S;
+	m_psm[PSM_PSMZ16S].rpa = &GSLocalMemory::readPixel16;
 
 	m_psm[PSM_PSMCT32].wp = &GSLocalMemory::writePixel32;
 	m_psm[PSM_PSMCT24].wp = &GSLocalMemory::writePixel24;

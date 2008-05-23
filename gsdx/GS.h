@@ -960,9 +960,28 @@ REG_SET_END
 struct GIFPath
 {
 	GIFTag tag; 
-	int nreg;
+	UINT32 nreg;
 
-	DWORD GetGIFReg() {return (DWORD)GET_GIF_REG(tag, nreg);}
+	DWORD GetGIFReg() 
+	{
+		return (DWORD)GET_GIF_REG(tag, nreg);
+	}
+
+	bool Step()
+	{
+		if((++nreg & 0xf) == tag.NREG) 
+		{
+			nreg = 0; 
+			tag.NLOOP--;
+
+			if(tag.NLOOP == 0)
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
 };
 
 #pragma pack(pop)
