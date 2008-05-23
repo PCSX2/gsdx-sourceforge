@@ -23,6 +23,7 @@ public:
 	static DWORD SFEX3_US2;
 	static DWORD Bully_US;
 	static DWORD SoTC_US;
+	static DWORD SoTC_EU;
 	static DWORD OnePieceGrandAdventure_US;
 	static DWORD ICO_US;
 	static DWORD ICO_US2;

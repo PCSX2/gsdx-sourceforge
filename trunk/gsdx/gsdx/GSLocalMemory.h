@@ -414,11 +414,6 @@ public:
 		return (DWORD)m_vm16[addr];
 	}
 
-	__forceinline DWORD readPixel16S(DWORD addr) 
-	{
-		return (DWORD)m_vm16[addr];
-	}
-
 	__forceinline DWORD readPixel8(DWORD addr) 
 	{
 		return (DWORD)m_vm8[addr];
@@ -473,7 +468,7 @@ public:
 
 	__forceinline DWORD readPixel16S(int x, int y, DWORD bp, DWORD bw)
 	{
-		return readPixel16S(pixelAddress16S(x, y, bp, bw));
+		return readPixel16(pixelAddress16S(x, y, bp, bw));
 	}
 
 	__forceinline DWORD readPixel8(int x, int y, DWORD bp, DWORD bw)
@@ -518,7 +513,7 @@ public:
 
 	__forceinline DWORD readPixel16SZ(int x, int y, DWORD bp, DWORD bw)
 	{
-		return readPixel16S(pixelAddress16SZ(x, y, bp, bw));
+		return readPixel16(pixelAddress16SZ(x, y, bp, bw));
 	}
 
 	__forceinline DWORD readFrame24(int x, int y, DWORD bp, DWORD bw)
@@ -863,7 +858,7 @@ public:
 		case PSM_PSMCT32: return readPixel32(addr); 
 		case PSM_PSMCT24: return readPixel24(addr); 
 		case PSM_PSMCT16: return readPixel16(addr);
-		case PSM_PSMCT16S: return readPixel16S(addr);
+		case PSM_PSMCT16S: return readPixel16(addr);
 		case PSM_PSMT8: return readPixel8(addr);
 		case PSM_PSMT4: return readPixel4(addr);
 		case PSM_PSMT8H: return readPixel8H(addr);
@@ -872,7 +867,7 @@ public:
 		case PSM_PSMZ32: return readPixel32(addr);
 		case PSM_PSMZ24: return readPixel24(addr);
 		case PSM_PSMZ16: return readPixel16(addr);
-		case PSM_PSMZ16S: return readPixel16S(addr);
+		case PSM_PSMZ16S: return readPixel16(addr);
 		default: ASSERT(0); return readPixel32(addr);
 		}
 	}

@@ -1303,101 +1303,102 @@ void GSState::Transfer(BYTE* mem, int size, int index)
 			}
 		}
 
-		switch(path.tag.FLG)
+		if(path.tag.NLOOP > 0)
 		{
-		case GIF_FLG_PACKED:
-
-			// first try a shurtcut for a very common case
-
-			if(path.nreg == 0 && path.tag.NREG == 1 && size >= path.tag.NLOOP && path.GetGIFReg() == GIF_REG_A_D)
+			switch(path.tag.FLG)
 			{
-				int n = path.tag.NLOOP;
+			case GIF_FLG_PACKED:
 
-				GIFPackedRegHandlerA_D((GIFPackedReg*)mem, n);
+				// first try a shurtcut for a very common case
 
-				mem += n * sizeof(GIFPackedReg);
-				size -= n;
-
-				path.tag.NLOOP = 0;
-			}
-			else
-			{
-				for(GIFPackedReg* r = (GIFPackedReg*)mem; path.tag.NLOOP > 0 && size > 0; r++, size--, mem += sizeof(GIFPackedReg))
+				if(path.nreg == 0 && path.tag.NREG == 1 && size >= path.tag.NLOOP && path.GetGIFReg() == GIF_REG_A_D)
 				{
-					(this->*m_fpGIFPackedRegHandlers[path.GetGIFReg()])(r);
+					int n = path.tag.NLOOP;
 
-					if((++path.nreg & 0xf) == path.tag.NREG) 
+					GIFPackedRegHandlerA_D((GIFPackedReg*)mem, n);
+
+					mem += n * sizeof(GIFPackedReg);
+					size -= n;
+
+					path.tag.NLOOP = 0;
+				}
+				else
+				{
+					for(; size > 0; size--, mem += sizeof(GIFPackedReg))
 					{
-						path.nreg = 0; 
-						path.tag.NLOOP--;
+						(this->*m_fpGIFPackedRegHandlers[path.GetGIFReg()])((GIFPackedReg*)mem);
+
+						if(!path.Step())
+						{
+							break;
+						}
 					}
 				}
-			}
 
-			break;
+				break;
 
-		case GIF_FLG_REGLIST:
+			case GIF_FLG_REGLIST:
 
-			size *= 2;
+				size *= 2;
 
-			for(GIFReg* r = (GIFReg*)mem; path.tag.NLOOP > 0 && size > 0; r++, size--, mem += sizeof(GIFReg))
-			{
-				(this->*m_fpGIFRegHandlers[path.GetGIFReg()])(r);
-
-				if((++path.nreg & 0xf) == path.tag.NREG) 
+				for(; size > 0; size--, mem += sizeof(GIFReg))
 				{
-					path.nreg = 0; 
-					path.tag.NLOOP--;
+					(this->*m_fpGIFRegHandlers[path.GetGIFReg()])((GIFReg*)mem);
+
+					if(!path.Step())
+					{
+						break;
+					}
 				}
-			}
 			
-			if(size & 1) mem += sizeof(GIFReg);
+				if(size & 1) mem += sizeof(GIFReg);
 
-			size /= 2;
-			
-			break;
+				size /= 2;
 
-		case GIF_FLG_IMAGE2: // hmmm
+				break;
 
-			ASSERT(0);
+			case GIF_FLG_IMAGE2: // hmmm
 
-			path.tag.NLOOP = 0;
+				ASSERT(0);
 
-			break;
+				path.tag.NLOOP = 0;
 
-		case GIF_FLG_IMAGE:
-			{
-				int len = min(size, path.tag.NLOOP);
+				break;
 
-				//ASSERT(!(len&3));
-
-				switch(m_env.TRXDIR.XDIR)
+			case GIF_FLG_IMAGE:
 				{
-				case 0:
-					Write(mem, len*16);
-					break;
-				case 1: 
-					Read(mem, len*16);
-					break;
-				case 2: 
-					Move();
-					break;
-				case 3: 
-					ASSERT(0);
-					break;
-				default: 
-					__assume(0);
+					int len = min(size, path.tag.NLOOP);
+
+					//ASSERT(!(len&3));
+
+					switch(m_env.TRXDIR.XDIR)
+					{
+					case 0:
+						Write(mem, len*16);
+						break;
+					case 1: 
+						Read(mem, len*16);
+						break;
+					case 2: 
+						Move();
+						break;
+					case 3: 
+						ASSERT(0);
+						break;
+					default: 
+						__assume(0);
+					}
+
+					mem += len*16;
+					path.tag.NLOOP -= len;
+					size -= len;
 				}
 
-				mem += len*16;
-				path.tag.NLOOP -= len;
-				size -= len;
+				break;
+
+			default: 
+				__assume(0);
 			}
-
-			break;
-
-		default: 
-			__assume(0);
 		}
 
 		if(eop && ((int)size <= 0 || index == 0))
@@ -2216,6 +2217,7 @@ bool GSState::IsBadFrame(int& skip)
 		m_crc2gsc[CRC::SFEX3_US2] = GSC_SFEX3;
 		m_crc2gsc[CRC::Bully_US] = GSC_Bully;
 		m_crc2gsc[CRC::SoTC_US] = GSC_SoTC;
+		m_crc2gsc[CRC::SoTC_EU] = GSC_SoTC; // not tested
 		m_crc2gsc[CRC::OnePieceGrandAdventure_US] = GSC_OnePieceGrandAdventure;
 		m_crc2gsc[CRC::ICO_US] = GSC_ICO;
 		m_crc2gsc[CRC::ICO_US2] = GSC_ICO;
