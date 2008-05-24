@@ -128,6 +128,33 @@ public:
 		return m;
 	}
 
+	UINT32 rgba32() const
+	{
+		__m128i r = m; 
+		#if _M_SSE >= 0x400
+		r = _mm_packus_epi32(r, r); 
+		#else
+		r = _mm_packs_epi32(r, r); // good enough for colors...
+		#endif
+		r = _mm_packus_epi16(r, r); 
+		return (UINT32)_mm_cvtsi128_si32(r);
+	}
+
+	UINT64 rgba64() const
+	{
+		__m128i r = m; 
+		#if _M_SSE >= 0x400
+		r = _mm_packus_epi32(r, r); 
+		#else
+		r = _mm_packs_epi32(r, r); // good enough for colors...
+		#endif
+		#ifdef _M_AMD64
+		return _mm_cvtsi128_si64(r);
+		#else
+		return *(UINT64*)&r;
+		#endif
+	}
+
 	#if _M_SSE >= 0x400
 	GSVector4i sat_i8(const GSVector4i& a, const GSVector4i& b) const 
 	{
@@ -556,6 +583,11 @@ public:
 	VECTOR4i_SHUFFLE_1(y, 1)
 	VECTOR4i_SHUFFLE_1(z, 2)
 	VECTOR4i_SHUFFLE_1(w, 3)
+
+	VECTOR4i_SHUFFLE_1(r, 0)
+	VECTOR4i_SHUFFLE_1(g, 1)
+	VECTOR4i_SHUFFLE_1(b, 2)
+	VECTOR4i_SHUFFLE_1(a, 3)
 };
 
 __declspec(align(16)) class GSVector4
@@ -649,24 +681,19 @@ public:
 		m = _mm_set_ps((float)r.bottom, (float)r.right, (float)r.top, (float)r.left);
 	}
 
-	operator DWORD() const 
-	{
-		__m128i r = _mm_cvttps_epi32(m); 
-		r = _mm_packs_epi32(r, r); 
-		r = _mm_packus_epi16(r, r); 
-		return (DWORD)_mm_cvtsi128_si32(r);
-	}
-
-	operator UINT64() const 
-	{
-		__m128i r = _mm_cvttps_epi32(m); 
-		r = _mm_packs_epi32(r, r); 
-		return *(UINT64*)&r; // TODO: _mm_cvtsi128_si64 on x64
-	}
-
 	operator __m128() const 
 	{
 		return m;
+	}
+
+	UINT32 rgba32() const
+	{
+		return GSVector4i(*this).rgba32();
+	}
+
+	UINT64 rgba64() const
+	{
+		return GSVector4i(*this).rgba64();
 	}
 
 	GSVector4 abs() const 
@@ -894,6 +921,11 @@ public:
 	VECTOR4_SHUFFLE_1(y, 1)
 	VECTOR4_SHUFFLE_1(z, 2)
 	VECTOR4_SHUFFLE_1(w, 3)
+
+	VECTOR4_SHUFFLE_1(r, 0)
+	VECTOR4_SHUFFLE_1(g, 1)
+	VECTOR4_SHUFFLE_1(b, 2)
+	VECTOR4_SHUFFLE_1(a, 3)
 };
 
 #pragma pack(pop)

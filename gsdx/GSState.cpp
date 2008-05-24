@@ -372,6 +372,7 @@ int GSState::GetFPS()
 
 static __m128i _000000ff = _mm_set1_epi32(0x000000ff);
 static __m128i _00003fff = _mm_set1_epi32(0x00003fff);
+static __m128i _80808080_80808080_80808080_0c080400 = _mm_set_epi32(0x80808080, 0x80808080, 0x80808080, 0x0c080400);
 
 // GIFPackedRegHandler*
 
@@ -389,7 +390,13 @@ void GSState::GIFPackedRegHandlerPRIM(GIFPackedReg* r)
 
 void GSState::GIFPackedRegHandlerRGBA(GIFPackedReg* r)
 {
-#if _M_SSE >= 0x200
+#if _M_SSE >= 0x301
+
+	__m128i r0 = _mm_loadu_si128((__m128i*)r);
+	r0 = _mm_shuffle_epi8(r0, _80808080_80808080_80808080_0c080400);
+	m_v.RGBAQ.ai32[0] = _mm_cvtsi128_si32(r0);
+
+#elif _M_SSE >= 0x200
 
 	__m128i r0 = _mm_loadu_si128((__m128i*)r);
 	r0 = _mm_and_si128(r0, _000000ff);

@@ -575,7 +575,7 @@ bool GSRasterizer::DrawSolidRect(int left, int top, int right, int bottom, const
 		m_state->m_mem.FillRect(r, (DWORD)(float)v.p.z, zpsm, zbp, bw);
 	}
 
-	DWORD c = v.c;
+	DWORD c = v.c.rgba32();
 
 	if(context->FBA.FBA)
 	{
