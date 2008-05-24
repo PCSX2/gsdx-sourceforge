@@ -372,6 +372,10 @@ void GSRasterizer::InitEx()
 	m_dsmap[0x44521828] = &GSRasterizer::DrawScanlineEx<0x44521828>;
 	m_dsmap[0x445a20c8] = &GSRasterizer::DrawScanlineEx<0x445a20c8>;
 	m_dsmap[0x00004420] = &GSRasterizer::DrawScanlineEx<0x00004420>;
+	m_dsmap[0x44538848] = &GSRasterizer::DrawScanlineEx<0x44538848>;
+	m_dsmap[0x00023829] = &GSRasterizer::DrawScanlineEx<0x00023829>;
+	m_dsmap[0x485a69c8] = &GSRasterizer::DrawScanlineEx<0x485a69c8>;
+	m_dsmap[0x44539848] = &GSRasterizer::DrawScanlineEx<0x44539848>;
 
 	// mgs3s1
 

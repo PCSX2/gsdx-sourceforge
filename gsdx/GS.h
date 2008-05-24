@@ -26,6 +26,8 @@
 
 #pragma once
 
+#include "GSVector.h"
+
 #pragma pack(push, 1)
 
 //
@@ -961,10 +963,19 @@ struct GIFPath
 {
 	GIFTag tag; 
 	UINT32 nreg;
+	UINT32 _pad[3];
+	GSVector4i regs;
 
-	DWORD GetGIFReg() 
+	void ExpandRegs()
 	{
-		return (DWORD)GET_GIF_REG(tag, nreg);
+		GSVector4i mask(0x0f0f0f0f);
+		GSVector4i REGS = GSVector4i::loadl(&tag.ai64[1]);
+		regs = (REGS & mask).upl8((REGS >> 4) & mask);
+	}
+
+	DWORD GetReg() 
+	{
+		return regs.u8[nreg]; // (DWORD)GET_GIF_REG(tag, nreg);
 	}
 };
 

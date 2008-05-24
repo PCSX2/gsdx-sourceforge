@@ -823,7 +823,6 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="C:\Users\Gabest\Documents\Progs\pcsx2.svn\bin\plugins\$(ProjectName).dll"
 				ModuleDefinitionFile=".\GSdx.def"
 				DelayLoadDLLs=""
 				DataExecutionPrevention="0"
