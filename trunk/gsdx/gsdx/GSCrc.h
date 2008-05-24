@@ -6,10 +6,10 @@ public:
 	static DWORD MetalSlug6;
 	static DWORD TomoyoAfter_JP;
 	static DWORD Clannad_JP;
-	static DWORD FFX_EU1;
-	static DWORD FFX_EU2; 
-	static DWORD FFX_EU3;
-	static DWORD FFX_EU4;
+	static DWORD FFXII_EU1;
+	static DWORD FFXII_EU2; 
+	static DWORD FFXII_EU3;
+	static DWORD FFXII_EU4;
 	static DWORD ShadowHearts;
 	static DWORD Okami_US;
 	static DWORD Okami_FR;
