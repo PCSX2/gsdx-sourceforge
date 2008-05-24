@@ -316,7 +316,7 @@ protected:
 	{
 		#pragma region ffxii pal video conversion
 
-		if(m_crc == CRC::FFX_EU1 || m_crc == CRC::FFX_EU2 || m_crc == CRC::FFX_EU3 || m_crc == CRC::FFX_EU4)
+		if(m_crc == CRC::FFXII_EU1 || m_crc == CRC::FFXII_EU2 || m_crc == CRC::FFXII_EU3 || m_crc == CRC::FFXII_EU4)
 		{
 			static DWORD* video = NULL;
 			static bool ok = false;
