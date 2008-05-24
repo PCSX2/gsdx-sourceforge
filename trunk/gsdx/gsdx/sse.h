@@ -87,7 +87,7 @@
 
 // sse3
 
-#if _M_SSE >= 0x300
+#if _M_SSE >= 0x301
 
 	#include <tmmintrin.h>
 
