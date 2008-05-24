@@ -140,7 +140,7 @@ public:
 	GSRegBUSDIR*	BUSDIR;
 	GSRegSIGLBLID*	SIGLBLID;
 
-	GIFPath m_path[3];
+	GIFPath* m_path;
 	GSLocalMemory m_mem;
 	GSDrawingEnvironment m_env;
 	GSDrawingContext* m_context;

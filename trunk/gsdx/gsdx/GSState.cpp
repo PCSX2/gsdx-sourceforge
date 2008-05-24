@@ -34,7 +34,7 @@ GSState::GSState(BYTE* base, bool mt, void (*irq)(), int nloophack)
 	, m_path3hack(0)
 	, m_q(1.0f)
 	, m_vprim(1)
-	, m_version(4)
+	, m_version(5)
 	, m_vmsize(4 * 1024 * 1024)
 	, m_dumpfp(NULL)
 	, m_frameskip(0)
@@ -74,7 +74,6 @@ GSState::GSState(BYTE* base, bool mt, void (*irq)(), int nloophack)
 		m_sssize += sizeof(m_env.CTXT[i].FBA);
 		m_sssize += sizeof(m_env.CTXT[i].FRAME);
 		m_sssize += sizeof(m_env.CTXT[i].ZBUF);
-		m_sssize += sizeof(DWORD) * 7; // skip 
 	}
 
 	m_sssize += sizeof(m_v.RGBAQ);
@@ -86,7 +85,7 @@ GSState::GSState(BYTE* base, bool mt, void (*irq)(), int nloophack)
 	m_sssize += sizeof(m_x);
 	m_sssize += sizeof(m_y);
 	m_sssize += m_vmsize;
-	m_sssize += sizeof(m_path);
+	m_sssize += (sizeof(m_path[0].tag) + sizeof(m_path[0].nreg)) * 3;
 	m_sssize += sizeof(m_q);
 
 	ASSERT(base);
@@ -120,6 +119,8 @@ GSState::GSState(BYTE* base, bool mt, void (*irq)(), int nloophack)
 	m_maxbytes = 1024 * 1024 * 4;
 	m_buff = (BYTE*)_aligned_malloc(m_maxbytes, 16);
 
+	m_path = (GIFPath*)_aligned_malloc(sizeof(m_path[0]) * 3, 16);
+
 	Reset();
 
 	ResetHandlers();
@@ -128,12 +129,13 @@ GSState::GSState(BYTE* base, bool mt, void (*irq)(), int nloophack)
 GSState::~GSState()
 {
 	_aligned_free(m_buff);
+	_aligned_free(m_path);
 }
 
 void GSState::Reset()
 {
 	memset(&m_env, 0, sizeof(m_env));
-	memset(m_path, 0, sizeof(m_path));
+	memset(&m_path[0], 0, sizeof(m_path[0]) * 3);
 	memset(&m_v, 0, sizeof(m_v));
 
 //	PRIM = &m_env.PRIM;
@@ -1268,6 +1270,7 @@ void GSState::Transfer(BYTE* mem, int size, int index)
 		{
 			path.tag = *(GIFTag*)mem;
 			path.nreg = 0;
+			path.ExpandRegs();
 
 			mem += sizeof(GIFTag);
 			size--;
@@ -1311,7 +1314,7 @@ void GSState::Transfer(BYTE* mem, int size, int index)
 
 				// first try a shurtcut for a very common case
 
-				if(path.nreg == 0 && path.tag.NREG == 1 && size >= path.tag.NLOOP && path.GetGIFReg() == GIF_REG_A_D)
+				if(path.nreg == 0 && path.tag.NREG == 1 && size >= path.tag.NLOOP && path.GetReg() == GIF_REG_A_D)
 				{
 					int n = path.tag.NLOOP;
 
@@ -1326,7 +1329,7 @@ void GSState::Transfer(BYTE* mem, int size, int index)
 				{
 					while(size > 0)
 					{
-						(this->*m_fpGIFPackedRegHandlers[path.GetGIFReg()])((GIFPackedReg*)mem);
+						(this->*m_fpGIFPackedRegHandlers[path.GetReg()])((GIFPackedReg*)mem);
 
 						size--;
 						mem += sizeof(GIFPackedReg);
@@ -1352,7 +1355,7 @@ void GSState::Transfer(BYTE* mem, int size, int index)
 
 				while(size > 0)
 				{
-					(this->*m_fpGIFRegHandlers[path.GetGIFReg()])((GIFReg*)mem);
+					(this->*m_fpGIFRegHandlers[path.GetReg()])((GIFReg*)mem);
 
 					size--;
 					mem += sizeof(GIFReg);
@@ -1556,8 +1559,6 @@ int GSState::Freeze(freezeData* fd, bool sizeonly)
 
 		memcpy(data, &m_env.CTXT[i].ZBUF, sizeof(m_env.CTXT[i].ZBUF));
 		data += sizeof(m_env.CTXT[i].ZBUF); 
-
-		data += sizeof(DWORD) * 7; // skip 
 	}
 
 	memcpy(data, &m_v.RGBAQ, sizeof(m_v.RGBAQ)); 
@@ -1584,8 +1585,14 @@ int GSState::Freeze(freezeData* fd, bool sizeonly)
 	memcpy(data, m_mem.GetVM(), m_vmsize); 
 	data += m_vmsize;
 
-	memcpy(data, m_path, sizeof(m_path)); 
-	data += sizeof(m_path);
+	for(int i = 0; i < 3; i++)
+	{
+		memcpy(data, &m_path[i].tag, sizeof(m_path[i].tag)); 
+		data += sizeof(m_path[i].tag);
+
+		memcpy(data, &m_path[i].nreg, sizeof(m_path[i].nreg)); 
+		data += sizeof(m_path[i].nreg);
+	}
 
 	memcpy(data, &m_q, sizeof(m_q)); 
 	data += sizeof(m_q);
@@ -1607,7 +1614,9 @@ int GSState::Defrost(const freezeData* fd)
 
 	BYTE* data = fd->data;
 
-	if(*(int*)data > m_version)
+	int version = *(int*)data;
+
+	if(version > m_version)
 	{
 		return -1;
 	}
@@ -1707,7 +1716,7 @@ int GSState::Defrost(const freezeData* fd)
 		memcpy(&m_env.CTXT[i].ZBUF, data, sizeof(m_env.CTXT[i].ZBUF));
 		data += sizeof(m_env.CTXT[i].ZBUF); 
 
-		if(m_version == 4)
+		if(version <= 4)
 		{
 			data += sizeof(DWORD) * 7; // skip 
 		}
@@ -1737,8 +1746,16 @@ int GSState::Defrost(const freezeData* fd)
 	memcpy(m_mem.GetVM(), data, m_vmsize); 
 	data += m_vmsize;
 
-	memcpy(&m_path, data, sizeof(m_path)); 
-	data += sizeof(m_path);
+	for(int i = 0; i < 3; i++)
+	{
+		memcpy(&m_path[i].tag, data, sizeof(m_path[0].tag)); 
+		data += sizeof(m_path[i].tag);
+
+		memcpy(&m_path[i].nreg, data, sizeof(m_path[0].nreg)); 
+		data += sizeof(m_path[i].nreg);
+
+		m_path[i].ExpandRegs();
+	}
 
 	memcpy(&m_q, data, sizeof(m_q)); 
 	data += sizeof(m_q);

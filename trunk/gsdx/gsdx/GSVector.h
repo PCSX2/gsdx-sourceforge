@@ -363,6 +363,27 @@ public:
 		return loadl(pl) | loadh(ph);
 	}
 
+	static void storel(void* p, const GSVector4i& v)
+	{
+		_mm_storel_epi64((__m128i*)p, v.m);
+	}
+
+	static void storeh(void* p, const GSVector4i& v)
+	{
+		_mm_storel_epi64((__m128i*)p, _mm_srli_si128(v.m, 8));
+	}
+
+	static void storeu(void* p, const GSVector4i& v)
+	{
+		_mm_storeu_si128((__m128i*)p, v.m);
+	}
+
+	static void storeu(void* pl, void* ph, const GSVector4i& v)
+	{
+		GSVector4i::storel(pl, v);
+		GSVector4i::storeh(ph, v);
+	}
+
 	__forceinline static void transpose(GSVector4i& a, GSVector4i& b, GSVector4i& c, GSVector4i& d)
 	{
 		_MM_TRANSPOSE4_SI128(a.m, b.m, c.m, d.m);
