@@ -1324,13 +1324,22 @@ void GSState::Transfer(BYTE* mem, int size, int index)
 				}
 				else
 				{
-					for(; size > 0; size--, mem += sizeof(GIFPackedReg))
+					while(size > 0)
 					{
 						(this->*m_fpGIFPackedRegHandlers[path.GetGIFReg()])((GIFPackedReg*)mem);
 
-						if(!path.Step())
+						size--;
+						mem += sizeof(GIFPackedReg);
+
+						if((++path.nreg & 0xf) == path.tag.NREG) 
 						{
-							break;
+							path.nreg = 0; 
+							path.tag.NLOOP--;
+
+							if(path.tag.NLOOP == 0)
+							{
+								break;
+							}
 						}
 					}
 				}
@@ -1341,13 +1350,22 @@ void GSState::Transfer(BYTE* mem, int size, int index)
 
 				size *= 2;
 
-				for(; size > 0; size--, mem += sizeof(GIFReg))
+				while(size > 0)
 				{
 					(this->*m_fpGIFRegHandlers[path.GetGIFReg()])((GIFReg*)mem);
 
-					if(!path.Step())
+					size--;
+					mem += sizeof(GIFReg);
+
+					if((++path.nreg & 0xf) == path.tag.NREG) 
 					{
-						break;
+						path.nreg = 0; 
+						path.tag.NLOOP--;
+
+						if(path.tag.NLOOP == 0)
+						{
+							break;
+						}
 					}
 				}
 			
