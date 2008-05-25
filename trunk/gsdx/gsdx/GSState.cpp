@@ -1458,6 +1458,18 @@ void GSState::Transfer(BYTE* mem, int size, int index)
 	}
 }
 
+template<class T> static void WriteState(BYTE*& dst, T* src, size_t len = sizeof(T))
+{
+	memcpy(dst, src, len);
+	dst += len;
+}
+
+template<class T> static void ReadState(T* dst, BYTE*& src, size_t len = sizeof(T))
+{
+	memcpy(dst, src, len);
+	src += len;
+}
+
 int GSState::Freeze(freezeData* fd, bool sizeonly)
 {
 	if(sizeonly)
@@ -1475,134 +1487,57 @@ int GSState::Freeze(freezeData* fd, bool sizeonly)
 
 	BYTE* data = fd->data;
 
-	memcpy(data, &m_version, sizeof(m_version)); 
-	data += sizeof(m_version);
-
-	memcpy(data, &m_env.PRIM, sizeof(m_env.PRIM)); 
-	data += sizeof(m_env.PRIM); 
-
-	memcpy(data, &m_env.PRMODE, sizeof(m_env.PRMODE)); 
-	data += sizeof(m_env.PRMODE); 
-
-	memcpy(data, &m_env.PRMODECONT, sizeof(m_env.PRMODECONT)); 
-	data += sizeof(m_env.PRMODECONT); 
-
-	memcpy(data, &m_env.TEXCLUT, sizeof(m_env.TEXCLUT)); 
-	data += sizeof(m_env.TEXCLUT); 
-
-	memcpy(data, &m_env.SCANMSK, sizeof(m_env.SCANMSK));
-	data += sizeof(m_env.SCANMSK); 
-
-	memcpy(data, &m_env.TEXA, sizeof(m_env.TEXA));
-	data += sizeof(m_env.TEXA); 
-
-	memcpy(data, &m_env.FOGCOL, sizeof(m_env.FOGCOL));
-	data += sizeof(m_env.FOGCOL); 
-
-	memcpy(data, &m_env.DIMX, sizeof(m_env.DIMX));
-	data += sizeof(m_env.DIMX); 
-
-	memcpy(data, &m_env.DTHE, sizeof(m_env.DTHE));
-	data += sizeof(m_env.DTHE); 
-
-	memcpy(data, &m_env.COLCLAMP, sizeof(m_env.COLCLAMP));
-	data += sizeof(m_env.COLCLAMP); 
-
-	memcpy(data, &m_env.PABE, sizeof(m_env.PABE));
-	data += sizeof(m_env.PABE); 
-
-	memcpy(data, &m_env.BITBLTBUF, sizeof(m_env.BITBLTBUF));
-	data += sizeof(m_env.BITBLTBUF); 
-
-	memcpy(data, &m_env.TRXDIR, sizeof(m_env.TRXDIR));
-	data += sizeof(m_env.TRXDIR); 
-
-	memcpy(data, &m_env.TRXPOS, sizeof(m_env.TRXPOS));
-	data += sizeof(m_env.TRXPOS); 
-
-	memcpy(data, &m_env.TRXREG, sizeof(m_env.TRXREG));
-	data += sizeof(m_env.TRXREG); 
-
-	memcpy(data, &m_env.TRXREG2, sizeof(m_env.TRXREG2));
-	data += sizeof(m_env.TRXREG2); 
+	WriteState(data, &m_version);
+	WriteState(data, &m_env.PRIM);
+	WriteState(data, &m_env.PRMODE);
+	WriteState(data, &m_env.PRMODECONT);
+	WriteState(data, &m_env.TEXCLUT);
+	WriteState(data, &m_env.SCANMSK);
+	WriteState(data, &m_env.TEXA);
+	WriteState(data, &m_env.FOGCOL);
+	WriteState(data, &m_env.DIMX);
+	WriteState(data, &m_env.DTHE);
+	WriteState(data, &m_env.COLCLAMP);
+	WriteState(data, &m_env.PABE);
+	WriteState(data, &m_env.BITBLTBUF);
+	WriteState(data, &m_env.TRXDIR);
+	WriteState(data, &m_env.TRXPOS);
+	WriteState(data, &m_env.TRXREG);
+	WriteState(data, &m_env.TRXREG2);
 
 	for(int i = 0; i < 2; i++)
 	{
-		memcpy(data, &m_env.CTXT[i].XYOFFSET, sizeof(m_env.CTXT[i].XYOFFSET));
-		data += sizeof(m_env.CTXT[i].XYOFFSET); 
-
-		memcpy(data, &m_env.CTXT[i].TEX0, sizeof(m_env.CTXT[i].TEX0));
-		data += sizeof(m_env.CTXT[i].TEX0); 
-
-		memcpy(data, &m_env.CTXT[i].TEX1, sizeof(m_env.CTXT[i].TEX1));
-		data += sizeof(m_env.CTXT[i].TEX1); 
-
-		memcpy(data, &m_env.CTXT[i].TEX2, sizeof(m_env.CTXT[i].TEX2));
-		data += sizeof(m_env.CTXT[i].TEX2); 
-
-		memcpy(data, &m_env.CTXT[i].CLAMP, sizeof(m_env.CTXT[i].CLAMP));
-		data += sizeof(m_env.CTXT[i].CLAMP); 
-
-		memcpy(data, &m_env.CTXT[i].MIPTBP1, sizeof(m_env.CTXT[i].MIPTBP1));
-		data += sizeof(m_env.CTXT[i].MIPTBP1); 
-
-		memcpy(data, &m_env.CTXT[i].MIPTBP2, sizeof(m_env.CTXT[i].MIPTBP2));
-		data += sizeof(m_env.CTXT[i].MIPTBP2); 
-
-		memcpy(data, &m_env.CTXT[i].SCISSOR, sizeof(m_env.CTXT[i].SCISSOR));
-		data += sizeof(m_env.CTXT[i].SCISSOR); 
-
-		memcpy(data, &m_env.CTXT[i].ALPHA, sizeof(m_env.CTXT[i].ALPHA));
-		data += sizeof(m_env.CTXT[i].ALPHA); 
-
-		memcpy(data, &m_env.CTXT[i].TEST, sizeof(m_env.CTXT[i].TEST));
-		data += sizeof(m_env.CTXT[i].TEST); 
-
-		memcpy(data, &m_env.CTXT[i].FBA, sizeof(m_env.CTXT[i].FBA));
-		data += sizeof(m_env.CTXT[i].FBA); 
-
-		memcpy(data, &m_env.CTXT[i].FRAME, sizeof(m_env.CTXT[i].FRAME));
-		data += sizeof(m_env.CTXT[i].FRAME); 
-
-		memcpy(data, &m_env.CTXT[i].ZBUF, sizeof(m_env.CTXT[i].ZBUF));
-		data += sizeof(m_env.CTXT[i].ZBUF); 
+		WriteState(data, &m_env.CTXT[i].XYOFFSET);
+		WriteState(data, &m_env.CTXT[i].TEX0);
+		WriteState(data, &m_env.CTXT[i].TEX1);
+		WriteState(data, &m_env.CTXT[i].TEX2);
+		WriteState(data, &m_env.CTXT[i].CLAMP);
+		WriteState(data, &m_env.CTXT[i].MIPTBP1);
+		WriteState(data, &m_env.CTXT[i].MIPTBP2);
+		WriteState(data, &m_env.CTXT[i].SCISSOR);
+		WriteState(data, &m_env.CTXT[i].ALPHA);
+		WriteState(data, &m_env.CTXT[i].TEST);
+		WriteState(data, &m_env.CTXT[i].FBA);
+		WriteState(data, &m_env.CTXT[i].FRAME);
+		WriteState(data, &m_env.CTXT[i].ZBUF);
 	}
 
-	memcpy(data, &m_v.RGBAQ, sizeof(m_v.RGBAQ)); 
-	data += sizeof(m_v.RGBAQ);
-
-	memcpy(data, &m_v.ST, sizeof(m_v.ST)); 
-	data += sizeof(m_v.ST);
-
-	memcpy(data, &m_v.UV, sizeof(m_v.UV)); 
-	data += sizeof(m_v.UV);
-
-	memcpy(data, &m_v.XYZ, sizeof(m_v.XYZ)); 
-	data += sizeof(m_v.XYZ);
-
-	memcpy(data, &m_v.FOG, sizeof(m_v.FOG)); 
-	data += sizeof(m_v.FOG);
-
-	memcpy(data, &m_x, sizeof(m_x)); 
-	data += sizeof(m_x);
-
-	memcpy(data, &m_y, sizeof(m_y)); 
-	data += sizeof(m_y);
-
-	memcpy(data, m_mem.GetVM(), m_vmsize); 
-	data += m_vmsize;
+	WriteState(data, &m_v.RGBAQ);
+	WriteState(data, &m_v.ST);
+	WriteState(data, &m_v.UV);
+	WriteState(data, &m_v.XYZ);
+	WriteState(data, &m_v.FOG);
+	WriteState(data, &m_x);
+	WriteState(data, &m_y);
+	WriteState(data, m_mem.GetVM(), m_vmsize);
 
 	for(int i = 0; i < 3; i++)
 	{
-		memcpy(data, &m_path[i].tag, sizeof(m_path[i].tag)); 
-		data += sizeof(m_path[i].tag);
-
-		memcpy(data, &m_path[i].nreg, sizeof(m_path[i].nreg)); 
-		data += sizeof(m_path[i].nreg);
+		WriteState(data, &m_path[i].tag);
+		WriteState(data, &m_path[i].nreg);
 	}
 
-	memcpy(data, &m_q, sizeof(m_q)); 
-	data += sizeof(m_q);
+	WriteState(data, &m_q);
 
 	return 0;
 }
@@ -1621,107 +1556,51 @@ int GSState::Defrost(const freezeData* fd)
 
 	BYTE* data = fd->data;
 
-	int version = *(int*)data;
+	int version;
+
+	ReadState(&version, data);
 
 	if(version > m_version)
 	{
 		return -1;
 	}
 
-	data += sizeof(m_version);
-
 	Flush();
 
 	Reset();
 
-	memcpy(&m_env.PRIM, data, sizeof(m_env.PRIM)); 
-	data += sizeof(m_env.PRIM); 
-
-	memcpy(&m_env.PRMODE, data, sizeof(m_env.PRMODE)); 
-	data += sizeof(m_env.PRMODE); 
-
-	memcpy(&m_env.PRMODECONT, data, sizeof(m_env.PRMODECONT)); 
-	data += sizeof(m_env.PRMODECONT); 
-
-	memcpy(&m_env.TEXCLUT, data, sizeof(m_env.TEXCLUT)); 
-	data += sizeof(m_env.TEXCLUT); 
-
-	memcpy(&m_env.SCANMSK, data, sizeof(m_env.SCANMSK));
-	data += sizeof(m_env.SCANMSK); 
-
-	memcpy(&m_env.TEXA, data, sizeof(m_env.TEXA));
-	data += sizeof(m_env.TEXA); 
-
-	memcpy(&m_env.FOGCOL, data, sizeof(m_env.FOGCOL));
-	data += sizeof(m_env.FOGCOL); 
-
-	memcpy(&m_env.DIMX, data, sizeof(m_env.DIMX));
-	data += sizeof(m_env.DIMX); 
-
-	memcpy(&m_env.DTHE, data, sizeof(m_env.DTHE));
-	data += sizeof(m_env.DTHE); 
-
-	memcpy(&m_env.COLCLAMP, data, sizeof(m_env.COLCLAMP));
-	data += sizeof(m_env.COLCLAMP); 
-
-	memcpy(&m_env.PABE, data, sizeof(m_env.PABE));
-	data += sizeof(m_env.PABE); 
-
-	memcpy(&m_env.BITBLTBUF, data, sizeof(m_env.BITBLTBUF));
-	data += sizeof(m_env.BITBLTBUF); 
-
-	memcpy(&m_env.TRXDIR, data, sizeof(m_env.TRXDIR));
-	data += sizeof(m_env.TRXDIR); 
-
-	memcpy(&m_env.TRXPOS, data, sizeof(m_env.TRXPOS));
-	data += sizeof(m_env.TRXPOS); 
-
-	memcpy(&m_env.TRXREG, data, sizeof(m_env.TRXREG));
-	data += sizeof(m_env.TRXREG); 
-
-	memcpy(&m_env.TRXREG2, data, sizeof(m_env.TRXREG2));
-	data += sizeof(m_env.TRXREG2); 
+	ReadState(&m_env.PRIM, data);
+	ReadState(&m_env.PRMODE, data);
+	ReadState(&m_env.PRMODECONT, data);
+	ReadState(&m_env.TEXCLUT, data);
+	ReadState(&m_env.SCANMSK, data);
+	ReadState(&m_env.TEXA, data);
+	ReadState(&m_env.FOGCOL, data);
+	ReadState(&m_env.DIMX, data);
+	ReadState(&m_env.DTHE, data);
+	ReadState(&m_env.COLCLAMP, data);
+	ReadState(&m_env.PABE, data);
+	ReadState(&m_env.BITBLTBUF, data);
+	ReadState(&m_env.TRXDIR, data);
+	ReadState(&m_env.TRXPOS, data);
+	ReadState(&m_env.TRXREG, data);
+	ReadState(&m_env.TRXREG2, data);
 
 	for(int i = 0; i < 2; i++)
 	{
-		memcpy(&m_env.CTXT[i].XYOFFSET, data, sizeof(m_env.CTXT[i].XYOFFSET));
-		data += sizeof(m_env.CTXT[i].XYOFFSET); 
-
-		memcpy(&m_env.CTXT[i].TEX0, data, sizeof(m_env.CTXT[i].TEX0));
-		data += sizeof(m_env.CTXT[i].TEX0); 
-
-		memcpy(&m_env.CTXT[i].TEX1, data, sizeof(m_env.CTXT[i].TEX1));
-		data += sizeof(m_env.CTXT[i].TEX1); 
-
-		memcpy(&m_env.CTXT[i].TEX2, data, sizeof(m_env.CTXT[i].TEX2));
-		data += sizeof(m_env.CTXT[i].TEX2); 
-
-		memcpy(&m_env.CTXT[i].CLAMP, data, sizeof(m_env.CTXT[i].CLAMP));
-		data += sizeof(m_env.CTXT[i].CLAMP); 
-
-		memcpy(&m_env.CTXT[i].MIPTBP1, data, sizeof(m_env.CTXT[i].MIPTBP1));
-		data += sizeof(m_env.CTXT[i].MIPTBP1); 
-
-		memcpy(&m_env.CTXT[i].MIPTBP2, data, sizeof(m_env.CTXT[i].MIPTBP2));
-		data += sizeof(m_env.CTXT[i].MIPTBP2); 
-
-		memcpy(&m_env.CTXT[i].SCISSOR, data, sizeof(m_env.CTXT[i].SCISSOR));
-		data += sizeof(m_env.CTXT[i].SCISSOR); 
-
-		memcpy(&m_env.CTXT[i].ALPHA, data, sizeof(m_env.CTXT[i].ALPHA));
-		data += sizeof(m_env.CTXT[i].ALPHA); 
-
-		memcpy(&m_env.CTXT[i].TEST, data, sizeof(m_env.CTXT[i].TEST));
-		data += sizeof(m_env.CTXT[i].TEST); 
-
-		memcpy(&m_env.CTXT[i].FBA, data, sizeof(m_env.CTXT[i].FBA));
-		data += sizeof(m_env.CTXT[i].FBA); 
-
-		memcpy(&m_env.CTXT[i].FRAME, data, sizeof(m_env.CTXT[i].FRAME));
-		data += sizeof(m_env.CTXT[i].FRAME); 
-
-		memcpy(&m_env.CTXT[i].ZBUF, data, sizeof(m_env.CTXT[i].ZBUF));
-		data += sizeof(m_env.CTXT[i].ZBUF); 
+		ReadState(&m_env.CTXT[i].XYOFFSET, data);
+		ReadState(&m_env.CTXT[i].TEX0, data);
+		ReadState(&m_env.CTXT[i].TEX1, data);
+		ReadState(&m_env.CTXT[i].TEX2, data);
+		ReadState(&m_env.CTXT[i].CLAMP, data);
+		ReadState(&m_env.CTXT[i].MIPTBP1, data);
+		ReadState(&m_env.CTXT[i].MIPTBP2, data);
+		ReadState(&m_env.CTXT[i].SCISSOR, data);
+		ReadState(&m_env.CTXT[i].ALPHA, data);
+		ReadState(&m_env.CTXT[i].TEST, data);
+		ReadState(&m_env.CTXT[i].FBA, data);
+		ReadState(&m_env.CTXT[i].FRAME, data);
+		ReadState(&m_env.CTXT[i].ZBUF, data);
 
 		if(version <= 4)
 		{
@@ -1729,43 +1608,24 @@ int GSState::Defrost(const freezeData* fd)
 		}
 	}
 
-	memcpy(&m_v.RGBAQ, data, sizeof(m_v.RGBAQ)); 
-	data += sizeof(m_v.RGBAQ);
-
-	memcpy(&m_v.ST, data, sizeof(m_v.ST)); 
-	data += sizeof(m_v.ST);
-
-	memcpy(&m_v.UV, data, sizeof(m_v.UV)); 
-	data += sizeof(m_v.UV);
-
-	memcpy(&m_v.XYZ, data, sizeof(m_v.XYZ)); 
-	data += sizeof(m_v.XYZ);
-
-	memcpy(&m_v.FOG, data, sizeof(m_v.FOG)); 
-	data += sizeof(m_v.FOG);
-
-	memcpy(&m_x, data, sizeof(m_x)); 
-	data += sizeof(m_x);
-
-	memcpy(&m_y, data, sizeof(m_y)); 
-	data += sizeof(m_y);
-
-	memcpy(m_mem.GetVM(), data, m_vmsize); 
-	data += m_vmsize;
+	ReadState(&m_v.RGBAQ, data);
+	ReadState(&m_v.ST, data);
+	ReadState(&m_v.UV, data);
+	ReadState(&m_v.XYZ, data);
+	ReadState(&m_v.FOG, data);
+	ReadState(&m_x, data);
+	ReadState(&m_y, data);
+	ReadState(m_mem.GetVM(), data, m_vmsize);
 
 	for(int i = 0; i < 3; i++)
 	{
-		memcpy(&m_path[i].tag, data, sizeof(m_path[0].tag)); 
-		data += sizeof(m_path[i].tag);
-
-		memcpy(&m_path[i].nreg, data, sizeof(m_path[0].nreg)); 
-		data += sizeof(m_path[i].nreg);
+		ReadState(&m_path[i].tag, data);
+		ReadState(&m_path[i].nreg, data);
 
 		m_path[i].ExpandRegs();
 	}
 
-	memcpy(&m_q, data, sizeof(m_q)); 
-	data += sizeof(m_q);
+	ReadState(&m_q, data);
 
 	PRIM = !m_env.PRMODECONT.AC ? (GIFRegPRIM*)&m_env.PRMODE : &m_env.PRIM;
 
