@@ -1674,6 +1674,14 @@
 						AssemblerOutput="4"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release SSE4|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AssemblerOutput="4"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\x86_sse2.asm"

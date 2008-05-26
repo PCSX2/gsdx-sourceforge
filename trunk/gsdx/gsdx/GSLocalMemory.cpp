@@ -578,7 +578,7 @@ bool GSLocalMemory::WriteCLUT(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT)
 	DWORD bp = TEX0.CBP;
 	DWORD bw = TEX0.CSM == 0 ? 1 : TEXCLUT.CBW;
 
-	WORD* pCLUT = m_pCLUT + (TEX0.CSA<<4);
+	WORD* pCLUT = m_pCLUT + (TEX0.CSA << 4);
 
 	// NOTE: TEX0.CPSM == PSM_PSMCT24 is non-standard, KH uses it
 
@@ -613,6 +613,8 @@ bool GSLocalMemory::WriteCLUT(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT)
 	}
 	else
 	{
+		ASSERT(TEX0.CSA == 0);
+
 		readPixel rp = m_psm[TEX0.CPSM].rp;
 
 		int pal = m_psm[TEX0.PSM].pal;
