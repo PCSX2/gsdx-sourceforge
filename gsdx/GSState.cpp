@@ -1876,6 +1876,10 @@ bool GSC_SoTC(const GSFrameInfo& fi, int& skip)
 		{
 			skip = 9;
 		}
+		else if(fi.TME && fi.FBP == 0x01c00 && fi.FPSM == PSM_PSMCT32 && fi.TBP0 == 0x03800 && fi.TPSM == PSM_PSMCT32)
+		{
+			skip = 8;
+		}
 		else if(fi.TME && fi.FBP == 0x01e80 && fi.FPSM == PSM_PSMCT32 && fi.TBP0 == 0x03880 && fi.TPSM == PSM_PSMCT32)
 		{
 			skip = 8;
@@ -2155,7 +2159,7 @@ bool GSState::IsBadFrame(int& skip)
 		{
 			if(HasSharedBits(fi.FBP, fi.FPSM, fi.TBP0, fi.TPSM))
 			{
-//				skip = 1;
+				skip = 1;
 			}
 
 			// depth textures (bully, mgs3s1 intro)

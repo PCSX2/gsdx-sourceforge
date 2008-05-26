@@ -453,43 +453,43 @@ void __fastcall Expand16_c(WORD* src, DWORD* dst, int w, GIFRegTEXA* pTEXA)
 
 //
 
+__forceinline static void WriteCLUT_T32_I4_CSM1_sse2(GSVector4i* s, GSVector4i* d)
+{
+	GSVector4i r0, r1, r2, r3;
+	GSVector4i r4, r5, r6, r7;
+
+	r0 = s[0].upl64(s[1]);
+	r1 = s[2].upl64(s[3]);
+	r2 = s[0].uph64(s[1]);
+	r3 = s[2].uph64(s[3]);
+
+	r4 = r0.upl16(r1);
+	r5 = r0.uph16(r1);
+	r6 = r2.upl16(r3);
+	r7 = r2.uph16(r3);
+
+	r0 = r4.upl16(r5);
+	r1 = r4.uph16(r5);
+	r2 = r6.upl16(r7);
+	r3 = r6.uph16(r7);
+
+	d[0] = r0.upl16(r1);
+	d[1] = r2.upl16(r3);
+	d[32] = r0.uph16(r1);
+	d[33] = r2.uph16(r3);
+}
+
 void __fastcall WriteCLUT_T32_I8_CSM1_sse2(DWORD* vm, WORD* clut)
 {
-	GSVector4i tmp[64];
-
 	GSVector4i* s = (GSVector4i*)vm;
-	GSVector4i* d = tmp;
+	GSVector4i* d = (GSVector4i*)clut;
 
-	for(int j = 0; j < 2; j++, s += 32, d += 32)
+	for(int i = 0; i < 16; i += 4)
 	{
-		for(int i = 0; i < 16; i += 4)
-		{
-			d[i*2+0] = s[i+0].upl64(s[i+1]);
-			d[i*2+1] = s[i+2].upl64(s[i+3]);
-			d[i*2+2] = s[i+0].uph64(s[i+1]);
-			d[i*2+3] = s[i+2].uph64(s[i+3]);
-			d[i*2+4] = s[i+0+16].upl64(s[i+1+16]);
-			d[i*2+5] = s[i+2+16].upl64(s[i+3+16]);
-			d[i*2+6] = s[i+0+16].uph64(s[i+1+16]);
-			d[i*2+7] = s[i+2+16].uph64(s[i+3+16]);
-		}
-	}
-
-	s = tmp;
-	d = (GSVector4i*)clut;
-
-	for(int i = 0; i < 32; i++)
-	{
-		GSVector4i r0, r1, r2, r3;
-
-		r0 = s[i*2+0];
-		r1 = s[i*2+1];
-		r2 = r0.upl16(r1);
-		r3 = r0.uph16(r1);
-		r0 = r2.upl16(r3);
-		r1 = r2.uph16(r3);
-		d[i+0] = r0.upl16(r1);
-		d[i+32] = r0.uph16(r1);
+		WriteCLUT_T32_I4_CSM1_sse2(&s[i +  0], &d[i +  0]);
+		WriteCLUT_T32_I4_CSM1_sse2(&s[i + 16], &d[i +  2]);
+		WriteCLUT_T32_I4_CSM1_sse2(&s[i + 32], &d[i + 16]);
+		WriteCLUT_T32_I4_CSM1_sse2(&s[i + 48], &d[i + 18]);
 	}
 }
 
@@ -498,25 +498,7 @@ void __fastcall WriteCLUT_T32_I4_CSM1_sse2(DWORD* vm, WORD* clut)
 	GSVector4i* s = (GSVector4i*)vm;
 	GSVector4i* d = (GSVector4i*)clut;
 
-	GSVector4i r0, r1, r2, r3;
-	GSVector4i r4, r5, r6, r7;
-
-	r0 = s[0].upl64(s[1]);
-	r1 = s[2].upl64(s[3]);
-	r4 = s[0].uph64(s[1]);
-	r5 = s[2].uph64(s[3]);
-	r2 = r0.upl16(r1);
-	r3 = r0.uph16(r1);
-	r6 = r4.upl16(r5);
-	r7 = r4.uph16(r5);
-	r0 = r2.upl16(r3);
-	r1 = r2.uph16(r3);
-	r4 = r6.upl16(r7);
-	r5 = r6.uph16(r7);
-	d[0] = r0.upl16(r1);
-	d[1] = r4.upl16(r5);
-	d[32] = r0.uph16(r1);
-	d[33] = r4.uph16(r5);
+	WriteCLUT_T32_I4_CSM1_sse2(s, d);
 }
 
 void __fastcall WriteCLUT_T16_I8_CSM1_sse2(WORD* vm, WORD* clut)
@@ -646,7 +628,7 @@ void __fastcall ReadCLUT32_T32_I8_c(WORD* src, DWORD* dst)
 {
 	for(int i = 0; i < 256; i++)
 	{
-		dst[i] = ((DWORD)src[i+256] << 16) | src[i];
+		dst[i] = ((DWORD)src[i + 256] << 16) | src[i];
 	}
 }
 
@@ -654,7 +636,7 @@ void __fastcall ReadCLUT32_T32_I4_c(WORD* src, DWORD* dst)
 {
 	for(int i = 0; i < 16; i++)
 	{
-		dst[i] = ((DWORD)src[i+256] << 16) | src[i];
+		dst[i] = ((DWORD)src[i + 256] << 16) | src[i];
 	}
 }
 
