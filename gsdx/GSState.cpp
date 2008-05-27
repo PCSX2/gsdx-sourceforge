@@ -1808,6 +1808,10 @@ bool GSC_DBZBT2(const GSFrameInfo& fi, int& skip)
 		{
 			skip = 27;
 		}
+		else if(!fi.TME && fi.FBP == 0x03000 && fi.FPSM == PSM_PSMCT16)
+		{
+			skip = 10;
+		}
 	}
 
 	return true;
@@ -2099,6 +2103,22 @@ bool GSC_IkkiTousen(const GSFrameInfo& fi, int& skip)
 	return true;
 }
 
+bool GSC_GodOfWar(const GSFrameInfo& fi, int& skip)
+{
+	if(skip == 0)
+	{
+		if(fi.TME && fi.FBP == 0x00000 && fi.FPSM == PSM_PSMCT16 && fi.TBP0 == 0x00000 && fi.TPSM == PSM_PSMCT16)
+		{
+			skip = 30;
+		}
+	}
+	else
+	{
+	}
+
+	return true;
+}
+
 bool GSState::IsBadFrame(int& skip)
 {
 	GSFrameInfo fi;
@@ -2143,6 +2163,8 @@ bool GSState::IsBadFrame(int& skip)
 		m_crc2gsc[CRC::Drakengard2] = GSC_Drakengard2;
 		m_crc2gsc[CRC::Tekken5] = GSC_Tekken5;
 		m_crc2gsc[CRC::IkkiTousen_JP] = GSC_IkkiTousen;
+		m_crc2gsc[CRC::GodOfWar_US] = GSC_GodOfWar;
+		m_crc2gsc[CRC::GodOfWar] = GSC_GodOfWar;
 	}
 
 	if(CAtlMap<DWORD, GetSkipCount>::CPair* pair = m_crc2gsc.Lookup(m_crc))

@@ -62,5 +62,5 @@ protected:
 	GSTexture* CreateTexture() {return new GSTexture9(m_renderer);}
 
 public:
-	GSTextureCache9(GSRenderer<GSDevice9>* renderer, bool nativeres);
+	GSTextureCache9(GSRenderer<GSDevice9>* renderer);
 };

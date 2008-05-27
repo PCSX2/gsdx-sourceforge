@@ -41,4 +41,6 @@ public:
 	static DWORD Drakengard2;
 	static DWORD Tekken5;
 	static DWORD IkkiTousen_JP;
+	static DWORD GodOfWar;
+	static DWORD GodOfWar_US;
 };
