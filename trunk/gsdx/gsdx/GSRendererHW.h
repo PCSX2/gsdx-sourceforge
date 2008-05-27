@@ -478,7 +478,7 @@ protected:
 
 	bool CanUpscale()
 	{
-		#pragma endregion dbzbt2 palette should stay 64 x 64
+		#pragma region dbzbt2 palette should stay 64 x 64
 
 		if(m_crc == CRC::DBZBT2_US)
 		{
