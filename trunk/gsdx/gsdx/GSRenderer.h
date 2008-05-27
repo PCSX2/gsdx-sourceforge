@@ -32,6 +32,7 @@ struct GSRendererSettings
 	int m_aspectratio;
 	int m_filter;
 	bool m_vsync;
+	bool m_nativeres;
 };
 
 class GSRendererBase :  public GSWnd, public GSState, protected GSRendererSettings
@@ -385,6 +386,7 @@ g_slp1 = g_slp2 = g_slp3 = g_slp4 = 0;
 	}
 
 	virtual void MinMaxUV(int w, int h, CRect& r) {r = CRect(0, 0, w, h);}
+	virtual bool CanUpscale() {return !m_nativeres;}
 };
 
 template<class Device, class Vertex> class GSRendererT : public GSRenderer<Device>

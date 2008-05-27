@@ -302,14 +302,14 @@ protected:
 	{
 		TRACE(_T("[%d] InvalidateVideoMem %d,%d - %d,%d %05x (%d)\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.DBP, (int)BITBLTBUF.DPSM);
 
-		m_tc->InvalidateVideoMem(BITBLTBUF, &r);
+		m_tc->InvalidateVideoMem(BITBLTBUF, r);
 	}
 
 	void InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r)
 	{
 		TRACE(_T("[%d] InvalidateLocalMem %d,%d - %d,%d %05x (%d)\n"), (int)m_perfmon.GetFrame(), r.left, r.top, r.right, r.bottom, (int)BITBLTBUF.SBP, (int)BITBLTBUF.SPSM);
 
-		m_tc->InvalidateLocalMem(BITBLTBUF, &r);
+		m_tc->InvalidateLocalMem(BITBLTBUF, r);
 	}
 
 	virtual bool OverrideInput(int& prim, Texture& rt, Texture& ds, Texture* t)
@@ -448,8 +448,51 @@ protected:
 		}
 
 		#pragma endregion
-		
+
 		return true;
+	}
+
+	virtual void OverrideOutput()
+	{
+		#pragma region dbzbt2 palette readback (cannot detect yet, when fetching the texture later)
+
+		if(m_crc == CRC::DBZBT2_US)
+		{
+			DWORD FBP = m_context->FRAME.Block();
+			DWORD TBP0 = m_context->TEX0.TBP0;
+
+			if(PRIM->TME && (FBP == 0x03c00 && TBP0 == 0x03c80 || FBP == 0x03ac0 && TBP0 == 0x03b40))
+			{
+				GIFRegBITBLTBUF BITBLTBUF;
+
+				BITBLTBUF.SBP = FBP;
+				BITBLTBUF.SBW = 1;
+				BITBLTBUF.SPSM = PSM_PSMCT32;
+
+				InvalidateLocalMem(BITBLTBUF, CRect(0, 0, 64, 64));
+			}
+		}
+
+		#pragma endregion
+	}
+
+	bool CanUpscale()
+	{
+		#pragma endregion dbzbt2 palette should stay 64 x 64
+
+		if(m_crc == CRC::DBZBT2_US)
+		{
+			DWORD FBP = m_context->FRAME.Block();
+
+			if(FBP == 0x03c00 || FBP == 0x03ac0)
+			{
+				return false;
+			}
+		}
+
+		#pragma endregion
+
+		return __super::CanUpscale();
 	}
 
 public:
@@ -461,6 +504,11 @@ public:
 		, m_skip(0)
 		, m_reset(false)
 	{
+		if(!m_nativeres)
+		{
+			m_width = AfxGetApp()->GetProfileInt(_T("Settings"), _T("resx"), 1024);
+			m_height = AfxGetApp()->GetProfileInt(_T("Settings"), _T("resy"), 1024);
+		}
 	}
 
 	virtual ~GSRendererHW()

@@ -24,8 +24,8 @@
 
 // GSTextureCache9
 
-GSTextureCache9::GSTextureCache9(GSRenderer<GSDevice9>* renderer, bool nativeres)
-	: GSTextureCache<GSDevice9>(renderer, nativeres)
+GSTextureCache9::GSTextureCache9(GSRenderer<GSDevice9>* renderer)
+	: GSTextureCache<GSDevice9>(renderer)
 {
 }
 

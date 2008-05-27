@@ -201,7 +201,6 @@ protected:
 	CAtlList<GSRenderTarget*> m_rt;
 	CAtlList<GSDepthStencil*> m_ds;
 	CAtlList<GSTexture*> m_tex;
-	bool m_nativeres;
 
 	template<class T> void RecycleByAge(CAtlList<T*>& l, int maxage = 10)
 	{
@@ -227,9 +226,8 @@ protected:
 	virtual GSTexture* CreateTexture() = 0;
 
 public:
-	GSTextureCache(GSRenderer<Device>* renderer, bool nativeres)
+	GSTextureCache(GSRenderer<Device>* renderer)
 		: m_renderer(renderer)
-		, m_nativeres(nativeres)
 	{
 	}
 
@@ -322,7 +320,7 @@ public:
 			m_rt.AddHead(rt);
 		}
 
-		if(!m_nativeres)
+		if(m_renderer->CanUpscale())
 		{
 			int ww = (int)(m_renderer->GetFramePos().cx + rt->m_TEX0.TBW * 64);
 			int hh = (int)(m_renderer->GetFramePos().cy + m_renderer->GetDisplaySize().cy);

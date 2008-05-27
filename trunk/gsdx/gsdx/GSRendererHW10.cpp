@@ -28,13 +28,7 @@
 GSRendererHW10::GSRendererHW10(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs)
 	: GSRendererHW<GSDevice10, GSVertexHW10>(base, mt, irq, nloophack, rs, true)
 {
-	m_tc = new GSTextureCache10(this, !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("nativeres"), FALSE));
-
-	if(!AfxGetApp()->GetProfileInt(_T("Settings"), _T("nativeres"), FALSE))
-	{
-		m_width = AfxGetApp()->GetProfileInt(_T("Settings"), _T("resx"), 1024);
-		m_height = AfxGetApp()->GetProfileInt(_T("Settings"), _T("resy"), 1024);
-	}
+	m_tc = new GSTextureCache10(this);
 }
 
 bool GSRendererHW10::Create(LPCTSTR title)
@@ -571,6 +565,8 @@ if(s_dump)
 	}
 
 	m_dev.EndScene();
+
+	OverrideOutput();
 
 if(s_dump)
 {
