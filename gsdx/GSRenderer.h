@@ -88,6 +88,7 @@ public:
 		m_aspectratio = rs.m_aspectratio;
 		m_filter = rs.m_filter;
 		m_vsync = rs.m_vsync;
+		m_nativeres = rs.m_nativeres;
 	};
 
 	virtual void VSync(int field) = 0;
