@@ -116,7 +116,7 @@ private:
 	void SetupColumnOffset();
 
 	template<bool pos, bool tex, bool col> 
-	void SetupScanline(const Vertex& dv);
+	__forceinline void SetupScanline(const Vertex& dv);
 
 	typedef void (GSRasterizer::*DrawScanlinePtr)(int top, int left, int right, const Vertex& v);
 
@@ -178,99 +178,15 @@ private:
 	void DrawSprite(Vertex* v);
 	bool DrawSolidRect(int left, int top, int right, int bottom, const Vertex& v);
 
+	__forceinline void DrawTriangleSection(Vertex& l, const Vertex& dl, GSVector4& r, const GSVector4& dr, const GSVector4& b, const Vertex& dscan);
+
 public:
 	GSRasterizer(GSState* state, int id = 0, int threads = 0);
 	virtual ~GSRasterizer();
 
-	void InvalidateTextureCache();
 	int Draw(Vertex* v, int count);
+	void InvalidateTextureCache();
 };
-/*
-class GSRasterizerMT : public GSRasterizer
-{
-	Vertex* m_vertices;
-	int m_count;
-
-    DWORD m_ThreadId;
-    HANDLE m_hThread;
-	HANDLE m_hEventBeginDraw;
-	HANDLE m_hEventEndDraw;
-	HANDLE m_hEventExit;
-
-	DWORD ThreadProc()
-	{
-		HANDLE events[] = {m_hEventBeginDraw, m_hEventExit};
-
-		while(1)
-		{
-			switch(WaitForMultipleObjects(countof(events), events, FALSE, INFINITE))
-			{
-			case WAIT_OBJECT_0:
-				Draw(m_vertices, m_count);
-				SetEvent(m_hEventEndDraw);
-				break;
-			default:
-				return 0;
-			}
-		}
-
-		return 1;
-	}
-
-	static DWORD WINAPI StaticThreadProc(LPVOID lpParam)
-	{
-		return ((GSRasterizerMT*)lpParam)->ThreadProc();
-	}
-
-public:
-	GSRasterizerMT(GSState* state)
-		: GSRasterizer(state)
-		, m_ThreadId(0)
-		, m_hThread(NULL)
-		, m_vertices(NULL)
-		, m_count(0)
-	{
-		m_hThread = CreateThread(NULL, 0, StaticThreadProc, (LPVOID)this, 0, &m_ThreadId);
-
-		m_hEventBeginDraw = CreateEvent(0, FALSE, FALSE, 0);
-		m_hEventEndDraw = CreateEvent(0, FALSE, FALSE, 0);
-		m_hEventExit = CreateEvent(0, FALSE, FALSE, 0);
-	}
-
-	virtual ~GSRasterizerMT()
-	{
-		if(m_hThread != NULL)
-		{
-			SetEvent(m_hEventExit);
-
-			if(WaitForSingleObject(m_hThread, 5000) != WAIT_OBJECT_0)
-			{
-				TerminateThread(m_hThread, 1);
-			}
-
-			CloseHandle(m_hThread);
-
-			m_ThreadId = 0;
-		}
-
-		CloseHandle(m_hEventBeginDraw);
-		CloseHandle(m_hEventEndDraw);
-		CloseHandle(m_hEventExit);
-	}
-
-	HANDLE BeginDraw(Vertex* vertices, int count)
-	{
-		m_vertices = vertices;
-		m_count = count;
-
-		SetEvent(m_hEventBeginDraw);
-
-		SwitchToThread();
-
-		return m_hEventEndDraw;
-	}
-};
-*/
 
 class GSRasterizerMT : public GSRasterizer
 {

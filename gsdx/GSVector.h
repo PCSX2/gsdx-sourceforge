@@ -574,6 +574,9 @@ public:
 		VECTOR4i_SHUFFLE_3(xs, xn, ys, yn, w, 3) \
 
 	#define VECTOR4i_SHUFFLE_1(xs, xn) \
+		GSVector4i xs##4##() const {return GSVector4i(_mm_shuffle_epi32(m, _MM_SHUFFLE(xn, xn, xn, xn)));} \
+		GSVector4i xs##4##l() const {return GSVector4i(_mm_shufflelo_epi16(m, _MM_SHUFFLE(xn, xn, xn, xn)));} \
+		GSVector4i xs##4##h() const {return GSVector4i(_mm_shufflehi_epi16(m, _MM_SHUFFLE(xn, xn, xn, xn)));} \
 		VECTOR4i_SHUFFLE_2(xs, xn, x, 0) \
 		VECTOR4i_SHUFFLE_2(xs, xn, y, 1) \
 		VECTOR4i_SHUFFLE_2(xs, xn, z, 2) \
@@ -912,6 +915,7 @@ public:
 		VECTOR4_SHUFFLE_3(xs, xn, ys, yn, w, 3) \
 
 	#define VECTOR4_SHUFFLE_1(xs, xn) \
+		GSVector4 xs##4##() const {return GSVector4(_mm_shuffle_ps(m, m, _MM_SHUFFLE(xn, xn, xn, xn)));} \
 		VECTOR4_SHUFFLE_2(xs, xn, x, 0) \
 		VECTOR4_SHUFFLE_2(xs, xn, y, 1) \
 		VECTOR4_SHUFFLE_2(xs, xn, z, 2) \

@@ -2138,6 +2138,7 @@ bool GSState::IsBadFrame(int& skip)
 		m_crc2gsc[CRC::MetalGearSolid3_FR] = GSC_MetalGearSolid3;
 		m_crc2gsc[CRC::MetalGearSolid3] = GSC_MetalGearSolid3;
 		m_crc2gsc[CRC::DBZBT2_US] = GSC_DBZBT2;
+		m_crc2gsc[CRC::DBZBT2_EU] = GSC_DBZBT2;
 		m_crc2gsc[CRC::DBZBT3_US] = GSC_DBZBT3;
 		m_crc2gsc[CRC::DBZBT3_EU] = GSC_DBZBT3;
 		m_crc2gsc[CRC::SFEX3_US] = GSC_SFEX3;
@@ -2163,7 +2164,9 @@ bool GSState::IsBadFrame(int& skip)
 		m_crc2gsc[CRC::Tekken5] = GSC_Tekken5;
 		m_crc2gsc[CRC::IkkiTousen_JP] = GSC_IkkiTousen;
 		m_crc2gsc[CRC::GodOfWar_US] = GSC_GodOfWar;
-		m_crc2gsc[CRC::GodOfWar] = GSC_GodOfWar;
+		m_crc2gsc[CRC::GodOfWar_EU] = GSC_GodOfWar;
+		m_crc2gsc[CRC::GodOfWar_1] = GSC_GodOfWar;
+		m_crc2gsc[CRC::GodOfWar_2] = GSC_GodOfWar;
 	}
 
 	if(CAtlMap<DWORD, GetSkipCount>::CPair* pair = m_crc2gsc.Lookup(m_crc))
@@ -2180,7 +2183,7 @@ bool GSState::IsBadFrame(int& skip)
 		{
 			if(HasSharedBits(fi.FBP, fi.FPSM, fi.TBP0, fi.TPSM))
 			{
-				skip = 1;
+				// skip = 1;
 			}
 
 			// depth textures (bully, mgs3s1 intro)

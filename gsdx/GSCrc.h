@@ -17,6 +17,7 @@ public:
 	static DWORD MetalGearSolid3_FR;
 	static DWORD MetalGearSolid3;
 	static DWORD DBZBT2_US;
+	static DWORD DBZBT2_EU;
 	static DWORD DBZBT3_US;
 	static DWORD DBZBT3_EU;
 	static DWORD SFEX3_US;
@@ -41,6 +42,8 @@ public:
 	static DWORD Drakengard2;
 	static DWORD Tekken5;
 	static DWORD IkkiTousen_JP;
-	static DWORD GodOfWar;
 	static DWORD GodOfWar_US;
+	static DWORD GodOfWar_EU;
+	static DWORD GodOfWar_1;
+	static DWORD GodOfWar_2;
 };
