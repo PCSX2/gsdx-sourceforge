@@ -163,6 +163,12 @@ protected:
 				dr[i].z = o.x + st[i].m_scale.x * r.Width();
 				dr[i].w = o.y + st[i].m_scale.y * r.Height();
 
+#ifdef _M_AMD64
+// schrödinger's bug, fs will be trashed unless we access these values
+CString str;
+str.Format(_T("%d %f %f %f %f "), i, o.x, o.y, dr[i].z, dr[i].w);
+//::MessageBox(NULL, str, _T(""), MB_OK);
+#endif
 				fs.cx = max(fs.cx, (int)(dr[i].z + 0.5f));
 				fs.cy = max(fs.cy, (int)(dr[i].w + 0.5f));
 			}
@@ -242,7 +248,7 @@ public:
 	void VSync(int field)
 	{
 		GSPerfMonAutoTimer pmat(m_perfmon);
-
+/*
 extern UINT64 g_slp1;
 extern UINT64 g_slp2;
 extern UINT64 g_slp3;
@@ -256,6 +262,15 @@ if(n) printf("%.3f %.3f %.3f %.3f %d%%\n",
 				  (int)(((double)g_slp1 * 1 + (double)g_slp2 * 2 + (double)g_slp3 * 3 + (double)g_slp4 * 4) / 4 / n * 100));
 g_slp1 = g_slp2 = g_slp3 = g_slp4 = 0;
 
+extern UINT64 g_dtt;
+extern UINT64 g_dt00;
+extern UINT64 g_dt0;
+extern UINT64 g_dt1;
+extern UINT64 g_dt2;
+extern UINT64 g_dtn;
+if(g_dtt) printf("%I64d %I64d %I64d %I64d %I64d %I64d\n", g_dtt, g_dt00, g_dt0, g_dt1, g_dt2, g_dtn);
+g_dtt = g_dt00 = g_dt0 = g_dt1 = g_dt2 = g_dtn = 0;
+*/
 		m_field = !!field;
 
 		Flush();

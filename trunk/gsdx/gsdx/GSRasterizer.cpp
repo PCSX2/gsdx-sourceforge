@@ -22,6 +22,9 @@
 // TODO: avx (256 bit regs, 8 pixels, 3-4 op instructions), DrawScanline ~50-70% of total time
 // TODO: sse is a waste for 1 pixel (not that bad, sse register utilization is 90-95%)
 // TODO: sprite doesn't need z/f interpolation, q could be eliminated by premultiplying s/t
+// TODO: eliminate small triangles faster, usually 50% of the triangles do not output any pixel because they are so tiny
+// current fillrate is about 20M tp/s, 1.2G needed, that means we can already hit 1 fps in the worst case :P
+// TODO: DrawScanline => CUDA impl., input: array of [scan, dscan, index], kernel function: draw pixel at [scan + dscan * index]
 
 #include "StdAfx.h"
 #include "GSRasterizer.h"
@@ -137,6 +140,18 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 		m_sel.ltf = context->TEX1.LCM 
 			? (context->TEX1.K <= 0 && (context->TEX1.MMAG & 1) || context->TEX1.K > 0 && (context->TEX1.MMIN & 1)) 
 			: ((context->TEX1.MMAG & 1) | (context->TEX1.MMIN & 1));
+
+		if(m_sel.fst == 0 && PRIM->PRIM == GS_SPRITE)
+		{
+			// skip per pixel division if q is constant
+
+			m_sel.fst = 1;
+
+			for(int i = 0; i < count; i++)
+			{
+				vertices[i].t /= vertices[i].t.zzzz();
+			}
+		}
 	}
 
 	m_sel.atst = context->TEST.ATE ? context->TEST.ATST : 1;
@@ -339,7 +354,7 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 
 void GSRasterizer::DrawPoint(Vertex* v)
 {
-	// TODO: prestep
+	// TODO: round to closest for point, prestep for line
 
 	GSVector4i p(v->p);
 
@@ -380,66 +395,102 @@ void GSRasterizer::DrawLine(Vertex* v)
 
 void GSRasterizer::DrawTriangle(Vertex* vertices)
 {
-	Vertex vv[3] = {vertices[0], vertices[1], vertices[2]};
-	Vertex* v = vv;
+	Vertex v[4];
 
-	if(v[1].p.y < v[0].p.y) {Vertex::Exchange(&v[0], &v[1]);}
-	if(v[2].p.y < v[0].p.y) {Vertex::Exchange(&v[0], &v[2]);}
-	if(v[2].p.y < v[1].p.y) {Vertex::Exchange(&v[1], &v[2]);}
+	int a = 0, b = 1, c = 2;
 
-	if(!(v[0].p.y < v[2].p.y)) return;
+	if(vertices[b].p.y < vertices[a].p.y) {int i = a; a = b; b = i;}
+	if(vertices[c].p.y < vertices[a].p.y) {int i = a; a = c; c = i;}
+	if(vertices[c].p.y < vertices[b].p.y) {int i = b; b = c; c = i;}
 
-	Vertex v01 = v[1] - v[0];
-	Vertex v02 = v[2] - v[0];
+	v[0] = vertices[a];
+	v[1] = vertices[b];
+	v[3] = vertices[c];
 
-	float temp = v01.p.y / v02.p.y;
-	float longest = temp * v02.p.x - v01.p.x;
+	if(v[0].p.y >= v[3].p.y) return;
 
-	int ledge, redge;
-	if(longest > 0) {ledge = 0; redge = 1; if(longest < 1) longest = 1;}
-	else if(longest < 0) {ledge = 1; redge = 0; if(longest > -1) longest = -1;}
-	else return;
+	Vertex v01, v03, v12, v13; 
 
-	Vertex edge[2] = {v[0], v[0]};
-	
-	Vertex dedge[2];
-	dedge[0].p.y = dedge[1].p.y = 1;
-	if(v01.p.y > 0) dedge[ledge] = v01 / v01.p.yyyy();
-	if(v02.p.y > 0) dedge[redge] = v02 / v02.p.yyyy();
+	v03 = v[3] - v[0];
+	v01.p = v[1].p - v[0].p;
 
-	Vertex scan;
-	Vertex dscan = (v02 * temp - v01) / longest;
+	v[2] = v[0] + v03 * (v01.p / v03.p).yyyy();
 
-	dscan.p.y = 0;
+	v12.p = v[2].p - v[1].p;
+
+	if(v12.p.x == 0) return;
+
+	v12.c = v[2].c - v[1].c;
+	v12.t = v[2].t - v[1].t;
+
+	Vertex dscan = v12 / v12.p.xxxx();
 
 	SetupScanline<true, true, true>(dscan);
 
-	for(int i = 0; i < 2; i++, v++)
+	Vertex dl, dr;
+
+	if(v12.p.x < 0) 
 	{
-		GSVector4i tb(edge[0].p.upl(v[1].p).ceil());
+		dl = v03 / v03.p.yyyy();
+		dr.p = v01.p / v01.p.yyyy();
 
-		int top = tb.z;
-		int bottom = tb.w;
+		GSVector4 p0 = v[0].p;
 
-		if(top < m_scissor.top) top = min(m_scissor.top, bottom);
-		if(bottom > m_scissor.bottom) bottom = m_scissor.bottom;
+		DrawTriangleSection(v[0], dl, p0, dr.p, v[1].p, dscan);
 
-		if(edge[0].p.y < (float)top) // for(int j = 0; j < 2; j++) edge[j] += dedge[j] * ((float)top - edge[0].p.y);
+		v13.p = v[3].p - v[1].p;
+
+		dr.p = v13.p / v13.p.yyyy();
+
+		DrawTriangleSection(v[2], dl, v[1].p, dr.p, v[3].p, dscan);
+	}
+	else
+	{
+		v01.t = v[1].t - v[0].t;
+		v01.c = v[1].c - v[0].c;
+
+		dl = v01 / v01.p.yyyy();
+		dr.p = v03.p / v03.p.yyyy();
+
+		GSVector4 p0 = v[0].p;
+
+		DrawTriangleSection(v[0], dl, p0, dr.p, v[1].p, dscan);
+		
+		v13 = v[3] - v[1];
+
+		dl = v13 / v13.p.yyyy();
+
+		DrawTriangleSection(v[1], dl, v[2].p, dr.p, v[3].p, dscan);
+	}
+}
+
+void GSRasterizer::DrawTriangleSection(Vertex& l, const Vertex& dl, GSVector4& r, const GSVector4& dr, const GSVector4& b, const Vertex& dscan)
+{
+	GSVector4i tb(l.p.upl(b).ceil());
+
+	int top = tb.z;
+	int bottom = tb.w;
+
+	if(top < m_scissor.top) top = min(m_scissor.top, bottom);
+	if(bottom > m_scissor.bottom) bottom = m_scissor.bottom;
+	
+	if(top < bottom)
+	{
+		float py = (float)top - l.p.y;
+
+		if(py > 0)
 		{
-			float dy = (float)top - edge[0].p.y;
+			GSVector4 dy(py);
 
-			edge[0] += dedge[0] * dy;
-			edge[1].p.x += dedge[1].p.x * dy;
-			edge[0].p.y = edge[1].p.y = (float)top; // ?
+			l += dl * dy;
+			r += dr * dy;
 		}
-
-		ASSERT(top >= bottom || (int)((edge[1].p.y - edge[0].p.y) * 10) == 0);
 
 		for(; top < bottom; top++)
 		{
 			if((top % m_threads) == m_id) 
 			{
-				GSVector4i lr(edge[0].p.upl(edge[1].p).ceil());
+				GSVector4i lr(l.p.upl(r).ceil());
 
 				int left = lr.x;
 				int right = lr.y;
@@ -449,38 +500,38 @@ void GSRasterizer::DrawTriangle(Vertex* vertices)
 
 				if(right > left)
 				{
-					scan = edge[0];
+					Vertex scan = l;
 
-					if(edge[0].p.x < (float)left)
+					float px = (float)left - l.p.x;
+
+					if(px > 0)
 					{
-						scan += dscan * ((float)left - edge[0].p.x);
-						scan.p.x = (float)left; // ?
+						scan += dscan * px;
 					}
 
 					(this->*m_dsf)(top, left, right, scan);
 				}
 			}
 
-			// for(int j = 0; j < 2; j++) edge[j] += dedge[j];
-			edge[0] += dedge[0];
-			edge[1].p += dedge[1].p;
-		}
-
-		if(v[1].p.y < v[2].p.y)
-		{
-			edge[ledge] = v[1];
-			dedge[ledge] = (v[2] - v[1]) / (v[2].p - v[1].p).yyyy();
-			edge[ledge] += dedge[ledge] * (edge[ledge].p.ceil() - edge[ledge].p).yyyy();
+			l += dl;
+			r += dr;
 		}
 	}
 }
 
 void GSRasterizer::DrawSprite(Vertex* vertices)
 {
-	Vertex v[4] = {vertices[0], vertices[1], vertices[2], vertices[3]};
+	Vertex v[4];
+	
+	int a = 0, b = 1, c = 2, d = 3;
 
-	if(v[2].p.y < v[0].p.y) {Vertex::Exchange(&v[0], &v[2]); Vertex::Exchange(&v[1], &v[3]);}
-	if(v[1].p.x < v[0].p.x) {Vertex::Exchange(&v[0], &v[1]); Vertex::Exchange(&v[2], &v[3]);}
+	if(vertices[c].p.y < vertices[a].p.y) {int i = a; a = c; c = i; i = b; b = d; d = i;}
+	if(vertices[b].p.x < vertices[a].p.x) {int i = a; a = b; b = i; i = c; c = d; c = i;}
+
+	v[0] = vertices[a];
+	v[1] = vertices[b];
+	v[2] = vertices[c];
+	v[3] = vertices[d];
 
 	__m128d tb = _mm_castps_pd(v[0].p.upl(v[2].p));
 	__m128d lr = _mm_castps_pd(v[0].p.upl(v[1].p));

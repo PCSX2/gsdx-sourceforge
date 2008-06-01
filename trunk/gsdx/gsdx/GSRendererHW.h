@@ -456,7 +456,7 @@ protected:
 	{
 		#pragma region dbzbt2 palette readback (cannot detect yet, when fetching the texture later)
 
-		if(m_crc == CRC::DBZBT2_US)
+		if(m_crc == CRC::DBZBT2_US || m_crc == CRC::DBZBT2_EU)
 		{
 			DWORD FBP = m_context->FRAME.Block();
 			DWORD TBP0 = m_context->TEX0.TBP0;
@@ -480,7 +480,7 @@ protected:
 	{
 		#pragma region dbzbt2 palette should stay 64 x 64
 
-		if(m_crc == CRC::DBZBT2_US)
+		if(m_crc == CRC::DBZBT2_US || m_crc == CRC::DBZBT2_EU)
 		{
 			DWORD FBP = m_context->FRAME.Block();
 

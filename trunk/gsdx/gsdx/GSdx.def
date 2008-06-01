@@ -4,31 +4,31 @@ LIBRARY      "GSdx"
 
 EXPORTS
     ; Explicit exports can go here
-	PS2EgetLibType		
-	PS2EgetLibName		
-	PS2EgetLibVersion2	
-	PS2EgetCpuPlatform
-	GSsetBaseMem
-	GSinit				
-	GSshutdown			
-	GSopen				
-	GSclose		
-	GSreset
-	GSwriteCSR		
-	GSgifSoftReset
-	GSgifTransfer1		
-	GSgifTransfer2		
-	GSgifTransfer3		
-	GSvsync				
-	GSmakeSnapshot		
-	GSkeyEvent			
-	GSfreeze            
-	GSconfigure			
-	GStest				
-	GSabout				
-	GSreadFIFO
-	GSreadFIFO2
-	GSirqCallback
-	GSsetGameCRC
-	GSsetFrameSkip
-	GSReplay
+	PS2EgetLibType		@1
+	PS2EgetLibName		@2
+	PS2EgetLibVersion2	@3
+	PS2EgetCpuPlatform	@4
+	GSsetBaseMem		@5
+	GSinit				@6
+	GSshutdown			@7
+	GSopen				@8
+	GSclose				@9
+	GSreset				@10
+	GSwriteCSR			@11
+	GSgifSoftReset		@12
+	GSgifTransfer1		@13
+	GSgifTransfer2		@14
+	GSgifTransfer3		@15
+	GSvsync				@16
+	GSmakeSnapshot		@17
+	GSkeyEvent			@18
+	GSfreeze            @19
+	GSconfigure			@20
+	GStest				@21
+	GSabout				@22
+	GSreadFIFO			@23
+	GSreadFIFO2			@24
+	GSirqCallback		@25
+	GSsetGameCRC		@26
+	GSsetFrameSkip		@27
+	GSReplay			@28
