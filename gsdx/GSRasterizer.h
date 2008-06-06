@@ -104,16 +104,23 @@ private:
 	};
 
 	CRect m_scissor;
-	DWORD* m_cache;
-	DWORD m_page[(1024 / (1 << TEXTURE_CACHE_HEIGHT)) * (1024 / (1 << TEXTURE_CACHE_WIDTH))];
-	DWORD m_pagehash;
-	DWORD m_pagedirty;
 	CSimpleMap<DWORD, ColumnOffset*> m_comap;
 	ColumnOffset* m_fbco;
 	ColumnOffset* m_zbco;
 	ScanlineSelector m_sel;
 	ScanlineEnvironment* m_slenv;
 	bool m_solidrect;
+
+	struct TextureCache
+	{
+		DWORD texture[1024 * 1024];
+		DWORD clut[256];
+		DWORD page[1 << (10 - TEXTURE_CACHE_HEIGHT)];
+		DWORD hash;
+		bool dirty;
+	};
+	
+	TextureCache* m_tc;
 
 	void SetupColumnOffset();
 
@@ -137,18 +144,13 @@ private:
 
 	__forceinline void FetchTexel(int x, int y)
 	{
-		int i = x >> TEXTURE_CACHE_WIDTH;
-		int j = y & ~((1 << TEXTURE_CACHE_HEIGHT) - 1);
-		int k = 10 - (TEXTURE_CACHE_WIDTH + TEXTURE_CACHE_HEIGHT);
+		DWORD i = 1 << (x >> (10 - TEXTURE_CACHE_WIDTH));
+		DWORD j = y >> TEXTURE_CACHE_HEIGHT;
 
-		if(k > 0) i += j << k;
-		else if(k < 0) i += j >> -k;
-		else i += j;
-
-		if(m_page[i] != m_pagehash)
+		if((m_tc->page[j] & i) == 0)
 		{
-			m_page[i] = m_pagehash;
-			m_pagedirty = true;
+			m_tc->page[j] |= i;
+			m_tc->dirty = true;
 
 			FetchTexture(x, y);
 		}
@@ -156,7 +158,7 @@ private:
 
 	__forceinline DWORD ReadTexelNoFetch(int x, int y)
 	{
-		return m_cache[y * 1024 + x];
+		return m_tc->texture[y * 1024 + x];
 	}
 
 	__forceinline DWORD ReadTexel(int x, int y)

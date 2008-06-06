@@ -38,7 +38,6 @@ protected:
 	GSRasterizer* m_rst;
 	CAtlList<GSRasterizerMT*> m_rmt;
 	Texture m_texture[2];
-	DWORD m_fbp;
 
 	void ResetDevice() 
 	{
@@ -244,13 +243,6 @@ protected:
 
 	void Draw()
 	{
-		if(m_fbp != m_context->FRAME.Block())
-		{
-			//InvalidateTextureCache();
-
-			m_fbp = m_context->FRAME.Block();
-		}
-
 		if(s_dump)
 		{
 			CString str;
@@ -304,7 +296,7 @@ protected:
 
 	void InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r)
 	{
-		//InvalidateTextureCache();
+		InvalidateTextureCache();
 	}
 
 	void InvalidateTextureCache()
@@ -336,8 +328,6 @@ public:
 
 			m_rmt.AddTail(r);
 		}
-
-		m_fbp = (DWORD)~0;
 	}
 
 	virtual ~GSRendererSW()

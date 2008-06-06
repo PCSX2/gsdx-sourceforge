@@ -598,13 +598,6 @@ template<int i> void GSState::GIFRegHandlerTEX0(GIFReg* r)
 		Flush(); 
 	}
 
-	bool invalidate = false;
-
-	if(m_env.CTXT[i].TEX0.TBP0 == r->TEX0.TBP0)
-	{
-		invalidate = true;
-	}
-
 	m_env.CTXT[i].TEX0 = r->TEX0;
 
 	// ASSERT(m_env.CTXT[i].TEX0.TW <= 10 && m_env.CTXT[i].TEX0.TH <= 10 && (m_env.CTXT[i].TEX0.CPSM & ~0xa) == 0);
@@ -618,15 +611,7 @@ template<int i> void GSState::GIFRegHandlerTEX0(GIFReg* r)
 
 	FlushWrite();
 
-	if(m_mem.WriteCLUT(r->TEX0, m_env.TEXCLUT))
-	{
-		invalidate = true;
-	}
-
-	if(invalidate)
-	{
-		InvalidateTextureCache();
-	}
+	m_mem.WriteCLUT(r->TEX0, m_env.TEXCLUT);
 }
 
 template<int i> void GSState::GIFRegHandlerCLAMP(GIFReg* r)
@@ -799,7 +784,7 @@ void GSState::GIFRegHandlerTEXFLUSH(GIFReg* r)
 {
 	TRACE(_T("TEXFLUSH\n"));
 
-	InvalidateTextureCache();
+	// InvalidateTextureCache();
 }
 
 template<int i> void GSState::GIFRegHandlerSCISSOR(GIFReg* r)
