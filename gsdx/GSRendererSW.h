@@ -38,6 +38,7 @@ protected:
 	GSRasterizer* m_rst;
 	CAtlList<GSRasterizerMT*> m_rmt;
 	Texture m_texture[2];
+	DWORD m_fbp;
 
 	void ResetDevice() 
 	{
@@ -90,7 +91,6 @@ protected:
 
 		return true;
 	}
-
 
 	void VertexKick(bool skip)
 	{
@@ -244,6 +244,13 @@ protected:
 
 	void Draw()
 	{
+		if(m_fbp != m_context->FRAME.Block())
+		{
+			//InvalidateTextureCache();
+
+			m_fbp = m_context->FRAME.Block();
+		}
+
 		if(s_dump)
 		{
 			CString str;
@@ -260,6 +267,8 @@ protected:
 			m_mem.SetupCLUT32(m_context->TEX0, m_env.TEXA);
 		}
 
+		*m_sync = 0;
+
 		POSITION pos = m_rmt.GetHeadPosition();
 
 		while(pos)
@@ -269,13 +278,9 @@ protected:
 			r->BeginDraw(m_vertices, m_count);
 		}
 
-		*m_sync = (1 << m_threads) - 1;
-
 		// 1st thread is this thread
 
 		int prims = m_rst->Draw(m_vertices, m_count);
-
-		InterlockedBitTestAndReset(m_sync, 0); 
 
 		// wait for the other threads to finish
 
@@ -295,6 +300,11 @@ protected:
 			str.Format(_T("c:\\temp1\\_%05d_f%I64d_rz1_%05x_%d.bmp"), s_n-1, m_perfmon.GetFrame(), m_context->ZBUF.Block(), m_context->ZBUF.PSM);
 			if(s_savez) {m_mem.SaveBMP(str, m_context->ZBUF.Block(), m_context->FRAME.FBW, m_context->ZBUF.PSM, GetFrameSize(1).cx, 512);}
 		}
+	}
+
+	void InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r)
+	{
+		//InvalidateTextureCache();
 	}
 
 	void InvalidateTextureCache()
@@ -326,6 +336,8 @@ public:
 
 			m_rmt.AddTail(r);
 		}
+
+		m_fbp = (DWORD)~0;
 	}
 
 	virtual ~GSRendererSW()

@@ -24,7 +24,9 @@
 #include "GSState.h"
 #include "GSVertexSW.h"
 
-// texture cache size should be the size of the page (depends on psm, ttbl->pgs), but the min fetchable 4 bpp block size (32x16) is the fastest and 99% ok
+// - texture cache size should be the size of the page (depends on psm, ttbl->pgs), 
+// but the min fetchable 4 bpp block size (32x16) is the fastest and 99% ok
+// - there should be only one page in the cache, addressing another is equal to a TEXFLUSH
 
 #define TEXTURE_CACHE_WIDTH 5
 #define TEXTURE_CACHE_HEIGHT 4
@@ -197,63 +199,13 @@ class GSRasterizerMT : public GSRasterizer
     DWORD m_ThreadId;
     HANDLE m_hThread;
 
-	DWORD ThreadProc()
-	{
-		// _mm_setcsr(MXCSR);
+	static DWORD WINAPI StaticThreadProc(LPVOID lpParam);
 
-		while(!m_exit)
-		{
-			if(*m_sync & (1 << m_id))
-			{
-				Draw(m_vertices, m_count);
-
-				InterlockedBitTestAndReset(m_sync, m_id);
-			}
-			else
-			{
-				_mm_pause();
-			}
-		}
-
-		return 0;
-	}
-
-	static DWORD WINAPI StaticThreadProc(LPVOID lpParam)
-	{
-		return ((GSRasterizerMT*)lpParam)->ThreadProc();
-	}
+	DWORD ThreadProc();
 
 public:
-	GSRasterizerMT(GSState* state, int id, int threads, long* sync)
-		: GSRasterizer(state, id, threads)
-		, m_vertices(NULL)
-		, m_count(0)
-		, m_sync(sync)
-		, m_exit(false)
-		, m_ThreadId(0)
-		, m_hThread(NULL)
-	{
-		m_hThread = CreateThread(NULL, 0, StaticThreadProc, (LPVOID)this, 0, &m_ThreadId);
-	}
+	GSRasterizerMT(GSState* state, int id, int threads, long* sync);
+	virtual ~GSRasterizerMT();
 
-	virtual ~GSRasterizerMT()
-	{
-		if(m_hThread != NULL)
-		{
-			m_exit = true;
-
-			if(WaitForSingleObject(m_hThread, 5000) != WAIT_OBJECT_0)
-			{
-				TerminateThread(m_hThread, 1);
-			}
-
-			CloseHandle(m_hThread);
-		}
-	}
-
-	void BeginDraw(Vertex* vertices, int count)
-	{
-		m_vertices = vertices;
-		m_count = count;
-	}
+	void BeginDraw(Vertex* vertices, int count);
 };

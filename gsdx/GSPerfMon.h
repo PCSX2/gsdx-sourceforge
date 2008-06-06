@@ -21,8 +21,6 @@
 
 #pragma once
 
-#include "x86.h"
-
 class GSPerfMon
 {
 public:
