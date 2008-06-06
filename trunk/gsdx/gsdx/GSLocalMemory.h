@@ -972,24 +972,27 @@ public:
 		switch(PSM)
 		{
 		case PSM_PSMCT32: case PSM_PSMZ32: 
-			c.u32[0] = readPixel32(addr.u32[0]);
-			c.u32[1] = readPixel32(addr.u32[1]);
-			c.u32[2] = readPixel32(addr.u32[2]);
-			c.u32[3] = readPixel32(addr.u32[3]);
+			c = GSVector4i(
+				(int)readPixel32(addr.u32[0]), 
+				(int)readPixel32(addr.u32[1]), 
+				(int)readPixel32(addr.u32[2]), 
+				(int)readPixel32(addr.u32[3]));
 			break;
 		case PSM_PSMCT24: case PSM_PSMZ24: 
-			c.u32[0] = readPixel32(addr.u32[0]);
-			c.u32[1] = readPixel32(addr.u32[1]);
-			c.u32[2] = readPixel32(addr.u32[2]);
-			c.u32[3] = readPixel32(addr.u32[3]);
+			c = GSVector4i(
+				(int)readPixel32(addr.u32[0]), 
+				(int)readPixel32(addr.u32[1]), 
+				(int)readPixel32(addr.u32[2]), 
+				(int)readPixel32(addr.u32[3]));
 			c = (c & 0x00ffffff) | 0x80000000;
 			break;
 		case PSM_PSMCT16: case PSM_PSMCT16S: 
 		case PSM_PSMZ16: case PSM_PSMZ16S: 
-			c.u32[0] = readPixel16(addr.u32[0]);
-			c.u32[1] = readPixel16(addr.u32[1]);
-			c.u32[2] = readPixel16(addr.u32[2]);
-			c.u32[3] = readPixel16(addr.u32[3]);
+			c = GSVector4i(
+				(int)readPixel16(addr.u32[0]), 
+				(int)readPixel16(addr.u32[1]), 
+				(int)readPixel16(addr.u32[2]), 
+				(int)readPixel16(addr.u32[3]));
 			c = ((c & 0x001f) << 3) | ((c & 0x03e0) << 6) | ((c & 0x7c00) << 9) | ((c & 0x8000) << 16); 
 			break;
 		default: 
@@ -1050,6 +1053,7 @@ public:
 	void ReadCLUT32(GIFRegTEX0 TEX0, GIFRegTEXA TEXA, DWORD* pCLUT32);
 	void SetupCLUT32(GIFRegTEX0 TEX0, GIFRegTEXA TEXA);
 	void CopyCLUT32(DWORD* pCLUT32, int n);
+	DWORD* GetCLUT32() {return m_pCLUT32;}
 
 	// 
 

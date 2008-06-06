@@ -36,13 +36,12 @@ GSRasterizer::GSRasterizer(GSState* state, int id, int threads)
 	, m_fbco(NULL)
 	, m_zbco(NULL)
 {
-	m_cache = (DWORD*)_aligned_malloc(1024 * 1024 * sizeof(m_cache[0]), 16);
-	m_pagehash = 0;
-	m_pagedirty = true;
-
-	m_slenv = (ScanlineEnvironment*)_aligned_malloc(sizeof(ScanlineEnvironment), 16);
+	m_tc = (TextureCache*)_aligned_malloc(sizeof(TextureCache), 16);
+	m_tc->dirty = true;
 
 	InvalidateTextureCache();
+
+	m_slenv = (ScanlineEnvironment*)_aligned_malloc(sizeof(ScanlineEnvironment), 16);
 
 	// w00t :P
 
@@ -82,7 +81,8 @@ GSRasterizer::GSRasterizer(GSState* state, int id, int threads)
 
 GSRasterizer::~GSRasterizer()
 {
-	_aligned_free(m_cache);
+	_aligned_free(m_tc);
+
 	_aligned_free(m_slenv);
 
 	for(int i = 0, j = m_comap.GetSize(); i < j; i++)
@@ -95,12 +95,12 @@ GSRasterizer::~GSRasterizer()
 
 void GSRasterizer::InvalidateTextureCache() 
 {
-	if(m_pagedirty)
+	if(m_tc->dirty)
 	{
-		memset(m_page, ~0, sizeof(m_page));
+		m_tc->hash = 0;
+		m_tc->dirty = false;
+		memset(m_tc->page, 0, sizeof(m_tc->page));
 	}
-
-	m_pagedirty = false;
 }
 
 int GSRasterizer::Draw(Vertex* vertices, int count)
@@ -234,13 +234,32 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 
 	if(PRIM->TME)
 	{
-		DWORD pagehash = context->TEX0.ai32[0];// ^ context->TEX0.ai32[1] ^ env.TEXA.ai32[0] ^ env.TEXA.ai32[1] ^ env.TEXCLUT.ai32[0];
+		DWORD hash = context->TEX0.ai32[0];// ^ context->TEX0.ai32[1] ^ env.TEXA.ai32[0] ^ env.TEXA.ai32[1] ^ env.TEXCLUT.ai32[0];
 
-		if(m_pagehash != pagehash)
+		DWORD* clut = m_state->m_mem.GetCLUT32();
+		DWORD pal = GSLocalMemory::m_psm[context->TEX0.PSM].pal;
+
+		if(m_tc->hash == hash)
 		{
-//			InvalidateTextureCache();
+			if(pal > 0)
+			{
+				if(memcmp(m_tc->clut, clut, pal * sizeof(clut[0])) != 0)
+				{
+					m_tc->hash = 0;
+				}
+			}
+		}
 
-			m_pagehash = pagehash;
+		if(m_tc->hash != hash)
+		{
+			InvalidateTextureCache();
+
+			m_tc->hash = hash;
+
+			if(pal > 0)
+			{
+				memcpy(m_tc->clut, clut, pal * sizeof(clut[0]));
+			}
 		}
 
 		short tw = (short)(1 << context->TEX0.TW);
@@ -666,7 +685,7 @@ void GSRasterizer::FetchTexture(int x, int y)
 
 	CRect r(x, y, x + xs, y + ys);
 
-	DWORD* dst = &m_cache[y * 1024 + x];
+	DWORD* dst = &m_tc->texture[y * 1024 + x];
 
 	(m_state->m_mem.*m_state->m_context->ttbl->ust)(r, (BYTE*)dst, 1024 * 4, m_state->m_context->TEX0, m_state->m_env.TEXA);
 
