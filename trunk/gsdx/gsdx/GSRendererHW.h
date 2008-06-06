@@ -56,20 +56,24 @@ protected:
 
 			int i = 0;
 
-			for(int count = m_count - 5; i < count; i += 6) // 6 regs for loading, 2 regs for min/max
+			for(int count = m_count - 3; i < count; i += 4)
 			{
-				min = _mm_min_ps(m_vertices[i+0].m128[0], min);
-				max = _mm_max_ps(m_vertices[i+0].m128[0], max);
-				min = _mm_min_ps(m_vertices[i+1].m128[0], min);
-				max = _mm_max_ps(m_vertices[i+1].m128[0], max);
-				min = _mm_min_ps(m_vertices[i+2].m128[0], min);
-				max = _mm_max_ps(m_vertices[i+2].m128[0], max);
-				min = _mm_min_ps(m_vertices[i+3].m128[0], min);
-				max = _mm_max_ps(m_vertices[i+3].m128[0], max);
-				min = _mm_min_ps(m_vertices[i+4].m128[0], min);
-				max = _mm_max_ps(m_vertices[i+4].m128[0], max);
-				min = _mm_min_ps(m_vertices[i+5].m128[0], min);
-				max = _mm_max_ps(m_vertices[i+5].m128[0], max);
+				__m128 min0 = _mm_min_ps(m_vertices[i+0].m128[0], min);
+				__m128 max0 = _mm_max_ps(m_vertices[i+0].m128[0], max);
+				__m128 min1 = _mm_min_ps(m_vertices[i+1].m128[0], min);
+				__m128 max1 = _mm_max_ps(m_vertices[i+1].m128[0], max);
+				__m128 min2 = _mm_min_ps(m_vertices[i+2].m128[0], min);
+				__m128 max2 = _mm_max_ps(m_vertices[i+2].m128[0], max);
+				__m128 min3 = _mm_min_ps(m_vertices[i+3].m128[0], min);
+				__m128 max3 = _mm_max_ps(m_vertices[i+3].m128[0], max);
+
+				min0 = _mm_min_ps(min0, min1);
+				max0 = _mm_max_ps(max0, max1);
+				min2 = _mm_min_ps(min2, min3);
+				max2 = _mm_max_ps(max2, max3);
+
+				min = _mm_min_ps(min0, min2);
+				max = _mm_max_ps(max0, max2);
 			}
 
 			for(; i < m_count; i++)
@@ -383,6 +387,8 @@ protected:
 			{
 				m_dev.ClearDepth(ds, 0);
 			}
+
+			return true;
 		}
 
 		#pragma endregion
@@ -398,6 +404,8 @@ protected:
 					m_vertices[i].r = (m_vertices[i].g + m_vertices[i].b) / 2;
 				}
 			}
+
+			return true;
 		}
 
 		#pragma endregion
@@ -445,6 +453,8 @@ protected:
 					}
 				}
 			}
+
+			return true;
 		}
 
 		#pragma endregion
@@ -514,5 +524,15 @@ public:
 	virtual ~GSRendererHW()
 	{
 		delete m_tc;
+	}
+
+	void SetGameCRC(DWORD crc, int options)
+	{
+		__super::SetGameCRC(crc, options);
+
+		if(crc == CRC::JackieChanAdv)
+		{
+			m_width = 1280;
+		}
 	}
 };

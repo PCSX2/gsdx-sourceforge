@@ -867,6 +867,8 @@ void GSRasterizer::InitEx()
 	m_dsmap[0x4451b8c8] = &GSRasterizer::DrawScanlineEx<0x4451b8c8>;
 	m_dsmap[0x2a51a8e8] = &GSRasterizer::DrawScanlineEx<0x2a51a8e8>;
 	m_dsmap[0x6251a8c8] = &GSRasterizer::DrawScanlineEx<0x6251a8c8>;
+
+
 /*
 	CAtlMap<DWORD, bool> dsmap;
 

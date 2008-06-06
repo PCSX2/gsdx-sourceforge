@@ -234,11 +234,13 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 
 	if(PRIM->TME)
 	{
-		if(m_pagehash != context->TEX0.ai32[0])
-		{
-			// memset(m_page, ~0, sizeof(m_page));
+		DWORD pagehash = context->TEX0.ai32[0];// ^ context->TEX0.ai32[1] ^ env.TEXA.ai32[0] ^ env.TEXA.ai32[1] ^ env.TEXCLUT.ai32[0];
 
-			m_pagehash = context->TEX0.ai32[0];
+		if(m_pagehash != pagehash)
+		{
+//			InvalidateTextureCache();
+
+			m_pagehash = pagehash;
 		}
 
 		short tw = (short)(1 << context->TEX0.TW);
@@ -393,19 +395,30 @@ void GSRasterizer::DrawLine(Vertex* v)
 	}
 }
 
+static const int s_abc[8][4] = 
+{
+	{0, 1, 2, 0},
+	{1, 0, 2, 0},
+	{0, 0, 0, 0},
+	{1, 2, 0, 0},
+	{0, 2, 1, 0},
+	{0, 0, 0, 0},
+	{2, 0, 1, 0},
+	{2, 1, 0, 0},
+};
+
 void GSRasterizer::DrawTriangle(Vertex* vertices)
 {
 	Vertex v[4];
 
-	int a = 0, b = 1, c = 2;
+	GSVector4 aabb = vertices[0].p.yyyy(vertices[1].p);
+	GSVector4 bccb = vertices[1].p.yyyy(vertices[2].p).xzzx();
 
-	if(vertices[b].p.y < vertices[a].p.y) {int i = a; a = b; b = i;}
-	if(vertices[c].p.y < vertices[a].p.y) {int i = a; a = c; c = i;}
-	if(vertices[c].p.y < vertices[b].p.y) {int i = b; b = c; c = i;}
+	int i = _mm_movemask_ps(bccb < aabb) & 7;
 
-	v[0] = vertices[a];
-	v[1] = vertices[b];
-	v[3] = vertices[c];
+	v[0] = vertices[s_abc[i][0]];
+	v[1] = vertices[s_abc[i][1]];
+	v[3] = vertices[s_abc[i][2]];
 
 	if(v[0].p.y >= v[3].p.y) return;
 
@@ -830,8 +843,6 @@ else if(steps == 3) g_slp3++;
 		{
 			GSVector4i zd0123;
 
-			// TODO: benchmark this, it may not be faster, but compiles to only 3 instructions per line for a 32 bit z buffer (extract, mov, insert)
-
 			for(int i = 0; i < pixels; i++)
 			{
 				zd0123.u32[i] = m_state->m_mem.readPixelX(zpsm, za.u32[i]);
@@ -1108,3 +1119,67 @@ else if(steps == 3) g_slp3++;
 		if(iip) a += slenv->da;
 	}
 }
+
+//
+
+GSRasterizerMT::GSRasterizerMT(GSState* state, int id, int threads, long* sync)
+	: GSRasterizer(state, id, threads)
+	, m_vertices(NULL)
+	, m_count(0)
+	, m_sync(sync)
+	, m_exit(false)
+	, m_ThreadId(0)
+	, m_hThread(NULL)
+{
+	m_hThread = CreateThread(NULL, 0, StaticThreadProc, (LPVOID)this, 0, &m_ThreadId);
+}
+
+GSRasterizerMT::~GSRasterizerMT()
+{
+	if(m_hThread != NULL)
+	{
+		m_exit = true;
+
+		if(WaitForSingleObject(m_hThread, 5000) != WAIT_OBJECT_0)
+		{
+			TerminateThread(m_hThread, 1);
+		}
+
+		CloseHandle(m_hThread);
+	}
+}
+
+void GSRasterizerMT::BeginDraw(Vertex* vertices, int count)
+{
+	m_vertices = vertices;
+	m_count = count;
+
+	InterlockedBitTestAndSet(m_sync, m_id);
+}
+
+DWORD WINAPI GSRasterizerMT::StaticThreadProc(LPVOID lpParam)
+{
+	return ((GSRasterizerMT*)lpParam)->ThreadProc();
+}
+
+DWORD GSRasterizerMT::ThreadProc()
+{
+	// _mm_setcsr(MXCSR);
+
+	while(!m_exit)
+	{
+		if(*m_sync & (1 << m_id))
+		{
+			Draw(m_vertices, m_count);
+
+			InterlockedBitTestAndReset(m_sync, m_id);
+		}
+		else
+		{
+			_mm_pause();
+		}
+	}
+
+	return 0;
+}
+

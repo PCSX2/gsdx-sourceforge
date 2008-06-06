@@ -452,7 +452,7 @@ void GSTextureCache10::GSTextureHW10::Update()
 
 	if(m_renderer->m_psrr)
 	{
-		m_renderer->m_mem.ReadTextureNP2(r, bits, pitch, m_renderer->m_context->TEX0, m_renderer->m_env.TEXA, m_renderer->m_context->CLAMP);
+		m_renderer->m_mem.ReadTextureNPNC(r, bits, pitch, m_renderer->m_context->TEX0, m_renderer->m_env.TEXA, m_renderer->m_context->CLAMP);
 	}
 	else
 	{

@@ -797,6 +797,8 @@ void GSState::GIFRegHandlerFOGCOL(GIFReg* r)
 
 void GSState::GIFRegHandlerTEXFLUSH(GIFReg* r)
 {
+	TRACE(_T("TEXFLUSH\n"));
+
 	InvalidateTextureCache();
 }
 
@@ -1068,11 +1070,11 @@ void GSState::FlushWrite(BYTE* mem, int len)
 void GSState::Write(BYTE* mem, int len)
 {
 	/*
+	*/
 	TRACE(_T("Write len=%d DBP=%05x DPSM=%d DSAX=%d DSAY=%d RRW=%d RRH=%d\n"), 
 		  len, (int)m_env.BITBLTBUF.DBP, (int)m_env.BITBLTBUF.DPSM, 
 		  (int)m_env.TRXPOS.DSAX, (int)m_env.TRXPOS.DSAY,
 		  (int)m_env.TRXREG.RRW, (int)m_env.TRXREG.RRH);
-	*/
 
 	if(len == 0) return;
 
@@ -1288,13 +1290,16 @@ void GSState::Transfer(BYTE* mem, int size, int index)
 				m_path3hack = 1;
 			}
 
-			if(path.tag.PRE) // TODO: this should be ignored in image mode 
+			if(path.tag.PRE)
 			{
-				ASSERT(path.tag.FLG != GIF_FLG_IMAGE);
+				ASSERT(path.tag.FLG != GIF_FLG_IMAGE); // kingdom hearts
 
-				GIFReg r;
-				r.i64 = path.tag.PRIM;
-				(this->*m_fpGIFRegHandlers[GIF_A_D_REG_PRIM])(&r);
+				if((path.tag.FLG & 2) == 0)
+				{
+					GIFReg r;
+					r.i64 = path.tag.PRIM;
+					(this->*m_fpGIFRegHandlers[GIF_A_D_REG_PRIM])(&r);
+				}
 			}
 
 			if(path.tag.EOP)
@@ -1318,7 +1323,7 @@ void GSState::Transfer(BYTE* mem, int size, int index)
 			{
 			case GIF_FLG_PACKED:
 
-				// first try a shurtcut for a very common case
+				// first try a shortcut for a very common case
 
 				if(path.nreg == 0 && path.tag.NREG == 1 && size >= path.tag.NLOOP && path.GetReg() == GIF_REG_A_D)
 				{
@@ -2144,6 +2149,7 @@ bool GSState::IsBadFrame(int& skip)
 		m_crc2gsc[CRC::SFEX3_US] = GSC_SFEX3;
 		m_crc2gsc[CRC::SFEX3_US2] = GSC_SFEX3;
 		m_crc2gsc[CRC::Bully_US] = GSC_Bully;
+		m_crc2gsc[CRC::Bully_EU] = GSC_Bully;		
 		m_crc2gsc[CRC::SoTC_US] = GSC_SoTC;
 		m_crc2gsc[CRC::SoTC_EU] = GSC_SoTC; // not tested
 		m_crc2gsc[CRC::OnePieceGrandAdventure_US] = GSC_OnePieceGrandAdventure;
@@ -2167,6 +2173,7 @@ bool GSState::IsBadFrame(int& skip)
 		m_crc2gsc[CRC::GodOfWar_EU] = GSC_GodOfWar;
 		m_crc2gsc[CRC::GodOfWar_1] = GSC_GodOfWar;
 		m_crc2gsc[CRC::GodOfWar_2] = GSC_GodOfWar;
+		m_crc2gsc[CRC::GodOfWar2_RU] = GSC_GodOfWar;
 	}
 
 	if(CAtlMap<DWORD, GetSkipCount>::CPair* pair = m_crc2gsc.Lookup(m_crc))

@@ -76,6 +76,11 @@ public:
 		m = _mm_set_epi32(w, z, y, x);
 	}
 
+	GSVector4i(char b0, char b1, char b2, char b3, char b4, char b5, char b6, char b7, char b8, char b9, char b10, char b11, char b12, char b13, char b14, char b15) 
+	{
+		m = _mm_set_epi8(b15, b14, b13, b12, b11, b10, b9, b8, b7, b6, b5, b4, b3, b2, b1, b0);
+	}
+
 	GSVector4i(const GSVector4i& v) 
 	{
 		*this = v;
@@ -202,6 +207,13 @@ public:
 	{
 		return GSVector4i(_mm_or_si128(_mm_andnot_si128(mask, m), _mm_and_si128(mask, a)));
 	}
+
+	#if _M_SSE >= 0x301
+	GSVector4i shuffle8(const GSVector4i& mask)
+	{
+		return GSVector4i(_mm_shuffle_epi8(m, mask));
+	}
+	#endif
 
 	GSVector4i ps16(const GSVector4i& a)
 	{
@@ -377,7 +389,8 @@ public:
 
 	static GSVector4i loadh(const void* p)
 	{
-		return GSVector4i(_mm_slli_si128(_mm_loadl_epi64((__m128i*)p), 8));
+		// return GSVector4i(_mm_slli_si128(_mm_loadl_epi64((__m128i*)p), 8));
+		return GSVector4i(_mm_castps_si128(_mm_loadh_pi(_mm_setzero_ps(), (__m64*)p)));
 	}
 
 	static GSVector4i loadu(const void* p)
@@ -387,7 +400,9 @@ public:
 
 	static GSVector4i loadu(const void* pl, const void* ph)
 	{
-		return loadl(pl) | loadh(ph);
+		// return loadl(pl) | loadh(ph);
+		__m128i lo = _mm_loadl_epi64((__m128i*)pl);
+		return GSVector4i(_mm_castps_si128(_mm_loadh_pi(_mm_castsi128_ps(lo), (__m64*)ph)));
 	}
 
 	static void storel(void* p, const GSVector4i& v)
@@ -397,7 +412,8 @@ public:
 
 	static void storeh(void* p, const GSVector4i& v)
 	{
-		_mm_storel_epi64((__m128i*)p, _mm_srli_si128(v.m, 8));
+		// _mm_storel_epi64((__m128i*)p, _mm_srli_si128(v.m, 8));
+		_mm_storeh_pi((__m64*)p, _mm_castsi128_ps(v.m));
 	}
 
 	static void storeu(void* p, const GSVector4i& v)
@@ -414,6 +430,75 @@ public:
 	__forceinline static void transpose(GSVector4i& a, GSVector4i& b, GSVector4i& c, GSVector4i& d)
 	{
 		_MM_TRANSPOSE4_SI128(a.m, b.m, c.m, d.m);
+	}
+
+	__forceinline static void sw64(GSVector4i& a, GSVector4i& b, GSVector4i& c, GSVector4i& d)
+	{
+		GSVector4i e = a.upl64(b);
+		GSVector4i f = a.uph64(b);
+		GSVector4i g = c.upl64(d);
+		GSVector4i h = c.uph64(d);
+
+		a = e;
+		b = g;
+		c = f;
+		d = h;
+	}
+
+	__forceinline static void sw32(GSVector4i& a, GSVector4i& b, GSVector4i& c, GSVector4i& d)
+	{
+		GSVector4i e = a.upl32(b);
+		GSVector4i f = a.uph32(b);
+		GSVector4i g = c.upl32(d);
+		GSVector4i h = c.uph32(d);
+
+		a = e;
+		b = g;
+		c = f;
+		d = h;
+	}
+
+	__forceinline static void sw16(GSVector4i& a, GSVector4i& b, GSVector4i& c, GSVector4i& d)
+	{
+		GSVector4i e = a.upl16(b);
+		GSVector4i f = a.uph16(b);
+		GSVector4i g = c.upl16(d);
+		GSVector4i h = c.uph16(d);
+
+		a = e;
+		b = g;
+		c = f;
+		d = h;
+	}
+
+	__forceinline static void sw8(GSVector4i& a, GSVector4i& b, GSVector4i& c, GSVector4i& d)
+	{
+		GSVector4i e = a.upl8(b);
+		GSVector4i f = a.uph8(b);
+		GSVector4i g = c.upl8(d);
+		GSVector4i h = c.uph8(d);
+
+		a = e;
+		b = g;
+		c = f;
+		d = h;
+	}
+
+	__forceinline static void sw4(GSVector4i& a, GSVector4i& b, GSVector4i& c, GSVector4i& d)
+	{
+		GSVector4i mask(0x0f0f0f0f);
+
+		GSVector4i e = a;
+		GSVector4i f = b;
+		GSVector4i g = c;
+		GSVector4i h = d;
+
+		a = (f << 4).blend(e, mask);
+		b = f.blend(e >> 4, mask);
+		c = (h << 4).blend(g, mask);
+		d = h.blend(g >> 4, mask);
+
+		sw8(a, b, c, d);
 	}
 
 	void operator += (const GSVector4i& v) 
@@ -754,6 +839,16 @@ public:
 		return sat(zero(), GSVector4(scale));
 	}
 
+	GSVector4 minv(const GSVector4& a) const
+	{
+		return GSVector4(_mm_min_ps(m, a));
+	}
+
+	GSVector4 maxv(const GSVector4& a) const
+	{
+		return GSVector4(_mm_max_ps(m, a));
+	}
+
 	GSVector4 blend8(const GSVector4& a, const GSVector4& mask) 
 	{
 		return GSVector4(_mm_blendv_ps(m, a, mask));
@@ -900,7 +995,8 @@ public:
 	}
 
 	#define VECTOR4_SHUFFLE_4(xs, xn, ys, yn, zs, zn, ws, wn) \
-		GSVector4 xs##ys##zs##ws() const {return GSVector4(_mm_shuffle_ps(m, m, _MM_SHUFFLE(wn, zn, yn, xn)));}
+		GSVector4 xs##ys##zs##ws() const {return GSVector4(_mm_shuffle_ps(m, m, _MM_SHUFFLE(wn, zn, yn, xn)));} \
+		GSVector4 xs##ys##zs##ws(const GSVector4& v) const {return GSVector4(_mm_shuffle_ps(m, v.m, _MM_SHUFFLE(wn, zn, yn, xn)));} \
 
 	#define VECTOR4_SHUFFLE_3(xs, xn, ys, yn, zs, zn) \
 		VECTOR4_SHUFFLE_4(xs, xn, ys, yn, zs, zn, x, 0) \
@@ -916,6 +1012,7 @@ public:
 
 	#define VECTOR4_SHUFFLE_1(xs, xn) \
 		GSVector4 xs##4##() const {return GSVector4(_mm_shuffle_ps(m, m, _MM_SHUFFLE(xn, xn, xn, xn)));} \
+		GSVector4 xs##4##(const GSVector4& v) const {return GSVector4(_mm_shuffle_ps(m, v.m, _MM_SHUFFLE(xn, xn, xn, xn)));} \
 		VECTOR4_SHUFFLE_2(xs, xn, x, 0) \
 		VECTOR4_SHUFFLE_2(xs, xn, y, 1) \
 		VECTOR4_SHUFFLE_2(xs, xn, z, 2) \

@@ -11,6 +11,7 @@ public:
 	static DWORD FFXII_EU3;
 	static DWORD FFXII_EU4;
 	static DWORD ShadowHearts;
+	static DWORD ShadowHearts_US; 	
 	static DWORD Okami_US;
 	static DWORD Okami_FR;
 	static DWORD MetalGearSolid3_US;
@@ -23,6 +24,7 @@ public:
 	static DWORD SFEX3_US;
 	static DWORD SFEX3_US2;
 	static DWORD Bully_US;
+	static DWORD Bully_EU;
 	static DWORD SoTC_US;
 	static DWORD SoTC_EU;
 	static DWORD OnePieceGrandAdventure_US;
@@ -46,4 +48,6 @@ public:
 	static DWORD GodOfWar_EU;
 	static DWORD GodOfWar_1;
 	static DWORD GodOfWar_2;
+	static DWORD GodOfWar2_RU;
+	static DWORD JackieChanAdv;
 };

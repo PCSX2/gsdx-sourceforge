@@ -220,7 +220,7 @@ public:
 	int Freeze(freezeData* fd, bool sizeonly);
 	int Defrost(const freezeData* fd);
 	void GetLastTag(UINT32* tag) {*tag = m_path3hack; m_path3hack = 0;}
-	void SetGameCRC(DWORD crc, int options);
+	virtual void SetGameCRC(DWORD crc, int options);
 	void SetFrameSkip(int frameskip);
 };
 
