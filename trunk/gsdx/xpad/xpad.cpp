@@ -129,6 +129,8 @@ public:
 	bool m_analog;
 	bool m_locked;
 	bool m_vibration;
+	BYTE m_small;
+	BYTE m_large;
 	WORD m_buttons;
 	struct {BYTE x, y;} m_left;
 	struct {BYTE x, y;} m_right;
@@ -157,10 +159,12 @@ public:
 	XPad(int pad) 
 		: m_pad(pad)
 		, m_connected(false)
-		, m_ds2native(true)
-		, m_analog(true)
+		, m_ds2native(false)
+		, m_analog(false)
 		, m_locked(false)
 		, m_vibration(true)
+		, m_small(0)
+		, m_large(0)
 		, m_buttons(0xffff)
 	{
 	}
@@ -205,6 +209,15 @@ public:
 				SetAnalog(m_state.Gamepad.sThumbLY, m_left.y, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
 				SetAnalog(m_state.Gamepad.sThumbRX, m_right.x, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
 				SetAnalog(m_state.Gamepad.sThumbRY, m_right.y, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
+
+				if(m_vibration && (m_small || m_large))
+				{
+					XINPUT_VIBRATION vibraton;
+					memset(&vibraton, 0, sizeof(vibraton));
+					vibraton.wLeftMotorSpeed = m_large << 8;
+					vibraton.wRightMotorSpeed = m_small << 8;
+					XInputSetState(m_pad, &vibraton);
+				}
 			}
 			else
 			{
@@ -242,18 +255,30 @@ static class XPadPlugin
 	XPad* m_pad;
 	int m_index;
 	bool m_cfgreaddata;
+	BYTE m_unknown1;
 
 	typedef BYTE (XPadPlugin::*CommandHandler)(int, BYTE);
 
 	CommandHandler m_handlers[256];
 	CommandHandler m_handler;
 
+	BYTE DS2Enabler(int index, BYTE value)
+	{
+		switch(index)
+		{
+		case 2: 
+			return 0x02;
+		case 5: 
+			return 0x5a;
+		}
+
+		return 0;
+	}
+
 	BYTE QueryDS2AnalogMode(int index, BYTE value)
 	{
 		if(m_pad->m_ds2native)
 		{
-			ASSERT(value == 'Z');
-
 			switch(index)
 			{
 			case 0: 
@@ -279,10 +304,10 @@ static class XPadPlugin
 		switch(index)
 		{
 		case 0: 
-			// TODO: value = 0/1 => small motor on/off
+			m_pad->m_small = value ? 128 : 0;
 			break;
 		case 1: 
-			// TODO: value = 0->255 => large motor speed
+			m_pad->m_large = value;
 			break;
 		}
 
@@ -335,7 +360,7 @@ static class XPadPlugin
 		switch(index)
 		{
 		case 0: 
-			return 1;
+			return 3;
 		case 1: 
 			return 2;
 		case 2:
@@ -346,6 +371,46 @@ static class XPadPlugin
 			return 1;
 		}
 
+		return 0;
+	}
+
+	BYTE QueryUnknown1(int index, BYTE value)
+	{
+		switch(index)
+		{
+		case 0: 
+			m_unknown1 = value;
+			return 0;
+		case 1:
+			return 0;
+		case 2:
+			return 1;
+		case 3:
+			return m_unknown1 ? 0x01 : 0x02;
+		case 4:
+			return m_unknown1 ? 0x01 : 0x00;
+		case 5:
+			return m_unknown1 ? 0x14 : 0x0a;
+		}
+
+		return 0;
+	}
+
+	BYTE QueryUnknown2(int index, BYTE value)
+	{
+		switch(index)
+		{
+		case 4:
+			return 2;
+		case 6:
+			return 1;
+		}
+
+		return 0;
+	}
+
+	BYTE QueryUnknown3(int index, BYTE value)
+	{
 		return 0;
 	}
 
@@ -375,9 +440,11 @@ static class XPadPlugin
 		return 0;
 	}
 
+	BYTE m_cmd;
+
 	BYTE UnknownCommand(int index, BYTE value)
 	{
-		TRACE(_T("Unknown command (%08x)\n"), value);
+		TRACE(_T("Unknown command %02x (%d, %02x)\n"), m_cmd, index, value);
 
 		return 0;
 	}
@@ -398,11 +465,15 @@ public:
 			m_handlers[i] = &XPadPlugin::UnknownCommand;
 		}
 
+		m_handlers['@'] = &XPadPlugin::DS2Enabler;
 		m_handlers['A'] = &XPadPlugin::QueryDS2AnalogMode;
 		m_handlers['B'] = &XPadPlugin::ReadDataAndVibrate;
 		m_handlers['C'] = &XPadPlugin::ConfigMode;
 		m_handlers['D'] = &XPadPlugin::SetModeAndLock;
 		m_handlers['E'] = &XPadPlugin::QueryModelAndMode;
+		m_handlers['F'] = &XPadPlugin::QueryUnknown1;
+		m_handlers['G'] = &XPadPlugin::QueryUnknown2;
+		m_handlers['L'] = &XPadPlugin::QueryUnknown3;
 		m_handlers['M'] = &XPadPlugin::ConfigVibration;
 		m_handlers['O'] = &XPadPlugin::SetDS2NativeMode;
 	}
@@ -415,19 +486,25 @@ public:
 
 	BYTE Poll(BYTE value)
 	{
-		m_index++;
+		BYTE ret = 0;
 
-		switch(m_index)
+		switch(++m_index)
 		{
 		case 1:
+			m_cmd = value;
 			m_handler = m_handlers[value];
-			return m_pad->GetId();
+			ret = (value == 'B' || value == 'C') ? m_pad->GetId() : 0xf3;
+			break;
 		case 2:
 			ASSERT(value == 0);
-			return 'Z';
+			ret = 'Z';
+			break;
 		default:
-			return (this->*m_handler)(m_index - 3, value);
+			ret = (this->*m_handler)(m_index - 3, value);
+			break;
 		}
+
+		return ret;
 	}
 
 } s_padplugin;
