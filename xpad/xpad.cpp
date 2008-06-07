@@ -159,8 +159,8 @@ public:
 	XPad(int pad) 
 		: m_pad(pad)
 		, m_connected(false)
-		, m_ds2native(false)
-		, m_analog(false)
+		, m_ds2native(true)
+		, m_analog(true)
 		, m_locked(false)
 		, m_vibration(true)
 		, m_small(0)
@@ -210,14 +210,16 @@ public:
 				SetAnalog(m_state.Gamepad.sThumbRX, m_right.x, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
 				SetAnalog(m_state.Gamepad.sThumbRY, m_right.y, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
 
+				XINPUT_VIBRATION vibraton;
+				memset(&vibraton, 0, sizeof(vibraton));
+
 				if(m_vibration && (m_small || m_large))
 				{
-					XINPUT_VIBRATION vibraton;
-					memset(&vibraton, 0, sizeof(vibraton));
 					vibraton.wLeftMotorSpeed = m_large << 8;
 					vibraton.wRightMotorSpeed = m_small << 8;
-					XInputSetState(m_pad, &vibraton);
 				}
+				
+				XInputSetState(m_pad, &vibraton);
 			}
 			else
 			{
