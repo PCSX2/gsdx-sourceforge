@@ -211,7 +211,7 @@ public:
 				m_buttons = 0xffff;
 				m_left.x = 128;
 				m_left.y = 128;
-				m_right.x =  = 128;
+				m_right.x = 128;
 				m_right.y = 128;
 			}
 		}
