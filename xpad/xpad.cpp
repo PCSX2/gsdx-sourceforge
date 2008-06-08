@@ -410,9 +410,9 @@ static class XPadPlugin
 	{
 		switch(index)
 		{
-		case 4:
+		case 2:
 			return 2;
-		case 6:
+		case 4:
 			return 1;
 		}
 
@@ -513,7 +513,19 @@ public:
 			ret = (this->*m_handler)(m_index - 3, value);
 			break;
 		}
-
+/*
+if(m_cmd != 'B')
+{
+static FILE* log = NULL;
+if(log == NULL)
+{
+	log = fopen("c:\\log.txt", "w");
+}
+if(m_index == 1) fprintf(log, "\n");
+fprintf(log, "*** %02x %d %02x %02x\n", m_cmd, m_index - 1, value, ret);
+fflush(log);
+}
+*/
 		return ret;
 	}
 
