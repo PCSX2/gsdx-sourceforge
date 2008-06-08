@@ -210,7 +210,21 @@ public:
 				SetAnalog(state.Gamepad.sThumbLY, m_left.y, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
 				SetAnalog(state.Gamepad.sThumbRX, m_right.x, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
 				SetAnalog(state.Gamepad.sThumbRY, m_right.y, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
+			}
+			else
+			{
+				m_buttons = 0xffff;
+				m_left.x = 128;
+				m_left.y = 128;
+				m_right.x = 128;
+				m_right.y = 128;
+			}
+		}
 
+		if(index == 1)
+		{
+			if(m_connected)
+			{
 				XINPUT_VIBRATION vibraton;
 
 				memset(&vibraton, 0, sizeof(vibraton));
@@ -222,14 +236,6 @@ public:
 				}
 				
 				XInputSetState(m_pad, &vibraton);
-			}
-			else
-			{
-				m_buttons = 0xffff;
-				m_left.x = 128;
-				m_left.y = 128;
-				m_right.x = 128;
-				m_right.y = 128;
 			}
 		}
 
@@ -308,7 +314,7 @@ static class XPadPlugin
 		switch(index)
 		{
 		case 0: 
-			m_pad->m_small = value == 1 ? 128 : 0;
+			m_pad->m_small = value == 1 ? 128 : 0; // RE4 map menu, value = 2
 			break;
 		case 1: 
 			m_pad->m_large = value;
@@ -515,6 +521,38 @@ public:
 
 //
 
+static int s_nRefs = 0;
+static HWND s_hWnd = NULL;
+static WNDPROC s_GSWndProc = NULL;
+static KeyEvent s_event = {0, 0};
+
+LRESULT WINAPI PADwndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+	switch (msg)
+	{
+	case WM_KEYDOWN:
+		if(lParam & 0x40000000) return TRUE;
+        s_event.event = KEYPRESS;
+        s_event.key = wParam;
+		break;
+	case WM_KEYUP:
+        s_event.event = KEYRELEASE;
+        s_event.key = wParam;
+		break;
+	case WM_DESTROY:
+	case WM_QUIT:
+		s_event.event = KEYPRESS;
+		s_event.key = VK_ESCAPE;
+		return s_GSWndProc(hWnd, msg, wParam, lParam);
+    default:
+		return s_GSWndProc(hWnd, msg, wParam, lParam);
+	}
+
+	return TRUE;
+}
+
+//
+
 EXPORT_C_(UINT32) PADinit(UINT32 flags)
 {
 	return 0;
@@ -524,15 +562,30 @@ EXPORT_C PADshutdown()
 {
 }
 
-EXPORT_C_(UINT32) PADopen(HWND hWnd)
+EXPORT_C_(UINT32) PADopen(void* pDsp)
 {
 	XInputEnable(TRUE);
+
+	if(s_nRefs == 0)
+	{
+		s_hWnd = *(HWND*)pDsp;
+		s_GSWndProc = (WNDPROC)SetWindowLongPtr(s_hWnd, GWLP_WNDPROC, (LPARAM)PADwndProc);
+	}
+
+	s_nRefs++;
 
 	return 0;
 }
 
 EXPORT_C PADclose()
 {
+	s_nRefs--;
+
+	if(s_nRefs == 0)
+	{
+		SetWindowLongPtr(s_hWnd, GWLP_WNDPROC, (LPARAM)s_GSWndProc);
+	}
+
 	XInputEnable(FALSE);
 }
 
@@ -555,7 +608,10 @@ EXPORT_C_(BYTE) PADpoll(BYTE value)
 
 EXPORT_C_(KeyEvent*) PADkeyEvent()
 {
-	return NULL;
+	static KeyEvent event;
+	event = s_event;
+	s_event.event = 0;
+	return &event;
 }
 
 EXPORT_C PADconfigure()
@@ -570,3 +626,4 @@ EXPORT_C_(UINT32) PADtest()
 {
 	return 0;
 }
+

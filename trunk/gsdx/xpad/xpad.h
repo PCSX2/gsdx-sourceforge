@@ -42,12 +42,6 @@ struct KeyEvent
 	UINT32 event;
 };
 
-struct PadDataS
-{
-	BYTE controllerType;
-	WORD buttonStatus;
-	BYTE rightJoyX, rightJoyY, leftJoyX, leftJoyY;
-	BYTE moveX, moveY;
-	BYTE reserved[91];
-};
+#define KEYPRESS	1
+#define KEYRELEASE	2
 
