@@ -188,13 +188,13 @@ EXPORT_C GSclose()
 	}
 }
 
-EXPORT_C_(INT32) __GSopen(void* dsp, char* title, int mt, int renderer)
+static INT32 GSopen(void* dsp, char* title, int mt, int renderer)
 {
 	AFX_MANAGE_STATE(AfxGetStaticModuleState());
 
 	GSclose();
 
-	// TODO
+	// TODO 
 
 	int nloophack = AfxGetApp()->GetProfileInt(_T("Settings"), _T("nloophack"), 2);
 
@@ -242,7 +242,7 @@ EXPORT_C_(INT32) GSopen(void* dsp, char* title, int mt)
 
 	int renderer = AfxGetApp()->GetProfileInt(_T("Settings"), _T("renderer"), 0);
 
-	return __GSopen(dsp, title, mt, renderer);
+	return GSopen(dsp, title, mt, renderer);
 }
 
 EXPORT_C GSreset()
@@ -394,7 +394,7 @@ EXPORT_C GSReplay(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow)
 		GSsetBaseMem(regs);
 
 		HWND hWnd = NULL;
-		__GSopen(&hWnd, _T(""), true, renderer);
+		GSopen(&hWnd, _T(""), true, renderer);
 
 		DWORD crc;
 		fread(&crc, 4, 1, fp);
