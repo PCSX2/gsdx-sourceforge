@@ -207,9 +207,9 @@ public:
 				SetButton(state.Gamepad.wButtons, XINPUT_GAMEPAD_X, XPadButton::Square);
 
 				SetAnalog(state.Gamepad.sThumbLX, m_left.x, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
-				SetAnalog(state.Gamepad.sThumbLY, m_left.y, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+				SetAnalog(~state.Gamepad.sThumbLY, m_left.y, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
 				SetAnalog(state.Gamepad.sThumbRX, m_right.x, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
-				SetAnalog(state.Gamepad.sThumbRY, m_right.y, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
+				SetAnalog(~state.Gamepad.sThumbRY, m_right.y, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
 			}
 			else
 			{
@@ -248,11 +248,11 @@ public:
 		case 2:
 			return m_right.x;
 		case 3:
-			return 0xff - m_right.y;
+			return m_right.y;
 		case 4:
 			return m_left.x;
 		case 5:
-			return 0xff - m_left.y;
+			return m_left.y;
 		}
 
 		return 0xff;
@@ -550,7 +550,7 @@ static KeyEvent s_event = {0, 0};
 
 LRESULT WINAPI PADwndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	switch (msg)
+	switch(msg)
 	{
 	case WM_KEYDOWN:
 		if(lParam & 0x40000000) return TRUE;
