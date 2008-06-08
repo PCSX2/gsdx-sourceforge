@@ -134,7 +134,6 @@ public:
 	WORD m_buttons;
 	struct {BYTE x, y;} m_left;
 	struct {BYTE x, y;} m_right;
-	XINPUT_STATE m_state;
 
 	void SetButton(WORD buttons, WORD mask, int flag)
 	{
@@ -182,35 +181,38 @@ public:
 	{
 		if(index == 0)
 		{
-			memset(&m_state, 0, sizeof(m_state));
+			XINPUT_STATE state;
 
-			m_connected = SUCCEEDED(XInputGetState(m_pad, &m_state));
+			memset(&state, 0, sizeof(state));
+
+			m_connected = SUCCEEDED(XInputGetState(m_pad, &state));
 
 			if(m_connected)
 			{
-				SetButton(m_state.Gamepad.wButtons, XINPUT_GAMEPAD_BACK, XPadButton::Select);
-				SetButton(m_state.Gamepad.wButtons, XINPUT_GAMEPAD_LEFT_THUMB, XPadButton::L3);
-				SetButton(m_state.Gamepad.wButtons, XINPUT_GAMEPAD_RIGHT_THUMB, XPadButton::R3);
-				SetButton(m_state.Gamepad.wButtons, XINPUT_GAMEPAD_START, XPadButton::Start);
-				SetButton(m_state.Gamepad.wButtons, XINPUT_GAMEPAD_DPAD_UP, XPadButton::Up);
-				SetButton(m_state.Gamepad.wButtons, XINPUT_GAMEPAD_DPAD_DOWN, XPadButton::Down);
-				SetButton(m_state.Gamepad.wButtons, XINPUT_GAMEPAD_DPAD_RIGHT, XPadButton::Right);
-				SetButton(m_state.Gamepad.wButtons, XINPUT_GAMEPAD_DPAD_LEFT, XPadButton::Left);
-				SetButton(m_state.Gamepad.bLeftTrigger, 0xe0, XPadButton::L2);
-				SetButton(m_state.Gamepad.bRightTrigger, 0xe0, XPadButton::R2);
-				SetButton(m_state.Gamepad.wButtons, XINPUT_GAMEPAD_LEFT_SHOULDER, XPadButton::L1);
-				SetButton(m_state.Gamepad.wButtons, XINPUT_GAMEPAD_RIGHT_SHOULDER, XPadButton::R1);
-				SetButton(m_state.Gamepad.wButtons, XINPUT_GAMEPAD_Y, XPadButton::Triangle);
-				SetButton(m_state.Gamepad.wButtons, XINPUT_GAMEPAD_B, XPadButton::Circle);
-				SetButton(m_state.Gamepad.wButtons, XINPUT_GAMEPAD_A, XPadButton::Cross);
-				SetButton(m_state.Gamepad.wButtons, XINPUT_GAMEPAD_X, XPadButton::Square);
+				SetButton(state.Gamepad.wButtons, XINPUT_GAMEPAD_BACK, XPadButton::Select);
+				SetButton(state.Gamepad.wButtons, XINPUT_GAMEPAD_LEFT_THUMB, XPadButton::L3);
+				SetButton(state.Gamepad.wButtons, XINPUT_GAMEPAD_RIGHT_THUMB, XPadButton::R3);
+				SetButton(state.Gamepad.wButtons, XINPUT_GAMEPAD_START, XPadButton::Start);
+				SetButton(state.Gamepad.wButtons, XINPUT_GAMEPAD_DPAD_UP, XPadButton::Up);
+				SetButton(state.Gamepad.wButtons, XINPUT_GAMEPAD_DPAD_RIGHT, XPadButton::Right);
+				SetButton(state.Gamepad.wButtons, XINPUT_GAMEPAD_DPAD_DOWN, XPadButton::Down);
+				SetButton(state.Gamepad.wButtons, XINPUT_GAMEPAD_DPAD_LEFT, XPadButton::Left);
+				SetButton(state.Gamepad.bLeftTrigger, 0xe0, XPadButton::L2);
+				SetButton(state.Gamepad.bRightTrigger, 0xe0, XPadButton::R2);
+				SetButton(state.Gamepad.wButtons, XINPUT_GAMEPAD_LEFT_SHOULDER, XPadButton::L1);
+				SetButton(state.Gamepad.wButtons, XINPUT_GAMEPAD_RIGHT_SHOULDER, XPadButton::R1);
+				SetButton(state.Gamepad.wButtons, XINPUT_GAMEPAD_Y, XPadButton::Triangle);
+				SetButton(state.Gamepad.wButtons, XINPUT_GAMEPAD_B, XPadButton::Circle);
+				SetButton(state.Gamepad.wButtons, XINPUT_GAMEPAD_A, XPadButton::Cross);
+				SetButton(state.Gamepad.wButtons, XINPUT_GAMEPAD_X, XPadButton::Square);
 
-				SetAnalog(m_state.Gamepad.sThumbLX, m_left.x, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
-				SetAnalog(m_state.Gamepad.sThumbLY, m_left.y, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
-				SetAnalog(m_state.Gamepad.sThumbRX, m_right.x, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
-				SetAnalog(m_state.Gamepad.sThumbRY, m_right.y, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
+				SetAnalog(state.Gamepad.sThumbLX, m_left.x, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+				SetAnalog(state.Gamepad.sThumbLY, m_left.y, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+				SetAnalog(state.Gamepad.sThumbRX, m_right.x, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
+				SetAnalog(state.Gamepad.sThumbRY, m_right.y, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
 
 				XINPUT_VIBRATION vibraton;
+
 				memset(&vibraton, 0, sizeof(vibraton));
 
 				if(m_vibration && (m_small || m_large))
@@ -271,7 +273,7 @@ static class XPadPlugin
 		case 2: 
 			return 0x02;
 		case 5: 
-			return 0x5a;
+			return 'Z';
 		}
 
 		return 0;
@@ -306,7 +308,7 @@ static class XPadPlugin
 		switch(index)
 		{
 		case 0: 
-			m_pad->m_small = value ? 128 : 0;
+			m_pad->m_small = value == 1 ? 128 : 0;
 			break;
 		case 1: 
 			m_pad->m_large = value;
