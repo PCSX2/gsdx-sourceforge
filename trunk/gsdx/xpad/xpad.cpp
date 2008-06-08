@@ -158,8 +158,8 @@ public:
 	XPad(int pad) 
 		: m_pad(pad)
 		, m_connected(false)
-		, m_ds2native(true)
-		, m_analog(true)
+		, m_ds2native(false)
+		, m_analog(false)
 		, m_locked(false)
 		, m_vibration(true)
 		, m_small(0)
@@ -174,7 +174,7 @@ public:
 
 	BYTE GetId()
 	{
-		return m_analog ? (m_ds2native ? 0x79 : 0x71) : 0x41;
+		return m_analog ? (m_ds2native ? 0x79 : 0x73) : 0x41;
 	}
 
 	BYTE ReadData(int index)
@@ -266,6 +266,7 @@ static class XPadPlugin
 	int m_index;
 	bool m_cfgreaddata;
 	BYTE m_unknown1;
+	BYTE m_unknown3;
 
 	typedef BYTE (XPadPlugin::*CommandHandler)(int, BYTE);
 
@@ -421,6 +422,15 @@ static class XPadPlugin
 
 	BYTE QueryUnknown3(int index, BYTE value)
 	{
+		switch(index)
+		{
+		case 0: 
+			m_unknown3 = value;
+			return 0;
+		case 3:
+			return m_unknown3 ? 0x07 : 0x04;
+		}
+
 		return 0;
 	}
 
@@ -514,7 +524,7 @@ public:
 			break;
 		}
 /*
-if(m_cmd != 'B')
+//if(m_cmd != 'B')
 {
 static FILE* log = NULL;
 if(log == NULL)
