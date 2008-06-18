@@ -203,6 +203,13 @@ public:
 		return GSVector4i(_mm_blendv_epi8(m, a, mask));
 	}
 
+	#if _M_SSE >= 0x400
+	template<int mask> GSVector4i blend16(const GSVector4i& a) 
+	{
+		return GSVector4i(_mm_blend_epi16(m, a, mask));
+	}
+	#endif
+
 	GSVector4i blend(const GSVector4i& a, const GSVector4i& mask) 
 	{
 		return GSVector4i(_mm_or_si128(_mm_andnot_si128(mask, m), _mm_and_si128(mask, a)));
@@ -320,6 +327,21 @@ public:
 	template<int i> GSVector4i srl()
 	{
 		return GSVector4i(_mm_srli_si128(m, i));
+	}
+
+	template<int i> GSVector4i srl(const GSVector4i& v)
+	{
+		#if _M_SSE >= 0x301
+
+		return GSVector4i(_mm_alignr_epi8(v.m, m, i));
+
+		#else
+
+		if(i < 16) return v.sll<i>() | srl<16 - i>();
+		if(i < 32) return v.srl<i - 16>();
+		return zero();
+
+		#endif
 	}
 
 	template<int i> GSVector4i sll()
@@ -608,7 +630,7 @@ public:
 	
 	friend GSVector4i operator ~ (const GSVector4i& v) 
 	{
-		return v ^ GSVector4i::invzero();
+		return v ^ (v == v);
 	}
 
 	friend GSVector4i operator == (const GSVector4i& v1, const GSVector4i& v2) 

@@ -556,21 +556,19 @@ LRESULT WINAPI PADwndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		if(lParam & 0x40000000) return TRUE;
         s_event.event = KEYPRESS;
         s_event.key = wParam;
-		break;
+		return TRUE;
 	case WM_KEYUP:
         s_event.event = KEYRELEASE;
         s_event.key = wParam;
-		break;
+		return TRUE;
 	case WM_DESTROY:
 	case WM_QUIT:
 		s_event.event = KEYPRESS;
 		s_event.key = VK_ESCAPE;
-		return s_GSWndProc(hWnd, msg, wParam, lParam);
-    default:
-		return s_GSWndProc(hWnd, msg, wParam, lParam);
+		break;
 	}
 
-	return TRUE;
+	return s_GSWndProc(hWnd, msg, wParam, lParam);
 }
 
 //

@@ -51,6 +51,8 @@ private:
 
 	struct ScanlineEnvironment
 	{
+		int steps;
+
 		int** fo;
 		int** zo;
 
