@@ -311,6 +311,13 @@ g_dtt = g_dt00 = g_dt0 = g_dt1 = g_dt2 = g_dtn = 0;
 				m_perfmon.Get(GSPerfMon::Unswizzle) / 1024
 			);
 
+			double fillrate = m_perfmon.Get(GSPerfMon::Fillrate);
+
+			if(fillrate > 0)
+			{
+				s_stats.Format(_T("%s | %.2f mpps"), CString(s_stats), fps * fillrate / (1024 * 1024));
+			}
+
 			if(m_perfmon.Get(GSPerfMon::COLCLAMP)) _tprintf(_T("*** NOT SUPPORTED: color wrap ***\n"));
 			if(m_perfmon.Get(GSPerfMon::PABE)) _tprintf(_T("*** NOT SUPPORTED: per pixel alpha blend ***\n"));
 			if(m_perfmon.Get(GSPerfMon::DATE)) _tprintf(_T("*** PERFORMANCE WARNING: destination alpha test used ***\n"));
@@ -455,7 +462,6 @@ protected:
 		if(m_count > 0)
 		{
 			/*
-			*/
 			TRACE(_T("[%d] Draw f %05x (%d) z %05x (%d %d %d %d) t %05x %05x (%d)\n"), 
 				  (int)m_perfmon.GetFrame(), 
 				  (int)m_context->FRAME.Block(), 
@@ -468,6 +474,7 @@ protected:
 				  PRIM->TME ? (int)m_context->TEX0.TBP0 : 0xfffff, 
 				  PRIM->TME && m_context->TEX0.PSM > PSM_PSMCT16S ? (int)m_context->TEX0.CBP : 0xfffff, 
 				  PRIM->TME ? (int)m_context->TEX0.PSM : 0xff);
+			*/
 
 			Draw();
 

@@ -43,13 +43,6 @@ __declspec(align(16)) union GSVertexSW
 	friend GSVertexSW operator / (const GSVertexSW& v, const Vector& vv);
 	friend GSVertexSW operator * (const GSVertexSW& v, float f);
 	friend GSVertexSW operator / (const GSVertexSW& v, float f);
-
-	static void Exchange(GSVertexSW* RESTRICT v1, GSVertexSW* RESTRICT v2)
-	{
-		Vector c = v1->c, p = v1->p, t = v1->t;
-		v1->c = v2->c; v1->p = v2->p; v1->t = v2->t;
-		v2->c = c; v2->p = p; v2->t = t;
-	}
 };
 
 __forceinline GSVertexSW operator + (const GSVertexSW& v1, const GSVertexSW& v2)

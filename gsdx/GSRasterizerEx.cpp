@@ -252,7 +252,30 @@ void GSRasterizer::InitEx()
 	m_dsmap[0x445184a8] = &GSRasterizer::DrawScanlineEx<0x445184a8>;
 	m_dsmap[0x425184a8] = &GSRasterizer::DrawScanlineEx<0x425184a8>;
 	m_dsmap[0x4851b828] = &GSRasterizer::DrawScanlineEx<0x4851b828>;
-	
+
+	// kh2
+
+	m_dsmap[0x2a59a8c8] = &GSRasterizer::DrawScanlineEx<0x2a59a8c8>;
+	m_dsmap[0x44505028] = &GSRasterizer::DrawScanlineEx<0x44505028>;
+	m_dsmap[0x425078a8] = &GSRasterizer::DrawScanlineEx<0x425078a8>;
+	m_dsmap[0x64507009] = &GSRasterizer::DrawScanlineEx<0x64507009>;
+	m_dsmap[0x44505889] = &GSRasterizer::DrawScanlineEx<0x44505889>;
+	m_dsmap[0x4458e8c8] = &GSRasterizer::DrawScanlineEx<0x4458e8c8>;
+	m_dsmap[0xa551a868] = &GSRasterizer::DrawScanlineEx<0xa551a868>;
+	m_dsmap[0x44518440] = &GSRasterizer::DrawScanlineEx<0x44518440>;
+	m_dsmap[0x0251a868] = &GSRasterizer::DrawScanlineEx<0x0251a868>;
+	m_dsmap[0x4859a8c8] = &GSRasterizer::DrawScanlineEx<0x4859a8c8>;
+	m_dsmap[0x00007128] = &GSRasterizer::DrawScanlineEx<0x00007128>;
+	m_dsmap[0x485184e8] = &GSRasterizer::DrawScanlineEx<0x485184e8>;
+	m_dsmap[0x0051a868] = &GSRasterizer::DrawScanlineEx<0x0051a868>;
+	m_dsmap[0x4851b808] = &GSRasterizer::DrawScanlineEx<0x4851b808>;
+	m_dsmap[0x48507889] = &GSRasterizer::DrawScanlineEx<0x48507889>;
+	m_dsmap[0x2651a868] = &GSRasterizer::DrawScanlineEx<0x2651a868>;
+	m_dsmap[0x8951a868] = &GSRasterizer::DrawScanlineEx<0x8951a868>;
+	m_dsmap[0x4451b800] = &GSRasterizer::DrawScanlineEx<0x4451b800>;
+	m_dsmap[0x44507889] = &GSRasterizer::DrawScanlineEx<0x44507889>;
+	m_dsmap[0x68507009] = &GSRasterizer::DrawScanlineEx<0x68507009>;
+
 	// resident evil 4
 
 	m_dsmap[0x4851a848] = &GSRasterizer::DrawScanlineEx<0x4851a848>;
@@ -844,6 +867,16 @@ void GSRasterizer::InitEx()
 	m_dsmap[0x48506848] = &GSRasterizer::DrawScanlineEx<0x48506848>;
 	m_dsmap[0x54507808] = &GSRasterizer::DrawScanlineEx<0x54507808>;
 
+	// dbzbt3
+
+	m_dsmap[0x48704408] = &GSRasterizer::DrawScanlineEx<0x48704408>;
+	m_dsmap[0x44507108] = &GSRasterizer::DrawScanlineEx<0x44507108>;
+	m_dsmap[0x5451b848] = &GSRasterizer::DrawScanlineEx<0x5451b848>;
+	m_dsmap[0x485044c8] = &GSRasterizer::DrawScanlineEx<0x485044c8>;
+	m_dsmap[0x4471c8c8] = &GSRasterizer::DrawScanlineEx<0x4471c8c8>;
+	m_dsmap[0x48707808] = &GSRasterizer::DrawScanlineEx<0x48707808>;
+	m_dsmap[0x495068c8] = &GSRasterizer::DrawScanlineEx<0x495068c8>;
+
 	// suikoden 5
 
 	m_dsmap[0x485068d8] = &GSRasterizer::DrawScanlineEx<0x485068d8>;
@@ -970,7 +1003,11 @@ else if(steps == 3) g_slp3++;
 	GSVector4 b = vc.zzzz(); if(iip) b += slenv->db0123;
 	GSVector4 a = vc.wwww(); if(iip) a += slenv->da0123;
 
-	for(int steps = right - left; steps > 0; steps -= 4)
+	int steps = right - left;
+
+	slenv->steps += steps;
+
+	for(; steps > 0; steps -= 4)
 	{
 		do
 		{
@@ -992,7 +1029,7 @@ else if(steps == 3) g_slp3++;
 
 			for(int i = 0; i < pixels; i++)
 			{
-				zd0123.u32[i] = m_state->m_mem.readPixelX(zpsm, za.u32[i]);
+				zd0123.u32[i] = m_state->m_mem.ReadPixelX(zpsm, za.u32[i]);
 			}
 
 			GSVector4i zs = zi - 0x80000000;
@@ -1177,7 +1214,7 @@ else if(steps == 3) g_slp3++;
 
 		if(rfb)
 		{
-			d = m_state->m_mem.readFrameX(fpsm, fa);
+			d = m_state->m_mem.ReadFrameX(fpsm, fa);
 
 			if(date)
 			{
@@ -1235,13 +1272,16 @@ else if(steps == 3) g_slp3++;
 			s = s.blend(d, fm);
 		}
 
-		m_state->m_mem.writeFrameX(fpsm, fa, s, fm, pixels);
+		m_state->m_mem.WriteFrameX(fpsm, fa, s, fm, pixels);
 
-		for(int i = 0; ztst > 0 && i < pixels; i++)
+		if(ztst > 0 && !(atst == 0 && afail != 2))
 		{
-			if(zm.u32[i] != 0xffffffff)
+			for(int i = 0; i < pixels; i++)
 			{
-				m_state->m_mem.writePixelX(zpsm, za.u32[i], zi.u32[i]);
+				if(zm.u32[i] != 0xffffffff)
+				{
+					m_state->m_mem.WritePixelX(zpsm, za.u32[i], zi.u32[i]);
+				}
 			}
 		}
 

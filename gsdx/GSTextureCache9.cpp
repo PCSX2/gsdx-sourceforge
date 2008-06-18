@@ -154,7 +154,7 @@ void GSTextureCache9::GSRenderTarget9::Read(CRect r)
 
 				for(int x = r.left, i = 0; x < r.right; x++, i++)
 				{
-					m_renderer->m_mem.writePixel32(addr + offset[x], ((DWORD*)bits)[i]);
+					m_renderer->m_mem.WritePixel32(addr + offset[x], ((DWORD*)bits)[i]);
 				}
 			}
 		}
@@ -167,7 +167,7 @@ void GSTextureCache9::GSRenderTarget9::Read(CRect r)
 
 				for(int x = r.left, i = 0; x < r.right; x++, i++)
 				{
-					m_renderer->m_mem.writePixel24(addr + offset[x], ((DWORD*)bits)[i]);
+					m_renderer->m_mem.WritePixel24(addr + offset[x], ((DWORD*)bits)[i]);
 				}
 			}
 		}
@@ -180,7 +180,7 @@ void GSTextureCache9::GSRenderTarget9::Read(CRect r)
 
 				for(int x = r.left, i = 0; x < r.right; x++, i++)
 				{
-					m_renderer->m_mem.writeFrame16(addr + offset[x], ((DWORD*)bits)[i]);
+					m_renderer->m_mem.WriteFrame16(addr + offset[x], ((DWORD*)bits)[i]);
 				}
 			}
 		}

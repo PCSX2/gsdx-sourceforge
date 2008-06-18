@@ -23,7 +23,7 @@
 // TODO: sse is a waste for 1 pixel (not that bad, sse register utilization is 90-95%)
 // TODO: sprite doesn't need z/f interpolation, q could be eliminated by premultiplying s/t
 // TODO: eliminate small triangles faster, usually 50% of the triangles do not output any pixel because they are so tiny
-// current fillrate is about 20M tp/s, 1.2G needed, that means we can already hit 1 fps in the worst case :P
+// current fillrate is about 20-50M tp/s (depends on the effectiveness of the texture cache), ps2 can do 1.2G, that means we can already hit 1 fps in the worst case :P
 // TODO: DrawScanline => CUDA impl., input: array of [scan, dscan, index], kernel function: draw pixel at [scan + dscan * index]
 
 #include "StdAfx.h"
@@ -219,6 +219,7 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 
 	ScanlineEnvironment* slenv = m_slenv;
 
+	slenv->steps = 0;
 	slenv->fo = m_state->m_context->ftbl->rowOffset;
 	slenv->zo = m_state->m_context->ztbl->rowOffset;
 	slenv->fm = GSVector4i(context->FRAME.FBMSK);
@@ -370,6 +371,13 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 		__assume(0);
 	}
 
+	if(context->FRAME.Block() == context->TEX0.TBP0)
+	{
+		InvalidateTextureCache();
+	}
+
+	m_state->m_perfmon.Put(GSPerfMon::Fillrate, slenv->steps);
+
 	return count;
 }
 
@@ -503,14 +511,14 @@ void GSRasterizer::DrawTriangleSection(Vertex& l, const Vertex& dl, GSVector4& r
 	int top = tb.z;
 	int bottom = tb.w;
 
-	if(top < m_scissor.top) top = min(m_scissor.top, bottom);
+	if(top < m_scissor.top) top = m_scissor.top;
 	if(bottom > m_scissor.bottom) bottom = m_scissor.bottom;
 	
 	if(top < bottom)
 	{
 		float py = (float)top - l.p.y;
 
-		if(py > 0)
+		if(py > 0) // almost always true
 		{
 			GSVector4 dy(py);
 
@@ -536,7 +544,7 @@ void GSRasterizer::DrawTriangleSection(Vertex& l, const Vertex& dl, GSVector4& r
 
 					float px = (float)left - l.p.x;
 
-					if(px > 0)
+					if(px > 0) // almost always true
 					{
 						scan += dscan * px;
 					}
@@ -672,6 +680,8 @@ bool GSRasterizer::DrawSolidRect(int left, int top, int right, int bottom, const
 
 	m_state->m_mem.FillRect(r, c, fpsm, fbp, bw);
 
+	// m_slenv->steps += r.Width() * r.Height();
+
 	return true;
 }
 
@@ -687,7 +697,7 @@ void GSRasterizer::FetchTexture(int x, int y)
 
 	DWORD* dst = &m_tc->texture[y * 1024 + x];
 
-	(m_state->m_mem.*m_state->m_context->ttbl->ust)(r, (BYTE*)dst, 1024 * 4, m_state->m_context->TEX0, m_state->m_env.TEXA);
+	(m_state->m_mem.*m_state->m_context->ttbl->rtx)(r, (BYTE*)dst, 1024 * 4, m_state->m_context->TEX0, m_state->m_env.TEXA);
 
 	m_state->m_perfmon.Put(GSPerfMon::Unswizzle, r.Width() * r.Height() * 4);
 }
@@ -842,7 +852,11 @@ else if(steps == 3) g_slp3++;
 	GSVector4 b = vc.zzzz(); if(iip) b += slenv->db0123;
 	GSVector4 a = vc.wwww(); if(iip) a += slenv->da0123;
 
-	for(int steps = right - left; steps > 0; steps -= 4)
+	int steps = right - left;
+
+	slenv->steps += steps;
+
+	for(; steps > 0; steps -= 4)
 	{
 		do
 		{
@@ -864,7 +878,7 @@ else if(steps == 3) g_slp3++;
 
 			for(int i = 0; i < pixels; i++)
 			{
-				zd0123.u32[i] = m_state->m_mem.readPixelX(zpsm, za.u32[i]);
+				zd0123.u32[i] = m_state->m_mem.ReadPixelX(zpsm, za.u32[i]);
 			}
 
 			GSVector4i zs = zi - 0x80000000;
@@ -1049,7 +1063,7 @@ else if(steps == 3) g_slp3++;
 
 		if(m_sel.rfb)
 		{
-			d = m_state->m_mem.readFrameX(fpsm, fa);
+			d = m_state->m_mem.ReadFrameX(fpsm, fa);
 
 			if(m_sel.date)
 			{
@@ -1112,13 +1126,16 @@ else if(steps == 3) g_slp3++;
 			s = s.blend(d, fm);
 		}
 
-		m_state->m_mem.writeFrameX(fpsm, fa, s, fm, pixels);
+		m_state->m_mem.WriteFrameX(fpsm, fa, s, fm, pixels);
 
-		for(int i = 0; ztst > 0 && i < pixels; i++)
+		if(ztst > 0)
 		{
-			if(zm.u32[i] != 0xffffffff)
+			for(int i = 0; i < pixels; i++)
 			{
-				m_state->m_mem.writePixelX(zpsm, za.u32[i], zi.u32[i]);
+				if(zm.u32[i] != 0xffffffff)
+				{
+					m_state->m_mem.WritePixelX(zpsm, za.u32[i], zi.u32[i]);
+				}
 			}
 		}
 

@@ -782,7 +782,7 @@ void GSState::GIFRegHandlerFOGCOL(GIFReg* r)
 
 void GSState::GIFRegHandlerTEXFLUSH(GIFReg* r)
 {
-	TRACE(_T("TEXFLUSH\n"));
+	// TRACE(_T("TEXFLUSH\n"));
 
 	// InvalidateTextureCache();
 }
@@ -1025,9 +1025,9 @@ void GSState::FlushWrite(BYTE* mem, int len)
 	{
 		int y = m_y;
 
-		GSLocalMemory::SwizzleTexture st = GSLocalMemory::m_psm[m_env.BITBLTBUF.DPSM].st;
+		GSLocalMemory::writeImage wi = GSLocalMemory::m_psm[m_env.BITBLTBUF.DPSM].wi;
 
-		(m_mem.*st)(m_x, m_y, mem, len, m_env.BITBLTBUF, m_env.TRXPOS, m_env.TRXREG);
+		(m_mem.*wi)(m_x, m_y, mem, len, m_env.BITBLTBUF, m_env.TRXPOS, m_env.TRXREG);
 
 		m_perfmon.Put(GSPerfMon::Swizzle, len);
 
@@ -1055,11 +1055,11 @@ void GSState::FlushWrite(BYTE* mem, int len)
 void GSState::Write(BYTE* mem, int len)
 {
 	/*
-	*/
 	TRACE(_T("Write len=%d DBP=%05x DPSM=%d DSAX=%d DSAY=%d RRW=%d RRH=%d\n"), 
 		  len, (int)m_env.BITBLTBUF.DBP, (int)m_env.BITBLTBUF.DPSM, 
 		  (int)m_env.TRXPOS.DSAX, (int)m_env.TRXPOS.DSAY,
 		  (int)m_env.TRXREG.RRW, (int)m_env.TRXREG.RRH);
+	*/
 
 	if(len == 0) return;
 
@@ -1112,10 +1112,6 @@ void GSState::Write(BYTE* mem, int len)
 
 void GSState::Read(BYTE* mem, int len)
 {
-	BYTE* pb = (BYTE*)mem;
-	WORD* pw = (WORD*)mem;
-	DWORD* pd = (DWORD*)mem;
-
 	if(m_y >= (int)m_env.TRXREG.RRH) {ASSERT(0); return;}
 
 	if(m_x == m_env.TRXPOS.SSAX && m_y == m_env.TRXPOS.SSAY)
@@ -1125,70 +1121,9 @@ void GSState::Read(BYTE* mem, int len)
 		InvalidateLocalMem(m_env.BITBLTBUF, r);
 	}
 
-	switch(m_env.BITBLTBUF.SPSM)
-	{
-	case PSM_PSMCT32:
-		for(len /= 4; len-- > 0; StepTransfer(m_env.TRXPOS.SSAX, m_env.TRXREG.RRW), pd++)
-			*pd = m_mem.readPixel32(m_x, m_y, m_env.BITBLTBUF.SBP, m_env.BITBLTBUF.SBW);
-		break;
-	case PSM_PSMCT24:
-		for(len /= 3; len-- > 0; StepTransfer(m_env.TRXPOS.SSAX, m_env.TRXREG.RRW), pb+=3)
-		{
-			DWORD dw = m_mem.readPixel24(m_x, m_y, m_env.BITBLTBUF.SBP, m_env.BITBLTBUF.SBW);
-			pb[0] = ((BYTE*)&dw)[0]; pb[1] = ((BYTE*)&dw)[1]; pb[2] = ((BYTE*)&dw)[2];
-		}
-		break;
-	case PSM_PSMCT16:
-		for(len /= 2; len-- > 0; StepTransfer(m_env.TRXPOS.SSAX, m_env.TRXREG.RRW), pw++)
-			*pw = (WORD)m_mem.readPixel16(m_x, m_y, m_env.BITBLTBUF.SBP, m_env.BITBLTBUF.SBW);
-		break;
-	case PSM_PSMCT16S:
-		for(len /= 2; len-- > 0; StepTransfer(m_env.TRXPOS.SSAX, m_env.TRXREG.RRW), pw++)
-			*pw = (WORD)m_mem.readPixel16S(m_x, m_y, m_env.BITBLTBUF.SBP, m_env.BITBLTBUF.SBW);
-		break;
-	case PSM_PSMT8:
-		for(; len-- > 0; StepTransfer(m_env.TRXPOS.SSAX, m_env.TRXREG.RRW), pb++)
-			*pb = (BYTE)m_mem.readPixel8(m_x, m_y, m_env.BITBLTBUF.SBP, m_env.BITBLTBUF.SBW);
-		break;
-	case PSM_PSMT4:
-		for(; len-- > 0; StepTransfer(m_env.TRXPOS.SSAX, m_env.TRXREG.RRW), StepTransfer(m_env.TRXPOS.SSAX, m_env.TRXREG.RRW), pb++)
-			*pb = (BYTE)(m_mem.readPixel4(m_x, m_y, m_env.BITBLTBUF.SBP, m_env.BITBLTBUF.SBW)&0x0f)
-				| (BYTE)(m_mem.readPixel4(m_x+1, m_y, m_env.BITBLTBUF.SBP, m_env.BITBLTBUF.SBW)<<4);
-		break;
-	case PSM_PSMT8H:
-		for(; len-- > 0; StepTransfer(m_env.TRXPOS.SSAX, m_env.TRXREG.RRW), pb++)
-			*pb = (BYTE)m_mem.readPixel8H(m_x, m_y, m_env.BITBLTBUF.SBP, m_env.BITBLTBUF.SBW);
-		break;
-	case PSM_PSMT4HL:
-		for(; len-- > 0; StepTransfer(m_env.TRXPOS.SSAX, m_env.TRXREG.RRW), StepTransfer(m_env.TRXPOS.SSAX, m_env.TRXREG.RRW), pb++)
-			*pb = (BYTE)(m_mem.readPixel4HL(m_x, m_y, m_env.BITBLTBUF.SBP, m_env.BITBLTBUF.SBW)&0x0f)
-				| (BYTE)(m_mem.readPixel4HL(m_x+1, m_y, m_env.BITBLTBUF.SBP, m_env.BITBLTBUF.SBW)<<4);
-		break;
-	case PSM_PSMT4HH:
-		for(; len-- > 0; StepTransfer(m_env.TRXPOS.SSAX, m_env.TRXREG.RRW), StepTransfer(m_env.TRXPOS.SSAX, m_env.TRXREG.RRW), pb++)
-			*pb = (BYTE)(m_mem.readPixel4HH(m_x, m_y, m_env.BITBLTBUF.SBP, m_env.BITBLTBUF.SBW)&0x0f)
-				| (BYTE)(m_mem.readPixel4HH(m_x+1, m_y, m_env.BITBLTBUF.SBP, m_env.BITBLTBUF.SBW)<<4);
-		break;
-	case PSM_PSMZ32:
-		for(len /= 4; len-- > 0; StepTransfer(m_env.TRXPOS.SSAX, m_env.TRXREG.RRW), pd++)
-			*pd = m_mem.readPixel32Z(m_x, m_y, m_env.BITBLTBUF.SBP, m_env.BITBLTBUF.SBW);
-		break;
-	case PSM_PSMZ24:
-		for(len /= 3; len-- > 0; StepTransfer(m_env.TRXPOS.SSAX, m_env.TRXREG.RRW), pb+=3)
-		{
-			DWORD dw = m_mem.readPixel24Z(m_x, m_y, m_env.BITBLTBUF.SBP, m_env.BITBLTBUF.SBW);
-			pb[0] = ((BYTE*)&dw)[0]; pb[1] = ((BYTE*)&dw)[1]; pb[2] = ((BYTE*)&dw)[2];
-		}
-		break;
-	case PSM_PSMZ16:
-		for(len /= 2; len-- > 0; StepTransfer(m_env.TRXPOS.SSAX, m_env.TRXREG.RRW), pw++)
-			*pw = (WORD)m_mem.readPixel16Z(m_x, m_y, m_env.BITBLTBUF.SBP, m_env.BITBLTBUF.SBW);
-		break;
-	case PSM_PSMZ16S:
-		for(len /= 2; len-- > 0; StepTransfer(m_env.TRXPOS.SSAX, m_env.TRXREG.RRW), pw++)
-			*pw = (WORD)m_mem.readPixel16SZ(m_x, m_y, m_env.BITBLTBUF.SBP, m_env.BITBLTBUF.SBW);
-		break;
-	}
+	// TODO
+
+	m_mem.ReadImageX(m_x, m_y, mem, len, m_env.BITBLTBUF, m_env.TRXPOS, m_env.TRXREG);
 }
 
 void GSState::Move()
@@ -1213,6 +1148,8 @@ void GSState::Move()
 
 	InvalidateLocalMem(m_env.BITBLTBUF, CRect(CPoint(sx, sy), CSize(w, h)));
 	InvalidateVideoMem(m_env.BITBLTBUF, CRect(CPoint(dx, dy), CSize(w, h)));
+
+	// TODO: use rowOffset like SwizzleTextureX
 
 	for(int y = 0; y < h; y++, sy += yinc, dy += yinc, sx -= xinc*w, dx -= xinc*w)
 		for(int x = 0; x < w; x++, sx += xinc, dx += xinc)
