@@ -1054,7 +1054,23 @@ else if(steps == 3) g_slp3++;
 			{
 				zd0123.u32[i] = m_state->m_mem.ReadPixelX(zpsm, za.u32[i]);
 			}
-
+/*
+			switch(zpsm)
+			{
+			case PSM_PSMZ32: 
+				zd0123 = za.gather32_32((DWORD*)m_state->m_mem.GetVM());
+				break;
+			case PSM_PSMZ24: 
+				zd0123 = za.gather32_32((DWORD*)m_state->m_mem.GetVM()) & 0x00ffffff;
+				break;
+			case PSM_PSMZ16: 
+			case PSM_PSMZ16S: 
+				zd0123 = za.gather32_32((WORD*)m_state->m_mem.GetVM());
+				break;
+			default:
+				__assume(0);
+			}
+*/
 			GSVector4i zs = zi - 0x80000000;
 			GSVector4i zd = zd0123 - 0x80000000;
 

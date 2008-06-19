@@ -703,30 +703,32 @@ void GSLocalMemory::SetupCLUT(GIFRegTEX0 TEX0)
 		// sse2?
 		if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 		{
+			DWORD* src = m_pCLUT32;
 			DWORD* dst = (DWORD*)m_pCLUT64;
 
 			for(int j = 0; j < 16; j++, dst += 32)
 			{
-				DWORD hi = m_pCLUT32[j];
+				DWORD hi = src[j];
 
 				for(int i = 0; i < 16; i++)
 				{
-					dst[i * 2 + 0] = m_pCLUT32[i];
+					dst[i * 2 + 0] = src[i];
 					dst[i * 2 + 1] = hi;
 				}
 			}
 		}
 		else
 		{
+			DWORD* src = m_pCLUT32;
 			DWORD* dst = (DWORD*)m_pCLUT64;
 
 			for(int j = 0; j < 16; j++, dst += 32)
 			{
-				DWORD hi = m_pCLUT32[j] << 16;
+				DWORD hi = src[j] << 16;
 
 				for(int i = 0; i < 16; i++)
 				{
-					dst[i * 2 + 0] = hi | (m_pCLUT32[i] & 0xffff);
+					dst[i * 2 + 0] = hi | (src[i] & 0xffff);
 				}
 			}
 		}
@@ -777,15 +779,16 @@ void GSLocalMemory::SetupCLUT32(GIFRegTEX0 TEX0, GIFRegTEXA TEXA)
 	case PSM_PSMT4HH:
 		// sse2?
 		{
+			DWORD* src = m_pCLUT32;
 			DWORD* dst = (DWORD*)m_pCLUT64;
 
 			for(int j = 0; j < 16; j++, dst += 32)
 			{
-				DWORD hi = m_pCLUT32[j];
+				DWORD hi = src[j];
 
 				for(int i = 0; i < 16; i++)
 				{
-					dst[i * 2 + 0] = m_pCLUT32[i];
+					dst[i * 2 + 0] = src[i];
 					dst[i * 2 + 1] = hi;
 				}
 			}
@@ -1206,41 +1209,6 @@ void GSLocalMemory::WriteImage8(int& tx, int& ty, BYTE* src, int len, GIFRegBITB
 	}
 }
 
-void GSLocalMemory::WriteImage8H(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
-{
-	if(TRXREG.RRW == 0) return;
-
-	int tw = TRXREG.RRW, srcpitch = TRXREG.RRW - TRXPOS.DSAX;
-	int th = len / srcpitch;
-
-	bool aligned = IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 8, 8);
-
-	if(!aligned || (tw & 7) || (th & 7) || (len % srcpitch))
-	{
-		// TODO
-
-		WriteImageX(tx, ty, src, len, BITBLTBUF, TRXPOS, TRXREG);
-	}
-	else
-	{
-		__declspec(align(16)) DWORD block[8 * 8];
-
-		th += ty;
-
-		for(int y = ty; y < th; y += 8, src += srcpitch * 8)
-		{
-			for(int x = tx; x < tw; x += 8)
-			{
-				ExpandBlock8H(src + (x - tx), srcpitch, block);
-
-				WriteBlock32((BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], (BYTE*)block, sizeof(block) / 8, 0xff000000);
-			}
-		}
-
-		ty = th;
-	}
-}
-
 void GSLocalMemory::WriteImage4(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
 {
 	if(TRXREG.RRW == 0) return;
@@ -1332,6 +1300,41 @@ void GSLocalMemory::WriteImage4(int& tx, int& ty, BYTE* src, int len, GIFRegBITB
 				{
 					WriteBlock4((BYTE*)&m_vm8[BlockAddress4(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW) >> 1], src + (x - tx) / 2, srcpitch);
 				}
+			}
+		}
+
+		ty = th;
+	}
+}
+
+void GSLocalMemory::WriteImage8H(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
+{
+	if(TRXREG.RRW == 0) return;
+
+	int tw = TRXREG.RRW, srcpitch = TRXREG.RRW - TRXPOS.DSAX;
+	int th = len / srcpitch;
+
+	bool aligned = IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 8, 8);
+
+	if(!aligned || (tw & 7) || (th & 7) || (len % srcpitch))
+	{
+		// TODO
+
+		WriteImageX(tx, ty, src, len, BITBLTBUF, TRXPOS, TRXREG);
+	}
+	else
+	{
+		__declspec(align(16)) DWORD block[8 * 8];
+
+		th += ty;
+
+		for(int y = ty; y < th; y += 8, src += srcpitch * 8)
+		{
+			for(int x = tx; x < tw; x += 8)
+			{
+				ExpandBlock8H(src + (x - tx), srcpitch, block);
+
+				WriteBlock32((BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], (BYTE*)block, sizeof(block) / 8, 0xff000000);
 			}
 		}
 
@@ -2081,7 +2084,7 @@ void GSLocalMemory::ReadTexture32(const CRect& r, BYTE* dst, int dstpitch, GIFRe
 {
 	FOREACH_BLOCK_START(r, 8, 8, 32)
 	{
-		ReadBlock32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x-r.left)*4, dstpitch);
+		ReadBlock32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2129,34 +2132,13 @@ void GSLocalMemory::ReadTexture8(const CRect& r, BYTE* dst, int dstpitch, GIFReg
 {
 	__declspec(align(16)) BYTE block[16 * 16];
 
+	DWORD* pal = m_pCLUT32;
+
 	FOREACH_BLOCK_START(r, 16, 16, 8)
 	{
 		ReadBlock8((BYTE*)&m_vm8[BlockAddress8(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 16);
 
-		BYTE* s = block;
-		BYTE* d = ptr + (x-r.left)*4;
-
-		for(int j = 0; j < 16; j++, s += 16, d += dstpitch)
-			for(int i = 0; i < 16; i++)
-				((DWORD*)d)[i] = m_pCLUT32[s[i]];
-	}
-	FOREACH_BLOCK_END
-}
-
-void GSLocalMemory::ReadTexture8H(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
-{
-	__declspec(align(16)) DWORD block[8 * 8];
-
-	FOREACH_BLOCK_START(r, 8, 8, 32)
-	{
-		ReadBlock32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
-
-		DWORD* s = block;
-		BYTE* d = ptr + (x-r.left)*4;
-
-		for(int j = 0; j < 8; j++, s += 8, d += dstpitch)
-			for(int i = 0; i < 8; i++)
-				((DWORD*)d)[i] = m_pCLUT32[s[i] >> 24];
+		ExpandBlock8(block, (DWORD*)ptr + (x - r.left), dstpitch, pal);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2165,16 +2147,29 @@ void GSLocalMemory::ReadTexture4(const CRect& r, BYTE* dst, int dstpitch, GIFReg
 {
 	__declspec(align(16)) BYTE block[(32 / 2) * 16];
 
+	DWORD* pal32 = m_pCLUT32;
+	UINT64* pal64 = m_pCLUT64;
+
 	FOREACH_BLOCK_START(r, 32, 16, 4)
 	{
 		ReadBlock4((BYTE*)&m_vm8[BlockAddress4(x, y, TEX0.TBP0, TEX0.TBW)>>1], (BYTE*)block, sizeof(block) / 16);
 
-		BYTE* s = block;
-		BYTE* d = ptr + (x-r.left)*4;
+		ExpandBlock4(block, (DWORD*)ptr + (x - r.left), dstpitch, pal32, pal64);
+	}
+	FOREACH_BLOCK_END
+}
 
-		for(int j = 0; j < 16; j++, s += 32 / 2, d += dstpitch)
-			for(int i = 0; i < 32 / 2; i++)
-				((UINT64*)d)[i] = m_pCLUT64[s[i]];
+void GSLocalMemory::ReadTexture8H(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
+{
+	__declspec(align(16)) DWORD block[8 * 8];
+
+	DWORD* pal = m_pCLUT32;
+
+	FOREACH_BLOCK_START(r, 8, 8, 32)
+	{
+		ReadBlock32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
+
+		ExpandBlock8H(block, (DWORD*)ptr + (x - r.left), dstpitch, pal);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2183,16 +2178,13 @@ void GSLocalMemory::ReadTexture4HL(const CRect& r, BYTE* dst, int dstpitch, GIFR
 {
 	__declspec(align(16)) DWORD block[8 * 8];
 
+	DWORD* pal = m_pCLUT32;
+
 	FOREACH_BLOCK_START(r, 8, 8, 32)
 	{
 		ReadBlock32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
 
-		DWORD* s = block;
-		BYTE* d = ptr + (x - r.left) * 4;
-
-		for(int j = 0; j < 8; j++, s += 8, d += dstpitch)
-			for(int i = 0; i < 8; i++)
-				((DWORD*)d)[i] = m_pCLUT32[(s[i] >> 24) & 0x0f];
+		ExpandBlock4HL(block, (DWORD*)ptr + (x - r.left), dstpitch, pal);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2201,16 +2193,13 @@ void GSLocalMemory::ReadTexture4HH(const CRect& r, BYTE* dst, int dstpitch, GIFR
 {
 	__declspec(align(16)) DWORD block[8 * 8];
 
+	DWORD* pal = m_pCLUT32;
+
 	FOREACH_BLOCK_START(r, 8, 8, 32)
 	{
 		ReadBlock32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block)/8);
 
-		DWORD* s = block;
-		BYTE* d = ptr + (x - r.left) * 4;
-
-		for(int j = 0; j < 8; j++, s += 8, d += dstpitch)
-			for(int i = 0; i < 8; i++)
-				((DWORD*)d)[i] = m_pCLUT32[s[i] >> 28];
+		ExpandBlock4HH(block, (DWORD*)ptr + (x - r.left), dstpitch, pal);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2325,61 +2314,21 @@ void GSLocalMemory::ReadTexture8NP(const CRect& r, BYTE* dst, int dstpitch, GIFR
 {
 	__declspec(align(16)) BYTE block[16 * 16];
 
+	DWORD* pal = m_pCLUT32;
+
 	FOREACH_BLOCK_START(r, 16, 16, 8)
 	{
 		ReadBlock8((BYTE*)&m_vm8[BlockAddress8(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 16);
 
-		BYTE* s = block;
-
 		if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 		{
-			BYTE* d = ptr + (x - r.left) * 4;
-
-			for(int j = 0; j < 16; j++, s += 16, d += dstpitch)
-				for(int i = 0; i < 16; i++)
-					((DWORD*)d)[i] = m_pCLUT32[s[i]];
+			ExpandBlock8(block, (DWORD*)ptr + (x - r.left), dstpitch, pal);
 		}
 		else
 		{
 			ASSERT(TEX0.CPSM == PSM_PSMCT16 || TEX0.CPSM == PSM_PSMCT16S);
 
-			BYTE* d = ptr + (x - r.left) * 2;
-
-			for(int j = 0; j < 16; j++, s += 16, d += dstpitch)
-				for(int i = 0; i < 16; i++)
-					((WORD*)d)[i] = (WORD)m_pCLUT32[s[i]];
-		}
-	}
-	FOREACH_BLOCK_END
-}
-
-void GSLocalMemory::ReadTexture8HNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
-{
-	__declspec(align(16)) DWORD block[8 * 8];
-
-	FOREACH_BLOCK_START(r, 8, 8, 32)
-	{
-		ReadBlock32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
-
-		DWORD* s = block;
-
-		if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
-		{
-			BYTE* d = ptr + (x - r.left) * 4;
-
-			for(int j = 0; j < 8; j++, s += 8, d += dstpitch)
-				for(int i = 0; i < 8; i++)
-					((DWORD*)d)[i] = m_pCLUT32[s[i] >> 24];
-		}
-		else
-		{
-			ASSERT(TEX0.CPSM == PSM_PSMCT16 || TEX0.CPSM == PSM_PSMCT16S);
-
-			BYTE* d = ptr + (x - r.left) * 2;
-
-			for(int j = 0; j < 8; j++, s += 8, d += dstpitch)
-				for(int i = 0; i < 8; i++)
-					((WORD*)d)[i] = (WORD)m_pCLUT32[s[i] >> 24];
+			ExpandBlock8(block, (WORD*)ptr + (x - r.left), dstpitch, pal);
 		}
 	}
 	FOREACH_BLOCK_END
@@ -2389,29 +2338,46 @@ void GSLocalMemory::ReadTexture4NP(const CRect& r, BYTE* dst, int dstpitch, GIFR
 {
 	__declspec(align(16)) BYTE block[(32 / 2) * 16];
 
+	DWORD* pal32 = m_pCLUT32;
+	UINT64* pal64 = m_pCLUT64;
+
 	FOREACH_BLOCK_START(r, 32, 16, 4)
 	{
 		ReadBlock4((BYTE*)&m_vm8[BlockAddress4(x, y, TEX0.TBP0, TEX0.TBW)>>1], (BYTE*)block, sizeof(block) / 16);
 
-		BYTE* s = block;
-
 		if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 		{
-			BYTE* d = ptr + (x - r.left) * 4;
-
-			for(int j = 0; j < 16; j++, s += 32 / 2, d += dstpitch)
-				for(int i = 0; i < 32 / 2; i++)
-					((UINT64*)d)[i] = m_pCLUT64[s[i]];
+			ExpandBlock4(block, (DWORD*)ptr + (x - r.left), dstpitch, pal32, pal64);
 		}
 		else
 		{
 			ASSERT(TEX0.CPSM == PSM_PSMCT16 || TEX0.CPSM == PSM_PSMCT16S);
 
-			BYTE* d = ptr + (x - r.left) * 2;
+			ExpandBlock4(block, (WORD*)ptr + (x - r.left), dstpitch, pal64);
+		}
+	}
+	FOREACH_BLOCK_END
+}
 
-			for(int j = 0; j < 16; j++, s += 32 / 2, d += dstpitch)
-				for(int i = 0; i < 32 / 2; i++)
-					((DWORD*)d)[i] = (DWORD)m_pCLUT64[s[i]];
+void GSLocalMemory::ReadTexture8HNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
+{
+	__declspec(align(16)) DWORD block[8 * 8];
+
+	DWORD* pal = m_pCLUT32;
+
+	FOREACH_BLOCK_START(r, 8, 8, 32)
+	{
+		ReadBlock32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
+
+		if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
+		{
+			ExpandBlock8H(block, (DWORD*)ptr + (x - r.left), dstpitch, pal);
+		}
+		else
+		{
+			ASSERT(TEX0.CPSM == PSM_PSMCT16 || TEX0.CPSM == PSM_PSMCT16S);
+
+			ExpandBlock8H(block, (WORD*)ptr + (x - r.left), dstpitch, pal);
 		}
 	}
 	FOREACH_BLOCK_END
@@ -2421,29 +2387,21 @@ void GSLocalMemory::ReadTexture4HLNP(const CRect& r, BYTE* dst, int dstpitch, GI
 {
 	__declspec(align(16)) DWORD block[8 * 8];
 
+	DWORD* pal = m_pCLUT32;
+
 	FOREACH_BLOCK_START(r, 8, 8, 32)
 	{
 		ReadBlock32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
 
-		DWORD* s = block;
-
 		if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 		{
-			BYTE* d = ptr + (x - r.left) * 4;
-
-			for(int j = 0; j < 8; j++, s += 8, d += dstpitch)
-				for(int i = 0; i < 8; i++)
-					((DWORD*)d)[i] = m_pCLUT32[(s[i] >> 24) & 0x0f];
+			ExpandBlock4HL(block, (DWORD*)ptr + (x - r.left), dstpitch, pal);
 		}
 		else
 		{
 			ASSERT(TEX0.CPSM == PSM_PSMCT16 || TEX0.CPSM == PSM_PSMCT16S);
 
-			BYTE* d = ptr + (x - r.left) * 2;
-
-			for(int j = 0; j < 8; j++, s += 8, d += dstpitch)
-				for(int i = 0; i < 8; i++)
-					((WORD*)d)[i] = (WORD)m_pCLUT32[(s[i] >> 24) & 0x0f];
+			ExpandBlock4HL(block, (WORD*)ptr + (x - r.left), dstpitch, pal);
 		}
 	}
 	FOREACH_BLOCK_END
@@ -2453,29 +2411,21 @@ void GSLocalMemory::ReadTexture4HHNP(const CRect& r, BYTE* dst, int dstpitch, GI
 {
 	__declspec(align(16)) DWORD block[8 * 8];
 
+	DWORD* pal = m_pCLUT32;
+
 	FOREACH_BLOCK_START(r, 8, 8, 32)
 	{
 		ReadBlock32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block)/8);
 
-		DWORD* s = block;
-
 		if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 		{
-			BYTE* d = ptr + (x - r.left) * 4;
-
-			for(int j = 0; j < 8; j++, s += 8, d += dstpitch)
-				for(int i = 0; i < 8; i++)
-					((DWORD*)d)[i] = m_pCLUT32[s[i] >> 28];
+			ExpandBlock4HH(block, (DWORD*)ptr + (x - r.left), dstpitch, pal);
 		}
 		else
 		{
 			ASSERT(TEX0.CPSM == PSM_PSMCT16 || TEX0.CPSM == PSM_PSMCT16S);
 
-			BYTE* d = ptr + (x - r.left) * 2;
-
-			for(int j = 0; j < 8; j++, s += 8, d += dstpitch)
-				for(int i = 0; i < 8; i++)
-					((WORD*)d)[i] = (WORD)m_pCLUT32[s[i] >> 28];
+			ExpandBlock4HH(block, (WORD*)ptr + (x - r.left), dstpitch, pal);
 		}
 	}
 	FOREACH_BLOCK_END
@@ -2811,7 +2761,7 @@ if(!aligned) printf("unaligned memory pointer passed to ReadTexture\n");
 
 			if(!cr.IsRectEmpty())
 			{
-				(this->*rtx)(cr, dst + (cr.left - r.left)*sizeof(T), dstpitch, TEX0, TEXA);
+				(this->*rtx)(cr, dst + (cr.left - r.left) * sizeof(T), dstpitch, TEX0, TEXA);
 			}
 
 			for(int y = cr.top; y < cr.bottom; y++, dst += dstpitch)
@@ -2863,7 +2813,7 @@ if(!aligned) printf("unaligned memory pointer passed to ReadTexture\n");
 				((T*)dst)[i] = (T)(this->*rt)(x, y, TEX0, TEXA);
 
 		if(!cr.IsRectEmpty())
-			(this->*rtx)(cr, dst + (cr.left - r.left)*sizeof(T), dstpitch, TEX0, TEXA);
+			(this->*rtx)(cr, dst + (cr.left - r.left) * sizeof(T), dstpitch, TEX0, TEXA);
 
 		for(int y = cr.top; y < cr.bottom; y++, dst += dstpitch)
 		{
@@ -4209,6 +4159,282 @@ void GSLocalMemory::ExpandBlock16(WORD* src, DWORD* dst, int dstpitch, GIFRegTEX
 	}
 
 #endif
+}
+
+void GSLocalMemory::ExpandBlock8(BYTE* src, DWORD* dst, int dstpitch, DWORD* pal)
+{
+	for(int j = 0; j < 16; j++, dst += dstpitch >> 2)
+	{
+		#if _M_SSE >= 0x400
+
+		GSVector4i* s = (GSVector4i*)src;
+		GSVector4i* d = (GSVector4i*)dst;
+
+		GSVector4i v = s[j];
+
+		d[0] = v.gather32_8<0>(pal);
+		d[1] = v.gather32_8<4>(pal);
+		d[2] = v.gather32_8<8>(pal);
+		d[3] = v.gather32_8<12>(pal);
+
+		#else
+
+		for(int i = 0; i < 16; i++)
+		{
+			dst[i] = pal[src[j * 16 + i]];
+		}
+
+		#endif
+	}
+}
+
+void GSLocalMemory::ExpandBlock8(BYTE* src, WORD* dst, int dstpitch, DWORD* pal)
+{
+	for(int j = 0; j < 16; j++, dst += dstpitch >> 1)
+	{
+		#if _M_SSE >= 0x400
+
+		GSVector4i* s = (GSVector4i*)src;
+		GSVector4i* d = (GSVector4i*)dst;
+
+		GSVector4i v = s[j];
+
+		d[0] = v.gather16_8<0>(pal);
+		d[1] = v.gather16_8<8>(pal);
+
+		#else
+
+		for(int i = 0; i < 16; i++)
+		{
+			dst[i] = (WORD)pal[src[j * 16 + i]];
+		}
+
+		#endif
+	}
+}
+
+void GSLocalMemory::ExpandBlock4(BYTE* src, DWORD* dst, int dstpitch, DWORD* pal32, UINT64* pal64)
+{
+	for(int j = 0; j < 16; j++, dst += dstpitch >> 2)
+	{
+		#if _M_SSE >= 0x400 && defined(_M_AMD64)
+
+		GSVector4i* s = (GSVector4i*)src;
+		GSVector4i* d = (GSVector4i*)dst;
+
+		GSVector4i v = s[j];
+
+		d[0] = v.gather64_8<0>(pal64);
+		d[1] = v.gather64_8<2>(pal64);
+		d[2] = v.gather64_8<4>(pal64);
+		d[3] = v.gather64_8<6>(pal64);
+		d[4] = v.gather64_8<8>(pal64);
+		d[5] = v.gather64_8<10>(pal64);
+		d[6] = v.gather64_8<12>(pal64);
+		d[7] = v.gather64_8<14>(pal64);
+
+		#elif 0 // _M_SSE >= 0x400 // TODO: test if this is actually faster than the normal c version
+
+		GSVector4i* s = (GSVector4i*)src;
+		GSVector4i* d = (GSVector4i*)dst;
+
+		GSVector4i v = s[j];
+
+		d[0] = v.gather32_4<0>(pal32);
+		d[1] = v.gather32_4<2>(pal32);
+		d[2] = v.gather32_4<4>(pal32);
+		d[3] = v.gather32_4<6>(pal32);
+		d[4] = v.gather32_4<8>(pal32);
+		d[5] = v.gather32_4<10>(pal32);
+		d[6] = v.gather32_4<12>(pal32);
+		d[7] = v.gather32_4<14>(pal32);
+
+		#else
+
+		for(int i = 0; i < 32 / 2; i++)
+		{
+			((UINT64*)dst)[i] = pal64[src[j * 16 + i]];
+		}
+
+		#endif
+	}
+}
+
+void GSLocalMemory::ExpandBlock4(BYTE* src, WORD* dst, int dstpitch, UINT64* pal)
+{
+	for(int j = 0; j < 16; j++, dst += dstpitch >> 1)
+	{
+		#if _M_SSE >= 0x400
+
+		GSVector4i* s = (GSVector4i*)src;
+		GSVector4i* d = (GSVector4i*)dst;
+
+		GSVector4i v = s[j];
+
+		d[0] = v.gather32_8<0>(pal);
+		d[1] = v.gather32_8<4>(pal);
+		d[2] = v.gather32_8<8>(pal);
+		d[3] = v.gather32_8<12>(pal);
+
+		#else
+
+		for(int i = 0; i < 32 / 2; i++)
+		{
+			((DWORD*)dst)[i] = (DWORD)pal[src[j * 16 + i]];
+		}
+
+		#endif
+	}
+}
+
+void GSLocalMemory::ExpandBlock8H(DWORD* src, DWORD* dst, int dstpitch, DWORD* pal)
+{
+	for(int j = 0; j < 8; j++, dst += dstpitch >> 2)
+	{
+		#if _M_SSE >= 0x400
+
+		GSVector4i* s = (GSVector4i*)src;
+		GSVector4i* d = (GSVector4i*)dst;
+
+		d[0] = (s[j * 2 + 0] >> 24).gather32_32<>(pal);
+		d[1] = (s[j * 2 + 1] >> 24).gather32_32<>(pal);
+
+		#else
+
+		for(int i = 0; i < 8; i++)
+		{
+			dst[i] = pal[src[j * 8 + i] >> 24];
+		}
+
+		#endif
+	}
+}
+
+void GSLocalMemory::ExpandBlock8H(DWORD* src, WORD* dst, int dstpitch, DWORD* pal)
+{
+	for(int j = 0; j < 8; j++, dst += dstpitch >> 1)
+	{
+		#if _M_SSE >= 0x400
+
+		GSVector4i* s = (GSVector4i*)src;
+		GSVector4i* d = (GSVector4i*)dst;
+
+		GSVector4i v;
+
+		v = (s[j * 2 + 0] >> 24).gather16_32<0>(pal, v);
+		v = (s[j * 2 + 1] >> 24).gather16_32<4>(pal, v);
+
+		d[0] = v;
+
+		#else
+
+		for(int i = 0; i < 8; i++)
+		{
+			dst[i] = (WORD)pal[src[j * 8 + i] >> 24];
+		}
+
+		#endif
+	}
+}
+
+void GSLocalMemory::ExpandBlock4HL(DWORD* src, DWORD* dst, int dstpitch, DWORD* pal)
+{
+	for(int j = 0; j < 8; j++, dst += dstpitch >> 2)
+	{
+		#if _M_SSE >= 0x400
+
+		GSVector4i* s = (GSVector4i*)src;
+		GSVector4i* d = (GSVector4i*)dst;
+
+		d[0] = ((s[j * 2 + 0] >> 24) & 0xf).gather32_32<>(pal);
+		d[1] = ((s[j * 2 + 1] >> 24) & 0xf).gather32_32<>(pal);
+
+		#else
+
+		for(int i = 0; i < 8; i++)
+		{
+			dst[i] = pal[(src[j * 8 + i] >> 24) & 0xf];
+		}
+
+		#endif
+	}
+}
+
+void GSLocalMemory::ExpandBlock4HL(DWORD* src, WORD* dst, int dstpitch, DWORD* pal)
+{
+	for(int j = 0; j < 8; j++, dst += dstpitch >> 2)
+	{
+		#if _M_SSE >= 0x400
+
+		GSVector4i* s = (GSVector4i*)src;
+		GSVector4i* d = (GSVector4i*)dst;
+
+		GSVector4i v;
+
+		v = ((s[j * 2 + 0] >> 24) & 0xf).gather16_32<0>(pal, v);
+		v = ((s[j * 2 + 1] >> 24) & 0xf).gather16_32<4>(pal, v);
+
+		d[0] = v;
+
+		#else
+
+		for(int i = 0; i < 8; i++)
+		{
+			dst[i] = (WORD)pal[(src[j * 8 + i] >> 24) & 0xf];
+		}
+
+		#endif
+	}
+}
+
+void GSLocalMemory::ExpandBlock4HH(DWORD* src, DWORD* dst, int dstpitch, DWORD* pal)
+{
+	for(int j = 0; j < 8; j++, dst += dstpitch >> 2)
+	{
+		#if _M_SSE >= 0x400
+
+		GSVector4i* s = (GSVector4i*)src;
+		GSVector4i* d = (GSVector4i*)dst;
+
+		d[0] = (s[j * 2 + 0] >> 28).gather32_32<>(pal);
+		d[1] = (s[j * 2 + 1] >> 28).gather32_32<>(pal);
+
+		#else
+
+		for(int i = 0; i < 8; i++)
+		{
+			dst[i] = pal[src[j * 8 + i] >> 28];
+		}
+
+		#endif
+	}
+}
+
+void GSLocalMemory::ExpandBlock4HH(DWORD* src, WORD* dst, int dstpitch, DWORD* pal)
+{
+	for(int j = 0; j < 8; j++, dst += dstpitch >> 2)
+	{
+		#if _M_SSE >= 0x400
+
+		GSVector4i* s = (GSVector4i*)src;
+		GSVector4i* d = (GSVector4i*)dst;
+
+		GSVector4i v;
+
+		v = (s[j * 2 + 0] >> 28).gather16_32<0>(pal, v);
+		v = (s[j * 2 + 1] >> 28).gather16_32<4>(pal, v);
+
+		d[0] = v;
+
+		#else
+
+		for(int i = 0; i < 8; i++)
+		{
+			dst[i] = (WORD)pal[src[j * 8 + i] >> 28];
+		}
+
+		#endif
+	}
 }
 
 void GSLocalMemory::Expand16(WORD* src, DWORD* dst, int w, GIFRegTEXA* TEXA)
