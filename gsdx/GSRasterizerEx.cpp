@@ -812,6 +812,29 @@ void GSRasterizer::InitEx()
 	m_dsmap[0x4451f8e9] = &GSRasterizer::DrawScanlineEx<0x4451f8e9>;
 	m_dsmap[0x44540429] = &GSRasterizer::DrawScanlineEx<0x44540429>;
 	m_dsmap[0x4451c449] = &GSRasterizer::DrawScanlineEx<0x4451c449>;
+	m_dsmap[0x4451b009] = &GSRasterizer::DrawScanlineEx<0x4451b009>;
+	m_dsmap[0x48504439] = &GSRasterizer::DrawScanlineEx<0x48504439>;
+	m_dsmap[0x44505009] = &GSRasterizer::DrawScanlineEx<0x44505009>;
+	m_dsmap[0x4451b849] = &GSRasterizer::DrawScanlineEx<0x4451b849>;
+	m_dsmap[0xa9504409] = &GSRasterizer::DrawScanlineEx<0xa9504409>;
+	m_dsmap[0x00119809] = &GSRasterizer::DrawScanlineEx<0x00119809>;
+	m_dsmap[0x00105889] = &GSRasterizer::DrawScanlineEx<0x00105889>;
+	m_dsmap[0x00007059] = &GSRasterizer::DrawScanlineEx<0x00007059>;
+	m_dsmap[0x44519809] = &GSRasterizer::DrawScanlineEx<0x44519809>;
+	m_dsmap[0x48518429] = &GSRasterizer::DrawScanlineEx<0x48518429>;
+	m_dsmap[0x4451c4e9] = &GSRasterizer::DrawScanlineEx<0x4451c4e9>;
+	m_dsmap[0x485044d9] = &GSRasterizer::DrawScanlineEx<0x485044d9>;
+	m_dsmap[0x00119889] = &GSRasterizer::DrawScanlineEx<0x00119889>;
+	m_dsmap[0x4851d829] = &GSRasterizer::DrawScanlineEx<0x4851d829>;
+	m_dsmap[0x00118489] = &GSRasterizer::DrawScanlineEx<0x00118489>;
+	m_dsmap[0x44518889] = &GSRasterizer::DrawScanlineEx<0x44518889>;
+	m_dsmap[0x64504429] = &GSRasterizer::DrawScanlineEx<0x64504429>;
+	m_dsmap[0x4851b809] = &GSRasterizer::DrawScanlineEx<0x4851b809>;
+	m_dsmap[0x48505009] = &GSRasterizer::DrawScanlineEx<0x48505009>;
+	m_dsmap[0x4851b849] = &GSRasterizer::DrawScanlineEx<0x4851b849>;
+	m_dsmap[0x485244b9] = &GSRasterizer::DrawScanlineEx<0x485244b9>;
+	m_dsmap[0x44523839] = &GSRasterizer::DrawScanlineEx<0x44523839>;
+	m_dsmap[0x00105009] = &GSRasterizer::DrawScanlineEx<0x00105009>;
 
 	// God of War
 
