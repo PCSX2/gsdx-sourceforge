@@ -198,133 +198,133 @@ public:
 	}
 	#endif
 
-	GSVector4i blend8(const GSVector4i& a, const GSVector4i& mask) 
+	GSVector4i blend8(const GSVector4i& a, const GSVector4i& mask) const
 	{
 		return GSVector4i(_mm_blendv_epi8(m, a, mask));
 	}
 
 	#if _M_SSE >= 0x400
-	template<int mask> GSVector4i blend16(const GSVector4i& a) 
+	template<int mask> GSVector4i blend16(const GSVector4i& a) const
 	{
 		return GSVector4i(_mm_blend_epi16(m, a, mask));
 	}
 	#endif
 
-	GSVector4i blend(const GSVector4i& a, const GSVector4i& mask) 
+	GSVector4i blend(const GSVector4i& a, const GSVector4i& mask) const
 	{
 		return GSVector4i(_mm_or_si128(_mm_andnot_si128(mask, m), _mm_and_si128(mask, a)));
 	}
 
 	#if _M_SSE >= 0x301
-	GSVector4i shuffle8(const GSVector4i& mask)
+	GSVector4i shuffle8(const GSVector4i& mask) const
 	{
 		return GSVector4i(_mm_shuffle_epi8(m, mask));
 	}
 	#endif
 
-	GSVector4i ps16(const GSVector4i& a)
+	GSVector4i ps16(const GSVector4i& a) const
 	{
 		return GSVector4i(_mm_packs_epi16(m, a));
 	}
 
-	GSVector4i pu16(const GSVector4i& a)
+	GSVector4i pu16(const GSVector4i& a) const
 	{
 		return GSVector4i(_mm_packus_epi16(m, a));
 	}
 
-	GSVector4i ps32(const GSVector4i& a)
+	GSVector4i ps32(const GSVector4i& a) const
 	{
 		return GSVector4i(_mm_packs_epi32(m, a));
 	}
 	
 	#if _M_SSE >= 0x400
-	GSVector4i pu32(const GSVector4i& a)
+	GSVector4i pu32(const GSVector4i& a) const
 	{
 		return GSVector4i(_mm_packus_epi32(m, a));
 	}
 	#endif
 
-	GSVector4i upl8(const GSVector4i& a)
+	GSVector4i upl8(const GSVector4i& a) const
 	{
 		return GSVector4i(_mm_unpacklo_epi8(m, a));
 	}
 
-	GSVector4i uph8(const GSVector4i& a)
+	GSVector4i uph8(const GSVector4i& a) const
 	{
 		return GSVector4i(_mm_unpackhi_epi8(m, a));
 	}
 
-	GSVector4i upl16(const GSVector4i& a)
+	GSVector4i upl16(const GSVector4i& a) const
 	{
 		return GSVector4i(_mm_unpacklo_epi16(m, a));
 	}
 
-	GSVector4i uph16(const GSVector4i& a)
+	GSVector4i uph16(const GSVector4i& a) const
 	{
 		return GSVector4i(_mm_unpackhi_epi16(m, a));
 	}
 
-	GSVector4i upl32(const GSVector4i& a)
+	GSVector4i upl32(const GSVector4i& a) const
 	{
 		return GSVector4i(_mm_unpacklo_epi32(m, a));
 	}
 
-	GSVector4i uph32(const GSVector4i& a)
+	GSVector4i uph32(const GSVector4i& a) const
 	{
 		return GSVector4i(_mm_unpackhi_epi32(m, a));
 	}
 
-	GSVector4i upl64(const GSVector4i& a)
+	GSVector4i upl64(const GSVector4i& a) const
 	{
 		return GSVector4i(_mm_unpacklo_epi64(m, a));
 	}
 
-	GSVector4i uph64(const GSVector4i& a)
+	GSVector4i uph64(const GSVector4i& a) const
 	{
 		return GSVector4i(_mm_unpackhi_epi64(m, a));
 	}
 
-	GSVector4i upl8()
+	GSVector4i upl8() const
 	{
 		return GSVector4i(_mm_unpacklo_epi8(m, _mm_setzero_si128()));
 	}
 
-	GSVector4i uph8()
+	GSVector4i uph8() const
 	{
 		return GSVector4i(_mm_unpackhi_epi8(m, _mm_setzero_si128()));
 	}
 
-	GSVector4i upl16()
+	GSVector4i upl16() const
 	{
 		return GSVector4i(_mm_unpacklo_epi16(m, _mm_setzero_si128()));
 	}
 
-	GSVector4i uph16()
+	GSVector4i uph16() const
 	{
 		return GSVector4i(_mm_unpackhi_epi16(m, _mm_setzero_si128()));
 	}
 
-	GSVector4i upl32()
+	GSVector4i upl32() const
 	{
 		return GSVector4i(_mm_unpacklo_epi32(m, _mm_setzero_si128()));
 	}
 
-	GSVector4i uph32()
+	GSVector4i uph32() const
 	{
 		return GSVector4i(_mm_unpackhi_epi32(m, _mm_setzero_si128()));
 	}
 
-	GSVector4i upl64()
+	GSVector4i upl64() const
 	{
 		return GSVector4i(_mm_unpacklo_epi64(m, _mm_setzero_si128()));
 	}
 
-	GSVector4i uph64()
+	GSVector4i uph64() const
 	{
 		return GSVector4i(_mm_unpackhi_epi64(m, _mm_setzero_si128()));
 	}
 
-	template<int i> GSVector4i srl()
+	template<int i> GSVector4i srl() const
 	{
 		return GSVector4i(_mm_srli_si128(m, i));
 	}
@@ -344,52 +344,52 @@ public:
 		#endif
 	}
 
-	template<int i> GSVector4i sll()
+	template<int i> GSVector4i sll() const
 	{
 		return GSVector4i(_mm_slli_si128(m, i));
 	}
 
-	GSVector4i sra16(int i)
+	GSVector4i sra16(int i) const
 	{
 		return GSVector4i(_mm_srai_epi16(m, i));
 	}
 
-	GSVector4i sra32(int i)
+	GSVector4i sra32(int i) const
 	{
 		return GSVector4i(_mm_srai_epi32(m, i));
 	}
 
-	GSVector4i sll16(int i)
+	GSVector4i sll16(int i) const
 	{
 		return GSVector4i(_mm_slli_epi16(m, i));
 	}
 
-	GSVector4i sll32(int i)
+	GSVector4i sll32(int i) const
 	{
 		return GSVector4i(_mm_slli_epi32(m, i));
 	}
 
-	GSVector4i sll64(int i)
+	GSVector4i sll64(int i) const
 	{
 		return GSVector4i(_mm_slli_epi64(m, i));
 	}
 
-	GSVector4i srl16(int i)
+	GSVector4i srl16(int i) const
 	{
 		return GSVector4i(_mm_srli_epi16(m, i));
 	}
 
-	GSVector4i srl32(int i)
+	GSVector4i srl32(int i) const
 	{
 		return GSVector4i(_mm_srli_epi32(m, i));
 	}
 
-	GSVector4i srl64(int i)
+	GSVector4i srl64(int i) const
 	{
 		return GSVector4i(_mm_srli_epi64(m, i));
 	}
 
-	GSVector4i andnot(const GSVector4i& v)
+	GSVector4i andnot(const GSVector4i& v) const
 	{
 		return GSVector4i(_mm_andnot_si128(v.m, m));
 	}
@@ -871,17 +871,17 @@ public:
 		return GSVector4(_mm_max_ps(m, a));
 	}
 
-	GSVector4 blend8(const GSVector4& a, const GSVector4& mask) 
+	GSVector4 blend8(const GSVector4& a, const GSVector4& mask)  const
 	{
 		return GSVector4(_mm_blendv_ps(m, a, mask));
 	}
 
-	GSVector4 upl(const GSVector4& a)
+	GSVector4 upl(const GSVector4& a) const
 	{
 		return GSVector4(_mm_unpacklo_ps(m, a));
 	}
 
-	GSVector4 uph(const GSVector4& a)
+	GSVector4 uph(const GSVector4& a) const
 	{
 		return GSVector4(_mm_unpackhi_ps(m, a));
 	}
