@@ -130,8 +130,20 @@ protected:
 	static void ExpandBlock8H(BYTE* src, int srcpitch, DWORD* dst);
 	static void ExpandBlock4HL(BYTE* src, int srcpitch, DWORD* dst);
 	static void ExpandBlock4HH(BYTE* src, int srcpitch, DWORD* dst);
-	static void ExpandBlock24(DWORD* src, DWORD* dst, int dstpitch, GIFRegTEXA* TEXA);
-	static void ExpandBlock16(WORD* src, DWORD* dst, int dstpitch, GIFRegTEXA* TEXA);
+
+	__forceinline static void ExpandBlock24(DWORD* src, DWORD* dst, int dstpitch, GIFRegTEXA* TEXA);
+	__forceinline static void ExpandBlock16(WORD* src, DWORD* dst, int dstpitch, GIFRegTEXA* TEXA);
+	__forceinline static void ExpandBlock8(BYTE* src, DWORD* dst, int dstpitch, DWORD* pal);
+	__forceinline static void ExpandBlock8(BYTE* src, WORD* dst, int dstpitch, DWORD* pal);
+	__forceinline static void ExpandBlock4(BYTE* src, DWORD* dst, int dstpitch, DWORD* pal32, UINT64* pal64);
+	__forceinline static void ExpandBlock4(BYTE* src, WORD* dst, int dstpitch, UINT64* pal);
+	__forceinline static void ExpandBlock8H(DWORD* src, DWORD* dst, int dstpitch, DWORD* pal);
+	__forceinline static void ExpandBlock8H(DWORD* src, WORD* dst, int dstpitch, DWORD* pal);
+	__forceinline static void ExpandBlock4HL(DWORD* src, DWORD* dst, int dstpitch, DWORD* pal);
+	__forceinline static void ExpandBlock4HL(DWORD* src, WORD* dst, int dstpitch, DWORD* pal);
+	__forceinline static void ExpandBlock4HH(DWORD* src, DWORD* dst, int dstpitch, DWORD* pal);
+	__forceinline static void ExpandBlock4HH(DWORD* src, WORD* dst, int dstpitch, DWORD* pal);
+
 	static void Expand16(WORD* src, DWORD* dst, int w, GIFRegTEXA* TEXA);
 
 	__forceinline static DWORD Expand24To32(DWORD c, GIFRegTEXA& TEXA)
@@ -977,6 +989,9 @@ public:
 		{
 		case PSM_PSMCT32: 
 		case PSM_PSMZ32: 
+			/*
+			c = addr.gather32_32(m_vm32);
+			*/
 			c = GSVector4i(
 				(int)ReadPixel32(addr.u32[0]), 
 				(int)ReadPixel32(addr.u32[1]), 
@@ -985,6 +1000,9 @@ public:
 			break;
 		case PSM_PSMCT24: 
 		case PSM_PSMZ24: 
+			/*
+			c = addr.gather32_32(m_vm32);
+			*/
 			c = GSVector4i(
 				(int)ReadPixel32(addr.u32[0]), 
 				(int)ReadPixel32(addr.u32[1]), 
@@ -996,6 +1014,9 @@ public:
 		case PSM_PSMCT16S: 
 		case PSM_PSMZ16: 
 		case PSM_PSMZ16S: 
+			/*
+			c = addr.gather32_32(m_vm16);
+			*/
 			c = GSVector4i(
 				(int)ReadPixel16(addr.u32[0]), 
 				(int)ReadPixel16(addr.u32[1]), 
@@ -1074,8 +1095,8 @@ public:
 	void WriteImage16(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
 	void WriteImage16S(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
 	void WriteImage8(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
-	void WriteImage8H(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
 	void WriteImage4(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
+	void WriteImage8H(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
 	void WriteImage4HL(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
 	void WriteImage4HH(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
 	void WriteImage32Z(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
@@ -1095,8 +1116,8 @@ public:
 	void ReadTexture16(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
 	void ReadTexture16S(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
 	void ReadTexture8(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
-	void ReadTexture8H(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
 	void ReadTexture4(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
+	void ReadTexture8H(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
 	void ReadTexture4HL(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
 	void ReadTexture4HH(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
 	void ReadTexture32Z(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
@@ -1112,8 +1133,8 @@ public:
 	void ReadTexture16NP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
 	void ReadTexture16SNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
 	void ReadTexture8NP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
-	void ReadTexture8HNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
 	void ReadTexture4NP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
+	void ReadTexture8HNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
 	void ReadTexture4HLNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
 	void ReadTexture4HHNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
 	void ReadTexture16ZNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA);
