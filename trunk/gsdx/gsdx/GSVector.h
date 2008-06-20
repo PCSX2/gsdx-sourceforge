@@ -1,5 +1,7 @@
 #pragma once
 
+// NOTE: x64 version of the _mm_set_* functions are terrible, first they store components into memory then reload in one piece (VS2008 SP1)
+
 #pragma pack(push, 1)
 
 class GSVector2
@@ -692,7 +694,6 @@ public:
 
 	static GSVector4i loadh(const void* p)
 	{
-		// return GSVector4i(_mm_slli_si128(_mm_loadl_epi64((__m128i*)p), 8));
 		return GSVector4i(_mm_castps_si128(_mm_loadh_pi(_mm_setzero_ps(), (__m64*)p)));
 	}
 
@@ -703,7 +704,6 @@ public:
 
 	static GSVector4i loadu(const void* pl, const void* ph)
 	{
-		// return loadl(pl) | loadh(ph);
 		__m128i lo = _mm_loadl_epi64((__m128i*)pl);
 		return GSVector4i(_mm_castps_si128(_mm_loadh_pi(_mm_castsi128_ps(lo), (__m64*)ph)));
 	}
@@ -715,7 +715,6 @@ public:
 
 	static void storeh(void* p, const GSVector4i& v)
 	{
-		// _mm_storel_epi64((__m128i*)p, _mm_srli_si128(v.m, 8));
 		_mm_storeh_pi((__m64*)p, _mm_castsi128_ps(v.m));
 	}
 

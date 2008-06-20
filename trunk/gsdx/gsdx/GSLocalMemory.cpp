@@ -810,7 +810,7 @@ void GSLocalMemory::WriteImage32(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 {
 	if(TRXREG.RRW == 0) return;
 
-	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX)*4;
+	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX) * 4;
 	int th = len / srcpitch;
 
 	bool aligned = IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 8, 8);

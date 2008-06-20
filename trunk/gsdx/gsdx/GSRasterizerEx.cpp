@@ -1030,7 +1030,7 @@ else if(steps == 3) g_slp3++;
 
 	slenv->steps += steps;
 
-	for(; steps > 0; steps -= 4)
+	while(1)
 	{
 		do
 		{
@@ -1326,6 +1326,10 @@ else if(steps == 3) g_slp3++;
 
 		}
 		while(0);
+
+		steps -= 4;
+
+		if(steps <= 0) break;
 
 		fa_offset++;
 		za_offset++;
