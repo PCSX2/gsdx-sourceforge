@@ -892,6 +892,13 @@ template<int i> void GSState::GIFRegHandlerFRAME(GIFReg* r)
 
 template<int i> void GSState::GIFRegHandlerZBUF(GIFReg* r)
 {
+	if(r->ZBUF.ai32[0] == 0)
+	{
+		// during startup all regs are cleared to 0 (by the bios or something), so we mask z until this register becomes valid
+
+		r->ZBUF.ZMSK = 1; 
+	}
+
 	r->ZBUF.PSM |= 0x30;
 
 	if(PRIM->CTXT == i && m_env.CTXT[i].ZBUF.i64 != r->ZBUF.i64)
@@ -1798,6 +1805,23 @@ bool GSC_Bully(const GSFrameInfo& fi, int& skip)
 	return true;
 }
 
+bool GSC_BullyCC(const GSFrameInfo& fi, int& skip)
+{
+	if(skip == 0)
+	{
+		if(fi.TME && (fi.FBP == 0x00000 || fi.FBP == 0x01180) && (fi.TBP0 == 0x00000 || fi.TBP0 == 0x01180) && fi.FBP == fi.TBP0 && fi.FPSM == PSM_PSMCT32 && fi.FPSM == fi.TPSM)
+		{
+			return false; // allowed
+		}
+
+		if(!fi.TME && fi.FBP == 0x02800 && fi.FPSM == PSM_PSMCT24)
+		{
+			skip = 9;
+		}
+	}
+
+	return true;
+}
 bool GSC_SoTC(const GSFrameInfo& fi, int& skip)
 {
 	if(skip == 0)
@@ -2071,7 +2095,7 @@ bool GSState::IsBadFrame(int& skip)
 		m_crc2gsc[CRC::SFEX3_US] = GSC_SFEX3;
 		m_crc2gsc[CRC::SFEX3_US2] = GSC_SFEX3;
 		m_crc2gsc[CRC::Bully_US] = GSC_Bully;
-		m_crc2gsc[CRC::Bully_EU] = GSC_Bully;		
+		m_crc2gsc[CRC::BullyCC_EU] = GSC_BullyCC;
 		m_crc2gsc[CRC::SoTC_US] = GSC_SoTC;
 		m_crc2gsc[CRC::SoTC_EU] = GSC_SoTC; // not tested
 		m_crc2gsc[CRC::OnePieceGrandAdventure_US] = GSC_OnePieceGrandAdventure;
