@@ -454,7 +454,9 @@ void GSRasterizer::DrawTriangle(Vertex* vertices)
 	v03 = v[3] - v[0];
 	v01.p = v[1].p - v[0].p;
 
-	v[2] = v[0] + v03 * (v01.p / v03.p).yyyy();
+	Vertex v03_y = v03 / v03.p.yyyy();
+
+	v[2] = v[0] + v03_y * v01.p.yyyy();
 
 	v12.p = v[2].p - v[1].p;
 
@@ -471,7 +473,7 @@ void GSRasterizer::DrawTriangle(Vertex* vertices)
 
 	if(v12.p.x < 0) 
 	{
-		dl = v03 / v03.p.yyyy();
+		dl = v03_y;
 		dr.p = v01.p / v01.p.yyyy();
 
 		GSVector4 p0 = v[0].p;
@@ -490,7 +492,7 @@ void GSRasterizer::DrawTriangle(Vertex* vertices)
 		v01.c = v[1].c - v[0].c;
 
 		dl = v01 / v01.p.yyyy();
-		dr.p = v03.p / v03.p.yyyy();
+		dr.p = v03_y.p;
 
 		GSVector4 p0 = v[0].p;
 
@@ -856,7 +858,7 @@ else if(steps == 3) g_slp3++;
 
 	slenv->steps += steps;
 
-	for(; steps > 0; steps -= 4)
+	while(1)
 	{
 		do
 		{
@@ -1141,6 +1143,10 @@ else if(steps == 3) g_slp3++;
 
 		}
 		while(0);
+
+		steps -= 4;
+
+		if(steps <= 0) break;
 
 		fa_offset++;
 		za_offset++;
