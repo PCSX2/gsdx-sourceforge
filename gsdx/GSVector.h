@@ -400,7 +400,6 @@ public:
 
 	template<int i> GSVector4i insert8(int a) const
 	{
-		;
 		return GSVector4i(_mm_insert_epi8(m, a, i));
 	}
 
@@ -686,6 +685,13 @@ public:
 	{
 		return GSVector4i(0) == GSVector4i(0);
 	}
+
+	#if _M_SSE >= 0x400
+	static GSVector4i loadnt(const void* p)
+	{
+		return GSVector4i(_mm_stream_load_si128((__m128i*)p));
+	}
+	#endif
 
 	static GSVector4i loadl(const void* p)
 	{

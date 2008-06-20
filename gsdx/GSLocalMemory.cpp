@@ -2152,7 +2152,7 @@ void GSLocalMemory::ReadTexture4(const CRect& r, BYTE* dst, int dstpitch, GIFReg
 
 	FOREACH_BLOCK_START(r, 32, 16, 4)
 	{
-		ReadBlock4((BYTE*)&m_vm8[BlockAddress4(x, y, TEX0.TBP0, TEX0.TBW)>>1], (BYTE*)block, sizeof(block) / 16);
+		ReadBlock4((BYTE*)&m_vm8[BlockAddress4(x, y, TEX0.TBP0, TEX0.TBW) >> 1], (BYTE*)block, sizeof(block) / 16);
 
 		ExpandBlock4(block, (DWORD*)ptr + (x - r.left), dstpitch, pal32, pal64);
 	}
@@ -4233,7 +4233,7 @@ void GSLocalMemory::ExpandBlock4(BYTE* src, DWORD* dst, int dstpitch, DWORD* pal
 		d[6] = v.gather64_8<12>(pal64);
 		d[7] = v.gather64_8<14>(pal64);
 
-		#elif 0 // _M_SSE >= 0x400 // TODO: test if this is actually faster than the normal c version
+		#elif _M_SSE >= 0x400
 
 		GSVector4i* s = (GSVector4i*)src;
 		GSVector4i* d = (GSVector4i*)dst;
@@ -4318,13 +4318,18 @@ void GSLocalMemory::ExpandBlock8H(DWORD* src, WORD* dst, int dstpitch, DWORD* pa
 
 		GSVector4i* s = (GSVector4i*)src;
 		GSVector4i* d = (GSVector4i*)dst;
-
+/*
 		GSVector4i v;
 
 		v = (s[j * 2 + 0] >> 24).gather16_32<0>(pal, v);
 		v = (s[j * 2 + 1] >> 24).gather16_32<4>(pal, v);
 
 		d[0] = v;
+*/
+		GSVector4i v0 = (s[j * 2 + 0] >> 24).gather32_32<>(pal);
+		GSVector4i v1 = (s[j * 2 + 1] >> 24).gather32_32<>(pal);
+
+		d[0] = v0.pu32(v1);
 
 		#else
 
@@ -4368,13 +4373,18 @@ void GSLocalMemory::ExpandBlock4HL(DWORD* src, WORD* dst, int dstpitch, DWORD* p
 
 		GSVector4i* s = (GSVector4i*)src;
 		GSVector4i* d = (GSVector4i*)dst;
-
+/*
 		GSVector4i v;
 
 		v = ((s[j * 2 + 0] >> 24) & 0xf).gather16_32<0>(pal, v);
 		v = ((s[j * 2 + 1] >> 24) & 0xf).gather16_32<4>(pal, v);
 
 		d[0] = v;
+*/
+		GSVector4i v0 = ((s[j * 2 + 0] >> 24) & 0xf).gather32_32<>(pal);
+		GSVector4i v1 = ((s[j * 2 + 1] >> 24) & 0xf).gather32_32<>(pal);
+
+		d[0] = v0.pu32(v1);
 
 		#else
 
@@ -4418,13 +4428,18 @@ void GSLocalMemory::ExpandBlock4HH(DWORD* src, WORD* dst, int dstpitch, DWORD* p
 
 		GSVector4i* s = (GSVector4i*)src;
 		GSVector4i* d = (GSVector4i*)dst;
-
+/*
 		GSVector4i v;
 
 		v = (s[j * 2 + 0] >> 28).gather16_32<0>(pal, v);
 		v = (s[j * 2 + 1] >> 28).gather16_32<4>(pal, v);
 
 		d[0] = v;
+*/
+		GSVector4i v0 = (s[j * 2 + 0] >> 28).gather32_32<>(pal);
+		GSVector4i v1 = (s[j * 2 + 1] >> 28).gather32_32<>(pal);
+
+		d[0] = v0.pu32(v1);
 
 		#else
 
