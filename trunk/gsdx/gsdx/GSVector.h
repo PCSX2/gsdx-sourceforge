@@ -672,6 +672,35 @@ public:
 		return v;
 	}
 
+	#else
+
+	template<int src, class T> __forceinline GSVector4i gather64_8(const T* ptr) const
+	{
+		GSVector4i v;
+
+		v = v.loadu(&ptr[extract8<src + 0>()], &ptr[extract8<src + 1>()]);
+
+		return v;
+	}
+
+	template<int src, class T> __forceinline GSVector4i gather64_16(const T* ptr) const
+	{
+		GSVector4i v;
+
+		v = v.loadu(&ptr[extract16<src + 0>()], &ptr[extract16<src + 1>()]);
+
+		return v;
+	}
+
+	template<int src, class T> __forceinline GSVector4i gather64_32(const T* ptr) const
+	{
+		GSVector4i v;
+
+		v = v.loadu(&ptr[extract32<src + 0>()], &ptr[extract32<src + 1>()]);
+
+		return v;
+	}
+
 	#endif
 
 	#endif
@@ -711,7 +740,14 @@ public:
 	static GSVector4i loadu(const void* pl, const void* ph)
 	{
 		__m128i lo = _mm_loadl_epi64((__m128i*)pl);
+		__m128i hi = _mm_loadl_epi64((__m128i*)ph);
+
+		return GSVector4i(_mm_unpacklo_epi64(lo, hi));
+/*
+		__m128i lo = _mm_loadl_epi64((__m128i*)pl);
+
 		return GSVector4i(_mm_castps_si128(_mm_loadh_pi(_mm_castsi128_ps(lo), (__m64*)ph)));
+*/
 	}
 
 	static void storel(void* p, const GSVector4i& v)
