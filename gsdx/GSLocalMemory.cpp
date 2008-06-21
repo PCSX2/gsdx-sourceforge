@@ -2147,14 +2147,13 @@ void GSLocalMemory::ReadTexture4(const CRect& r, BYTE* dst, int dstpitch, GIFReg
 {
 	__declspec(align(16)) BYTE block[(32 / 2) * 16];
 
-	DWORD* pal32 = m_pCLUT32;
-	UINT64* pal64 = m_pCLUT64;
+	UINT64* pal = m_pCLUT64;
 
 	FOREACH_BLOCK_START(r, 32, 16, 4)
 	{
 		ReadBlock4((BYTE*)&m_vm8[BlockAddress4(x, y, TEX0.TBP0, TEX0.TBW) >> 1], (BYTE*)block, sizeof(block) / 16);
 
-		ExpandBlock4(block, (DWORD*)ptr + (x - r.left), dstpitch, pal32, pal64);
+		ExpandBlock4(block, (DWORD*)ptr + (x - r.left), dstpitch, pal);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2338,8 +2337,7 @@ void GSLocalMemory::ReadTexture4NP(const CRect& r, BYTE* dst, int dstpitch, GIFR
 {
 	__declspec(align(16)) BYTE block[(32 / 2) * 16];
 
-	DWORD* pal32 = m_pCLUT32;
-	UINT64* pal64 = m_pCLUT64;
+	UINT64* pal = m_pCLUT64;
 
 	FOREACH_BLOCK_START(r, 32, 16, 4)
 	{
@@ -2347,13 +2345,13 @@ void GSLocalMemory::ReadTexture4NP(const CRect& r, BYTE* dst, int dstpitch, GIFR
 
 		if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 		{
-			ExpandBlock4(block, (DWORD*)ptr + (x - r.left), dstpitch, pal32, pal64);
+			ExpandBlock4(block, (DWORD*)ptr + (x - r.left), dstpitch, pal);
 		}
 		else
 		{
 			ASSERT(TEX0.CPSM == PSM_PSMCT16 || TEX0.CPSM == PSM_PSMCT16S);
 
-			ExpandBlock4(block, (WORD*)ptr + (x - r.left), dstpitch, pal64);
+			ExpandBlock4(block, (WORD*)ptr + (x - r.left), dstpitch, pal);
 		}
 	}
 	FOREACH_BLOCK_END
@@ -4213,47 +4211,31 @@ void GSLocalMemory::ExpandBlock8(BYTE* src, WORD* dst, int dstpitch, DWORD* pal)
 	}
 }
 
-void GSLocalMemory::ExpandBlock4(BYTE* src, DWORD* dst, int dstpitch, DWORD* pal32, UINT64* pal64)
+void GSLocalMemory::ExpandBlock4(BYTE* src, DWORD* dst, int dstpitch, UINT64* pal)
 {
 	for(int j = 0; j < 16; j++, dst += dstpitch >> 2)
 	{
-		#if _M_SSE >= 0x400 && defined(_M_AMD64)
+		#if _M_SSE >= 0x400
 
 		GSVector4i* s = (GSVector4i*)src;
 		GSVector4i* d = (GSVector4i*)dst;
 
 		GSVector4i v = s[j];
 
-		d[0] = v.gather64_8<0>(pal64);
-		d[1] = v.gather64_8<2>(pal64);
-		d[2] = v.gather64_8<4>(pal64);
-		d[3] = v.gather64_8<6>(pal64);
-		d[4] = v.gather64_8<8>(pal64);
-		d[5] = v.gather64_8<10>(pal64);
-		d[6] = v.gather64_8<12>(pal64);
-		d[7] = v.gather64_8<14>(pal64);
-
-		#elif _M_SSE >= 0x400
-
-		GSVector4i* s = (GSVector4i*)src;
-		GSVector4i* d = (GSVector4i*)dst;
-
-		GSVector4i v = s[j];
-
-		d[0] = v.gather32_4<0>(pal32);
-		d[1] = v.gather32_4<2>(pal32);
-		d[2] = v.gather32_4<4>(pal32);
-		d[3] = v.gather32_4<6>(pal32);
-		d[4] = v.gather32_4<8>(pal32);
-		d[5] = v.gather32_4<10>(pal32);
-		d[6] = v.gather32_4<12>(pal32);
-		d[7] = v.gather32_4<14>(pal32);
+		d[0] = v.gather64_8<0>(pal);
+		d[1] = v.gather64_8<2>(pal);
+		d[2] = v.gather64_8<4>(pal);
+		d[3] = v.gather64_8<6>(pal);
+		d[4] = v.gather64_8<8>(pal);
+		d[5] = v.gather64_8<10>(pal);
+		d[6] = v.gather64_8<12>(pal);
+		d[7] = v.gather64_8<14>(pal);
 
 		#else
 
 		for(int i = 0; i < 32 / 2; i++)
 		{
-			((UINT64*)dst)[i] = pal64[src[j * 16 + i]];
+			((UINT64*)dst)[i] = pal[src[j * 16 + i]];
 		}
 
 		#endif

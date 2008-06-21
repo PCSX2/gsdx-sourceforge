@@ -135,7 +135,7 @@ protected:
 	__forceinline static void ExpandBlock16(WORD* src, DWORD* dst, int dstpitch, GIFRegTEXA* TEXA);
 	__forceinline static void ExpandBlock8(BYTE* src, DWORD* dst, int dstpitch, DWORD* pal);
 	__forceinline static void ExpandBlock8(BYTE* src, WORD* dst, int dstpitch, DWORD* pal);
-	__forceinline static void ExpandBlock4(BYTE* src, DWORD* dst, int dstpitch, DWORD* pal32, UINT64* pal64);
+	__forceinline static void ExpandBlock4(BYTE* src, DWORD* dst, int dstpitch, UINT64* pal);
 	__forceinline static void ExpandBlock4(BYTE* src, WORD* dst, int dstpitch, UINT64* pal);
 	__forceinline static void ExpandBlock8H(DWORD* src, DWORD* dst, int dstpitch, DWORD* pal);
 	__forceinline static void ExpandBlock8H(DWORD* src, WORD* dst, int dstpitch, DWORD* pal);
