@@ -81,6 +81,14 @@
 		(row3) = _mm_castps_si128(_mm_shuffle_ps(tmp2, tmp3, 0xDD)); \
 	}
 
+	__forceinline __m128 _mm_rcpnr_ps(__m128 r)
+	{
+	  __m128 t = _mm_rcp_ps(r);
+
+	  return _mm_sub_ps(_mm_add_ps(t, t), _mm_mul_ps(_mm_mul_ps(t, t), r));
+	}
+
+
 #else
 
 #error TODO: GSVector4 and GSRasterizer needs SSE2

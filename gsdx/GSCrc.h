@@ -16,6 +16,7 @@ public:
 	static DWORD Okami_FR;
 	static DWORD MetalGearSolid3_US;
 	static DWORD MetalGearSolid3_FR;
+	static DWORD MetalGearSolid3_EU;
 	static DWORD MetalGearSolid3;
 	static DWORD DBZBT2_US;
 	static DWORD DBZBT2_EU;

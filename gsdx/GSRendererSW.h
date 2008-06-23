@@ -168,16 +168,7 @@ protected:
 		case GS_SPRITE:
 			m_vl.RemoveAt(0, v[0]);
 			m_vl.RemoveAt(0, v[1]);
-			nv = 4;
-			v[0].p.z = v[1].p.z;
-			v[0].p.w = v[1].p.w;
-			v[0].t.z = v[1].t.z;
-			v[2] = v[1];
-			v[3] = v[1];
-			v[1].p.y = v[0].p.y;
-			v[1].t.y = v[0].t.y;
-			v[2].p.x = v[0].p.x;
-			v[2].t.x = v[0].t.x;
+			nv = 2;
 			break;
 		default:
 			ASSERT(0);
@@ -228,7 +219,7 @@ protected:
 			__assume(0);
 		}
 
-		if(PRIM->IIP == 0 || PRIM->PRIM == GS_SPRITE)
+		if(PRIM->IIP == 0)
 		{
 			GSVector4 c = v[nv - 1].c;
 
