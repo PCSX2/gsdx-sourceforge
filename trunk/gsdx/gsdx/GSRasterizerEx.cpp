@@ -252,6 +252,9 @@ void GSRasterizer::InitEx()
 	m_dsmap[0x445184a8] = &GSRasterizer::DrawScanlineEx<0x445184a8>;
 	m_dsmap[0x425184a8] = &GSRasterizer::DrawScanlineEx<0x425184a8>;
 	m_dsmap[0x4851b828] = &GSRasterizer::DrawScanlineEx<0x4851b828>;
+	m_dsmap[0x4451b828] = &GSRasterizer::DrawScanlineEx<0x4451b828>;
+	m_dsmap[0x44507808] = &GSRasterizer::DrawScanlineEx<0x44507808>;
+	m_dsmap[0x00007808] = &GSRasterizer::DrawScanlineEx<0x00007808>;
 
 	// kh2
 

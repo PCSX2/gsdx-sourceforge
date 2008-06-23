@@ -1062,11 +1062,11 @@ void GSState::FlushWrite(BYTE* mem, int len)
 void GSState::Write(BYTE* mem, int len)
 {
 	/*
+	*/
 	TRACE(_T("Write len=%d DBP=%05x DPSM=%d DSAX=%d DSAY=%d RRW=%d RRH=%d\n"), 
 		  len, (int)m_env.BITBLTBUF.DBP, (int)m_env.BITBLTBUF.DPSM, 
 		  (int)m_env.TRXPOS.DSAX, (int)m_env.TRXPOS.DSAY,
 		  (int)m_env.TRXREG.RRW, (int)m_env.TRXREG.RRH);
-	*/
 
 	if(len == 0) return;
 
@@ -1119,6 +1119,13 @@ void GSState::Write(BYTE* mem, int len)
 
 void GSState::Read(BYTE* mem, int len)
 {
+	/*
+	*/
+	TRACE(_T("Read len=%d SBP=%05x SPSM=%d SSAX=%d SSAY=%d RRW=%d RRH=%d\n"), 
+		  len, (int)m_env.BITBLTBUF.SBP, (int)m_env.BITBLTBUF.SPSM, 
+		  (int)m_env.TRXPOS.SSAX, (int)m_env.TRXPOS.SSAY,
+		  (int)m_env.TRXREG.RRW, (int)m_env.TRXREG.RRH);
+
 	if(m_y >= (int)m_env.TRXREG.RRH) {ASSERT(0); return;}
 
 	if(m_x == m_env.TRXPOS.SSAX && m_y == m_env.TRXPOS.SSAY)
@@ -2087,6 +2094,7 @@ bool GSState::IsBadFrame(int& skip)
 		m_crc2gsc[CRC::Okami_FR] = GSC_Okami;
 		m_crc2gsc[CRC::MetalGearSolid3_US] = GSC_MetalGearSolid3;
 		m_crc2gsc[CRC::MetalGearSolid3_FR] = GSC_MetalGearSolid3;
+		m_crc2gsc[CRC::MetalGearSolid3_EU]=GSC_MetalGearSolid3;
 		m_crc2gsc[CRC::MetalGearSolid3] = GSC_MetalGearSolid3;
 		m_crc2gsc[CRC::DBZBT2_US] = GSC_DBZBT2;
 		m_crc2gsc[CRC::DBZBT2_EU] = GSC_DBZBT2;

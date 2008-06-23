@@ -144,6 +144,12 @@ protected:
 	__forceinline static void ExpandBlock4HH(DWORD* src, DWORD* dst, int dstpitch, DWORD* pal);
 	__forceinline static void ExpandBlock4HH(DWORD* src, WORD* dst, int dstpitch, DWORD* pal);
 
+	__forceinline static void ReadAndExpandBlock8(BYTE* src, BYTE* dst, int dstpitch, DWORD* pal);
+	__forceinline static void ReadAndExpandBlock4(BYTE* src, BYTE* dst, int dstpitch, UINT64* pal);
+	__forceinline static void ReadAndExpandBlock8H(BYTE* src, BYTE* dst, int dstpitch, DWORD* pal);
+	__forceinline static void ReadAndExpandBlock4HL(BYTE* src, BYTE* dst, int dstpitch, DWORD* pal);
+	__forceinline static void ReadAndExpandBlock4HH(BYTE* src, BYTE* dst, int dstpitch, DWORD* pal);
+
 	static void Expand16(WORD* src, DWORD* dst, int w, GIFRegTEXA* TEXA);
 
 	__forceinline static DWORD Expand24To32(DWORD c, GIFRegTEXA& TEXA)

@@ -776,11 +776,13 @@ REG64_(GIFReg, TRXREG)
 	UINT32 _PAD2:20;
 REG_END
 
+// GSState::GIFPackedRegHandlerUV makes sure that the _PAD1/2 bits are set to zero
+
 REG64_(GIFReg, UV)
-	UINT32 U:14;
-	UINT32 _PAD1:2;
-	UINT32 V:14;
-	UINT32 _PAD2:2;
+	UINT32 U:16;
+//	UINT32 _PAD1:2;
+	UINT32 V:16;
+//	UINT32 _PAD2:2;
 	UINT32 _PAD3:32;
 REG_END
 
