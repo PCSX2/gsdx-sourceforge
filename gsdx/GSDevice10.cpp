@@ -262,7 +262,7 @@ bool GSDevice10::Reset(int w, int h, bool fs)
 	return true;
 }
 
-void GSDevice10::Present(int arx, int ary)
+void GSDevice10::Present(const CRect& r)
 {
 	CRect cr;
 
@@ -279,28 +279,6 @@ void GSDevice10::Present(int arx, int ary)
 
 	if(m_current)
 	{
-		CRect r = cr;
-
-		if(arx > 0 && ary > 0)
-		{
-			if(r.Width() * ary > r.Height() * arx)
-			{
-				int w = r.Height() * arx / ary;
-				r.left = r.CenterPoint().x - w / 2;
-				if(r.left & 1) r.left++;
-				r.right = r.left + w;
-			}
-			else
-			{
-				int h = r.Width() * ary / arx;
-				r.top = r.CenterPoint().y - h / 2;
-				if(r.top & 1) r.top++;
-				r.bottom = r.top + h;
-			}
-		}
-
-		r &= cr;
-
 		StretchRect(m_current, m_backbuffer, GSVector4(r));
 	}
 
@@ -346,6 +324,41 @@ void GSDevice10::Draw(LPCTSTR str)
 		EndScene();
 	}
 	*/
+}
+
+bool GSDevice10::CopyOffscreen(Texture& src, const GSVector4& sr, Texture& dst, int w, int h, int format)
+{
+	dst = Texture();
+
+	if(format == 0)
+	{
+		format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	}
+
+	if(format != DXGI_FORMAT_R8G8B8A8_UNORM && format != DXGI_FORMAT_R16_UINT)
+	{
+		ASSERT(0);
+
+		return false;
+	}
+
+	Texture rt;
+
+	if(CreateRenderTarget(rt, w, h, format))
+	{
+		GSVector4 dr(0, 0, w, h);
+
+		StretchRect(src, sr, rt, dr, m_convert.ps[format == DXGI_FORMAT_R16_UINT ? 1 : 0], NULL);
+
+		if(CreateOffscreen(dst, w, h, format))
+		{
+			m_dev->CopyResource(dst, rt);
+		}
+	}
+
+	Recycle(rt);
+
+	return !!dst;
 }
 
 void GSDevice10::ClearRenderTarget(Texture& t, const GSVector4& c)

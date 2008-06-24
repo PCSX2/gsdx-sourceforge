@@ -25,6 +25,7 @@
 #include "GSState.h"
 #include "GSVertexList.h"
 #include "GSSettingsDlg.h"
+#include "GSCapture.h"
 
 struct GSRendererSettings
 {
@@ -51,7 +52,7 @@ protected:
 		{
 			if(msg.message == WM_KEYDOWN)
 			{
-				int step = (::GetAsyncKeyState(VK_SHIFT) & 0x80000000) ? -1 : 1;
+				int step = (::GetAsyncKeyState(VK_SHIFT) & 0x8000) ? -1 : 1;
 
 				if(msg.wParam == VK_F5)
 				{
@@ -217,6 +218,8 @@ public:
 	bool s_save;
 	bool s_savez;
 
+	GSCapture m_capture;
+
 public:
 	GSRenderer(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs, bool psrr)
 		: GSRendererBase(base, mt, irq, nloophack, rs)
@@ -318,6 +321,11 @@ g_dtt = g_dt00 = g_dt0 = g_dt1 = g_dt2 = g_dtn = 0;
 				s_stats.Format(_T("%s | %.2f mpps"), CString(s_stats), fps * fillrate / (1024 * 1024));
 			}
 
+			if(m_capture.IsCapturing())
+			{
+				s_stats += _T(" | Recording...");
+			}
+
 			if(m_perfmon.Get(GSPerfMon::COLCLAMP)) _tprintf(_T("*** NOT SUPPORTED: color wrap ***\n"));
 			if(m_perfmon.Get(GSPerfMon::PABE)) _tprintf(_T("*** NOT SUPPORTED: per pixel alpha blend ***\n"));
 			if(m_perfmon.Get(GSPerfMon::DATE)) _tprintf(_T("*** PERFORMANCE WARNING: destination alpha test used ***\n"));
@@ -351,7 +359,57 @@ g_dtt = g_dt00 = g_dt0 = g_dt1 = g_dt2 = g_dtn = 0;
 		int arx = ar[m_aspectratio][0];
 		int ary = ar[m_aspectratio][1];
 
-		m_dev.Present(arx, ary);
+		CRect cr;
+		
+		GetClientRect(&cr);
+
+		CRect r = cr;
+
+		if(arx > 0 && ary > 0)
+		{
+			if(r.Width() * ary > r.Height() * arx)
+			{
+				int w = r.Height() * arx / ary;
+				r.left = r.CenterPoint().x - w / 2;
+				if(r.left & 1) r.left++;
+				r.right = r.left + w;
+			}
+			else
+			{
+				int h = r.Width() * ary / arx;
+				r.top = r.CenterPoint().y - h / 2;
+				if(r.top & 1) r.top++;
+				r.bottom = r.top + h;
+			}
+		}
+
+		r &= cr;
+
+		m_dev.Present(r);
+
+		if(m_capture.IsCapturing())
+		{
+			CSize size = m_capture.GetSize();
+
+			Texture current;
+
+			m_dev.GetCurrent(current);
+
+			Texture offscreen;
+
+			if(m_dev.CopyOffscreen(current, GSVector4(0, 0, 1, 1), offscreen, size.cx, size.cy))
+			{
+				BYTE* bits = NULL;
+				int pitch = 0;
+
+				if(offscreen.Map(&bits, pitch))
+				{
+					m_capture.DeliverFrame(bits, pitch);
+				}
+
+				m_dev.Recycle(offscreen);
+			}
+		}
 	}
 
 	void Dump()
@@ -385,7 +443,7 @@ g_dtt = g_dt00 = g_dt0 = g_dt1 = g_dt2 = g_dtn = 0;
 			fputc(1, m_dumpfp);
 			fputc(m_field, m_dumpfp);
 
-			if(m_field == 0 && !(::GetAsyncKeyState(VK_CONTROL) & 0x80000000))
+			if(m_field == 0 && !(::GetAsyncKeyState(VK_CONTROL) & 0x8000))
 			{
 				fclose(m_dumpfp);
 				m_dumpfp = NULL;
@@ -396,11 +454,25 @@ g_dtt = g_dt00 = g_dt0 = g_dt1 = g_dt2 = g_dtn = 0;
 
 	bool MakeSnapshot(LPCTSTR path)
 	{
+		if((::GetAsyncKeyState(VK_CONTROL) & 0x8000))
+		{
+			if(m_capture.IsCapturing())
+			{
+				m_capture.EndCapture();
+			}
+			else
+			{
+				m_capture.BeginCapture(GetFPS());
+			}
+
+			return true;
+		}
+
 		CString fn;
 
 		fn.Format(_T("%s_%s"), path, CTime::GetCurrentTime().Format(_T("%Y%m%d%H%M%S")));
 
-		if((::GetAsyncKeyState(VK_SHIFT) & 0x80000000) && m_dumpfn.IsEmpty())
+		if((::GetAsyncKeyState(VK_SHIFT) & 0x8000) && m_dumpfn.IsEmpty())
 		{
 			m_dumpfn = fn + _T(".gs");
 		}

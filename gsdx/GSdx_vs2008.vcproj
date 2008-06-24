@@ -1052,6 +1052,14 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\GSCapture.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GSCaptureDlg.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\GSCrc.cpp"
 				>
 			</File>
@@ -1523,6 +1531,14 @@
 			>
 			<File
 				RelativePath=".\GS.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSCapture.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSCaptureDlg.h"
 				>
 			</File>
 			<File

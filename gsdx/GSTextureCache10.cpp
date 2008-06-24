@@ -112,27 +112,12 @@ void GSTextureCache10::GSRenderTargetHW10::Read(CRect r)
 	src.z = m_texture.m_scale.x * r.right / m_texture.GetWidth();
 	src.w = m_texture.m_scale.y * r.bottom / m_texture.GetHeight();
 
-	GSVector4 dst(0, 0, w, h);
-	
 	DXGI_FORMAT format = m_TEX0.PSM == PSM_PSMCT16 || m_TEX0.PSM == PSM_PSMCT16S ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R8G8B8A8_UNORM;
-
-	int shader = m_TEX0.PSM == PSM_PSMCT16 || m_TEX0.PSM == PSM_PSMCT16S ? 1 : 0;
-
-	Texture rt;
-
-	if(!m_renderer->m_dev.CreateRenderTarget(rt, r.Width(), r.Height(), format))
-		return;
-
-	m_renderer->m_dev.StretchRect(m_texture, src, rt, dst, m_renderer->m_dev.m_convert.ps[shader], NULL);
 
 	Texture offscreen;
 
-	if(!m_renderer->m_dev.CreateOffscreen(offscreen, r.Width(), r.Height(), format))
+	if(!m_renderer->m_dev.CopyOffscreen(m_texture, src, offscreen, w, h, format))
 		return;
-
-	m_renderer->m_dev->CopyResource(offscreen, rt);
-
-	m_renderer->m_dev.Recycle(rt);
 
 	BYTE* bits;
 	int pitch;

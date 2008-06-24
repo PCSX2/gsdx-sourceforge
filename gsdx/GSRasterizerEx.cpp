@@ -1057,31 +1057,8 @@ else if(steps == 3) g_slp3++;
 
 		if(ztst > 1)
 		{
-			GSVector4i zd0123;
-
-			for(int i = 0; i < pixels; i++)
-			{
-				zd0123.u32[i] = m_state->m_mem.ReadPixelX(zpsm, za.u32[i]);
-			}
-/*
-			switch(zpsm)
-			{
-			case PSM_PSMZ32: 
-				zd0123 = za.gather32_32((DWORD*)m_state->m_mem.GetVM());
-				break;
-			case PSM_PSMZ24: 
-				zd0123 = za.gather32_32((DWORD*)m_state->m_mem.GetVM()) & 0x00ffffff;
-				break;
-			case PSM_PSMZ16: 
-			case PSM_PSMZ16S: 
-				zd0123 = za.gather32_32((WORD*)m_state->m_mem.GetVM());
-				break;
-			default:
-				__assume(0);
-			}
-*/
 			GSVector4i zs = zi - 0x80000000;
-			GSVector4i zd = zd0123 - 0x80000000;
+			GSVector4i zd = m_state->m_mem.ReadZBufX(zpsm, za) - 0x80000000;
 
 			switch(ztst)
 			{
@@ -1324,13 +1301,7 @@ else if(steps == 3) g_slp3++;
 
 		if(ztst > 0 && !(atst == 0 && afail != 2))
 		{
-			for(int i = 0; i < pixels; i++)
-			{
-				if(zm.u32[i] != 0xffffffff)
-				{
-					m_state->m_mem.WritePixelX(zpsm, za.u32[i], zi.u32[i]);
-				}
-			}
+			m_state->m_mem.WriteZBufX(zpsm, za, zi, zm, pixels);
 		}
 
 		}

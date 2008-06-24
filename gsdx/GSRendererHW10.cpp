@@ -596,7 +596,7 @@ bool GSRendererHW10::WrapZ(DWORD maxz)
 
 void GSRendererHW10::SetupDATE(Texture& rt, Texture& ds)
 {
-	if(!m_context->TEST.DATE) return; // || (::GetAsyncKeyState(VK_CONTROL)&0x80000000)
+	if(!m_context->TEST.DATE) return; // || (::GetAsyncKeyState(VK_CONTROL) & 0x8000)
 
 	// sfex3 (after the capcom logo), vf4 (first menu fading in), ffxii shadows, rumble roses shadows
 

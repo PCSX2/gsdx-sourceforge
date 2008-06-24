@@ -115,23 +115,10 @@ void GSTextureCache9::GSRenderTarget9::Read(CRect r)
 	src.z = m_texture.m_scale.x * r.right / m_texture.GetWidth();
 	src.w = m_texture.m_scale.y * r.bottom / m_texture.GetHeight();
 
-	GSVector4 dst(0, 0, w, h);
-	
-	Texture rt;
-
-	if(!m_renderer->m_dev.CreateRenderTarget(rt, w, h))
-		return;
-
-	m_renderer->m_dev.StretchRect(m_texture, src, rt, dst, m_renderer->m_dev.m_convert.ps[1], NULL, 0);
-
 	Texture offscreen;
 
-	if(!m_renderer->m_dev.CreateOffscreen(offscreen, r.Width(), r.Height()))
+	if(!m_renderer->m_dev.CopyOffscreen(m_texture, src, offscreen, w, h))
 		return;
-
-	m_renderer->m_dev->GetRenderTargetData(rt, offscreen);
-
-	m_renderer->m_dev.Recycle(rt);
 
 	BYTE* bits;
 	int pitch;
