@@ -113,13 +113,15 @@ public:
 
 	virtual bool IsLost() = 0;
 
-	virtual void Present(int arx, int ary) = 0;
+	virtual void Present(const CRect& r) = 0;
 
 	virtual void BeginScene() = 0;
 
 	virtual void EndScene() = 0;
 
 	virtual void Draw(LPCTSTR str) = 0;
+
+	virtual bool CopyOffscreen(Texture& src, const GSVector4& sr, Texture& dst, int w, int h, int format = 0) = 0;
 
 	virtual void ClearRenderTarget(Texture& t, const GSVector4& c) = 0;
 
@@ -167,6 +169,11 @@ public:
 	bool SaveCurrent(LPCTSTR fn)
 	{
 		return m_current.Save(fn);
+	}
+
+	void GetCurrent(Texture& t)
+	{
+		t = m_current;
 	}
 
 	void Merge(Texture* st, GSVector4* sr, GSVector4* dr, CSize fs, bool slbg, bool mmod, GSVector4& c)

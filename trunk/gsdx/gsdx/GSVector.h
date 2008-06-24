@@ -623,7 +623,19 @@ public:
 	template<class T> __forceinline GSVector4i gather32_32(const T* ptr) const
 	{
 		GSVector4i v;
+/*
+		GSVector4i v0 = GSVector4i(_mm_cvtsi32_si128((int)ptr[extract32<0>()]));
+		GSVector4i v2 = GSVector4i(_mm_cvtsi32_si128((int)ptr[extract32<2>()]));
 
+		v0 = v0.upl32(v2);
+
+		GSVector4i v1 = GSVector4i(_mm_cvtsi32_si128((int)ptr[extract32<1>()]));
+		GSVector4i v3 = GSVector4i(_mm_cvtsi32_si128((int)ptr[extract32<3>()]));
+
+		v1 = v1.upl32(v3);
+
+		v = v0.upl32(v1);
+*/
 		int a = (int)ptr[extract32<0>()];
 		int b = (int)ptr[extract32<1>()];
 		int c = (int)ptr[extract32<2>()];
