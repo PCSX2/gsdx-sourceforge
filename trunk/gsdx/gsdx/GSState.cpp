@@ -392,17 +392,15 @@ void GSState::GIFPackedRegHandlerRGBA(GIFPackedReg* r)
 {
 #if _M_SSE >= 0x301
 
-	__m128i r0 = _mm_loadu_si128((__m128i*)r);
-	r0 = _mm_shuffle_epi8(r0, _mm_cvtsi32_si128(0x0c080400));
-	m_v.RGBAQ.ai32[0] = _mm_cvtsi128_si32(r0);
+	GSVector4i mask(_mm_cvtsi32_si128(0x0c080400));
+	GSVector4i v = GSVector4i::loadu(r).shuffle8(mask);
+	m_v.RGBAQ.ai32[0] = _mm_cvtsi128_si32(v);
 
 #elif _M_SSE >= 0x200
 
-	__m128i r0 = _mm_loadu_si128((__m128i*)r);
-	r0 = _mm_and_si128(r0, _000000ff);
-	r0 = _mm_packs_epi32(r0, r0);
-	r0 = _mm_packus_epi16(r0, r0);
-	m_v.RGBAQ.ai32[0] = _mm_cvtsi128_si32(r0);
+	GSVector4i mask(_000000ff);
+	GSVector4i v = GSVector4i::loadu(r) & mask;
+	m_v.RGBAQ.ai32[0] = v.rgba32();
 
 #else
 
@@ -424,7 +422,8 @@ void GSState::GIFPackedRegHandlerSTQ(GIFPackedReg* r)
 
 #elif _M_SSE >= 0x200
 
-	_mm_storel_epi64((__m128i*)&m_v.ST.i64, _mm_loadl_epi64((__m128i*)r));
+	GSVector4i v = GSVector4i::loadl(r);
+	GSVector4i::storel(&m_v.ST.i64, v);
 
 #else
 
@@ -440,10 +439,9 @@ void GSState::GIFPackedRegHandlerUV(GIFPackedReg* r)
 {
 #if _M_SSE >= 0x200
 
-	__m128i r0 = _mm_loadu_si128((__m128i*)r);
-	r0 = _mm_and_si128(r0, _00003fff);
-	r0 = _mm_packs_epi32(r0, r0);
-	m_v.UV.ai32[0] = _mm_cvtsi128_si32(r0);
+	GSVector4i mask(_00003fff);
+	GSVector4i v = GSVector4i::loadu(r) & mask;
+	m_v.UV.ai32[0] = _mm_cvtsi128_si32(v.ps32(v));
 
 #else
 
