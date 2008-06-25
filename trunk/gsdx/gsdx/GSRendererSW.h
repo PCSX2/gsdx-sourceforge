@@ -180,43 +180,38 @@ protected:
 			return;
 		}
 
-		float sx0 = (float)(int)m_context->SCISSOR.SCAX0;
-		float sy0 = (float)(int)m_context->SCISSOR.SCAY0;
-		float sx1 = (float)(int)m_context->SCISSOR.SCAX1;
-		float sy1 = (float)(int)m_context->SCISSOR.SCAY1;
+
+		GSVector4 scissor = m_context->scissor->sw;
+
+		GSVector4 v0, v1, v2, v3, v4;
 
 		switch(nv)
 		{
 		case 1:
-			if(v[0].p.x < sx0
-			|| v[0].p.x > sx1
-			|| v[0].p.y < sy0
-			|| v[0].p.y > sy1)
-				return;
+			v0 = v[0].p.xyxy();
+			v3 = (v0 < scissor);
+			v4 = (v0 > scissor);
 			break;
 		case 2:
-			if(v[0].p.x < sx0 && v[1].p.x < sx0
-			|| v[0].p.x > sx1 && v[1].p.x > sx1
-			|| v[0].p.y < sy0 && v[1].p.y < sy0
-			|| v[0].p.y > sy1 && v[1].p.y > sy1)
-				return;
+			v0 = v[0].p.xyxy();
+			v1 = v[1].p.xyxy();
+			v3 = (v0 < scissor) & (v1 < scissor);
+			v4 = (v0 > scissor) & (v1 > scissor);
 			break;
 		case 3:
-			if(v[0].p.x < sx0 && v[1].p.x < sx0 && v[2].p.x < sx0
-			|| v[0].p.x > sx1 && v[1].p.x > sx1 && v[2].p.x > sx1
-			|| v[0].p.y < sy0 && v[1].p.y < sy0 && v[2].p.y < sy0
-			|| v[0].p.y > sy1 && v[1].p.y > sy1 && v[2].p.y > sy1)
-				return;
-			break;
-		case 4:
-			if(v[0].p.x < sx0 && v[3].p.x < sx0
-			|| v[0].p.x > sx1 && v[3].p.x > sx1
-			|| v[0].p.y < sy0 && v[3].p.y < sy0
-			|| v[0].p.y > sy1 && v[3].p.y > sy1)
-				return;
+			v0 = v[0].p.xyxy();
+			v1 = v[1].p.xyxy();
+			v2 = v[2].p.xyxy();
+			v3 = (v0 < scissor) & (v1 < scissor) & (v2 < scissor);
+			v4 = (v0 > scissor) & (v1 > scissor) & (v2 > scissor);
 			break;
 		default:
 			__assume(0);
+		}
+
+		if(((v3 & v3.zwxy()) | (v4 & v4.zwxy())).mask())
+		{
+			return;
 		}
 
 		if(PRIM->IIP == 0)

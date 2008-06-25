@@ -172,32 +172,31 @@ void GSRendererHW10::DrawingKick(bool skip)
 		return;
 	}
 
-	DWORD sx0 = m_context->scissor.x0;
-	DWORD sy0 = m_context->scissor.y0;
-	DWORD sx1 = m_context->scissor.x1;
-	DWORD sy1 = m_context->scissor.y1;
+	// TODO
+
+	GSVector4i scissor = m_context->scissor->dx10;
 
 	switch(nv)
 	{
 	case 1:
-		if(v[0].p.x < sx0
-		|| v[0].p.x > sx1
-		|| v[0].p.y < sy0
-		|| v[0].p.y > sy1)
+		if(v[0].p.x < scissor.x
+		|| v[0].p.x > scissor.z
+		|| v[0].p.y < scissor.y
+		|| v[0].p.y > scissor.w)
 			return;
 		break;
 	case 2:
-		if(v[0].p.x < sx0 && v[1].p.x < sx0
-		|| v[0].p.x > sx1 && v[1].p.x > sx1
-		|| v[0].p.y < sy0 && v[1].p.y < sy0
-		|| v[0].p.y > sy1 && v[1].p.y > sy1)
+		if(v[0].p.x < scissor.x && v[1].p.x < scissor.x
+		|| v[0].p.x > scissor.z && v[1].p.x > scissor.z
+		|| v[0].p.y < scissor.y && v[1].p.y < scissor.y
+		|| v[0].p.y > scissor.w && v[1].p.y > scissor.w)
 			return;
 		break;
 	case 3:
-		if(v[0].p.x < sx0 && v[1].p.x < sx0 && v[2].p.x < sx0
-		|| v[0].p.x > sx1 && v[1].p.x > sx1 && v[2].p.x > sx1
-		|| v[0].p.y < sy0 && v[1].p.y < sy0 && v[2].p.y < sy0
-		|| v[0].p.y > sy1 && v[1].p.y > sy1 && v[2].p.y > sy1)
+		if(v[0].p.x < scissor.x && v[1].p.x < scissor.x && v[2].p.x < scissor.x
+		|| v[0].p.x > scissor.z && v[1].p.x > scissor.z && v[2].p.x > scissor.z
+		|| v[0].p.y < scissor.y && v[1].p.y < scissor.y && v[2].p.y < scissor.y
+		|| v[0].p.y > scissor.w && v[1].p.y > scissor.w && v[2].p.y > scissor.w)
 			return;
 		break;
 	default:

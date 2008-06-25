@@ -991,6 +991,8 @@ public:
 	{
 		GSVector4i c, r, g, b, a;
 
+		// sse4 is slower because when we call this function addr is already in a temp memory location and not in a sse reg (ReadZBufX is the opposite)
+
 		switch(PSM)
 		{
 		case PSM_PSMCT32: 
@@ -1048,14 +1050,39 @@ public:
 		switch(PSM)
 		{
 		case PSM_PSMZ32: 
+			#if _M_SSE >= 0x400
 			z = addr.gather32_32(m_vm32);
+			#else
+			z = GSVector4i(
+				(int)ReadPixel32(addr.u32[0]), 
+				(int)ReadPixel32(addr.u32[1]), 
+				(int)ReadPixel32(addr.u32[2]), 
+				(int)ReadPixel32(addr.u32[3]));
+			#endif
 			break;
 		case PSM_PSMZ24: 
+			#if _M_SSE >= 0x400
 			z = addr.gather32_32(m_vm32) & 0x00ffffff;
+			#else
+			z = GSVector4i(
+				(int)ReadPixel32(addr.u32[0]), 
+				(int)ReadPixel32(addr.u32[1]), 
+				(int)ReadPixel32(addr.u32[2]), 
+				(int)ReadPixel32(addr.u32[3]));
+			z = z & 0x00ffffff;
+			#endif
 			break;
 		case PSM_PSMZ16: 
 		case PSM_PSMZ16S: 
+			#if _M_SSE >= 0x400
 			z = addr.gather32_32(m_vm16);
+			#else
+			z = GSVector4i(
+				(int)ReadPixel16(addr.u32[0]), 
+				(int)ReadPixel16(addr.u32[1]), 
+				(int)ReadPixel16(addr.u32[2]), 
+				(int)ReadPixel16(addr.u32[3]));
+			#endif
 			break;
 		default: 
 			ASSERT(0); 

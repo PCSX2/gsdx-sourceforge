@@ -209,6 +209,36 @@ str.Format(_T("%d %f %f %f %f "), i, o.x, o.y, dr[i].z, dr[i].w);
 		return true;
 	}
 
+	void DoCapture()
+	{
+		if(!m_capture.IsCapturing())
+		{
+			return;
+		}
+
+		CSize size = m_capture.GetSize();
+
+		Texture current;
+
+		m_dev.GetCurrent(current);
+
+		Texture offscreen;
+
+		if(m_dev.CopyOffscreen(current, GSVector4(0, 0, 1, 1), offscreen, size.cx, size.cy))
+		{
+			BYTE* bits = NULL;
+			int pitch = 0;
+
+			if(offscreen.Map(&bits, pitch))
+			{
+				m_capture.DeliverFrame(bits, pitch);
+			}
+
+			m_dev.Recycle(offscreen);
+		}
+	}
+
+
 public:
 	Device m_dev;
 	bool m_psrr;
@@ -251,29 +281,7 @@ public:
 	void VSync(int field)
 	{
 		GSPerfMonAutoTimer pmat(m_perfmon);
-/*
-extern UINT64 g_slp1;
-extern UINT64 g_slp2;
-extern UINT64 g_slp3;
-extern UINT64 g_slp4;
-UINT64 n = g_slp1 + g_slp2 + g_slp3 + g_slp4;
-if(n) printf("%.3f %.3f %.3f %.3f %d%%\n", 
-				  (float)((double)g_slp1 / n), 
-				  (float)((double)g_slp2 / n), 
-				  (float)((double)g_slp3 / n), 
-				  (float)((double)g_slp4 / n),
-				  (int)(((double)g_slp1 * 1 + (double)g_slp2 * 2 + (double)g_slp3 * 3 + (double)g_slp4 * 4) / 4 / n * 100));
-g_slp1 = g_slp2 = g_slp3 = g_slp4 = 0;
 
-extern UINT64 g_dtt;
-extern UINT64 g_dt00;
-extern UINT64 g_dt0;
-extern UINT64 g_dt1;
-extern UINT64 g_dt2;
-extern UINT64 g_dtn;
-if(g_dtt) printf("%I64d %I64d %I64d %I64d %I64d %I64d\n", g_dtt, g_dt00, g_dt0, g_dt1, g_dt2, g_dtn);
-g_dtt = g_dt00 = g_dt0 = g_dt1 = g_dt2 = g_dtn = 0;
-*/
 		m_field = !!field;
 
 		Flush();
@@ -285,8 +293,6 @@ g_dtt = g_dt00 = g_dt0 = g_dt1 = g_dt2 = g_dtn = 0;
 		Dump();
 
 		if(!Merge()) return;
-
-// s_dump = m_perfmon.GetFrame() >= 5002;
 
 		// osd 
 
@@ -387,29 +393,7 @@ g_dtt = g_dt00 = g_dt0 = g_dt1 = g_dt2 = g_dtn = 0;
 
 		m_dev.Present(r);
 
-		if(m_capture.IsCapturing())
-		{
-			CSize size = m_capture.GetSize();
-
-			Texture current;
-
-			m_dev.GetCurrent(current);
-
-			Texture offscreen;
-
-			if(m_dev.CopyOffscreen(current, GSVector4(0, 0, 1, 1), offscreen, size.cx, size.cy))
-			{
-				BYTE* bits = NULL;
-				int pitch = 0;
-
-				if(offscreen.Map(&bits, pitch))
-				{
-					m_capture.DeliverFrame(bits, pitch);
-				}
-
-				m_dev.Recycle(offscreen);
-			}
-		}
+		DoCapture();
 	}
 
 	void Dump()

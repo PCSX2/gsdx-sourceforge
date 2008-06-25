@@ -442,7 +442,7 @@ void GSRasterizer::DrawTriangle(Vertex* vertices)
 	GSVector4 aabb = vertices[0].p.yyyy(vertices[1].p);
 	GSVector4 bccb = vertices[1].p.yyyy(vertices[2].p).xzzx();
 
-	int i = _mm_movemask_ps(bccb < aabb) & 7;
+	int i = (bccb < aabb).mask() & 7;
 
 	v[0] = vertices[s_abc[i][0]];
 	v[1] = vertices[s_abc[i][1]];
@@ -895,7 +895,7 @@ else if(steps == 3) g_slp3++;
 			default: __assume(0);
 			}
 
-			if(_mm_movemask_epi8(test) == 0xffff)
+			if(test.mask() == 0xffff)
 			{
 				continue;
 			}
@@ -1009,7 +1009,7 @@ else if(steps == 3) g_slp3++;
 				fm |= t;
 				zm |= t;
 				test |= t;
-				if(_mm_movemask_epi8(test) == 0xffff) continue;
+				if(test.mask() == 0xffff) continue;
 				break;
 			case 1:
 				zm |= t;
@@ -1073,7 +1073,7 @@ else if(steps == 3) g_slp3++;
 			{
 				test |= (d ^ slenv->datm).sra32(31);
 
-				if(_mm_movemask_epi8(test) == 0xffff)
+				if(test.mask() == 0xffff)
 				{
 					continue;
 				}
