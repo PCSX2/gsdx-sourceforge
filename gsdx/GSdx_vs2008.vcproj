@@ -535,7 +535,7 @@
 		<Configuration
 			Name="Release SSSE3|Win32"
 			ConfigurationType="2"
-			InheritedPropertySheets="..\common.vsprops;..\release.vsprops;..\sse2.vsprops;..\ssse3.vsprops"
+			InheritedPropertySheets="..\common.vsprops;..\release.vsprops;..\ssse3.vsprops"
 			UseOfMFC="1"
 			CharacterSet="2"
 			WholeProgramOptimization="1"
@@ -663,7 +663,7 @@
 		<Configuration
 			Name="Debug SSSE3|Win32"
 			ConfigurationType="2"
-			InheritedPropertySheets="..\common.vsprops;..\debug.vsprops;..\sse2.vsprops;..\ssse3.vsprops"
+			InheritedPropertySheets="..\common.vsprops;..\debug.vsprops;..\ssse3.vsprops"
 			UseOfMFC="1"
 			CharacterSet="2"
 			>
@@ -789,7 +789,7 @@
 		<Configuration
 			Name="Debug SSE4|Win32"
 			ConfigurationType="2"
-			InheritedPropertySheets="..\common.vsprops;..\debug.vsprops;..\sse2.vsprops;..\sse4.vsprops"
+			InheritedPropertySheets="..\common.vsprops;..\debug.vsprops;..\sse4.vsprops"
 			UseOfMFC="1"
 			CharacterSet="2"
 			>
@@ -916,7 +916,7 @@
 		<Configuration
 			Name="Release SSE4|Win32"
 			ConfigurationType="2"
-			InheritedPropertySheets="..\common.vsprops;..\release.vsprops;..\sse2.vsprops;..\sse4.vsprops"
+			InheritedPropertySheets="..\common.vsprops;..\release.vsprops;..\sse4.vsprops"
 			UseOfMFC="1"
 			CharacterSet="2"
 			WholeProgramOptimization="1"
