@@ -396,6 +396,11 @@ public:
 		return GSVector4i(_mm_andnot_si128(v.m, m));
 	}
 
+	int mask() const
+	{
+		return _mm_movemask_epi8(m);
+	}
+
 	#if _M_SSE >= 0x400
 
 	template<int i> GSVector4i insert8(int a) const
@@ -1359,6 +1364,16 @@ public:
 		return GSVector4(_mm_unpackhi_ps(m, a));
 	}
 
+	GSVector4 andnot(const GSVector4& v) const
+	{
+		return GSVector4(_mm_andnot_ps(v.m, m));
+	}
+
+	int mask() const
+	{
+		return _mm_movemask_ps(m);
+	}
+
 	static GSVector4 zero() 
 	{
 		return GSVector4(_mm_setzero_ps());
@@ -1419,6 +1434,21 @@ public:
 		*this /= GSVector4(f);
 	}
 
+	void operator &= (const GSVector4& v)
+	{
+		m = _mm_and_ps(m, v);
+	}
+
+	void operator |= (const GSVector4& v) 
+	{
+		m = _mm_or_ps(m, v);
+	}
+
+	void operator ^= (const GSVector4& v) 
+	{
+		m = _mm_xor_ps(m, v);
+	}
+
 	friend GSVector4 operator + (const GSVector4& v1, const GSVector4& v2) 
 	{
 		return GSVector4(_mm_add_ps(v1, v2));
@@ -1457,6 +1487,21 @@ public:
 	friend GSVector4 operator / (const GSVector4& v, float f) 
 	{
 		return v / GSVector4(f);
+	}
+
+	friend GSVector4 operator & (const GSVector4& v1, const GSVector4& v2)
+	{
+		return GSVector4(_mm_and_ps(v1, v2));
+	}
+	
+	friend GSVector4 operator | (const GSVector4& v1, const GSVector4& v2)
+	{
+		return GSVector4(_mm_or_ps(v1, v2));
+	}
+	
+	friend GSVector4 operator ^ (const GSVector4& v1, const GSVector4& v2) 
+	{
+		return GSVector4(_mm_xor_ps(v1, v2));
 	}
 
 	friend GSVector4 operator == (const GSVector4& v1, const GSVector4& v2) 

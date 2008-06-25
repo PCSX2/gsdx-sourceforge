@@ -25,10 +25,9 @@
 
 #pragma pack(push, 1)
 
-struct GSDrawingEnvironment
+class GSDrawingEnvironment
 {
-	struct GSDrawingEnvironment() {memset(this, 0, sizeof(*this));}
-
+public:
 	GIFRegPRIM			PRIM;
 	GIFRegPRMODE		PRMODE;
 	GIFRegPRMODECONT	PRMODECONT;
@@ -46,6 +45,33 @@ struct GSDrawingEnvironment
 	GIFRegTRXREG		TRXREG;
 	GIFRegTRXREG		TRXREG2;
 	GSDrawingContext	CTXT[2];
+
+	GSDrawingEnvironment() 
+	{
+	}
+
+	void Reset()
+	{
+		memset(&PRIM, 0, sizeof(PRIM));
+		memset(&PRMODE, 0, sizeof(PRMODE));
+		memset(&PRMODECONT, 0, sizeof(PRMODECONT));
+		memset(&TEXCLUT, 0, sizeof(TEXCLUT));
+		memset(&SCANMSK, 0, sizeof(SCANMSK));
+		memset(&TEXA, 0, sizeof(TEXA));
+		memset(&FOGCOL, 0, sizeof(FOGCOL));
+		memset(&DIMX, 0, sizeof(DIMX));
+		memset(&DTHE, 0, sizeof(DTHE));
+		memset(&COLCLAMP, 0, sizeof(COLCLAMP));
+		memset(&PABE, 0, sizeof(PABE));
+		memset(&BITBLTBUF, 0, sizeof(BITBLTBUF));
+		memset(&TRXDIR, 0, sizeof(TRXDIR));
+		memset(&TRXPOS, 0, sizeof(TRXPOS));
+		memset(&TRXREG, 0, sizeof(TRXREG));
+		memset(&TRXREG2, 0, sizeof(TRXREG2));
+
+		CTXT[0].Reset();
+		CTXT[1].Reset();
+	}
 };
 
 #pragma pack(pop)

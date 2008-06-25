@@ -26,10 +26,9 @@
 
 #pragma pack(push, 1)
 
-struct GSDrawingContext
+class GSDrawingContext
 {
-	struct GSDrawingContext() {memset(this, 0, sizeof(*this));}
-
+public:
 	GIFRegXYOFFSET	XYOFFSET;
 	GIFRegTEX0		TEX0;
 	GIFRegTEX1		TEX1;
@@ -48,19 +47,62 @@ struct GSDrawingContext
 	GSLocalMemory::psm_t* ztbl;
 	GSLocalMemory::psm_t* ttbl;
 
-	struct {DWORD x0, y0, x1, y1;} scissor;
-	struct {float x0, y0, x1, y1;} fscissor;
+	struct scissor_t
+	{
+		GSVector4i dx10;
+		GSVector4 dx9;
+		GSVector4 sw;
+	};
+	
+	scissor_t* scissor;
+	
+	GSDrawingContext() 
+		: ftbl(NULL)
+		, ztbl(NULL)
+		, ttbl(NULL)
+	{
+		scissor = (scissor_t*)_aligned_malloc(sizeof(scissor_t), 16);
+
+		Reset();
+	}
+
+	~GSDrawingContext()
+	{
+		_aligned_free(scissor);
+	}
+
+	void Reset()
+	{
+		memset(&XYOFFSET, 0, sizeof(XYOFFSET));
+		memset(&TEX0, 0, sizeof(TEX0));
+		memset(&TEX1, 0, sizeof(TEX1));
+		memset(&TEX2, 0, sizeof(TEX2));
+		memset(&CLAMP, 0, sizeof(CLAMP));
+		memset(&MIPTBP1, 0, sizeof(MIPTBP1));
+		memset(&MIPTBP2, 0, sizeof(MIPTBP2));
+		memset(&SCISSOR, 0, sizeof(SCISSOR));
+		memset(&ALPHA, 0, sizeof(ALPHA));
+		memset(&TEST, 0, sizeof(TEST));
+		memset(&FBA, 0, sizeof(FBA));
+		memset(&FRAME, 0, sizeof(FRAME));
+		memset(&ZBUF, 0, sizeof(ZBUF));
+	}
 
 	void UpdateScissor()
 	{
-		scissor.x0 = (SCISSOR.SCAX0 << 4) + XYOFFSET.OFX;
-		scissor.y0 = (SCISSOR.SCAY0 << 4) + XYOFFSET.OFY;
-		scissor.x1 = (SCISSOR.SCAX1 << 4) + XYOFFSET.OFX;
-		scissor.y1 = (SCISSOR.SCAY1 << 4) + XYOFFSET.OFY;
-		fscissor.x0 = (float)(int)scissor.x0;
-		fscissor.y1 = (float)(int)scissor.y0;
-		fscissor.x1 = (float)(int)scissor.x1;
-		fscissor.y1 = (float)(int)scissor.y1;
+		scissor->dx10 = GSVector4i(
+			(int)((SCISSOR.SCAX0 << 4) + XYOFFSET.OFX),
+			(int)((SCISSOR.SCAY0 << 4) + XYOFFSET.OFY),
+			(int)((SCISSOR.SCAX1 << 4) + XYOFFSET.OFX),
+			(int)((SCISSOR.SCAY1 << 4) + XYOFFSET.OFY));
+
+		scissor->dx9 = GSVector4(scissor->dx10);
+
+		scissor->sw = GSVector4i(
+			(int)SCISSOR.SCAX0,
+			(int)SCISSOR.SCAY0,
+			(int)SCISSOR.SCAX1,
+			(int)SCISSOR.SCAY1);
 	}
 
 	bool DepthRead()

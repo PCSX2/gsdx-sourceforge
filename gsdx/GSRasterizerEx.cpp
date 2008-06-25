@@ -975,23 +975,9 @@ void GSRasterizer::InitEx()
 */
 }
 
-UINT64 g_slp1 = 0;
-UINT64 g_slp2 = 0;
-UINT64 g_slp3 = 0;
-UINT64 g_slp4 = 0;
-
 template<DWORD sel>
 void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 {
-/*
-{
-int steps = right - left;
-for(; steps >= 4; steps -= 4) g_slp4++;
-if(steps == 1) g_slp1++;
-else if(steps == 2) g_slp2++;
-else if(steps == 3) g_slp3++;
-}
-*/
 	const DWORD ztst = (sel >> 5) & 3;
 	const DWORD iip = (sel >> 7) & 1;
 	const DWORD tfx = (sel >> 8) & 7;
@@ -1067,7 +1053,7 @@ else if(steps == 3) g_slp3++;
 			default: __assume(0);
 			}
 
-			if(_mm_movemask_epi8(test) == 0xffff)
+			if(test.mask() == 0xffff)
 			{
 				continue;
 			}
@@ -1181,7 +1167,7 @@ else if(steps == 3) g_slp3++;
 				fm |= t;
 				zm |= t;
 				test |= t;
-				if(_mm_movemask_epi8(test) == 0xffff) continue;
+				if(test.mask() == 0xffff) continue;
 				break;
 			case 1:
 				zm |= t;
@@ -1245,7 +1231,7 @@ else if(steps == 3) g_slp3++;
 			{
 				test |= (d ^ slenv->datm).sra32(31);
 
-				if(_mm_movemask_epi8(test) == 0xffff)
+				if(test.mask() == 0xffff)
 				{
 					continue;
 				}

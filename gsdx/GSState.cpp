@@ -134,16 +134,15 @@ GSState::~GSState()
 
 void GSState::Reset()
 {
-	memset(&m_env, 0, sizeof(m_env));
 	memset(&m_path[0], 0, sizeof(m_path[0]) * 3);
 	memset(&m_v, 0, sizeof(m_v));
 
 //	PRIM = &m_env.PRIM;
 //	m_env.PRMODECONT.AC = 1;
 
-	m_context = &m_env.CTXT[0];
+	m_env.Reset();
 
-	m_vprim = primVertexCount[PRIM->PRIM];
+	m_context = &m_env.CTXT[0];
 
 	m_env.CTXT[0].ftbl = &GSLocalMemory::m_psm[m_env.CTXT[0].FRAME.PSM];
 	m_env.CTXT[0].ztbl = &GSLocalMemory::m_psm[m_env.CTXT[0].ZBUF.PSM];
@@ -152,6 +151,8 @@ void GSState::Reset()
 	m_env.CTXT[1].ftbl = &GSLocalMemory::m_psm[m_env.CTXT[1].FRAME.PSM];
 	m_env.CTXT[1].ztbl = &GSLocalMemory::m_psm[m_env.CTXT[1].ZBUF.PSM];
 	m_env.CTXT[1].ttbl = &GSLocalMemory::m_psm[m_env.CTXT[1].TEX0.PSM];
+
+	m_vprim = primVertexCount[PRIM->PRIM];
 
 	InvalidateTextureCache();
 }
