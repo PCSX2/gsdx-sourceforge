@@ -57,7 +57,6 @@
 				Name="VCLinkerTool"
 				ModuleDefinitionFile=".\GSdx.def"
 				DelayLoadDLLs=""
-				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -77,6 +76,9 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -121,7 +123,6 @@
 			<Tool
 				Name="VCLinkerTool"
 				ModuleDefinitionFile=""
-				DataExecutionPrevention="0"
 				TargetMachine="17"
 			/>
 			<Tool
@@ -141,6 +142,9 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -186,7 +190,6 @@
 				Name="VCLinkerTool"
 				ModuleDefinitionFile=".\GSdx.def"
 				DelayLoadDLLs=""
-				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -206,6 +209,9 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -251,7 +257,6 @@
 			<Tool
 				Name="VCLinkerTool"
 				ModuleDefinitionFile=""
-				DataExecutionPrevention="0"
 				TargetMachine="17"
 			/>
 			<Tool
@@ -271,6 +276,9 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -315,7 +323,6 @@
 				Name="VCLinkerTool"
 				ModuleDefinitionFile=".\GSdx.def"
 				DelayLoadDLLs=""
-				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -335,6 +342,9 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -378,7 +388,6 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				DataExecutionPrevention="0"
 				TargetMachine="17"
 			/>
 			<Tool
@@ -398,6 +407,9 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -443,7 +455,6 @@
 				Name="VCLinkerTool"
 				ModuleDefinitionFile=".\GSdx.def"
 				DelayLoadDLLs=""
-				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -463,6 +474,9 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -506,7 +520,6 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				DataExecutionPrevention="0"
 				TargetMachine="17"
 			/>
 			<Tool
@@ -528,6 +541,9 @@
 				Name="VCAppVerifierTool"
 			/>
 			<Tool
+				Name="VCWebDeploymentTool"
+			/>
+			<Tool
 				Name="VCPostBuildEventTool"
 			/>
 		</Configuration>
@@ -540,6 +556,14 @@
 			Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
+			<File
+				RelativePath=".\GSCapture.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GSCaptureDlg.cpp"
+				>
+			</File>
 			<File
 				RelativePath=".\GSCrc.cpp"
 				>
@@ -554,6 +578,10 @@
 			</File>
 			<File
 				RelativePath=".\GSDevice9.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GSDeviceNull.cpp"
 				>
 			</File>
 			<File
@@ -657,6 +685,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\GSTextureNull.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\GSUtil.cpp"
 				>
 			</File>
@@ -751,6 +783,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\GSCapture.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSCaptureDlg.h"
+				>
+			</File>
+			<File
 				RelativePath=".\GSCrc.h"
 				>
 			</File>
@@ -764,6 +804,10 @@
 			</File>
 			<File
 				RelativePath=".\GSDevice9.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSDeviceNull.h"
 				>
 			</File>
 			<File
@@ -864,6 +908,10 @@
 			</File>
 			<File
 				RelativePath=".\GSTextureFX9.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSTextureNull.h"
 				>
 			</File>
 			<File
