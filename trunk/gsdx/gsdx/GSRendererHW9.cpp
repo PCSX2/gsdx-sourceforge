@@ -32,6 +32,14 @@ GSRendererHW9::GSRendererHW9(BYTE* base, bool mt, void (*irq)(), int nloophack, 
 
 	m_fba.enabled = !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("fba"), TRUE);
 	m_logz = !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("logz"), FALSE);
+
+	m_fpDrawingKickHandlers[GS_POINTLIST] = (DrawingKickHandler)&GSRendererHW9::DrawingKickPoint;
+	m_fpDrawingKickHandlers[GS_LINELIST] = (DrawingKickHandler)&GSRendererHW9::DrawingKickLine;
+	m_fpDrawingKickHandlers[GS_LINESTRIP] = (DrawingKickHandler)&GSRendererHW9::DrawingKickLine;
+	m_fpDrawingKickHandlers[GS_TRIANGLELIST] = (DrawingKickHandler)&GSRendererHW9::DrawingKickTriangle;
+	m_fpDrawingKickHandlers[GS_TRIANGLESTRIP] = (DrawingKickHandler)&GSRendererHW9::DrawingKickTriangle;
+	m_fpDrawingKickHandlers[GS_TRIANGLEFAN] = (DrawingKickHandler)&GSRendererHW9::DrawingKickTriangle;
+	m_fpDrawingKickHandlers[GS_SPRITE] = (DrawingKickHandler)&GSRendererHW9::DrawingKickSprite;
 }
 
 bool GSRendererHW9::Create(LPCTSTR title)
@@ -111,125 +119,93 @@ void GSRendererHW9::VertexKick(bool skip)
 	__super::VertexKick(skip);
 }
 
-void GSRendererHW9::DrawingKick(bool skip)
+int GSRendererHW9::ScissorTest(const GSVector4& p0, const GSVector4& p1)
 {
-	GSVertexHW9* v = &m_vertices[m_count];
-	int nv = 0;
-
-	switch(PRIM->PRIM)
-	{
-	case GS_POINTLIST:
-		m_vl.RemoveAt(0, v[0]);
-		nv = 1;
-		break;
-	case GS_LINELIST:
-		m_vl.RemoveAt(0, v[0]);
-		m_vl.RemoveAt(0, v[1]);
-		nv = 2;
-		break;
-	case GS_LINESTRIP:
-		m_vl.RemoveAt(0, v[0]);
-		m_vl.GetAt(0, v[1]);
-		nv = 2;
-		break;
-	case GS_TRIANGLELIST:
-		m_vl.RemoveAt(0, v[0]);
-		m_vl.RemoveAt(0, v[1]);
-		m_vl.RemoveAt(0, v[2]);
-		nv = 3;
-		break;
-	case GS_TRIANGLESTRIP:
-		m_vl.RemoveAt(0, v[0]);
-		m_vl.GetAt(0, v[1]);
-		m_vl.GetAt(1, v[2]);
-		nv = 3;
-		break;
-	case GS_TRIANGLEFAN:
-		m_vl.GetAt(0, v[0]);
-		m_vl.RemoveAt(1, v[1]);
-		m_vl.GetAt(1, v[2]);
-		nv = 3;
-		break;
-	case GS_SPRITE:
-		m_vl.RemoveAt(0, v[0]);
-		m_vl.RemoveAt(0, v[1]);
-		// ASSERT(v[0].z == v[1].z);
-		v[0].p.z = v[1].p.z;
-		v[0].p.w = v[1].p.w;
-		v[0].f = v[1].f;
-		v[2] = v[1];
-		v[3] = v[1];
-		v[1].p.y = v[0].p.y;
-		v[1].t.y = v[0].t.y;
-		v[2].p.x = v[0].p.x;
-		v[2].t.x = v[0].t.x;
-		v[4] = v[1];
-		v[5] = v[2];
-		nv = 6;
-		break;
-	default:
-		m_vl.RemoveAll();
-		ASSERT(0);
-		return;
-	}
-
-	if(skip)
-	{
-		return;
-	}
-
 	GSVector4 scissor = m_context->scissor->dx9;
 
-	GSVector4 v0, v1, v2, v3, v4;
+	GSVector4 v0 = p0 < scissor;
+	GSVector4 v1 = p1 > scissor.zwxy();
 
-	switch(nv)
+	return (v0 | v1).mask() & 3;
+}
+
+void GSRendererHW9::DrawingKickPoint(GSVertexHW9* v, int& count)
+{
+	GSVector4 p0 = v[0].p;
+	GSVector4 p1 = v[0].p;
+
+	if(ScissorTest(p0, p1))
 	{
-	case 1:
-		v0 = GSVector4(v[0].m128[1]).xyxy();
-		v3 = (v0 < scissor);
-		v4 = (v0 > scissor);
-		break;
-	case 2:
-		v0 = GSVector4(v[0].m128[1]).xyxy();
-		v1 = GSVector4(v[1].m128[1]).xyxy();
-		v3 = (v0 < scissor) & (v1 < scissor);
-		v4 = (v0 > scissor) & (v1 > scissor);
-		break;
-	case 3:
-		v0 = GSVector4(v[0].m128[1]).xyxy();
-		v1 = GSVector4(v[1].m128[1]).xyxy();
-		v2 = GSVector4(v[2].m128[1]).xyxy();
-		v3 = (v0 < scissor) & (v1 < scissor) & (v2 < scissor);
-		v4 = (v0 > scissor) & (v1 > scissor) & (v2 > scissor);
-		break;
-	case 6:
-		v0 = GSVector4(v[0].m128[1]).xyxy();
-		v1 = GSVector4(v[3].m128[1]).xyxy();
-		v3 = (v0 < scissor) & (v1 < scissor);
-		v4 = (v0 > scissor) & (v1 > scissor);
-		break;
-	default:
-		__assume(0);
+		count = 0;
+		return;
 	}
+}
 
-	if(((v3 & v3.zwxy()) | (v4 & v4.zwxy())).mask())
+void GSRendererHW9::DrawingKickLine(GSVertexHW9* v, int& count)
+{
+	GSVector4 p0 = v[0].p.maxv(v[1].p);
+	GSVector4 p1 = v[0].p.minv(v[1].p);
+
+	if(ScissorTest(p0, p1))
 	{
+		count = 0;
 		return;
 	}
 
-	if(!PRIM->IIP)
+	if(PRIM->IIP == 0)
 	{
-		v[0].c0 = v[nv - 1].c0;
-		v[0].c1 = v[nv - 1].c1;
+		v[0].c0 = v[1].c0;
+		v[0].c1 = v[1].c1;
+	}
+}
 
-		if(PRIM->PRIM == 6)
-		{
-			v[3].c0 = v[5].c0;
-			v[3].c1 = v[5].c1;
-		}
+void GSRendererHW9::DrawingKickTriangle(GSVertexHW9* v, int& count)
+{
+	GSVector4 p0 = v[0].p.maxv(v[1].p).maxv(v[2].p);
+	GSVector4 p1 = v[0].p.minv(v[1].p).minv(v[2].p);
+
+	if(ScissorTest(p0, p1))
+	{
+		count = 0;
+		return;
 	}
 
-	m_count += nv;
+	if(PRIM->IIP == 0)
+	{
+		v[0].c0 = v[2].c0;
+		v[0].c1 = v[2].c1;
+	}
+}
+
+void GSRendererHW9::DrawingKickSprite(GSVertexHW9* v, int& count)
+{
+	GSVector4 p0 = v[0].p.maxv(v[1].p);
+	GSVector4 p1 = v[0].p.minv(v[1].p);
+
+	if(ScissorTest(p0, p1))
+	{
+		count = 0;
+		return;
+	}
+
+	if(PRIM->IIP == 0)
+	{
+		v[0].c0 = v[1].c0;
+	}
+
+	v[0].p.z = v[1].p.z;
+	v[0].p.w = v[1].p.w;
+	v[0].c1 = v[1].c1;
+	v[2] = v[1];
+	v[3] = v[1];
+	v[1].p.y = v[0].p.y;
+	v[1].t.y = v[0].t.y;
+	v[2].p.x = v[0].p.x;
+	v[2].t.x = v[0].t.x;
+	v[4] = v[1];
+	v[5] = v[2];
+
+	count += 4;
 }
 
 void GSRendererHW9::Draw()

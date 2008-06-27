@@ -35,7 +35,6 @@ GSState::GSState(BYTE* base, bool mt, void (*irq)(), int nloophack)
 	, m_q(1.0f)
 	, m_vprim(1)
 	, m_version(5)
-	, m_vmsize(4 * 1024 * 1024)
 	, m_dumpfp(NULL)
 	, m_frameskip(0)
 {
@@ -84,7 +83,7 @@ GSState::GSState(BYTE* base, bool mt, void (*irq)(), int nloophack)
 
 	m_sssize += sizeof(m_x);
 	m_sssize += sizeof(m_y);
-	m_sssize += m_vmsize;
+	m_sssize += m_mem.m_vmsize;
 	m_sssize += (sizeof(m_path[0].tag) + sizeof(m_path[0].nreg)) * 3;
 	m_sssize += sizeof(m_q);
 
@@ -152,7 +151,7 @@ void GSState::Reset()
 	m_env.CTXT[1].ztbl = &GSLocalMemory::m_psm[m_env.CTXT[1].ZBUF.PSM];
 	m_env.CTXT[1].ttbl = &GSLocalMemory::m_psm[m_env.CTXT[1].TEX0.PSM];
 
-	m_vprim = primVertexCount[PRIM->PRIM];
+	m_vprim = GSUtil::GetPrimVertexCount(PRIM->PRIM);
 
 	InvalidateTextureCache();
 }
@@ -523,7 +522,7 @@ void GSState::GIFRegHandlerPRIM(GIFReg* r)
 {
 	// ASSERT(r->PRIM.PRIM < 7);
 
-	if(GetPrimClass(m_env.PRIM.PRIM) == GetPrimClass(r->PRIM.PRIM))
+	if(GSUtil::GetPrimClass(m_env.PRIM.PRIM) == GSUtil::GetPrimClass(r->PRIM.PRIM))
 	{
 		if(((m_env.PRIM.i64 ^ r->PRIM.i64) & ~7) != 0)
 		{
@@ -546,7 +545,7 @@ void GSState::GIFRegHandlerPRIM(GIFReg* r)
 		m_context = &m_env.CTXT[m_env.PRIM.CTXT];
 	}
 
-	m_vprim = primVertexCount[PRIM->PRIM];
+	m_vprim = GSUtil::GetPrimVertexCount(PRIM->PRIM);
 
 	ResetPrim();
 }
@@ -563,7 +562,7 @@ void GSState::GIFRegHandlerST(GIFReg* r)
 
 void GSState::GIFRegHandlerUV(GIFReg* r)
 {
-	m_v.UV = r->UV;
+	m_v.UV.ai32[0] = r->UV.ai32[0] & 0x3fff3fff;
 }
 
 void GSState::GIFRegHandlerXYZF2(GIFReg* r)
@@ -702,7 +701,7 @@ void GSState::GIFRegHandlerPRMODECONT(GIFReg* r)
 
 	m_context = &m_env.CTXT[PRIM->CTXT];
 
-	m_vprim = primVertexCount[PRIM->PRIM];
+	m_vprim = GSUtil::GetPrimVertexCount(PRIM->PRIM);
 }
 
 void GSState::GIFRegHandlerPRMODE(GIFReg* r)
@@ -1061,11 +1060,11 @@ void GSState::FlushWrite(BYTE* mem, int len)
 void GSState::Write(BYTE* mem, int len)
 {
 	/*
-	*/
 	TRACE(_T("Write len=%d DBP=%05x DPSM=%d DSAX=%d DSAY=%d RRW=%d RRH=%d\n"), 
 		  len, (int)m_env.BITBLTBUF.DBP, (int)m_env.BITBLTBUF.DPSM, 
 		  (int)m_env.TRXPOS.DSAX, (int)m_env.TRXPOS.DSAY,
 		  (int)m_env.TRXREG.RRW, (int)m_env.TRXREG.RRH);
+	*/
 
 	if(len == 0) return;
 
@@ -1119,11 +1118,11 @@ void GSState::Write(BYTE* mem, int len)
 void GSState::Read(BYTE* mem, int len)
 {
 	/*
-	*/
 	TRACE(_T("Read len=%d SBP=%05x SPSM=%d SSAX=%d SSAY=%d RRW=%d RRH=%d\n"), 
 		  len, (int)m_env.BITBLTBUF.SBP, (int)m_env.BITBLTBUF.SPSM, 
 		  (int)m_env.TRXPOS.SSAX, (int)m_env.TRXPOS.SSAY,
 		  (int)m_env.TRXREG.RRW, (int)m_env.TRXREG.RRH);
+	*/
 
 	if(m_y >= (int)m_env.TRXREG.RRH) {ASSERT(0); return;}
 
@@ -1468,7 +1467,7 @@ int GSState::Freeze(freezeData* fd, bool sizeonly)
 	WriteState(data, &m_v.FOG);
 	WriteState(data, &m_x);
 	WriteState(data, &m_y);
-	WriteState(data, m_mem.GetVM(), m_vmsize);
+	WriteState(data, m_mem.m_vm8, m_mem.m_vmsize);
 
 	for(int i = 0; i < 3; i++)
 	{
@@ -1554,7 +1553,7 @@ int GSState::Defrost(const freezeData* fd)
 	ReadState(&m_v.FOG, data);
 	ReadState(&m_x, data);
 	ReadState(&m_y, data);
-	ReadState(m_mem.GetVM(), data, m_vmsize);
+	ReadState(m_mem.m_vm8, data, m_mem.m_vmsize);
 
 	for(int i = 0; i < 3; i++)
 	{
@@ -1570,7 +1569,7 @@ int GSState::Defrost(const freezeData* fd)
 
 	m_context = &m_env.CTXT[PRIM->CTXT];
 
-	m_vprim = primVertexCount[PRIM->PRIM];
+	m_vprim = GSUtil::GetPrimVertexCount(PRIM->PRIM);
 
 	m_env.CTXT[0].ftbl = &GSLocalMemory::m_psm[m_env.CTXT[0].FRAME.PSM];
 	m_env.CTXT[0].ztbl = &GSLocalMemory::m_psm[m_env.CTXT[0].ZBUF.PSM];
@@ -2141,7 +2140,7 @@ bool GSState::IsBadFrame(int& skip)
 	{
 		if(fi.TME)
 		{
-			if(HasSharedBits(fi.FBP, fi.FPSM, fi.TBP0, fi.TPSM))
+			if(GSUtil::HasSharedBits(fi.FBP, fi.FPSM, fi.TBP0, fi.TPSM))
 			{
 				// skip = 1;
 			}

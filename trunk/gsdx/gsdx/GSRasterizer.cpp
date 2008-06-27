@@ -127,8 +127,8 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 
 	m_sel.dw = 0;
 
-	m_sel.fpsm = GSLocalMemory::EncodeFPSM(context->FRAME.PSM);
-	m_sel.zpsm = GSLocalMemory::EncodeZPSM(context->ZBUF.PSM);
+	m_sel.fpsm = GSUtil::EncodeFPSM(context->FRAME.PSM);
+	m_sel.zpsm = GSUtil::EncodeZPSM(context->ZBUF.PSM);
 	m_sel.ztst = context->TEST.ZTE && context->TEST.ZTST > 1 ? context->TEST.ZTST : context->ZBUF.ZMSK ? 0 : 1;
 	m_sel.iip = PRIM->PRIM == GS_POINTLIST || PRIM->PRIM == GS_SPRITE ? 0 : PRIM->IIP;
 	m_sel.tfx = PRIM->TME ? context->TEX0.TFX : 4;
@@ -322,6 +322,8 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 		slenv->t.min = slenv->t.min.xxxxl().xxxxh();
 		slenv->t.max = slenv->t.max.xxxxl().xxxxh();
 		slenv->t.mask = slenv->t.mask.xxzz();
+
+		m_tw = max(context->TEX0.TW, TEXTURE_CACHE_WIDTH);
 	}
 
 	//
@@ -706,9 +708,9 @@ void GSRasterizer::FetchTexture(int x, int y)
 
 	CRect r(x, y, x + xs, y + ys);
 
-	DWORD* dst = &m_tc->texture[y * 1024 + x];
+	DWORD* dst = &m_tc->texture[(y << m_tw) + x];
 
-	(m_state->m_mem.*m_state->m_context->ttbl->rtx)(r, (BYTE*)dst, 1024 * 4, m_state->m_context->TEX0, m_state->m_env.TEXA);
+	(m_state->m_mem.*m_state->m_context->ttbl->rtx)(r, (BYTE*)dst, (1 << m_tw) * 4, m_state->m_context->TEX0, m_state->m_env.TEXA);
 
 	m_state->m_perfmon.Put(GSPerfMon::Unswizzle, r.Width() * r.Height() * 4);
 }
@@ -839,8 +841,8 @@ else if(steps == 3) g_slp3++;
 */
 	ScanlineEnvironment* slenv = m_slenv;
 
-	int fpsm = GSLocalMemory::DecodeFPSM(iFPSM);
-	int zpsm = GSLocalMemory::DecodeZPSM(iZPSM);
+	int fpsm = GSUtil::DecodeFPSM(iFPSM);
+	int zpsm = GSUtil::DecodeZPSM(iZPSM);
 
 	GSVector4i fa_base = m_fbco->addr[top];
 	GSVector4i* fa_offset = (GSVector4i*)&slenv->fo[top & 7][left];

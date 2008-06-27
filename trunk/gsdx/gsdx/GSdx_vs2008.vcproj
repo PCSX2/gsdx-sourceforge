@@ -1052,8 +1052,28 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\GSBlock.cpp"
+				>
+				<FileConfiguration
+					Name="Release SSE4|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AssemblerOutput="4"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
 				RelativePath=".\GSCapture.cpp"
 				>
+				<FileConfiguration
+					Name="Release SSE4|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AssemblerOutput="4"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\GSCaptureDlg.cpp"
@@ -1531,6 +1551,10 @@
 			>
 			<File
 				RelativePath=".\GS.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSBlock.h"
 				>
 			</File>
 			<File

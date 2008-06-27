@@ -261,8 +261,3 @@ const DWORD clutTableT16I4[16] =
 	0, 2, 8, 10, 16, 18, 24, 26,
 	4, 6, 12, 14, 20, 22, 28, 30
 };
-
-const int primVertexCount[8] = 
-{
-	1, 2, 2, 3, 3, 3, 2, 1
-};

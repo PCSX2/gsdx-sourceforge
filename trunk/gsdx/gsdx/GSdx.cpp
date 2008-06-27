@@ -382,7 +382,7 @@ EXPORT_C GSReplay(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow)
 
 	while(*lpszCmdLine == ' ') lpszCmdLine++;
 
-	//::SetPriorityClass(::GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+	::SetPriorityClass(::GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 
 	CAtlArray<BYTE> buff;
 

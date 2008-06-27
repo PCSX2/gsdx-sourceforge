@@ -118,7 +118,7 @@ protected:
 
 			for(int i = 0, j = m_count; i < j; i++)
 			{
-				float w = 1.0f / m_vertices[i].q;
+				float w = 1.0f / m_vertices[i].GetQ();
 
 				float x = m_vertices[i].t.x * w;
 

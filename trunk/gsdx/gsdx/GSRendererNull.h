@@ -34,52 +34,9 @@ protected:
 		__super::VertexKick(skip);
 	}
 
-	void DrawingKick(bool skip)
+	void DrawingKick(GSVertexNull* v, int& count)
 	{
-		GSVertexNull v;
-
-		switch(PRIM->PRIM)
-		{
-		case GS_POINTLIST:
-			m_vl.RemoveAt(0, v);
-			break;
-		case GS_LINELIST:
-			m_vl.RemoveAt(0, v);
-			m_vl.RemoveAt(0, v);
-			break;
-		case GS_LINESTRIP:
-			m_vl.RemoveAt(0, v);
-			m_vl.GetAt(0, v);
-			break;
-		case GS_TRIANGLELIST:
-			m_vl.RemoveAt(0, v);
-			m_vl.RemoveAt(0, v);
-			m_vl.RemoveAt(0, v);
-			break;
-		case GS_TRIANGLESTRIP:
-			m_vl.RemoveAt(0, v);
-			m_vl.GetAt(0, v);
-			m_vl.GetAt(1, v);
-			break;
-		case GS_TRIANGLEFAN:
-			m_vl.GetAt(0, v);
-			m_vl.RemoveAt(1, v);
-			m_vl.GetAt(1, v);
-			break;
-		case GS_SPRITE:
-			m_vl.RemoveAt(0, v);
-			m_vl.RemoveAt(0, v);
-			break;
-		default:
-			ASSERT(0);
-			m_vl.RemoveAll();
-			return;
-		}
-
-		if(!skip)
-		{
-			m_perfmon.Put(GSPerfMon::Prim, 1);
-		}
+		m_perfmon.Put(GSPerfMon::Prim, 1);
 	}
 
 	void Draw() 
@@ -95,5 +52,9 @@ public:
 	GSRendererNull(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs)
 		: GSRendererT<Device, GSVertexNull>(base, mt, irq, nloophack, rs)
 	{
+		for(int i = 0; i < countof(m_fpDrawingKickHandlers); i++)
+		{
+			m_fpDrawingKickHandlers[i] = (DrawingKickHandler)&GSRendererNull::DrawingKick;
+		}
 	}
 };

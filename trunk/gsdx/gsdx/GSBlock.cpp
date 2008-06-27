@@ -19,32 +19,15 @@
  *
  */
 
-#pragma once
+#include "StdAfx.h"
+#include "GSBlock.h"
 
-#include "GSRendererHW.h"
-#include "GSVertexHW.h"
-#include "GSTextureFX10.h"
+const GSVector4i GSBlock::m_r16mask(0, 1, 4, 5, 2, 3, 6, 7, 8, 9, 12, 13, 10, 11, 14, 15);
+const GSVector4i GSBlock::m_r8mask(0, 4, 2, 6, 8, 12, 10, 14, 1, 5, 3, 7, 9, 13, 11, 15);
+const GSVector4i GSBlock::m_r4mask(0, 1, 4, 5, 8, 9, 12, 13, 2, 3, 6, 7, 10, 11, 14, 15);
 
-class GSRendererHW10 : public GSRendererHW<GSDevice10, GSVertexHW10>
-{
-protected:
-	GSTextureFX10 m_tfx;
-
-	void VertexKick(bool skip);
-	void DrawingKick(GSVertexHW10* v, int& count); // TODO
-	void Draw();
-	bool WrapZ(DWORD maxz);
-
-	struct
-	{
-		CComPtr<ID3D10DepthStencilState> dss;
-		CComPtr<ID3D10BlendState> bs;
-	} m_date;
-
-	void SetupDATE(Texture& rt, Texture& ds);
-
-public:
-	GSRendererHW10(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs);
-
-	bool Create(LPCTSTR title);
-};
+const GSVector4i GSBlock::m_rgbx(0x00ffffff);
+const GSVector4i GSBlock::m_xxxa(0x00008000);
+const GSVector4i GSBlock::m_xxbx(0x00007c00);
+const GSVector4i GSBlock::m_xgxx(0x000003e0);
+const GSVector4i GSBlock::m_rxxx(0x0000001f);

@@ -37,4 +37,3 @@ extern const DWORD clutTableT32I8[128];
 extern const DWORD clutTableT32I4[16]; 
 extern const DWORD clutTableT16I8[32];
 extern const DWORD clutTableT16I4[16];
-extern const int primVertexCount[8];

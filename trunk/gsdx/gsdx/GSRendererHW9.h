@@ -32,9 +32,15 @@ protected:
 	bool m_logz;
 
 	void VertexKick(bool skip);
-	void DrawingKick(bool skip);
 	void Draw();
 	bool WrapZ(float maxz);
+
+	__forceinline int ScissorTest(const GSVector4& p0, const GSVector4& p1);
+
+	void DrawingKickPoint(GSVertexHW9* v, int& count);
+	void DrawingKickLine(GSVertexHW9* v, int& count);
+	void DrawingKickTriangle(GSVertexHW9* v, int& count);
+	void DrawingKickSprite(GSVertexHW9* v, int& count);
 
 	struct
 	{
