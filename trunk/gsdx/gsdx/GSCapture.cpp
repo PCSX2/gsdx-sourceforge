@@ -78,7 +78,7 @@ GSSource : public CBaseFilter, private CCritSec, public IGSSource
 			vih.bmiHeader.biWidth = m_size.cx;
 			vih.bmiHeader.biHeight = m_size.cy;
 
-			#if _M_SSE >= 0x400
+			#if _M_SSE >= 0x200
 
 			// YUY2
 
@@ -237,15 +237,15 @@ public:
 		int h = m_size.cy;
 		int srcpitch = pitch;
 
-		#if _M_SSE >= 0x400
+		#if _M_SSE >= 0x200
 
 		if(mt.subtype == MEDIASUBTYPE_YUY2)
 		{
 			int dstpitch = ((VIDEOINFOHEADER*)mt.Format())->bmiHeader.biWidth * 2;
 
-			const GSVector4 ys(0.098f, 0.504f, 0.257f);
-			const GSVector4 us(0.439f / 2, -0.291f / 2, -0.148f / 2);
-			const GSVector4 vs(-0.071f / 2, -0.368f / 2, 0.439f / 2);
+			const GSVector4 ys(0.098f, 0.504f, 0.257f, 0.0f);
+			const GSVector4 us(0.439f / 2, -0.291f / 2, -0.148f / 2, 0.0f);
+			const GSVector4 vs(-0.071f / 2, -0.368f / 2, 0.439f / 2, 0.0f);
 			const GSVector4 offset(16, 128, 16, 128);
 
 			for(int j = 0; j < h; j++, dst += dstpitch, src += srcpitch)
@@ -259,10 +259,21 @@ public:
 					GSVector4 c1 = GSVector4(s[i + 1]);
 					GSVector4 c2 = c0 + c1;
 
+					#if 0//_M_SSE >= 0x400
+
 					GSVector4 lo = c0.dp<0x71>(ys) | c2.dp<0x72>(vs);
 					GSVector4 hi = c1.dp<0x74>(ys) | c2.dp<0x78>(us);
 
 					GSVector4 c = (lo | hi) + offset;
+
+					#else
+
+					GSVector4 lo = (c0 * ys).hadd(c2 * vs);
+					GSVector4 hi = (c1 * ys).hadd(c2 * us);
+
+					GSVector4 c = lo.hadd(hi) + offset;
+
+					#endif
 
 					*((DWORD*)&d[i]) = GSVector4i(c).rgba32();
 				}
