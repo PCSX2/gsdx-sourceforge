@@ -335,7 +335,12 @@ public:
 
 	template<int i> GSVector4i srl() const
 	{
+		#pragma warning(push)
+		#pragma warning(disable: 4556)
+
 		return GSVector4i(_mm_srli_si128(m, i));
+
+		#pragma warning(pop)
 	}
 
 	template<int i> GSVector4i srl(const GSVector4i& v)
