@@ -126,105 +126,73 @@ protected:
 		__super::VertexKick(skip);
 	}
 
-	void DrawingKick(bool skip)
+	__forceinline int ScissorTest(const GSVector4& p0, const GSVector4& p1)
 	{
-		Vertex* v = &m_vertices[m_count];
-		int nv = 0;
-
-		switch(PRIM->PRIM)
-		{
-		case GS_POINTLIST:
-			m_vl.RemoveAt(0, v[0]);
-			nv = 1;
-			break;
-		case GS_LINELIST:
-			m_vl.RemoveAt(0, v[0]);
-			m_vl.RemoveAt(0, v[1]);
-			nv = 2;
-			break;
-		case GS_LINESTRIP:
-			m_vl.RemoveAt(0, v[0]);
-			m_vl.GetAt(0, v[1]);
-			nv = 2;
-			break;
-		case GS_TRIANGLELIST:
-			m_vl.RemoveAt(0, v[0]);
-			m_vl.RemoveAt(0, v[1]);
-			m_vl.RemoveAt(0, v[2]);
-			nv = 3;
-			break;
-		case GS_TRIANGLESTRIP:
-			m_vl.RemoveAt(0, v[0]);
-			m_vl.GetAt(0, v[1]);
-			m_vl.GetAt(1, v[2]);
-			nv = 3;
-			break;
-		case GS_TRIANGLEFAN:
-			m_vl.GetAt(0, v[0]);
-			m_vl.RemoveAt(1, v[1]);
-			m_vl.GetAt(1, v[2]);
-			nv = 3;
-			break;
-		case GS_SPRITE:
-			m_vl.RemoveAt(0, v[0]);
-			m_vl.RemoveAt(0, v[1]);
-			nv = 2;
-			break;
-		default:
-			ASSERT(0);
-			return;
-		}
-
-		if(skip)
-		{
-			return;
-		}
-
-
 		GSVector4 scissor = m_context->scissor->sw;
 
-		GSVector4 v0, v1, v2, v3, v4;
+		GSVector4 v0 = p0 < scissor;
+		GSVector4 v1 = p1 > scissor.zwxy();
 
-		switch(nv)
+		return (v0 | v1).mask() & 3;
+	}
+
+	void DrawingKickPoint(Vertex* v, int& count)
+	{
+		GSVector4 p0 = v[0].p;
+		GSVector4 p1 = v[0].p;
+
+		if(ScissorTest(p0, p1))
 		{
-		case 1:
-			v0 = v[0].p.xyxy();
-			v3 = (v0 < scissor);
-			v4 = (v0 > scissor);
-			break;
-		case 2:
-			v0 = v[0].p.xyxy();
-			v1 = v[1].p.xyxy();
-			v3 = (v0 < scissor) & (v1 < scissor);
-			v4 = (v0 > scissor) & (v1 > scissor);
-			break;
-		case 3:
-			v0 = v[0].p.xyxy();
-			v1 = v[1].p.xyxy();
-			v2 = v[2].p.xyxy();
-			v3 = (v0 < scissor) & (v1 < scissor) & (v2 < scissor);
-			v4 = (v0 > scissor) & (v1 > scissor) & (v2 > scissor);
-			break;
-		default:
-			__assume(0);
+			count = 0;
+			return;
 		}
+	}
+	
+	void DrawingKickLine(Vertex* v, int& count)
+	{
+		GSVector4 p0 = v[0].p.maxv(v[1].p);
+		GSVector4 p1 = v[0].p.minv(v[1].p);
 
-		if(((v3 & v3.zwxy()) | (v4 & v4.zwxy())).mask())
+		if(ScissorTest(p0, p1))
 		{
+			count = 0;
 			return;
 		}
 
 		if(PRIM->IIP == 0)
 		{
-			GSVector4 c = v[nv - 1].c;
+			v[0].c = v[1].c;
+		}
+	}
 
-			for(int i = 0; i < nv - 1; i++) 
-			{
-				v[i].c = c;
-			}
+	void DrawingKickTriangle(Vertex* v, int& count)
+	{
+		GSVector4 p0 = v[0].p.maxv(v[1].p).maxv(v[2].p);
+		GSVector4 p1 = v[0].p.minv(v[1].p).minv(v[2].p);
+
+		if(ScissorTest(p0, p1))
+		{
+			count = 0;
+			return;
 		}
 
-		m_count += nv;
+		if(PRIM->IIP == 0)
+		{
+			v[0].c = v[2].c;
+			v[1].c = v[2].c;
+		}
+	}
+
+	void DrawingKickSprite(Vertex* v, int& count)
+	{
+		GSVector4 p0 = v[0].p.maxv(v[1].p);
+		GSVector4 p1 = v[0].p.minv(v[1].p);
+
+		if(ScissorTest(p0, p1))
+		{
+			count = 0;
+			return;
+		}
 	}
 
 	void Draw()
@@ -314,6 +282,14 @@ public:
 
 			m_rmt.AddTail(r);
 		}
+
+		m_fpDrawingKickHandlers[GS_POINTLIST] = (DrawingKickHandler)&GSRendererSW::DrawingKickPoint;
+		m_fpDrawingKickHandlers[GS_LINELIST] = (DrawingKickHandler)&GSRendererSW::DrawingKickLine;
+		m_fpDrawingKickHandlers[GS_LINESTRIP] = (DrawingKickHandler)&GSRendererSW::DrawingKickLine;
+		m_fpDrawingKickHandlers[GS_TRIANGLELIST] = (DrawingKickHandler)&GSRendererSW::DrawingKickTriangle;
+		m_fpDrawingKickHandlers[GS_TRIANGLESTRIP] = (DrawingKickHandler)&GSRendererSW::DrawingKickTriangle;
+		m_fpDrawingKickHandlers[GS_TRIANGLEFAN] = (DrawingKickHandler)&GSRendererSW::DrawingKickTriangle;
+		m_fpDrawingKickHandlers[GS_SPRITE] = (DrawingKickHandler)&GSRendererSW::DrawingKickSprite;
 	}
 
 	virtual ~GSRendererSW()

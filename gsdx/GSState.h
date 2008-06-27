@@ -104,7 +104,6 @@ class GSState
 	void GIFRegHandlerLABEL(GIFReg* r);
 
 	int m_version;
-	int m_vmsize;
 	int m_sssize;
 
 	bool m_mt;

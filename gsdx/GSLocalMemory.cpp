@@ -73,9 +73,9 @@ GSLocalMemory::psm_t GSLocalMemory::m_psm[64];
 GSLocalMemory::GSLocalMemory()
 	: m_fCLUTMayBeDirty(true)
 {
-	const int vmsize = 1024 * 1024 * 4;
-	m_vm8 = (BYTE*)_aligned_malloc(vmsize * 2, 16);
-	memset(m_vm8, 0, vmsize);
+	m_vm8 = (BYTE*)VirtualAlloc(NULL, m_vmsize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+
+	memset(m_vm8, 0, m_vmsize);
 
 	m_pCLUT = (WORD*)_aligned_malloc(256 * 2 * sizeof(WORD) * 2, 16);
 	m_pCLUT32 = (DWORD*)_aligned_malloc(256 * sizeof(DWORD), 16);
@@ -372,7 +372,8 @@ GSLocalMemory::GSLocalMemory()
 
 GSLocalMemory::~GSLocalMemory()
 {
-	_aligned_free(m_vm8);
+	VirtualFree(m_vm8, 0, MEM_RELEASE);
+
 	_aligned_free(m_pCLUT);
 	_aligned_free(m_pCLUT32);
 	_aligned_free(m_pCLUT64);	
@@ -663,12 +664,12 @@ void GSLocalMemory::ReadCLUT(GIFRegTEX0 TEX0, DWORD* pCLUT32)
 		{
 		case PSM_PSMT8:
 		case PSM_PSMT8H:
-			ReadCLUT32_T32_I8(pCLUT, pCLUT32);
+			ReadCLUT_T32_I8(pCLUT, pCLUT32);
 			break;
 		case PSM_PSMT4:
 		case PSM_PSMT4HL:
 		case PSM_PSMT4HH:
-			ReadCLUT32_T32_I4(pCLUT, pCLUT32);
+			ReadCLUT_T32_I4(pCLUT, pCLUT32);
 			break;
 		}
 	}
@@ -678,12 +679,12 @@ void GSLocalMemory::ReadCLUT(GIFRegTEX0 TEX0, DWORD* pCLUT32)
 		{
 		case PSM_PSMT8:
 		case PSM_PSMT8H:
-			ReadCLUT32_T16_I8(pCLUT, pCLUT32);
+			ReadCLUT_T16_I8(pCLUT, pCLUT32);
 			break;
 		case PSM_PSMT4:
 		case PSM_PSMT4HL:
 		case PSM_PSMT4HH:
-			ReadCLUT32_T16_I4(pCLUT, pCLUT32);
+			ReadCLUT_T16_I4(pCLUT, pCLUT32);
 			break;
 		}
 	}
@@ -751,12 +752,12 @@ void GSLocalMemory::ReadCLUT32(GIFRegTEX0 TEX0, GIFRegTEXA TEXA, DWORD* pCLUT32)
 		{
 		case PSM_PSMT8:
 		case PSM_PSMT8H:
-			ReadCLUT32_T32_I8(pCLUT, pCLUT32);
+			ReadCLUT_T32_I8(pCLUT, pCLUT32);
 			break;
 		case PSM_PSMT4:
 		case PSM_PSMT4HL:
 		case PSM_PSMT4HH:
-			ReadCLUT32_T32_I4(pCLUT, pCLUT32);
+			ReadCLUT_T32_I4(pCLUT, pCLUT32);
 			break;
 		}
 	}
@@ -829,7 +830,7 @@ void GSLocalMemory::WriteImage32(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 			{
 				for(int x = tx; x < twa; x += 8)
 				{
-					WriteBlock32u((BYTE*)&m_vm32[BlockAddress32(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
+					WriteBlock32<false>((BYTE*)&m_vm32[BlockAddress32(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
 				}
 
 				for(int i = 0; i < 8; i++, ty++, src += srcpitch)
@@ -854,7 +855,7 @@ void GSLocalMemory::WriteImage32(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 			{
 				for(int x = tx; x < twa; x += 8)
 				{
-					WriteColumn32(ty, (BYTE*)&m_vm32[BlockAddress32(x, ty & ~7, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
+					WriteColumn32<false>(ty, (BYTE*)&m_vm32[BlockAddress32(x, ty & ~7, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
 				}
 
 				for(int i = 0; i < 2; i++, ty++, src += srcpitch)
@@ -879,7 +880,7 @@ void GSLocalMemory::WriteImage32(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 			{
 				for(int x = tx; x < tw; x += 8)
 				{
-					WriteBlock32u((BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
+					WriteBlock32<false>((BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
 				}
 			}
 		}
@@ -889,7 +890,7 @@ void GSLocalMemory::WriteImage32(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 			{
 				for(int x = tx; x < tw; x += 8)
 				{
-					WriteBlock32((BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
+					WriteBlock32<true>((BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
 				}
 			}
 		}
@@ -923,9 +924,9 @@ void GSLocalMemory::WriteImage24(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 		{
 			for(int x = tx; x < tw; x += 8)
 			{
-				ExpandBlock24(src + (x - tx) * 3, srcpitch, block);
+				UnpackBlock24(src + (x - tx) * 3, srcpitch, block);
 
-				WriteBlock32((BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], (BYTE*)block, sizeof(block) / 8, 0x00ffffff);
+				WriteBlock32<true>((BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], (BYTE*)block, sizeof(block) / 8, 0x00ffffff);
 			}
 		}
 
@@ -956,7 +957,7 @@ void GSLocalMemory::WriteImage16(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 			{
 				for(int x = tx; x < twa; x += 16)
 				{
-					WriteBlock16u((BYTE*)&m_vm16[BlockAddress16(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
 				}
 
 				for(int i = 0; i < 8; i++, ty++, src += srcpitch)
@@ -981,7 +982,7 @@ void GSLocalMemory::WriteImage16(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 			{
 				for(int x = tx; x < twa; x += 16)
 				{
-					WriteColumn16(ty, (BYTE*)&m_vm16[BlockAddress16(x, ty & ~7, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteColumn16<false>(ty, (BYTE*)&m_vm16[BlockAddress16(x, ty & ~7, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
 				}
 
 				for(int i = 0; i < 2; i++, ty++, src += srcpitch)
@@ -1006,7 +1007,7 @@ void GSLocalMemory::WriteImage16(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 			{
 				for(int x = tx; x < tw; x += 16)
 				{
-					WriteBlock16u((BYTE*)&m_vm16[BlockAddress16(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
 				}
 			}
 		}
@@ -1016,7 +1017,7 @@ void GSLocalMemory::WriteImage16(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 			{
 				for(int x = tx; x < tw; x += 16)
 				{
-					WriteBlock16((BYTE*)&m_vm16[BlockAddress16(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<true>((BYTE*)&m_vm16[BlockAddress16(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
 				}
 			}
 		}
@@ -1048,7 +1049,7 @@ void GSLocalMemory::WriteImage16S(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < twa; x += 16)
 				{
-					WriteBlock16u((BYTE*)&m_vm16[BlockAddress16S(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16S(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
 				}
 
 				for(int i = 0; i < 8; i++, ty++, src += srcpitch)
@@ -1073,7 +1074,7 @@ void GSLocalMemory::WriteImage16S(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < twa; x += 16)
 				{
-					WriteColumn16(ty, (BYTE*)&m_vm16[BlockAddress16S(x, ty & ~7, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteColumn16<false>(ty, (BYTE*)&m_vm16[BlockAddress16S(x, ty & ~7, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
 				}
 
 				for(int i = 0; i < 2; i++, ty++, src += srcpitch)
@@ -1098,7 +1099,7 @@ void GSLocalMemory::WriteImage16S(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < tw; x += 16)
 				{
-					WriteBlock16((BYTE*)&m_vm16[BlockAddress16S(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16S(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
 				}
 			}
 		}
@@ -1108,7 +1109,7 @@ void GSLocalMemory::WriteImage16S(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < tw; x += 16)
 				{
-					WriteBlock16((BYTE*)&m_vm16[BlockAddress16S(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<true>((BYTE*)&m_vm16[BlockAddress16S(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
 				}
 			}
 		}
@@ -1140,7 +1141,7 @@ void GSLocalMemory::WriteImage8(int& tx, int& ty, BYTE* src, int len, GIFRegBITB
 			{
 				for(int x = tx; x < twa; x += 16)
 				{
-					WriteBlock8u((BYTE*)&m_vm8[BlockAddress8(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx), srcpitch);
+					WriteBlock8<false>((BYTE*)&m_vm8[BlockAddress8(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx), srcpitch);
 				}
 
 				for(int i = 0; i < 16; i++, ty++, src += srcpitch)
@@ -1165,7 +1166,7 @@ void GSLocalMemory::WriteImage8(int& tx, int& ty, BYTE* src, int len, GIFRegBITB
 			{
 				for(int x = tx; x < twa; x += 16)
 				{
-					WriteColumn8(ty, (BYTE*)&m_vm8[BlockAddress8(x, ty & ~15, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx), srcpitch);
+					WriteColumn8<false>(ty, (BYTE*)&m_vm8[BlockAddress8(x, ty & ~15, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx), srcpitch);
 				}
 
 				for(int i = 0; i < 4; i++, ty++, src += srcpitch)
@@ -1190,7 +1191,7 @@ void GSLocalMemory::WriteImage8(int& tx, int& ty, BYTE* src, int len, GIFRegBITB
 			{
 				for(int x = tx; x < tw; x += 16)
 				{
-					WriteBlock8u((BYTE*)&m_vm8[BlockAddress8(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx), srcpitch);
+					WriteBlock8<false>((BYTE*)&m_vm8[BlockAddress8(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx), srcpitch);
 				}
 			}
 		}
@@ -1200,7 +1201,7 @@ void GSLocalMemory::WriteImage8(int& tx, int& ty, BYTE* src, int len, GIFRegBITB
 			{
 				for(int x = tx; x < tw; x += 16)
 				{
-					WriteBlock8((BYTE*)&m_vm8[BlockAddress8(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx), srcpitch);
+					WriteBlock8<true>((BYTE*)&m_vm8[BlockAddress8(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx), srcpitch);
 				}
 			}
 		}
@@ -1232,7 +1233,7 @@ void GSLocalMemory::WriteImage4(int& tx, int& ty, BYTE* src, int len, GIFRegBITB
 			{
 				for(int x = tx; x < twa; x += 32)
 				{
-					WriteBlock4u((BYTE*)&m_vm8[BlockAddress4(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW) >> 1], src + (x - tx) / 2, srcpitch);
+					WriteBlock4<false>((BYTE*)&m_vm8[BlockAddress4(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW) >> 1], src + (x - tx) / 2, srcpitch);
 				}
 
 				for(int i = 0; i < 16; i++, ty++, src += srcpitch)
@@ -1260,7 +1261,7 @@ void GSLocalMemory::WriteImage4(int& tx, int& ty, BYTE* src, int len, GIFRegBITB
 			{
 				for(int x = tx; x < twa; x += 32)
 				{
-					WriteColumn4(ty, (BYTE*)&m_vm8[BlockAddress4(x, ty & ~15, BITBLTBUF.DBP, BITBLTBUF.DBW) >> 1], src + (x - tx) / 2, srcpitch);
+					WriteColumn4<false>(ty, (BYTE*)&m_vm8[BlockAddress4(x, ty & ~15, BITBLTBUF.DBP, BITBLTBUF.DBW) >> 1], src + (x - tx) / 2, srcpitch);
 				}
 
 				for(int i = 0; i < 4; i++, ty++, src += srcpitch)
@@ -1288,7 +1289,7 @@ void GSLocalMemory::WriteImage4(int& tx, int& ty, BYTE* src, int len, GIFRegBITB
 			{
 				for(int x = tx; x < tw; x += 32)
 				{
-					WriteBlock4u((BYTE*)&m_vm8[BlockAddress4(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW) >> 1], src + (x - tx) / 2, srcpitch);
+					WriteBlock4<false>((BYTE*)&m_vm8[BlockAddress4(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW) >> 1], src + (x - tx) / 2, srcpitch);
 				}
 			}
 		}
@@ -1298,7 +1299,7 @@ void GSLocalMemory::WriteImage4(int& tx, int& ty, BYTE* src, int len, GIFRegBITB
 			{
 				for(int x = tx; x < tw; x += 32)
 				{
-					WriteBlock4((BYTE*)&m_vm8[BlockAddress4(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW) >> 1], src + (x - tx) / 2, srcpitch);
+					WriteBlock4<true>((BYTE*)&m_vm8[BlockAddress4(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW) >> 1], src + (x - tx) / 2, srcpitch);
 				}
 			}
 		}
@@ -1332,9 +1333,9 @@ void GSLocalMemory::WriteImage8H(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 		{
 			for(int x = tx; x < tw; x += 8)
 			{
-				ExpandBlock8H(src + (x - tx), srcpitch, block);
+				UnpackBlock8H(src + (x - tx), srcpitch, block);
 
-				WriteBlock32((BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], (BYTE*)block, sizeof(block) / 8, 0xff000000);
+				WriteBlock32<true>((BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], (BYTE*)block, sizeof(block) / 8, 0xff000000);
 			}
 		}
 
@@ -1367,9 +1368,9 @@ void GSLocalMemory::WriteImage4HL(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 		{
 			for(int x = tx; x < tw; x += 8)
 			{
-				ExpandBlock4HL(src + (x - tx) / 2, srcpitch, block);
+				UnpackBlock4HL(src + (x - tx) / 2, srcpitch, block);
 
-				WriteBlock32((BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], (BYTE*)block, sizeof(block) / 8, 0x0f000000);
+				WriteBlock32<true>((BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], (BYTE*)block, sizeof(block) / 8, 0x0f000000);
 			}
 		}
 
@@ -1402,9 +1403,9 @@ void GSLocalMemory::WriteImage4HH(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 		{
 			for(int x = tx; x < tw; x += 8)
 			{
-				ExpandBlock4HH(src + (x - tx) / 2, srcpitch, block);
+				UnpackBlock4HH(src + (x - tx) / 2, srcpitch, block);
 
-				WriteBlock32((BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], (BYTE*)block, sizeof(block) / 8, 0xf0000000);
+				WriteBlock32<true>((BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], (BYTE*)block, sizeof(block) / 8, 0xf0000000);
 			}
 		}
 
@@ -1435,7 +1436,7 @@ void GSLocalMemory::WriteImage32Z(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < twa; x += 8)
 				{
-					WriteBlock32u((BYTE*)&m_vm32[BlockAddress32Z(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
+					WriteBlock32<false>((BYTE*)&m_vm32[BlockAddress32Z(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
 				}
 
 				for(int i = 0; i < 8; i++, ty++, src += srcpitch)
@@ -1460,7 +1461,7 @@ void GSLocalMemory::WriteImage32Z(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < twa; x += 8)
 				{
-					WriteColumn32(ty, (BYTE*)&m_vm32[BlockAddress32Z(x, ty & ~7, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
+					WriteColumn32<false>(ty, (BYTE*)&m_vm32[BlockAddress32Z(x, ty & ~7, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
 				}
 
 				for(int i = 0; i < 2; i++, ty++, src += srcpitch)
@@ -1485,7 +1486,7 @@ void GSLocalMemory::WriteImage32Z(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < tw; x += 8)
 				{
-					WriteBlock32u((BYTE*)&m_vm32[BlockAddress32Z(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
+					WriteBlock32<false>((BYTE*)&m_vm32[BlockAddress32Z(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
 				}
 			}
 		}
@@ -1495,7 +1496,7 @@ void GSLocalMemory::WriteImage32Z(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < tw; x += 8)
 				{
-					WriteBlock32((BYTE*)&m_vm32[BlockAddress32Z(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
+					WriteBlock32<true>((BYTE*)&m_vm32[BlockAddress32Z(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
 				}
 			}
 		}
@@ -1529,9 +1530,9 @@ void GSLocalMemory::WriteImage24Z(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 		{
 			for(int x = tx; x < tw; x += 8)
 			{
-				ExpandBlock24(src + (x - tx) * 3, srcpitch, block);
+				UnpackBlock24(src + (x - tx) * 3, srcpitch, block);
 
-				WriteBlock32((BYTE*)&m_vm32[BlockAddress32Z(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], (BYTE*)block, sizeof(block) / 8, 0x00ffffff);
+				WriteBlock32<true>((BYTE*)&m_vm32[BlockAddress32Z(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], (BYTE*)block, sizeof(block) / 8, 0x00ffffff);
 			}
 		}
 
@@ -1562,7 +1563,7 @@ void GSLocalMemory::WriteImage16Z(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < twa; x += 16)
 				{
-					WriteBlock16u((BYTE*)&m_vm16[BlockAddress16Z(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16Z(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
 				}
 
 				for(int i = 0; i < 8; i++, ty++, src += srcpitch)
@@ -1587,7 +1588,7 @@ void GSLocalMemory::WriteImage16Z(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < twa; x += 16)
 				{
-					WriteColumn16(ty, (BYTE*)&m_vm16[BlockAddress16Z(x, ty & ~7, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteColumn16<false>(ty, (BYTE*)&m_vm16[BlockAddress16Z(x, ty & ~7, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
 				}
 
 				for(int i = 0; i < 2; i++, ty++, src += srcpitch)
@@ -1612,7 +1613,7 @@ void GSLocalMemory::WriteImage16Z(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < tw; x += 16)
 				{
-					WriteBlock16u((BYTE*)&m_vm16[BlockAddress16Z(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16Z(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
 				}
 			}
 		}
@@ -1622,7 +1623,7 @@ void GSLocalMemory::WriteImage16Z(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < tw; x += 16)
 				{
-					WriteBlock16((BYTE*)&m_vm16[BlockAddress16Z(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<true>((BYTE*)&m_vm16[BlockAddress16Z(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
 				}
 			} 
 		}
@@ -1654,7 +1655,7 @@ void GSLocalMemory::WriteImage16SZ(int& tx, int& ty, BYTE* src, int len, GIFRegB
 			{
 				for(int x = tx; x < twa; x += 16)
 				{
-					WriteBlock16u((BYTE*)&m_vm16[BlockAddress16SZ(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16SZ(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
 				}
 
 				for(int i = 0; i < 8; i++, ty++, src += srcpitch)
@@ -1679,7 +1680,7 @@ void GSLocalMemory::WriteImage16SZ(int& tx, int& ty, BYTE* src, int len, GIFRegB
 			{
 				for(int x = tx; x < twa; x += 16)
 				{
-					WriteColumn16(ty, (BYTE*)&m_vm16[BlockAddress16SZ(x, ty & ~7, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteColumn16<false>(ty, (BYTE*)&m_vm16[BlockAddress16SZ(x, ty & ~7, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
 				}
 
 				for(int i = 0; i < 2; i++, ty++, src += srcpitch)
@@ -1704,7 +1705,7 @@ void GSLocalMemory::WriteImage16SZ(int& tx, int& ty, BYTE* src, int len, GIFRegB
 			{
 				for(int x = tx; x < tw; x += 16)
 				{
-					WriteBlock16((BYTE*)&m_vm16[BlockAddress16SZ(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16SZ(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
 				}
 			}
 		}
@@ -1714,7 +1715,7 @@ void GSLocalMemory::WriteImage16SZ(int& tx, int& ty, BYTE* src, int len, GIFRegB
 			{
 				for(int x = tx; x < tw; x += 16)
 				{
-					WriteBlock16((BYTE*)&m_vm16[BlockAddress16SZ(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<true>((BYTE*)&m_vm16[BlockAddress16SZ(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
 				}
 			}
 		}
@@ -2084,7 +2085,7 @@ void GSLocalMemory::ReadTexture32(const CRect& r, BYTE* dst, int dstpitch, GIFRe
 {
 	FOREACH_BLOCK_START(r, 8, 8, 32)
 	{
-		ReadBlock32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch);
+		ReadBlock32<true>((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2095,9 +2096,9 @@ void GSLocalMemory::ReadTexture24(const CRect& r, BYTE* dst, int dstpitch, GIFRe
 
 	FOREACH_BLOCK_START(r, 8, 8, 32)
 	{
-		ReadBlock32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
+		ReadBlock32<true>((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
 
-		ExpandBlock24(block, (DWORD*)ptr + (x - r.left), dstpitch, &TEXA);
+		ExpandBlock24(block, ptr + (x - r.left) * 4, dstpitch, &TEXA);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2108,9 +2109,9 @@ void GSLocalMemory::ReadTexture16(const CRect& r, BYTE* dst, int dstpitch, GIFRe
 
 	FOREACH_BLOCK_START(r, 16, 8, 16)
 	{
-		ReadBlock16((BYTE*)&m_vm16[BlockAddress16(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
+		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
 
-		ExpandBlock16(block, (DWORD*)ptr + (x - r.left), dstpitch, &TEXA);
+		ExpandBlock16(block, ptr + (x - r.left) * 4, dstpitch, &TEXA);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2121,9 +2122,9 @@ void GSLocalMemory::ReadTexture16S(const CRect& r, BYTE* dst, int dstpitch, GIFR
 
 	FOREACH_BLOCK_START(r, 16, 8, 16S)
 	{
-		ReadBlock16((BYTE*)&m_vm16[BlockAddress16S(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
+		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16S(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
 
-		ExpandBlock16(block, (DWORD*)ptr + (x - r.left), dstpitch, &TEXA);
+		ExpandBlock16(block, ptr + (x - r.left) * 4, dstpitch, &TEXA);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2134,7 +2135,7 @@ void GSLocalMemory::ReadTexture8(const CRect& r, BYTE* dst, int dstpitch, GIFReg
 
 	FOREACH_BLOCK_START(r, 16, 16, 8)
 	{
-		ReadAndExpandBlock8((BYTE*)&m_vm8[BlockAddress8(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
+		ReadAndExpandBlock8_32((BYTE*)&m_vm8[BlockAddress8(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2145,7 +2146,7 @@ void GSLocalMemory::ReadTexture4(const CRect& r, BYTE* dst, int dstpitch, GIFReg
 
 	FOREACH_BLOCK_START(r, 32, 16, 4)
 	{
-		ReadAndExpandBlock4((BYTE*)&m_vm8[BlockAddress4(x, y, TEX0.TBP0, TEX0.TBW) >> 1], ptr + (x - r.left) * 4, dstpitch, pal);
+		ReadAndExpandBlock4_32((BYTE*)&m_vm8[BlockAddress4(x, y, TEX0.TBP0, TEX0.TBW) >> 1], ptr + (x - r.left) * 4, dstpitch, pal);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2156,7 +2157,7 @@ void GSLocalMemory::ReadTexture8H(const CRect& r, BYTE* dst, int dstpitch, GIFRe
 
 	FOREACH_BLOCK_START(r, 8, 8, 32)
 	{
-		ReadAndExpandBlock8H((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
+		ReadAndExpandBlock8H_32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2167,7 +2168,7 @@ void GSLocalMemory::ReadTexture4HL(const CRect& r, BYTE* dst, int dstpitch, GIFR
 
 	FOREACH_BLOCK_START(r, 8, 8, 32)
 	{
-		ReadAndExpandBlock4HL((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
+		ReadAndExpandBlock4HL_32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2178,7 +2179,7 @@ void GSLocalMemory::ReadTexture4HH(const CRect& r, BYTE* dst, int dstpitch, GIFR
 
 	FOREACH_BLOCK_START(r, 8, 8, 32)
 	{
-		ReadAndExpandBlock4HH((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
+		ReadAndExpandBlock4HH_32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2187,7 +2188,7 @@ void GSLocalMemory::ReadTexture32Z(const CRect& r, BYTE* dst, int dstpitch, GIFR
 {
 	FOREACH_BLOCK_START(r, 8, 8, 32)
 	{
-		ReadBlock32((BYTE*)&m_vm32[BlockAddress32Z(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch);
+		ReadBlock32<true>((BYTE*)&m_vm32[BlockAddress32Z(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2198,9 +2199,9 @@ void GSLocalMemory::ReadTexture24Z(const CRect& r, BYTE* dst, int dstpitch, GIFR
 
 	FOREACH_BLOCK_START(r, 8, 8, 32)
 	{
-		ReadBlock32((BYTE*)&m_vm32[BlockAddress32Z(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
+		ReadBlock32<true>((BYTE*)&m_vm32[BlockAddress32Z(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
 
-		ExpandBlock24(block, (DWORD*)ptr + (x - r.left), dstpitch, &TEXA);
+		ExpandBlock24(block, ptr + (x - r.left) * 4, dstpitch, &TEXA);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2211,9 +2212,9 @@ void GSLocalMemory::ReadTexture16Z(const CRect& r, BYTE* dst, int dstpitch, GIFR
 
 	FOREACH_BLOCK_START(r, 16, 8, 16)
 	{
-		ReadBlock16((BYTE*)&m_vm16[BlockAddress16Z(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
+		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16Z(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
 
-		ExpandBlock16(block, (DWORD*)ptr + (x - r.left), dstpitch, &TEXA);
+		ExpandBlock16(block, ptr + (x - r.left) * 4, dstpitch, &TEXA);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2224,9 +2225,9 @@ void GSLocalMemory::ReadTexture16SZ(const CRect& r, BYTE* dst, int dstpitch, GIF
 
 	FOREACH_BLOCK_START(r, 16, 8, 16S)
 	{
-		ReadBlock16((BYTE*)&m_vm16[BlockAddress16SZ(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
+		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16SZ(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
 
-		ExpandBlock16(block, (DWORD*)ptr + (x - r.left), dstpitch, &TEXA);
+		ExpandBlock16(block, ptr + (x - r.left) * 4, dstpitch, &TEXA);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2275,7 +2276,7 @@ void GSLocalMemory::ReadTexture16NP(const CRect& r, BYTE* dst, int dstpitch, GIF
 {
 	FOREACH_BLOCK_START(r, 16, 8, 16)
 	{
-		ReadBlock16((BYTE*)&m_vm16[BlockAddress16(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 2, dstpitch);
+		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 2, dstpitch);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2284,7 +2285,7 @@ void GSLocalMemory::ReadTexture16SNP(const CRect& r, BYTE* dst, int dstpitch, GI
 {
 	FOREACH_BLOCK_START(r, 16, 8, 16S)
 	{
-		ReadBlock16((BYTE*)&m_vm16[BlockAddress16S(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 2, dstpitch);
+		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16S(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 2, dstpitch);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2297,7 +2298,7 @@ void GSLocalMemory::ReadTexture8NP(const CRect& r, BYTE* dst, int dstpitch, GIFR
 	{
 		FOREACH_BLOCK_START(r, 16, 16, 8)
 		{
-			ReadAndExpandBlock8((BYTE*)&m_vm8[BlockAddress8(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
+			ReadAndExpandBlock8_32((BYTE*)&m_vm8[BlockAddress8(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
 		}
 		FOREACH_BLOCK_END
 	}
@@ -2309,9 +2310,9 @@ void GSLocalMemory::ReadTexture8NP(const CRect& r, BYTE* dst, int dstpitch, GIFR
 
 		FOREACH_BLOCK_START(r, 16, 16, 8)
 		{
-			ReadBlock8((BYTE*)&m_vm8[BlockAddress8(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 16);
+			ReadBlock8<true>((BYTE*)&m_vm8[BlockAddress8(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 16);
 
-			ExpandBlock8(block, (WORD*)ptr + (x - r.left), dstpitch, pal);
+			ExpandBlock8_16(block, ptr + (x - r.left) * 2, dstpitch, pal);
 		}
 		FOREACH_BLOCK_END
 	}
@@ -2325,7 +2326,7 @@ void GSLocalMemory::ReadTexture4NP(const CRect& r, BYTE* dst, int dstpitch, GIFR
 	{
 		FOREACH_BLOCK_START(r, 32, 16, 4)
 		{
-			ReadAndExpandBlock4((BYTE*)&m_vm8[BlockAddress4(x, y, TEX0.TBP0, TEX0.TBW) >> 1], ptr + (x - r.left) * 4, dstpitch, pal);
+			ReadAndExpandBlock4_32((BYTE*)&m_vm8[BlockAddress4(x, y, TEX0.TBP0, TEX0.TBW) >> 1], ptr + (x - r.left) * 4, dstpitch, pal);
 		}
 		FOREACH_BLOCK_END
 	}
@@ -2337,9 +2338,9 @@ void GSLocalMemory::ReadTexture4NP(const CRect& r, BYTE* dst, int dstpitch, GIFR
 
 		FOREACH_BLOCK_START(r, 32, 16, 4)
 		{
-			ReadBlock4((BYTE*)&m_vm8[BlockAddress4(x, y, TEX0.TBP0, TEX0.TBW)>>1], (BYTE*)block, sizeof(block) / 16);
+			ReadBlock4<true>((BYTE*)&m_vm8[BlockAddress4(x, y, TEX0.TBP0, TEX0.TBW)>>1], (BYTE*)block, sizeof(block) / 16);
 
-			ExpandBlock4(block, (WORD*)ptr + (x - r.left), dstpitch, pal);
+			ExpandBlock4_16(block, ptr + (x - r.left) * 2, dstpitch, pal);
 		}
 		FOREACH_BLOCK_END
 	}
@@ -2353,7 +2354,7 @@ void GSLocalMemory::ReadTexture8HNP(const CRect& r, BYTE* dst, int dstpitch, GIF
 	{
 		FOREACH_BLOCK_START(r, 8, 8, 32)
 		{
-			ReadAndExpandBlock8H((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
+			ReadAndExpandBlock8H_32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
 		}
 		FOREACH_BLOCK_END
 	}
@@ -2365,9 +2366,9 @@ void GSLocalMemory::ReadTexture8HNP(const CRect& r, BYTE* dst, int dstpitch, GIF
 
 		FOREACH_BLOCK_START(r, 8, 8, 32)
 		{
-			ReadBlock32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
+			ReadBlock32<true>((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
 
-			ExpandBlock8H(block, (WORD*)ptr + (x - r.left), dstpitch, pal);
+			ExpandBlock8H_16(block, ptr + (x - r.left) * 2, dstpitch, pal);
 		}
 		FOREACH_BLOCK_END
 	}
@@ -2381,7 +2382,7 @@ void GSLocalMemory::ReadTexture4HLNP(const CRect& r, BYTE* dst, int dstpitch, GI
 	{
 		FOREACH_BLOCK_START(r, 8, 8, 32)
 		{
-			ReadAndExpandBlock4HL((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
+			ReadAndExpandBlock4HL_32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
 		}
 		FOREACH_BLOCK_END
 	}
@@ -2393,9 +2394,9 @@ void GSLocalMemory::ReadTexture4HLNP(const CRect& r, BYTE* dst, int dstpitch, GI
 
 		FOREACH_BLOCK_START(r, 8, 8, 32)
 		{
-			ReadBlock32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
+			ReadBlock32<true>((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
 
-			ExpandBlock4HL(block, (WORD*)ptr + (x - r.left), dstpitch, pal);
+			ExpandBlock4HL_16(block, ptr + (x - r.left) * 2, dstpitch, pal);
 		}
 		FOREACH_BLOCK_END
 	}
@@ -2409,7 +2410,7 @@ void GSLocalMemory::ReadTexture4HHNP(const CRect& r, BYTE* dst, int dstpitch, GI
 	{
 		FOREACH_BLOCK_START(r, 8, 8, 32)
 		{
-			ReadAndExpandBlock4HH((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
+			ReadAndExpandBlock4HH_32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
 		}
 		FOREACH_BLOCK_END
 	}
@@ -2421,9 +2422,9 @@ void GSLocalMemory::ReadTexture4HHNP(const CRect& r, BYTE* dst, int dstpitch, GI
 
 		FOREACH_BLOCK_START(r, 8, 8, 32)
 		{
-			ReadBlock32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
+			ReadBlock32<true>((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
 
-			ExpandBlock4HH(block, (WORD*)ptr + (x - r.left), dstpitch, pal);
+			ExpandBlock4HH_16(block, ptr + (x - r.left) * 2, dstpitch, pal);
 		}
 		FOREACH_BLOCK_END
 	}
@@ -2433,7 +2434,7 @@ void GSLocalMemory::ReadTexture16ZNP(const CRect& r, BYTE* dst, int dstpitch, GI
 {
 	FOREACH_BLOCK_START(r, 16, 8, 16)
 	{
-		ReadBlock16((BYTE*)&m_vm16[BlockAddress16Z(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 2, dstpitch);
+		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16Z(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 2, dstpitch);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2442,7 +2443,7 @@ void GSLocalMemory::ReadTexture16SZNP(const CRect& r, BYTE* dst, int dstpitch, G
 {
 	FOREACH_BLOCK_START(r, 16, 8, 16S)
 	{
-		ReadBlock16((BYTE*)&m_vm16[BlockAddress16SZ(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 2, dstpitch);
+		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16SZ(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 2, dstpitch);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2829,1845 +2830,10 @@ if(!aligned) printf("unaligned memory pointer passed to ReadTexture\n");
 
 //
 
-static const GSVector4i s_rb16mask(0, 1, 4, 5, 2, 3, 6, 7, 8, 9, 12, 13, 10, 11, 14, 15);
-static const GSVector4i s_rb8mask(0, 4, 2, 6, 8, 12, 10, 14, 1, 5, 3, 7, 9, 13, 11, 15);
-
-void GSLocalMemory::ReadBlock32(BYTE* src, BYTE* dst, int dstpitch)
-{
-#if _M_SSE >= 0x200
-
-	GSVector4i* s = (GSVector4i*)src;
-
-	GSVector4i v0, v1, v2, v3;
-
-	for(int i = 0; i < 4; i++)
-	{
-		v0 = s[i * 4 + 0]; 
-		v1 = s[i * 4 + 1]; 
-		v2 = s[i * 4 + 2]; 
-		v3 = s[i * 4 + 3];
-
-		GSVector4i::sw64(v0, v1, v2, v3);
-
-		*(GSVector4i*)&dst[dstpitch * (i * 2 + 0) +  0] = v0;
-		*(GSVector4i*)&dst[dstpitch * (i * 2 + 0) + 16] = v1;
-		*(GSVector4i*)&dst[dstpitch * (i * 2 + 1) +  0] = v2;
-		*(GSVector4i*)&dst[dstpitch * (i * 2 + 1) + 16] = v3;
-	}
-
-#else
-
-	const DWORD* s = &columnTable32[0][0];
-
-	for(int j = 0; j < 8; j++, s += 8, dst += dstpitch)
-	{
-		for(int i = 0; i < 8; i++)
-		{
-			((DWORD*)dst)[i] = ((DWORD*)src)[s[i]];
-		}
-	}
-
-#endif
-}
-
-void GSLocalMemory::ReadBlock16(BYTE* src, BYTE* dst, int dstpitch)
-{
-#if _M_SSE >= 0x301
-
-	GSVector4i* s = (GSVector4i*)src;
-
-	GSVector4i v0, v1, v2, v3;
-
-	GSVector4i mask = s_rb16mask;
-
-	for(int i = 0; i < 4; i++)
-	{
-		v0 = s[i * 4 + 0].shuffle8(mask);
-		v1 = s[i * 4 + 1].shuffle8(mask);
-		v2 = s[i * 4 + 2].shuffle8(mask);
-		v3 = s[i * 4 + 3].shuffle8(mask);
-
-		GSVector4i::sw32(v0, v1, v2, v3);
-		GSVector4i::sw64(v0, v1, v2, v3);
-
-		*(GSVector4i*)&dst[dstpitch * (i * 2 + 0) +  0] = v0;
-		*(GSVector4i*)&dst[dstpitch * (i * 2 + 0) + 16] = v2;
-		*(GSVector4i*)&dst[dstpitch * (i * 2 + 1) +  0] = v1;
-		*(GSVector4i*)&dst[dstpitch * (i * 2 + 1) + 16] = v3;
-	}
-
-#elif _M_SSE >= 0x200
-
-	GSVector4i* s = (GSVector4i*)src;
-
-	GSVector4i v0, v1, v2, v3;
-
-	for(int i = 0; i < 4; i++)
-	{
-		v0 = s[i * 4 + 0]; 
-		v1 = s[i * 4 + 1]; 
-		v2 = s[i * 4 + 2]; 
-		v3 = s[i * 4 + 3];
-
-		GSVector4i::sw16(v0, v1, v2, v3);
-		GSVector4i::sw32(v0, v1, v2, v3);
-		GSVector4i::sw16(v0, v2, v1, v3);
-
-		*(GSVector4i*)&dst[dstpitch * (i * 2 + 0) +  0] = v0;
-		*(GSVector4i*)&dst[dstpitch * (i * 2 + 0) + 16] = v1;
-		*(GSVector4i*)&dst[dstpitch * (i * 2 + 1) +  0] = v2;
-		*(GSVector4i*)&dst[dstpitch * (i * 2 + 1) + 16] = v3;
-	}
-
-#else
-
-	const DWORD* s = &columnTable16[0][0];
-
-	for(int j = 0; j < 8; j++, s += 16, dst += dstpitch)
-	{
-		for(int i = 0; i < 16; i++)
-		{
-			((WORD*)dst)[i] = ((WORD*)src)[s[i]];
-		}
-	}
-
-#endif
-}
-
-void GSLocalMemory::ReadBlock8(BYTE* src, BYTE* dst, int dstpitch)
-{
-#if _M_SSE >= 0x301
-
-	GSVector4i* s = (GSVector4i*)src;
-
-	GSVector4i v0, v1, v2, v3;
-
-	GSVector4i mask = s_rb8mask;
-
-	for(int i = 0; i < 2; i++)
-	{
-		v0 = s[i * 8 + 0].shuffle8(mask); 
-		v1 = s[i * 8 + 1].shuffle8(mask); 
-		v2 = s[i * 8 + 2].shuffle8(mask); 
-		v3 = s[i * 8 + 3].shuffle8(mask);
-
-		GSVector4i::sw16(v0, v1, v2, v3);
-		GSVector4i::sw32(v0, v1, v3, v2);
-
-		*(GSVector4i*)&dst[dstpitch * 0] = v0;
-		*(GSVector4i*)&dst[dstpitch * 1] = v3;
-		*(GSVector4i*)&dst[dstpitch * 2] = v1;
-		*(GSVector4i*)&dst[dstpitch * 3] = v2;
-
-		dst += dstpitch * 4;
-
-		v2 = s[i * 8 + 4].shuffle8(mask); 
-		v3 = s[i * 8 + 5].shuffle8(mask); 
-		v0 = s[i * 8 + 6].shuffle8(mask); 
-		v1 = s[i * 8 + 7].shuffle8(mask);
-
-		GSVector4i::sw16(v0, v1, v2, v3);
-		GSVector4i::sw32(v0, v1, v3, v2);
-
-		*(GSVector4i*)&dst[dstpitch * 0] = v0;
-		*(GSVector4i*)&dst[dstpitch * 1] = v3;
-		*(GSVector4i*)&dst[dstpitch * 2] = v1;
-		*(GSVector4i*)&dst[dstpitch * 3] = v2;
-
-		dst += dstpitch * 4;
-	}
-
-#elif _M_SSE >= 0x200
-
-	GSVector4i* s = (GSVector4i*)src;
-
-	GSVector4i v0, v1, v2, v3;
-
-	for(int i = 0; i < 2; i++)
-	{
-		v0 = s[i * 8 + 0]; 
-		v1 = s[i * 8 + 1]; 
-		v2 = s[i * 8 + 2]; 
-		v3 = s[i * 8 + 3];
-
-		GSVector4i::sw8(v0, v1, v2, v3);
-		GSVector4i::sw16(v0, v1, v2, v3);
-		GSVector4i::sw8(v0, v2, v1, v3);
-		GSVector4i::sw64(v0, v1, v2, v3);
-
-		*(GSVector4i*)&dst[dstpitch * 0] = v0;
-		*(GSVector4i*)&dst[dstpitch * 1] = v1;
-		*(GSVector4i*)&dst[dstpitch * 2] = v2.yxwz();
-		*(GSVector4i*)&dst[dstpitch * 3] = v3.yxwz();
-
-		dst += dstpitch * 4;
-
-		v0 = s[i * 8 + 4]; 
-		v1 = s[i * 8 + 5]; 
-		v2 = s[i * 8 + 6]; 
-		v3 = s[i * 8 + 7];
-
-		GSVector4i::sw8(v0, v1, v2, v3);
-		GSVector4i::sw16(v0, v1, v2, v3);
-		GSVector4i::sw8(v0, v2, v1, v3);
-		GSVector4i::sw64(v0, v1, v2, v3);
-
-		*(GSVector4i*)&dst[dstpitch * 0] = v0.yxwz();
-		*(GSVector4i*)&dst[dstpitch * 1] = v1.yxwz();
-		*(GSVector4i*)&dst[dstpitch * 2] = v2;
-		*(GSVector4i*)&dst[dstpitch * 3] = v3;
-
-		dst += dstpitch * 4;
-	}
-
-#else
-
-	const DWORD* s = &columnTable8[0][0];
-
-	for(int j = 0; j < 16; j++, s += 16, dst += dstpitch)
-	{
-		for(int i = 0; i < 16; i++)
-		{
-			dst[i] = src[s[i]];
-		}
-	}
-
-#endif
-}
-
-void GSLocalMemory::ReadBlock4(BYTE* src, BYTE* dst, int dstpitch)
-{
-#if _M_SSE >= 0x200
-
-	GSVector4i* s = (GSVector4i*)src;
-
-	GSVector4i v0, v1, v2, v3;
-
-	for(int i = 0; i < 2; i++)
-	{
-		v0 = s[i * 8 + 0]; 
-		v1 = s[i * 8 + 1]; 
-		v2 = s[i * 8 + 2]; 
-		v3 = s[i * 8 + 3];
-
-		GSVector4i::sw32(v0, v1, v2, v3);
-		GSVector4i::sw32(v0, v1, v2, v3);
-		GSVector4i::sw4(v0, v2, v1, v3);
-		GSVector4i::sw8(v0, v1, v2, v3);
-		GSVector4i::sw16(v0, v2, v1, v3);
-
-		v0 = v0.xzyw();
-		v1 = v1.xzyw();
-		v2 = v2.xzyw();
-		v3 = v3.xzyw();
-
-		GSVector4i::sw64(v0, v1, v2, v3);
-
-		*(GSVector4i*)&dst[dstpitch * 0] = v0;
-		*(GSVector4i*)&dst[dstpitch * 1] = v1;
-		*(GSVector4i*)&dst[dstpitch * 2] = v2.yxwzl().yxwzh();
-		*(GSVector4i*)&dst[dstpitch * 3] = v3.yxwzl().yxwzh();
-
-		dst += dstpitch * 4;
-
-		v0 = s[i * 8 + 4]; 
-		v1 = s[i * 8 + 5]; 
-		v2 = s[i * 8 + 6]; 
-		v3 = s[i * 8 + 7];
-
-		GSVector4i::sw32(v0, v1, v2, v3);
-		GSVector4i::sw32(v0, v1, v2, v3);
-		GSVector4i::sw4(v0, v2, v1, v3);
-		GSVector4i::sw8(v0, v1, v2, v3);
-		GSVector4i::sw16(v0, v2, v1, v3);
-
-		v0 = v0.xzyw();
-		v1 = v1.xzyw();
-		v2 = v2.xzyw();
-		v3 = v3.xzyw();
-
-		GSVector4i::sw64(v0, v1, v2, v3);
-
-		*(GSVector4i*)&dst[dstpitch * 0] = v0.yxwzl().yxwzh();
-		*(GSVector4i*)&dst[dstpitch * 1] = v1.yxwzl().yxwzh();
-		*(GSVector4i*)&dst[dstpitch * 2] = v2;
-		*(GSVector4i*)&dst[dstpitch * 3] = v3;
-
-		dst += dstpitch * 4;
-	}
-
-#else
-
-	const DWORD* s = &columnTable4[0][0];
-
-	for(int j = 0; j < 16; j++, s += 32, dst += dstpitch)
-	{
-		for(int i = 0; i < 32; i++)
-		{
-			DWORD addr = s[i];
-			BYTE c = (src[addr >> 1] >> ((addr & 1) << 2)) & 0x0f;
-			int shift = (i & 1) << 2;
-			dst[i >> 1] = (dst[i >> 1] & (0xf0 >> shift)) | (c << shift);
-		}
-	}
-
-#endif
-}
-
-void GSLocalMemory::WriteBlock32(BYTE* dst, BYTE* src, int srcpitch)
-{
-#if _M_SSE >= 0x200
-
-	GSVector4i* d = (GSVector4i*)dst;
-	
-	GSVector4i v0, v1, v2, v3;
-
-	for(int i = 0; i < 4; i++)
-	{
-		v0 = *(GSVector4i*)&src[srcpitch * (i * 2 + 0) +  0];
-		v1 = *(GSVector4i*)&src[srcpitch * (i * 2 + 0) + 16];
-		v2 = *(GSVector4i*)&src[srcpitch * (i * 2 + 1) +  0];
-		v3 = *(GSVector4i*)&src[srcpitch * (i * 2 + 1) + 16];
-
-		GSVector4i::sw64(v0, v2, v1, v3);
-
-		d[i * 4 + 0] = v0;
-		d[i * 4 + 1] = v1;
-		d[i * 4 + 2] = v2;
-		d[i * 4 + 3] = v3;
-	}
-
-#else
-
-	const DWORD* d = &columnTable32[0][0];
-
-	for(int j = 0; j < 8; j++, d += 8, src += srcpitch)
-	{
-		for(int i = 0; i < 8; i++)
-		{
-			((DWORD*)dst)[d[i]] = ((DWORD*)src)[i];
-		}
-	}
-
-#endif
-}
-
-void GSLocalMemory::WriteBlock32(BYTE* dst, BYTE* src, int srcpitch, DWORD mask)
-{
-#if _M_SSE >= 0x200
-
-	GSVector4i* d = (GSVector4i*)dst;
-
-	GSVector4i vm((int)mask);
-	
-	GSVector4i v0, v1, v2, v3;
-
-	for(int i = 0; i < 4; i++)
-	{
-		v0 = *(GSVector4i*)&src[srcpitch * (i * 2 + 0) +  0];
-		v1 = *(GSVector4i*)&src[srcpitch * (i * 2 + 0) + 16];
-		v2 = *(GSVector4i*)&src[srcpitch * (i * 2 + 1) +  0];
-		v3 = *(GSVector4i*)&src[srcpitch * (i * 2 + 1) + 16];
-
-		GSVector4i::sw64(v0, v2, v1, v3);
-
-		d[i * 4 + 0] = d[i * 4 + 0].blend(v0, vm);
-		d[i * 4 + 1] = d[i * 4 + 1].blend(v1, vm);
-		d[i * 4 + 2] = d[i * 4 + 2].blend(v2, vm);
-		d[i * 4 + 3] = d[i * 4 + 3].blend(v3, vm);
-	}
-
-#else
-
-	const DWORD* d = &columnTable32[0][0];
-
-	for(int j = 0; j < 8; j++, d += 8, src += srcpitch)
-	{
-		for(int i = 0; i < 8; i++)
-		{
-			((DWORD*)dst)[d[i]] = (((DWORD*)dst)[d[i]] & ~mask) | (((DWORD*)src)[i] & mask);
-		}
-	}
-
-#endif
-}
-
-void GSLocalMemory::WriteBlock32u(BYTE* dst, BYTE* src, int srcpitch)
-{
-#if _M_SSE >= 0x200
-
-	GSVector4i* d = (GSVector4i*)dst;
-	
-	GSVector4i v0, v1, v2, v3;
-
-	for(int i = 0; i < 4; i++)
-	{
-		v0 = GSVector4i::loadu(&src[srcpitch * (i * 2 + 0) +  0]);
-		v1 = GSVector4i::loadu(&src[srcpitch * (i * 2 + 0) + 16]);
-		v2 = GSVector4i::loadu(&src[srcpitch * (i * 2 + 1) +  0]);
-		v3 = GSVector4i::loadu(&src[srcpitch * (i * 2 + 1) + 16]);
-
-		GSVector4i::sw64(v0, v2, v1, v3);
-
-		d[i * 4 + 0] = v0;
-		d[i * 4 + 1] = v1;
-		d[i * 4 + 2] = v2;
-		d[i * 4 + 3] = v3;
-	}
-
-#else
-
-	WriteBlock32(dst, src, srcpitch);
-
-#endif
-}
-
-void GSLocalMemory::WriteBlock32u(BYTE* dst, BYTE* src, int srcpitch, DWORD mask)
-{
-#if _M_SSE >= 0x200
-
-	GSVector4i* d = (GSVector4i*)dst;
-
-	GSVector4i vm((int)mask);
-	
-	GSVector4i v0, v1, v2, v3;
-
-	for(int i = 0; i < 4; i++)
-	{
-		v0 = GSVector4i::loadu(&src[srcpitch * (i * 2 + 0) +  0]);
-		v1 = GSVector4i::loadu(&src[srcpitch * (i * 2 + 0) + 16]);
-		v2 = GSVector4i::loadu(&src[srcpitch * (i * 2 + 1) +  0]);
-		v3 = GSVector4i::loadu(&src[srcpitch * (i * 2 + 1) + 16]);
-
-		GSVector4i::sw64(v0, v2, v1, v3);
-
-		d[i * 4 + 0] = d[i * 4 + 0].blend(v0, vm);
-		d[i * 4 + 1] = d[i * 4 + 1].blend(v1, vm);
-		d[i * 4 + 2] = d[i * 4 + 2].blend(v2, vm);
-		d[i * 4 + 3] = d[i * 4 + 3].blend(v3, vm);
-	}
-
-#else
-
-	WriteBlock32(dst, src, srcpitch, mask);
-
-#endif
-}
-
-void GSLocalMemory::WriteBlock16(BYTE* dst, BYTE* src, int srcpitch)
-{
-#if _M_SSE >= 0x200
-
-	GSVector4i* d = (GSVector4i*)dst;
-	
-	GSVector4i v0, v1, v2, v3;
-
-	for(int i = 0; i < 4; i++)
-	{
-		v0 = *(GSVector4i*)&src[srcpitch * (i * 2 + 0) +  0];
-		v1 = *(GSVector4i*)&src[srcpitch * (i * 2 + 0) + 16];
-		v2 = *(GSVector4i*)&src[srcpitch * (i * 2 + 1) +  0];
-		v3 = *(GSVector4i*)&src[srcpitch * (i * 2 + 1) + 16];
-
-		GSVector4i::sw16(v0, v1, v2, v3);
-		GSVector4i::sw64(v0, v1, v2, v3);
-
-		d[i * 4 + 0] = v0;
-		d[i * 4 + 1] = v2;
-		d[i * 4 + 2] = v1;
-		d[i * 4 + 3] = v3;
-	}
-
-#else
-
-	const DWORD* d = &columnTable16[0][0];
-
-	for(int j = 0; j < 8; j++, d += 16, src += srcpitch)
-	{
-		for(int i = 0; i < 16; i++)
-		{
-			((WORD*)dst)[d[i]] = ((WORD*)src)[i];
-		}
-	}
-
-#endif
-}
-
-void GSLocalMemory::WriteBlock16u(BYTE* dst, BYTE* src, int srcpitch)
-{
-#if _M_SSE >= 0x200
-
-	GSVector4i* d = (GSVector4i*)dst;
-	
-	GSVector4i v0, v1, v2, v3;
-
-	for(int i = 0; i < 4; i++)
-	{
-		v0 = GSVector4i::loadu(&src[srcpitch * (i * 2 + 0) +  0]);
-		v1 = GSVector4i::loadu(&src[srcpitch * (i * 2 + 0) + 16]);
-		v2 = GSVector4i::loadu(&src[srcpitch * (i * 2 + 1) +  0]);
-		v3 = GSVector4i::loadu(&src[srcpitch * (i * 2 + 1) + 16]);
-
-		GSVector4i::sw16(v0, v1, v2, v3);
-		GSVector4i::sw64(v0, v1, v2, v3);
-
-		d[i * 4 + 0] = v0;
-		d[i * 4 + 1] = v2;
-		d[i * 4 + 2] = v1;
-		d[i * 4 + 3] = v3;
-	}
-
-#else
-
-	WriteBlock16(dst, src, srcpitch);
-
-#endif
-}
-
-void GSLocalMemory::WriteBlock8(BYTE* dst, BYTE* src, int srcpitch)
-{
-#if _M_SSE >= 0x200
-
-	GSVector4i* d = (GSVector4i*)dst;
-
-	GSVector4i v0, v1, v2, v3;
-
-	for(int i = 0; i < 2; i++)
-	{
-		v0 = *(GSVector4i*)&src[srcpitch * 0]; 
-		v1 = *(GSVector4i*)&src[srcpitch * 1];
-		v2 = ((GSVector4i*)&src[srcpitch * 2])->yxwz(); 
-		v3 = ((GSVector4i*)&src[srcpitch * 3])->yxwz();
-
-		GSVector4i::sw8(v0, v2, v1, v3);
-		GSVector4i::sw16(v0, v1, v2, v3);
-		GSVector4i::sw64(v0, v1, v2, v3);
-
-		d[i * 8 + 0] = v0;
-		d[i * 8 + 1] = v2;
-		d[i * 8 + 2] = v1;
-		d[i * 8 + 3] = v3;
-
-		src += srcpitch * 4;
-
-		v0 = ((GSVector4i*)&src[srcpitch * 0])->yxwz(); 
-		v1 = ((GSVector4i*)&src[srcpitch * 1])->yxwz(); 
-		v2 = *(GSVector4i*)&src[srcpitch * 2]; 
-		v3 = *(GSVector4i*)&src[srcpitch * 3];
-
-		GSVector4i::sw8(v0, v2, v1, v3);
-		GSVector4i::sw16(v0, v1, v2, v3);
-		GSVector4i::sw64(v0, v1, v2, v3);
-
-		d[i * 8 + 4] = v0;
-		d[i * 8 + 5] = v2;
-		d[i * 8 + 6] = v1;
-		d[i * 8 + 7] = v3;
-
-		src += srcpitch * 4;
-	}
-
-#else
-
-	const DWORD* d = &columnTable8[0][0];
-
-	for(int j = 0; j < 16; j++, d += 16, src += srcpitch)
-	{
-		for(int i = 0; i < 16; i++)
-		{
-			dst[d[i]] = src[i];
-		}
-	}
-
-#endif
-}
-
-void GSLocalMemory::WriteBlock8u(BYTE* dst, BYTE* src, int srcpitch)
-{
-#if _M_SSE >= 0x200
-
-	GSVector4i* d = (GSVector4i*)dst;
-
-	GSVector4i v0, v1, v2, v3;
-
-	for(int i = 0; i < 2; i++)
-	{
-		v0 = GSVector4i::loadu(&src[srcpitch * 0]); 
-		v1 = GSVector4i::loadu(&src[srcpitch * 1]);
-		v2 = GSVector4i::loadu(&src[srcpitch * 2]).yxwz(); 
-		v3 = GSVector4i::loadu(&src[srcpitch * 3]).yxwz();
-
-		GSVector4i::sw8(v0, v2, v1, v3);
-		GSVector4i::sw16(v0, v1, v2, v3);
-		GSVector4i::sw64(v0, v1, v2, v3);
-
-		d[i * 8 + 0] = v0;
-		d[i * 8 + 1] = v2;
-		d[i * 8 + 2] = v1;
-		d[i * 8 + 3] = v3;
-
-		src += srcpitch * 4;
-
-		v0 = GSVector4i::loadu(&src[srcpitch * 0]).yxwz(); 
-		v1 = GSVector4i::loadu(&src[srcpitch * 1]).yxwz(); 
-		v2 = GSVector4i::loadu(&src[srcpitch * 2]); 
-		v3 = GSVector4i::loadu(&src[srcpitch * 3]);
-
-		GSVector4i::sw8(v0, v2, v1, v3);
-		GSVector4i::sw16(v0, v1, v2, v3);
-		GSVector4i::sw64(v0, v1, v2, v3);
-
-		d[i * 8 + 4] = v0;
-		d[i * 8 + 5] = v2;
-		d[i * 8 + 6] = v1;
-		d[i * 8 + 7] = v3;
-
-		src += srcpitch * 4;
-	}
-
-#else
-
-	WriteBlock8(dst, src, srcpitch);
-
-#endif
-}
-
-void GSLocalMemory::WriteBlock4(BYTE* dst, BYTE* src, int srcpitch)
-{
-#if _M_SSE >= 0x200
-
-	GSVector4i* d = (GSVector4i*)dst;
-
-	GSVector4i v0, v1, v2, v3;
-
-	for(int i = 0; i < 2; i++)
-	{
-		v0 = *(GSVector4i*)&src[srcpitch * 0]; 
-		v1 = *(GSVector4i*)&src[srcpitch * 1];
-		v2 = ((GSVector4i*)&src[srcpitch * 2])->yxwzl().yxwzh(); 
-		v3 = ((GSVector4i*)&src[srcpitch * 3])->yxwzl().yxwzh();
-
-		GSVector4i::sw4(v0, v2, v1, v3);
-		GSVector4i::sw8(v0, v1, v2, v3);
-		GSVector4i::sw8(v0, v2, v1, v3);
-		GSVector4i::sw64(v0, v2, v1, v3);
-
-		d[i * 8 + 0] = v0;
-		d[i * 8 + 1] = v1;
-		d[i * 8 + 2] = v2;
-		d[i * 8 + 3] = v3;
-
-		src += srcpitch * 4;
-
-		v0 = ((GSVector4i*)&src[srcpitch * 0])->yxwzl().yxwzh(); 
-		v1 = ((GSVector4i*)&src[srcpitch * 1])->yxwzl().yxwzh(); 
-		v2 = *(GSVector4i*)&src[srcpitch * 2]; 
-		v3 = *(GSVector4i*)&src[srcpitch * 3];
-
-		GSVector4i::sw4(v0, v2, v1, v3);
-		GSVector4i::sw8(v0, v1, v2, v3);
-		GSVector4i::sw8(v0, v2, v1, v3);
-		GSVector4i::sw64(v0, v2, v1, v3);
-
-		d[i * 8 + 4] = v0;
-		d[i * 8 + 5] = v1;
-		d[i * 8 + 6] = v2;
-		d[i * 8 + 7] = v3;
-
-		src += srcpitch * 4;
-	}
-
-#else
-
-	const DWORD* d = &columnTable4[0][0];
-
-	for(int j = 0; j < 16; j++, d += 32, src += srcpitch)
-	{
-		for(int i = 0; i < 32; i++)
-		{
-			DWORD addr = d[i];
-			BYTE c = (src[i >> 1] >> ((i & 1) << 2)) & 0x0f;
-			DWORD shift = (addr & 1) << 2;
-			dst[addr >> 1] = (dst[addr >> 1] & (0xf0 >> shift)) | (c << shift);
-		}
-	}
-
-#endif
-}
-
-void GSLocalMemory::WriteBlock4u(BYTE* dst, BYTE* src, int srcpitch)
-{
-#if _M_SSE >= 0x200
-
-	GSVector4i* d = (GSVector4i*)dst;
-
-	GSVector4i v0, v1, v2, v3;
-
-	for(int i = 0; i < 2; i++)
-	{
-		v0 = GSVector4i::loadu(&src[srcpitch * 0]); 
-		v1 = GSVector4i::loadu(&src[srcpitch * 1]);
-		v2 = GSVector4i::loadu(&src[srcpitch * 2]).yxwzl().yxwzh(); 
-		v3 = GSVector4i::loadu(&src[srcpitch * 3]).yxwzl().yxwzh();
-
-		GSVector4i::sw4(v0, v2, v1, v3);
-		GSVector4i::sw8(v0, v1, v2, v3);
-		GSVector4i::sw8(v0, v2, v1, v3);
-		GSVector4i::sw64(v0, v2, v1, v3);
-
-		d[i * 8 + 0] = v0;
-		d[i * 8 + 1] = v1;
-		d[i * 8 + 2] = v2;
-		d[i * 8 + 3] = v3;
-
-		src += srcpitch * 4;
-
-		v0 = GSVector4i::loadu(&src[srcpitch * 0]).yxwzl().yxwzh(); 
-		v1 = GSVector4i::loadu(&src[srcpitch * 1]).yxwzl().yxwzh();
-		v2 = GSVector4i::loadu(&src[srcpitch * 2]); 
-		v3 = GSVector4i::loadu(&src[srcpitch * 3]);
-
-		GSVector4i::sw4(v0, v2, v1, v3);
-		GSVector4i::sw8(v0, v1, v2, v3);
-		GSVector4i::sw8(v0, v2, v1, v3);
-		GSVector4i::sw64(v0, v2, v1, v3);
-
-		d[i * 8 + 4] = v0;
-		d[i * 8 + 5] = v1;
-		d[i * 8 + 6] = v2;
-		d[i * 8 + 7] = v3;
-
-		src += srcpitch * 4;
-	}
-
-#else
-
-	WriteBlock4(dst, src, srcpitch);
-
-#endif
-}
-
-void GSLocalMemory::WriteColumn32(int y, BYTE* dst, BYTE* src, int srcpitch)
-{
-	const DWORD* d = &columnTable32[y & (3 << 1)][0];
-
-	for(int j = 0; j < 2; j++, d += 8, src += srcpitch)
-	{
-		for(int i = 0; i < 8; i++)
-		{
-			((DWORD*)dst)[d[i]] = ((DWORD*)src)[i];
-		}
-	}
-}
-
-void GSLocalMemory::WriteColumn32(int y, BYTE* dst, BYTE* src, int srcpitch, DWORD mask)
-{
-	const DWORD* d = &columnTable32[y & (3 << 1)][0];
-
-	for(int j = 0; j < 2; j++, d += 8, src += srcpitch)
-	{
-		for(int i = 0; i < 8; i++)
-		{
-			((DWORD*)dst)[d[i]] = (((DWORD*)dst)[d[i]] & ~mask) | (((DWORD*)src)[i] & mask);
-		}
-	}
-}
-
-void GSLocalMemory::WriteColumn16(int y, BYTE* dst, BYTE* src, int srcpitch)
-{
-	const DWORD* d = &columnTable16[y & (3 << 1)][0];
-
-	for(int j = 0; j < 2; j++, d += 16, src += srcpitch)
-	{
-		for(int i = 0; i < 16; i++)
-		{
-			((WORD*)dst)[d[i]] = ((WORD*)src)[i];
-		}
-	}
-}
-
-void GSLocalMemory::WriteColumn8(int y, BYTE* dst, BYTE* src, int srcpitch)
-{
-	const DWORD* d = &columnTable8[y & (3 << 2)][0];
-
-	for(int j = 0; j < 4; j++, d += 16, src += srcpitch)
-	{
-		for(int i = 0; i < 16; i++)
-		{
-			dst[d[i]] = src[i];
-		}
-	}
-}
-
-void GSLocalMemory::WriteColumn4(int y, BYTE* dst, BYTE* src, int srcpitch)
-{
-	const DWORD* d = &columnTable4[y & (3 << 2)][0];
-
-	for(int j = 0; j < 4; j++, d += 32, src += srcpitch)
-	{
-		for(int i = 0; i < 32; i++)
-		{
-			DWORD addr = d[i];
-			BYTE c = (src[i >> 1] >> ((i & 1) << 2)) & 0x0f;
-			DWORD shift = (addr & 1) << 2;
-			dst[addr >> 1] = (dst[addr >> 1] & (0xf0 >> shift)) | (c << shift);
-		}
-	}
-}
-
-//
-
-__forceinline static void WriteCLUT_T32_I4_CSM1(GSVector4i* s, GSVector4i* d)
-{
-	GSVector4i v0 = s[0];
-	GSVector4i v1 = s[1];
-	GSVector4i v2 = s[2];
-	GSVector4i v3 = s[3];
-
-	GSVector4i::sw64(v0, v1, v2, v3);
-	GSVector4i::sw16(v0, v1, v2, v3);
-	GSVector4i::sw16(v0, v2, v1, v3);
-	GSVector4i::sw16(v0, v1, v2, v3);
-
-	d[0] = v0;
-	d[1] = v1;
-	d[32] = v2;
-	d[33] = v3;
-}
-
-void GSLocalMemory::WriteCLUT_T32_I8_CSM1(DWORD* vm, WORD* clut)
-{
-#if _M_SSE >= 0x200
-
-	GSVector4i* s = (GSVector4i*)vm;
-	GSVector4i* d = (GSVector4i*)clut;
-
-	for(int i = 0; i < 16; i += 4)
-	{
-		::WriteCLUT_T32_I4_CSM1(&s[i +  0], &d[i +  0]);
-		::WriteCLUT_T32_I4_CSM1(&s[i + 16], &d[i +  2]);
-		::WriteCLUT_T32_I4_CSM1(&s[i + 32], &d[i + 16]);
-		::WriteCLUT_T32_I4_CSM1(&s[i + 48], &d[i + 18]);
-	}
-
-#else
-
-	for(int j = 0; j < 2; j++, vm += 128, clut += 128)
-	{
-		for(int i = 0; i < 128; i++) 
-		{
-			DWORD dw = vm[clutTableT32I8[i]];
-			clut[i] = (WORD)(dw & 0xffff);
-			clut[i + 256] = (WORD)(dw >> 16);
-		}
-	}
-
-#endif
-}
-
-void GSLocalMemory::WriteCLUT_T32_I4_CSM1(DWORD* vm, WORD* clut)
-{
-#if _M_SSE >= 0x200
-
-	GSVector4i* s = (GSVector4i*)vm;
-	GSVector4i* d = (GSVector4i*)clut;
-
-	::WriteCLUT_T32_I4_CSM1(s, d);
-
-#else
-
-	for(int i = 0; i < 16; i++) 
-	{
-		DWORD dw = vm[clutTableT32I4[i]];
-		clut[i] = (WORD)(dw & 0xffff);
-		clut[i + 256] = (WORD)(dw >> 16);
-	}
-
-#endif
-}
-
-void GSLocalMemory::WriteCLUT_T16_I8_CSM1(WORD* vm, WORD* clut)
-{
-#if _M_SSE >= 0x200
-
-	GSVector4i* s = (GSVector4i*)vm;
-	GSVector4i* d = (GSVector4i*)clut;
-
-	for(int i = 0; i < 32; i += 4)
-	{
-		GSVector4i v0 = s[i + 0];
-		GSVector4i v1 = s[i + 1];
-		GSVector4i v2 = s[i + 2];
-		GSVector4i v3 = s[i + 3];
-
-		GSVector4i::sw16(v0, v1, v2, v3);
-		GSVector4i::sw32(v0, v1, v2, v3);
-		GSVector4i::sw16(v0, v2, v1, v3);
-
-		d[i + 0] = v0;
-		d[i + 1] = v2;
-		d[i + 2] = v1;
-		d[i + 3] = v3;
-	}
-
-#else
-
-	for(int j = 0; j < 8; j++, vm += 32, clut += 32) 
-	{
-		for(int i = 0; i < 32; i++)
-		{
-			clut[i] = vm[clutTableT16I8[i]];
-		}
-	}
-
-#endif
-}
-
-void GSLocalMemory::WriteCLUT_T16_I4_CSM1(WORD* vm, WORD* clut)
-{
-	for(int i = 0; i < 16; i++) 
-	{
-		clut[i] = vm[clutTableT16I4[i]];
-	}
-}
-
-//
-
-void GSLocalMemory::ReadCLUT32_T32_I8(WORD* src, DWORD* dst)
-{
-#if _M_SSE >= 0x200
-
-	for(int i = 0; i < 256; i += 16)
-	{
-		ReadCLUT32_T32_I4(&src[i], &dst[i]); // going to be inlined nicely
-	}
-
-#else 
-
-	for(int i = 0; i < 256; i++)
-	{
-		dst[i] = ((DWORD)src[i + 256] << 16) | src[i];
-	}
-
-#endif
-}
-
-void GSLocalMemory::ReadCLUT32_T32_I4(WORD* src, DWORD* dst)
-{
-#if _M_SSE >= 0x200
-
-	GSVector4i* s = (GSVector4i*)src;
-	GSVector4i* d = (GSVector4i*)dst;
-
-	GSVector4i r0 = s[0];
-	GSVector4i r1 = s[1];
-	GSVector4i r2 = s[32];
-	GSVector4i r3 = s[33];
-
-	d[0] = r0.upl16(r2);
-	d[1] = r0.uph16(r2);
-	d[2] = r1.upl16(r3);
-	d[3] = r1.uph16(r3);
-
-#else 
-
-	for(int i = 0; i < 16; i++)
-	{
-		dst[i] = ((DWORD)src[i + 256] << 16) | src[i];
-	}
-
-#endif
-}
-
-void GSLocalMemory::ReadCLUT32_T16_I8(WORD* src, DWORD* dst)
-{
-#if _M_SSE >= 0x200
-
-	for(int i = 0; i < 256; i += 16)
-	{
-		ReadCLUT32_T16_I4(&src[i], &dst[i]);
-	}
-
-#else 
-
-	for(int i = 0; i < 256; i++)
-	{
-		dst[i] = (DWORD)src[i];
-	}
-
-#endif
-}
-
-void GSLocalMemory::ReadCLUT32_T16_I4(WORD* src, DWORD* dst)
-{
-#if _M_SSE >= 0x200
-
-	GSVector4i* s = (GSVector4i*)src;
-	GSVector4i* d = (GSVector4i*)dst;
-
-	GSVector4i r0 = s[0];
-	GSVector4i r1 = s[1];
-
-	d[0] = r0.upl16();
-	d[1] = r0.uph16();
-	d[2] = r1.upl16();
-	d[3] = r1.uph16();
-
-#else 
-
-	for(int i = 0; i < 16; i++)
-	{
-		dst[i] = (DWORD)src[i];
-	}
-
-#endif
-}
-
-//
-
-static const GSVector4i s_rgbm(0x00ffffff);
 static const GSVector4i s_am(0x00008000);
 static const GSVector4i s_bm(0x00007c00);
 static const GSVector4i s_gm(0x000003e0);
 static const GSVector4i s_rm(0x0000001f);
-
-void GSLocalMemory::ExpandBlock24(BYTE* src, int srcpitch, DWORD* dst)
-{
-#if _M_SSE >= 0x200
-
-	const GSVector4i rgbm = s_rgbm;
-
-	GSVector4i* d = (GSVector4i*)dst;
-
-	for(int i = 0; i < 8; i += 2, src += srcpitch * 2, d += 4)
-	{
-		GSVector4i r0 = GSVector4i::loadu(src);
-		GSVector4i r1 = GSVector4i::loadu(src + 16, src + srcpitch);
-		GSVector4i r2 = GSVector4i::loadu(src + srcpitch + 8);
-
-		d[0] = r0.upl32(r0.srl<3>()).upl64(r0.srl<6>().upl32(r0.srl<9>())) & rgbm;
-
-		r0 = r0.srl<12>(r1);
-
-		d[1] = r0.upl32(r0.srl<3>()).upl64(r0.srl<6>().upl32(r0.srl<9>())) & rgbm;
-
-		r0 = r1.srl<8>(r2);
-
-		d[2] = r0.upl32(r0.srl<3>()).upl64(r0.srl<6>().upl32(r0.srl<9>())) & rgbm;
-
-		r0 = r2.srl<4>();
-
-		d[3] = r0.upl32(r0.srl<3>()).upl64(r0.srl<6>().upl32(r0.srl<9>())) & rgbm;
-	}
-
-#else 
-
-	for(int j = 0, diff = srcpitch - 8*3; j < 8; j++, src += diff, dst += 8)
-	{
-		for(int i = 0; i < 8; i++, src += 3)
-		{
-			dst[i] = (src[2] << 16) | (src[1] << 8) | src[0];
-		}
-	}
-
-#endif
-}
-
-void GSLocalMemory::ExpandBlock8H(BYTE* src, int srcpitch, DWORD* dst)
-{
-#if _M_SSE >= 0x200
-
-	GSVector4i* d = (GSVector4i*)dst;
-	GSVector4i zero = GSVector4i::zero();
-
-	for(int i = 0; i < 8; i += 2)
-	{
-		GSVector4i v = GSVector4i::loadu(
-			&src[(i + 0) * srcpitch],
-			&src[(i + 1) * srcpitch]);
-
-		GSVector4i v0 = zero.upl8(v);
-		GSVector4i v1 = zero.uph8(v);
-
-		d[i * 2 + 0] = zero.upl16(v0);
-		d[i * 2 + 1] = zero.uph16(v0);
-		d[i * 2 + 2] = zero.upl16(v1);
-		d[i * 2 + 3] = zero.uph16(v1);
-	}
-
-#else
-
-	for(int j = 0; j < 8; j++, src += srcpitch, dst += 8)
-	{
-		for(int i = 0; i < 8; i++)
-		{
-			dst[i] = src[i] << 24;
-		}
-	}
-
-#endif
-
-}
-
-void GSLocalMemory::ExpandBlock4HL(BYTE* src, int srcpitch, DWORD* dst)
-{
-#if _M_SSE >= 0x200
-
-	GSVector4i* d = (GSVector4i*)dst;
-	GSVector4i zero = GSVector4i::zero();
-	GSVector4i mask(0x0f0f0f0f);
-
-	for(int i = 0; i < 8; i += 4)
-	{
-		GSVector4i v(
-			*(DWORD*)&src[(i + 0) * srcpitch], 
-			*(DWORD*)&src[(i + 1) * srcpitch], 
-			*(DWORD*)&src[(i + 2) * srcpitch], 
-			*(DWORD*)&src[(i + 3) * srcpitch]);
-
-		GSVector4i lo = v & mask;
-		GSVector4i hi = (v >> 4) & mask;
-
-		GSVector4i v0 = lo.upl8(hi);
-		GSVector4i v1 = lo.uph8(hi);
-
-		GSVector4i v2 = zero.upl8(v0);
-		GSVector4i v3 = zero.uph8(v0);
-		GSVector4i v4 = zero.upl8(v1);
-		GSVector4i v5 = zero.uph8(v1);
-
-		d[i * 2 + 0] = zero.upl16(v2);
-		d[i * 2 + 1] = zero.uph16(v2);
-		d[i * 2 + 2] = zero.upl16(v3);
-		d[i * 2 + 3] = zero.uph16(v3);
-		d[i * 2 + 4] = zero.upl16(v4);
-		d[i * 2 + 5] = zero.uph16(v4);
-		d[i * 2 + 6] = zero.upl16(v5);
-		d[i * 2 + 7] = zero.uph16(v5);
-	}
-
-#else
-
-	for(int j = 0; j < 8; j++, src += srcpitch, dst += 8)
-	{
-		for(int i = 0; i < 4; i++)
-		{
-			dst[i * 2 + 0] = (src[i] & 0x0f) << 24;
-			dst[i * 2 + 1] = (src[i] & 0xf0) << 20;
-		}
-	}
-
-#endif
-}
-
-void GSLocalMemory::ExpandBlock4HH(BYTE* src, int srcpitch, DWORD* dst)
-{
-#if _M_SSE >= 0x200
-
-	GSVector4i* d = (GSVector4i*)dst;
-	GSVector4i zero = GSVector4i::zero();
-	GSVector4i mask(0xf0f0f0f0);
-
-	for(int i = 0; i < 8; i += 4)
-	{
-		GSVector4i v(
-			*(DWORD*)&src[(i + 0) * srcpitch], 
-			*(DWORD*)&src[(i + 1) * srcpitch], 
-			*(DWORD*)&src[(i + 2) * srcpitch], 
-			*(DWORD*)&src[(i + 3) * srcpitch]);
-
-		GSVector4i lo = (v << 4) & mask;
-		GSVector4i hi = v & mask;
-
-		GSVector4i v0 = lo.upl8(hi);
-		GSVector4i v1 = lo.uph8(hi);
-
-		GSVector4i v2 = zero.upl8(v0);
-		GSVector4i v3 = zero.uph8(v0);
-		GSVector4i v4 = zero.upl8(v1);
-		GSVector4i v5 = zero.uph8(v1);
-
-		d[i * 2 + 0] = zero.upl16(v2);
-		d[i * 2 + 1] = zero.uph16(v2);
-		d[i * 2 + 2] = zero.upl16(v3);
-		d[i * 2 + 3] = zero.uph16(v3);
-		d[i * 2 + 4] = zero.upl16(v4);
-		d[i * 2 + 5] = zero.uph16(v4);
-		d[i * 2 + 6] = zero.upl16(v5);
-		d[i * 2 + 7] = zero.uph16(v5);
-	}
-
-#else
-
-	for(int j = 0; j < 8; j++, src += srcpitch, dst += 8)
-	{
-		for(int i = 0; i < 4; i++)
-		{
-			dst[i * 2 + 0] = (src[i] & 0x0f) << 28;
-			dst[i * 2 + 1] = (src[i] & 0xf0) << 24;
-		}
-	}
-
-#endif
-}
-
-//
-
-void GSLocalMemory::ExpandBlock24(DWORD* src, DWORD* dst, int dstpitch, GIFRegTEXA* TEXA)
-{
-#if _M_SSE >= 0x200
-
-	const GSVector4i rgbm = s_rgbm;
-
-	GSVector4i TA0(TEXA->TA0 << 24);
-
-	GSVector4i c;
-
-	if(!TEXA->AEM)
-	{
-		for(int j = 0; j < 8; j++, src += 8, dst += dstpitch >> 2)
-		{
-			GSVector4i* s = (GSVector4i*)src;
-			GSVector4i* d = (GSVector4i*)dst;
-
-			d[0] = (s[0] & rgbm) | TA0;
-			d[1] = (s[1] & rgbm) | TA0;
-		}
-	}
-	else
-	{
-		for(int j = 0; j < 8; j++, src += 8, dst += dstpitch >> 2)
-		{
-			GSVector4i* s = (GSVector4i*)src;
-			GSVector4i* d = (GSVector4i*)dst;
-
-			c = s[0] & rgbm;
-			d[0] = c | TA0.andnot(c == GSVector4i::zero()); // TA0 & (c != GSVector4i::zero())
-
-			c = s[1] & rgbm;
-			d[1] = c | TA0.andnot(c == GSVector4i::zero()); // TA0 & (c != GSVector4i::zero())
-		}
-	}
-
-#else
-
-	DWORD TA0 = (DWORD)TEXA->TA0 << 24;
-
-	if(!TEXA->AEM)
-	{
-		for(int j = 0; j < 8; j++, src += 8, dst += dstpitch >> 2)
-		{
-			for(int i = 0; i < 8; i++)
-			{
-				dst[i] = TA0 | (src[i] & 0xffffff);
-			}
-		}
-	}
-	else
-	{
-		for(int j = 0; j < 8; j++, src += 8, dst += dstpitch >> 2)
-		{
-			for(int i = 0; i < 8; i++)
-			{
-				dst[i] = ((src[i] & 0xffffff) ? TA0 : 0) | (src[i] & 0xffffff);
-			}
-		}
-	}
-
-#endif
-}
-
-void GSLocalMemory::ExpandBlock16(WORD* src, DWORD* dst, int dstpitch, GIFRegTEXA* TEXA)
-{
-#if _M_SSE >= 0x200
-
-	const GSVector4i rm = s_rm;
-	const GSVector4i gm = s_gm;
-	const GSVector4i bm = s_bm;
-	const GSVector4i am = s_am;
-
-	GSVector4i TA0(TEXA->TA0 << 24);
-	GSVector4i TA1(TEXA->TA1 << 24);
-
-	GSVector4i c, cl, ch;
-
-	if(!TEXA->AEM)
-	{
-		for(int j = 0; j < 8; j++, src += 16, dst += dstpitch >> 2)
-		{
-			GSVector4i* s = (GSVector4i*)src;
-			GSVector4i* d = (GSVector4i*)dst;
-
-			c = s[0];
-			cl = c.upl16();
-			ch = c.uph16();
-			d[0] = ((cl & rm) << 3) | ((cl & gm) << 6) | ((cl & bm) << 9) | TA1.blend(TA0, cl < am);
-			d[1] = ((ch & rm) << 3) | ((ch & gm) << 6) | ((ch & bm) << 9) | TA1.blend(TA0, ch < am);
-
-			c = s[1];
-			cl = c.upl16();
-			ch = c.uph16();
-			d[2] = ((cl & rm) << 3) | ((cl & gm) << 6) | ((cl & bm) << 9) | TA1.blend(TA0, cl < am);
-			d[3] = ((ch & rm) << 3) | ((ch & gm) << 6) | ((ch & bm) << 9) | TA1.blend(TA0, ch < am);
-		}
-	}
-	else
-	{
-		for(int j = 0; j < 8; j++, src += 16, dst += dstpitch >> 2)
-		{
-			GSVector4i* s = (GSVector4i*)src;
-			GSVector4i* d = (GSVector4i*)dst;
-
-			c = s[0];
-			cl = c.upl16();
-			ch = c.uph16();
-			d[0] = ((cl & rm) << 3) | ((cl & gm) << 6) | ((cl & bm) << 9) | TA1.blend(TA0, cl < am).andnot(cl == GSVector4i::zero());
-			d[1] = ((ch & rm) << 3) | ((ch & gm) << 6) | ((ch & bm) << 9) | TA1.blend(TA0, ch < am).andnot(ch == GSVector4i::zero());
-
-			c = s[1];
-			cl = c.upl16();
-			ch = c.uph16();
-			d[2] = ((cl & rm) << 3) | ((cl & gm) << 6) | ((cl & bm) << 9) | TA1.blend(TA0, cl < am).andnot(cl == GSVector4i::zero());
-			d[3] = ((ch & rm) << 3) | ((ch & gm) << 6) | ((ch & bm) << 9) | TA1.blend(TA0, ch < am).andnot(ch == GSVector4i::zero());
-		}
-	}
-
-#else
-
-	DWORD TA0 = (DWORD)TEXA->TA0 << 24;
-	DWORD TA1 = (DWORD)TEXA->TA1 << 24;
-
-	if(!TEXA->AEM)
-	{
-		for(int j = 0; j < 8; j++, src += 16, dst += dstpitch >> 2)
-		{
-			for(int i = 0; i < 16; i++)
-			{
-				dst[i] = ((src[i] & 0x8000) ? TA1 : TA0) | ((src[i] & 0x7c00) << 9) | ((src[i] & 0x03e0) << 6) | ((src[i] & 0x001f) << 3);
-			}
-		}
-	}
-	else
-	{
-		for(int j = 0; j < 8; j++, src += 16, dst += dstpitch >> 2)
-		{
-			for(int i = 0; i < 16; i++)
-			{
-				dst[i] = ((src[i] & 0x8000) ? TA1 : src[i] ? TA0 : 0) | ((src[i] & 0x7c00) << 9) | ((src[i] & 0x03e0) << 6) | ((src[i] & 0x001f) << 3);
-			}
-		}
-	}
-
-#endif
-}
-
-void GSLocalMemory::ExpandBlock8(BYTE* src, DWORD* dst, int dstpitch, DWORD* pal)
-{
-	for(int j = 0; j < 16; j++, dst += dstpitch >> 2)
-	{
-		#if _M_SSE >= 0x400
-
-		GSVector4i* s = (GSVector4i*)src;
-		GSVector4i* d = (GSVector4i*)dst;
-
-		s[j].gather32_8(pal, d);
-
-		#else
-
-		for(int i = 0; i < 16; i++)
-		{
-			dst[i] = pal[src[j * 16 + i]];
-		}
-
-		#endif
-	}
-}
-
-void GSLocalMemory::ExpandBlock8(BYTE* src, WORD* dst, int dstpitch, DWORD* pal)
-{
-	for(int j = 0; j < 16; j++, dst += dstpitch >> 1)
-	{
-		#if _M_SSE >= 0x400
-
-		GSVector4i* s = (GSVector4i*)src;
-		GSVector4i* d = (GSVector4i*)dst;
-
-		s[j].gather16_8(pal, d);
-
-		#else
-
-		for(int i = 0; i < 16; i++)
-		{
-			dst[i] = (WORD)pal[src[j * 16 + i]];
-		}
-
-		#endif
-	}
-}
-
-void GSLocalMemory::ExpandBlock4(BYTE* src, DWORD* dst, int dstpitch, UINT64* pal)
-{
-	for(int j = 0; j < 16; j++, dst += dstpitch >> 2)
-	{
-		#if _M_SSE >= 0x400
-
-		GSVector4i* s = (GSVector4i*)src;
-		GSVector4i* d = (GSVector4i*)dst;
-
-		s[j].gather64_8(pal, d);
-
-		#else
-
-		for(int i = 0; i < 32 / 2; i++)
-		{
-			((UINT64*)dst)[i] = pal[src[j * 16 + i]];
-		}
-
-		#endif
-	}
-}
-
-void GSLocalMemory::ExpandBlock4(BYTE* src, WORD* dst, int dstpitch, UINT64* pal)
-{
-	for(int j = 0; j < 16; j++, dst += dstpitch >> 1)
-	{
-		#if _M_SSE >= 0x400
-
-		GSVector4i* s = (GSVector4i*)src;
-		GSVector4i* d = (GSVector4i*)dst;
-
-		s[j].gather32_8(pal, d);
-
-		#else
-
-		for(int i = 0; i < 32 / 2; i++)
-		{
-			((DWORD*)dst)[i] = (DWORD)pal[src[j * 16 + i]];
-		}
-
-		#endif
-	}
-}
-
-void GSLocalMemory::ExpandBlock8H(DWORD* src, DWORD* dst, int dstpitch, DWORD* pal)
-{
-	for(int j = 0; j < 8; j++, dst += dstpitch >> 2)
-	{
-		#if _M_SSE >= 0x400
-
-		GSVector4i* s = (GSVector4i*)src;
-		GSVector4i* d = (GSVector4i*)dst;
-
-		d[0] = (s[j * 2 + 0] >> 24).gather32_32<>(pal);
-		d[1] = (s[j * 2 + 1] >> 24).gather32_32<>(pal);
-
-		#else
-
-		for(int i = 0; i < 8; i++)
-		{
-			dst[i] = pal[src[j * 8 + i] >> 24];
-		}
-
-		#endif
-	}
-}
-
-void GSLocalMemory::ExpandBlock8H(DWORD* src, WORD* dst, int dstpitch, DWORD* pal)
-{
-	for(int j = 0; j < 8; j++, dst += dstpitch >> 1)
-	{
-		#if _M_SSE >= 0x400
-
-		GSVector4i* s = (GSVector4i*)src;
-		GSVector4i* d = (GSVector4i*)dst;
-
-		GSVector4i v0 = (s[j * 2 + 0] >> 24).gather32_32<>(pal);
-		GSVector4i v1 = (s[j * 2 + 1] >> 24).gather32_32<>(pal);
-
-		d[0] = v0.pu32(v1);
-
-		#else
-
-		for(int i = 0; i < 8; i++)
-		{
-			dst[i] = (WORD)pal[src[j * 8 + i] >> 24];
-		}
-
-		#endif
-	}
-}
-
-void GSLocalMemory::ExpandBlock4HL(DWORD* src, DWORD* dst, int dstpitch, DWORD* pal)
-{
-	for(int j = 0; j < 8; j++, dst += dstpitch >> 2)
-	{
-		#if _M_SSE >= 0x400
-
-		GSVector4i* s = (GSVector4i*)src;
-		GSVector4i* d = (GSVector4i*)dst;
-
-		d[0] = ((s[j * 2 + 0] >> 24) & 0xf).gather32_32<>(pal);
-		d[1] = ((s[j * 2 + 1] >> 24) & 0xf).gather32_32<>(pal);
-
-		#else
-
-		for(int i = 0; i < 8; i++)
-		{
-			dst[i] = pal[(src[j * 8 + i] >> 24) & 0xf];
-		}
-
-		#endif
-	}
-}
-
-void GSLocalMemory::ExpandBlock4HL(DWORD* src, WORD* dst, int dstpitch, DWORD* pal)
-{
-	for(int j = 0; j < 8; j++, dst += dstpitch >> 2)
-	{
-		#if _M_SSE >= 0x400
-
-		GSVector4i* s = (GSVector4i*)src;
-		GSVector4i* d = (GSVector4i*)dst;
-
-		GSVector4i v0 = ((s[j * 2 + 0] >> 24) & 0xf).gather32_32<>(pal);
-		GSVector4i v1 = ((s[j * 2 + 1] >> 24) & 0xf).gather32_32<>(pal);
-
-		d[0] = v0.pu32(v1);
-
-		#else
-
-		for(int i = 0; i < 8; i++)
-		{
-			dst[i] = (WORD)pal[(src[j * 8 + i] >> 24) & 0xf];
-		}
-
-		#endif
-	}
-}
-
-void GSLocalMemory::ExpandBlock4HH(DWORD* src, DWORD* dst, int dstpitch, DWORD* pal)
-{
-	for(int j = 0; j < 8; j++, dst += dstpitch >> 2)
-	{
-		#if _M_SSE >= 0x400
-
-		GSVector4i* s = (GSVector4i*)src;
-		GSVector4i* d = (GSVector4i*)dst;
-
-		d[0] = (s[j * 2 + 0] >> 28).gather32_32<>(pal);
-		d[1] = (s[j * 2 + 1] >> 28).gather32_32<>(pal);
-
-		#else
-
-		for(int i = 0; i < 8; i++)
-		{
-			dst[i] = pal[src[j * 8 + i] >> 28];
-		}
-
-		#endif
-	}
-}
-
-void GSLocalMemory::ExpandBlock4HH(DWORD* src, WORD* dst, int dstpitch, DWORD* pal)
-{
-	for(int j = 0; j < 8; j++, dst += dstpitch >> 2)
-	{
-		#if _M_SSE >= 0x400
-
-		GSVector4i* s = (GSVector4i*)src;
-		GSVector4i* d = (GSVector4i*)dst;
-
-		GSVector4i v0 = (s[j * 2 + 0] >> 28).gather32_32<>(pal);
-		GSVector4i v1 = (s[j * 2 + 1] >> 28).gather32_32<>(pal);
-
-		d[0] = v0.pu32(v1);
-
-		#else
-
-		for(int i = 0; i < 8; i++)
-		{
-			dst[i] = (WORD)pal[src[j * 8 + i] >> 28];
-		}
-
-		#endif
-	}
-}
-
-//
-
-void GSLocalMemory::ReadAndExpandBlock8(BYTE* src, BYTE* dst, int dstpitch, DWORD* pal)
-{
-	#if _M_SSE >= 0x400
-
-	GSVector4i* s = (GSVector4i*)src;
-
-	GSVector4i v0, v1, v2, v3;
-
-	GSVector4i mask = s_rb8mask;
-
-	for(int i = 0; i < 2; i++)
-	{
-		v0 = s[i * 8 + 0].shuffle8(mask); 
-		v1 = s[i * 8 + 1].shuffle8(mask); 
-		v2 = s[i * 8 + 2].shuffle8(mask); 
-		v3 = s[i * 8 + 3].shuffle8(mask);
-
-		GSVector4i::sw16(v0, v1, v2, v3);
-		GSVector4i::sw32(v0, v1, v3, v2);
-
-		v0.gather32_8<>(pal, (GSVector4i*)dst);
-
-		dst += dstpitch;
-
-		v3.gather32_8<>(pal, (GSVector4i*)dst);
-
-		dst += dstpitch;
-
-		v1.gather32_8<>(pal, (GSVector4i*)dst);
-
-		dst += dstpitch;
-
-		v2.gather32_8<>(pal, (GSVector4i*)dst);
-
-		dst += dstpitch;
-
-		//
-
-		v2 = s[i * 8 + 4].shuffle8(mask); 
-		v3 = s[i * 8 + 5].shuffle8(mask); 
-		v0 = s[i * 8 + 6].shuffle8(mask); 
-		v1 = s[i * 8 + 7].shuffle8(mask);
-
-		GSVector4i::sw16(v0, v1, v2, v3);
-		GSVector4i::sw32(v0, v1, v3, v2);
-
-		v0.gather32_8<>(pal, (GSVector4i*)dst);
-
-		dst += dstpitch;
-
-		v3.gather32_8<>(pal, (GSVector4i*)dst);
-
-		dst += dstpitch;
-
-		v1.gather32_8<>(pal, (GSVector4i*)dst);
-
-		dst += dstpitch;
-
-		v2.gather32_8<>(pal, (GSVector4i*)dst);
-
-		dst += dstpitch;
-	}
-
-	#elif _M_SSE >= 0x200
-
-	__declspec(align(16)) BYTE block[16 * 16];
-
-	ReadBlock8(src, (BYTE*)block, sizeof(block) / 16);
-
-	ExpandBlock8(block, (DWORD*)dst, dstpitch, pal);
-
-	#else
-
-	const DWORD* s = &columnTable8[0][0];
-
-	for(int j = 0; j < 16; j++, s += 16, dst += dstpitch)
-	{
-		for(int i = 0; i < 16; i++)
-		{
-			((DWORD*)dst)[i] = pal[src[s[i]]];
-		}
-	}
-
-	#endif
-}
-
-void GSLocalMemory::ReadAndExpandBlock4(BYTE* src, BYTE* dst, int dstpitch, UINT64* pal)
-{
-	#if 0// _M_SSE >= 0x400
-
-	// TODO
-
-	#elif _M_SSE >= 0x200
-
-	__declspec(align(16)) BYTE block[(32 / 2) * 16];
-
-	ReadBlock4(src, (BYTE*)block, sizeof(block) / 16);
-
-	ExpandBlock4(block, (DWORD*)dst, dstpitch, pal);
-
-	#else
-
-	const DWORD* s = &columnTable4[0][0];
-
-	for(int j = 0; j < 16; j++, s += 32, dst += dstpitch)
-	{
-		for(int i = 0; i < 16; i++)
-		{
-			DWORD a0 = s[i * 2 + 0];
-			DWORD a1 = s[i * 2 + 1];
-
-			BYTE c0 = (src[a0 >> 1] >> ((a0 & 1) << 2)) & 0x0f;
-			BYTE c1 = (src[a1 >> 1] >> ((a1 & 1) << 2)) & 0x0f;
-
-			((UINT64*)dst)[i] = pal[(c1 << 4) | c0];
-		}
-	}
-
-	#endif
-}
-
-void GSLocalMemory::ReadAndExpandBlock8H(BYTE* src, BYTE* dst, int dstpitch, DWORD* pal)
-{
-	#if _M_SSE >= 0x400
-
-	GSVector4i* s = (GSVector4i*)src;
-
-	GSVector4i v0, v1, v2, v3;
-
-	for(int i = 0; i < 4; i++)
-	{
-		v0 = s[i * 4 + 0]; 
-		v1 = s[i * 4 + 1]; 
-		v2 = s[i * 4 + 2]; 
-		v3 = s[i * 4 + 3];
-
-		GSVector4i::sw64(v0, v1, v2, v3);
-
-		*(GSVector4i*)&dst[ 0] = (v0 >> 24).gather32_32<>(pal);
-		*(GSVector4i*)&dst[16] = (v1 >> 24).gather32_32<>(pal);
-	
-		dst += dstpitch;
-
-		*(GSVector4i*)&dst[ 0] = (v2 >> 24).gather32_32<>(pal);
-		*(GSVector4i*)&dst[16] = (v3 >> 24).gather32_32<>(pal);
-
-		dst += dstpitch;
-	}
-
-	#elif _M_SSE >= 0x200
-
-	__declspec(align(16)) DWORD block[8 * 8];
-
-	ReadBlock32(src, (BYTE*)block, sizeof(block) / 8);
-
-	ExpandBlock8H(block, (DWORD*)dst, dstpitch, pal);
-
-	#else
-
-	const DWORD* s = &columnTable32[0][0];
-
-	for(int j = 0; j < 8; j++, s += 8, dst += dstpitch)
-	{
-		for(int i = 0; i < 8; i++)
-		{
-			((DWORD*)dst)[i] = pal[((DWORD*)src)[s[i]] >> 24];
-		}
-	}
-
-	#endif
-}
-
-void GSLocalMemory::ReadAndExpandBlock4HL(BYTE* src, BYTE* dst, int dstpitch, DWORD* pal)
-{
-	#if _M_SSE >= 0x400
-
-	GSVector4i* s = (GSVector4i*)src;
-
-	GSVector4i v0, v1, v2, v3;
-
-	for(int i = 0; i < 4; i++)
-	{
-		v0 = s[i * 4 + 0]; 
-		v1 = s[i * 4 + 1]; 
-		v2 = s[i * 4 + 2]; 
-		v3 = s[i * 4 + 3];
-
-		GSVector4i::sw64(v0, v1, v2, v3);
-
-		*(GSVector4i*)&dst[ 0] = ((v0 >> 24) & 0xf).gather32_32<>(pal);
-		*(GSVector4i*)&dst[16] = ((v1 >> 24) & 0xf).gather32_32<>(pal);
-	
-		dst += dstpitch;
-
-		*(GSVector4i*)&dst[ 0] = ((v2 >> 24) & 0xf).gather32_32<>(pal);
-		*(GSVector4i*)&dst[16] = ((v3 >> 24) & 0xf).gather32_32<>(pal);
-
-		dst += dstpitch;
-	}
-
-	#elif _M_SSE >= 0x200
-
-	__declspec(align(16)) DWORD block[8 * 8];
-
-	ReadBlock32(src, (BYTE*)block, sizeof(block) / 8);
-
-	ExpandBlock4HL(block, (DWORD*)dst, dstpitch, pal);
-
-	#else
-
-	const DWORD* s = &columnTable32[0][0];
-
-	for(int j = 0; j < 8; j++, s += 8, dst += dstpitch)
-	{
-		for(int i = 0; i < 8; i++)
-		{
-			((DWORD*)dst)[i] = pal[(((DWORD*)src)[s[i]] >> 24) & 0xf];
-		}
-	}
-
-	#endif
-}
-
-void GSLocalMemory::ReadAndExpandBlock4HH(BYTE* src, BYTE* dst, int dstpitch, DWORD* pal)
-{
-	#if _M_SSE >= 0x400
-
-	GSVector4i* s = (GSVector4i*)src;
-
-	GSVector4i v0, v1, v2, v3;
-
-	for(int i = 0; i < 4; i++)
-	{
-		v0 = s[i * 4 + 0]; 
-		v1 = s[i * 4 + 1]; 
-		v2 = s[i * 4 + 2]; 
-		v3 = s[i * 4 + 3];
-
-		GSVector4i::sw64(v0, v1, v2, v3);
-
-		*(GSVector4i*)&dst[ 0] = (v0 >> 28).gather32_32<>(pal);
-		*(GSVector4i*)&dst[16] = (v1 >> 28).gather32_32<>(pal);
-	
-		dst += dstpitch;
-
-		*(GSVector4i*)&dst[ 0] = (v2 >> 28).gather32_32<>(pal);
-		*(GSVector4i*)&dst[16] = (v3 >> 28).gather32_32<>(pal);
-
-		dst += dstpitch;
-	}
-
-	#elif _M_SSE >= 0x200
-
-	__declspec(align(16)) DWORD block[8 * 8];
-
-	ReadBlock32(src, (BYTE*)block, sizeof(block) / 8);
-
-	ExpandBlock4HH(block, (DWORD*)dst, dstpitch, pal);
-
-	#else
-
-	const DWORD* s = &columnTable32[0][0];
-
-	for(int j = 0; j < 8; j++, s += 8, dst += dstpitch)
-	{
-		for(int i = 0; i < 8; i++)
-		{
-			((DWORD*)dst)[i] = pal[((DWORD*)src)[s[i]] >> 28];
-		}
-	}
-
-	#endif
-}
 
 void GSLocalMemory::Expand16(WORD* src, DWORD* dst, int w, GIFRegTEXA* TEXA)
 {

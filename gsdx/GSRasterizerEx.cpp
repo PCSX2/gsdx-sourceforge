@@ -933,7 +933,6 @@ void GSRasterizer::InitEx()
 	m_dsmap[0x44504488] = &GSRasterizer::DrawScanlineEx<0x44504488>;
 	m_dsmap[0x46507808] = &GSRasterizer::DrawScanlineEx<0x46507808>;
 	m_dsmap[0x48507848] = &GSRasterizer::DrawScanlineEx<0x48507848>;
-
 /*
 	CAtlMap<DWORD, bool> dsmap;
 
@@ -997,8 +996,8 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 
 	ScanlineEnvironment* slenv = m_slenv;
 
-	int fpsm = GSLocalMemory::DecodeFPSM(((sel >> 0) & 7));
-	int zpsm = GSLocalMemory::DecodeZPSM(((sel >> 3) & 3));
+	int fpsm = GSUtil::DecodeFPSM(((sel >> 0) & 7));
+	int zpsm = GSUtil::DecodeZPSM(((sel >> 3) & 3));
 
 	GSVector4i fa_base = m_fbco->addr[top];
 	GSVector4i* fa_offset = (GSVector4i*)&slenv->fo[top & 7][left];

@@ -29,6 +29,11 @@ GSRendererHW10::GSRendererHW10(BYTE* base, bool mt, void (*irq)(), int nloophack
 	: GSRendererHW<GSDevice10, GSVertexHW10>(base, mt, irq, nloophack, rs, true)
 {
 	m_tc = new GSTextureCache10(this);
+
+	for(int i = 0; i < countof(m_fpDrawingKickHandlers); i++)
+	{
+		m_fpDrawingKickHandlers[i] = (DrawingKickHandler)&GSRendererHW10::DrawingKick;
+	}
 }
 
 bool GSRendererHW10::Create(LPCTSTR title)
@@ -117,66 +122,13 @@ void GSRendererHW10::VertexKick(bool skip)
 	__super::VertexKick(skip);
 }
 
-void GSRendererHW10::DrawingKick(bool skip)
+void GSRendererHW10::DrawingKick(GSVertexHW10* v, int& count)
 {
-	GSVertexHW10* v = &m_vertices[m_count];
-	int nv = 0;
-
-	switch(PRIM->PRIM)
-	{
-	case GS_POINTLIST:
-		m_vl.RemoveAt(0, v[0]);
-		nv = 1;
-		break;
-	case GS_LINELIST:
-		m_vl.RemoveAt(0, v[0]);
-		m_vl.RemoveAt(0, v[1]);
-		nv = 2;
-		break;
-	case GS_LINESTRIP:
-		m_vl.RemoveAt(0, v[0]);
-		m_vl.GetAt(0, v[1]);
-		nv = 2;
-		break;
-	case GS_TRIANGLELIST:
-		m_vl.RemoveAt(0, v[0]);
-		m_vl.RemoveAt(0, v[1]);
-		m_vl.RemoveAt(0, v[2]);
-		nv = 3;
-		break;
-	case GS_TRIANGLESTRIP:
-		m_vl.RemoveAt(0, v[0]);
-		m_vl.GetAt(0, v[1]);
-		m_vl.GetAt(1, v[2]);
-		nv = 3;
-		break;
-	case GS_TRIANGLEFAN:
-		m_vl.GetAt(0, v[0]);
-		m_vl.RemoveAt(1, v[1]);
-		m_vl.GetAt(1, v[2]);
-		nv = 3;
-		break;
-	case GS_SPRITE:
-		m_vl.RemoveAt(0, v[0]);
-		m_vl.RemoveAt(0, v[1]);
-		nv = 2;
-		break;
-	default:
-		m_vl.RemoveAll();
-		ASSERT(0);
-		return;
-	}
-
-	if(skip)
-	{
-		return;
-	}
-
 	// TODO
 
 	GSVector4i scissor = m_context->scissor->dx10;
 
-	switch(nv)
+	switch(count)
 	{
 	case 1:
 		if(v[0].p.x < scissor.x
@@ -202,8 +154,6 @@ void GSRendererHW10::DrawingKick(bool skip)
 	default:
 		__assume(0);
 	}
-
-	m_count += nv;
 
 	// costs a few fps, but fixes RR's shadows (or anything which paints overlapping shapes with date)
 /*
@@ -391,7 +341,7 @@ if(s_dump)
 	GSTextureFX10::GSSelector gs_sel;
 
 	gs_sel.iip = PRIM->IIP;
-	gs_sel.prim = GetPrimClass(prim);
+	gs_sel.prim = GSUtil::GetPrimClass(prim);
 
 	// ps
 

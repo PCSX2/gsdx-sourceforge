@@ -26,8 +26,9 @@
 #include "GS.h"
 #include "GSTables.h"
 #include "GSVector.h"
+#include "GSBlock.h"
 
-class GSLocalMemory
+class GSLocalMemory : public GSBlock
 {
 public:
 	typedef DWORD (*pixelAddress)(int x, int y, DWORD bp, DWORD bw);
@@ -67,6 +68,10 @@ public:
 
 	static psm_t m_psm[64];
 
+	static const int m_vmsize = 1024 * 1024 * 4;
+
+	union {BYTE* m_vm8; WORD* m_vm16; DWORD* m_vm32;};
+
 protected:
 	static DWORD pageOffset32[32][32][64];
 	static DWORD pageOffset32Z[32][32][64];
@@ -86,8 +91,6 @@ protected:
 	static int rowOffset8[2][2048];
 	static int rowOffset4[2][2048];
 
-	union {BYTE* m_vm8; WORD* m_vm16; DWORD* m_vm32;};
-
 	DWORD m_CBP[2];
 	WORD* m_pCLUT;
 	DWORD* m_pCLUT32;
@@ -96,59 +99,6 @@ protected:
 	GIFRegTEX0 m_prevTEX0;
 	GIFRegTEXCLUT m_prevTEXCLUT;
 	bool m_fCLUTMayBeDirty;
-
-	__forceinline static void ReadBlock32(BYTE* src, BYTE* dst, int dstpitch);
-	__forceinline static void ReadBlock16(BYTE* src, BYTE* dst, int dstpitch);
-	__forceinline static void ReadBlock8(BYTE* src, BYTE* dst, int dstpitch);
-	__forceinline static void ReadBlock4(BYTE* src, BYTE* dst, int dstpitch);
-	__forceinline static void WriteBlock32(BYTE* dst, BYTE* src, int srcpitch);
-	__forceinline static void WriteBlock32(BYTE* dst, BYTE* src, int srcpitch, DWORD mask);
-	__forceinline static void WriteBlock32u(BYTE* dst, BYTE* src, int srcpitch);
-	__forceinline static void WriteBlock32u(BYTE* dst, BYTE* src, int srcpitch, DWORD mask);
-	__forceinline static void WriteBlock16(BYTE* dst, BYTE* src, int srcpitch);
-	__forceinline static void WriteBlock16u(BYTE* dst, BYTE* src, int srcpitch);
-	__forceinline static void WriteBlock8(BYTE* dst, BYTE* src, int srcpitch);
-	__forceinline static void WriteBlock8u(BYTE* dst, BYTE* src, int srcpitch);
-	__forceinline static void WriteBlock4(BYTE* dst, BYTE* src, int srcpitch);
-	__forceinline static void WriteBlock4u(BYTE* dst, BYTE* src, int srcpitch);
-	__forceinline static void WriteColumn32(int y, BYTE* dst, BYTE* src, int srcpitch);
-	__forceinline static void WriteColumn32(int y, BYTE* dst, BYTE* src, int srcpitch, DWORD mask);
-	__forceinline static void WriteColumn16(int y, BYTE* dst, BYTE* src, int srcpitch);
-	__forceinline static void WriteColumn8(int y, BYTE* dst, BYTE* src, int srcpitch);
-	__forceinline static void WriteColumn4(int y, BYTE* dst, BYTE* src, int srcpitch);
-
-	static void WriteCLUT_T32_I8_CSM1(DWORD* vm, WORD* clut);
-	static void WriteCLUT_T32_I4_CSM1(DWORD* vm, WORD* clut);
-	static void WriteCLUT_T16_I8_CSM1(WORD* vm, WORD* clut);
-	static void WriteCLUT_T16_I4_CSM1(WORD* vm, WORD* clut);
-	static void ReadCLUT32_T32_I8(WORD* src, DWORD* dst);
-	static void ReadCLUT32_T32_I4(WORD* src, DWORD* dst);
-	static void ReadCLUT32_T16_I8(WORD* src, DWORD* dst);
-	static void ReadCLUT32_T16_I4(WORD* src, DWORD* dst);
-
-	static void ExpandBlock24(BYTE* src, int srcpitch, DWORD* dst);
-	static void ExpandBlock8H(BYTE* src, int srcpitch, DWORD* dst);
-	static void ExpandBlock4HL(BYTE* src, int srcpitch, DWORD* dst);
-	static void ExpandBlock4HH(BYTE* src, int srcpitch, DWORD* dst);
-
-	__forceinline static void ExpandBlock24(DWORD* src, DWORD* dst, int dstpitch, GIFRegTEXA* TEXA);
-	__forceinline static void ExpandBlock16(WORD* src, DWORD* dst, int dstpitch, GIFRegTEXA* TEXA);
-	__forceinline static void ExpandBlock8(BYTE* src, DWORD* dst, int dstpitch, DWORD* pal);
-	__forceinline static void ExpandBlock8(BYTE* src, WORD* dst, int dstpitch, DWORD* pal);
-	__forceinline static void ExpandBlock4(BYTE* src, DWORD* dst, int dstpitch, UINT64* pal);
-	__forceinline static void ExpandBlock4(BYTE* src, WORD* dst, int dstpitch, UINT64* pal);
-	__forceinline static void ExpandBlock8H(DWORD* src, DWORD* dst, int dstpitch, DWORD* pal);
-	__forceinline static void ExpandBlock8H(DWORD* src, WORD* dst, int dstpitch, DWORD* pal);
-	__forceinline static void ExpandBlock4HL(DWORD* src, DWORD* dst, int dstpitch, DWORD* pal);
-	__forceinline static void ExpandBlock4HL(DWORD* src, WORD* dst, int dstpitch, DWORD* pal);
-	__forceinline static void ExpandBlock4HH(DWORD* src, DWORD* dst, int dstpitch, DWORD* pal);
-	__forceinline static void ExpandBlock4HH(DWORD* src, WORD* dst, int dstpitch, DWORD* pal);
-
-	__forceinline static void ReadAndExpandBlock8(BYTE* src, BYTE* dst, int dstpitch, DWORD* pal);
-	__forceinline static void ReadAndExpandBlock4(BYTE* src, BYTE* dst, int dstpitch, UINT64* pal);
-	__forceinline static void ReadAndExpandBlock8H(BYTE* src, BYTE* dst, int dstpitch, DWORD* pal);
-	__forceinline static void ReadAndExpandBlock4HL(BYTE* src, BYTE* dst, int dstpitch, DWORD* pal);
-	__forceinline static void ReadAndExpandBlock4HH(BYTE* src, BYTE* dst, int dstpitch, DWORD* pal);
 
 	static void Expand16(WORD* src, DWORD* dst, int w, GIFRegTEXA* TEXA);
 
@@ -165,73 +115,6 @@ protected:
 public:
 	GSLocalMemory();
 	virtual ~GSLocalMemory();
-
-	BYTE* GetVM() 
-	{
-		return m_vm8;
-	}
-
-	//
-
-	static int EncodeFPSM(int psm)
-	{
-		switch(psm)
-		{
-		case PSM_PSMCT32: return 0;
-		case PSM_PSMCT24: return 1;
-		case PSM_PSMCT16: return 2;
-		case PSM_PSMCT16S: return 3;
-		case PSM_PSMZ32: return 4;
-		case PSM_PSMZ24: return 5;
-		case PSM_PSMZ16: return 6;
-		case PSM_PSMZ16S: return 7;
-		}
-
-		return -1;
-	}
-
-	static int DecodeFPSM(int index)
-	{
-		switch(index)
-		{
-		case 0: return PSM_PSMCT32;
-		case 1: return PSM_PSMCT24;
-		case 2: return PSM_PSMCT16;
-		case 3: return PSM_PSMCT16S;
-		case 4: return PSM_PSMZ32;
-		case 5: return PSM_PSMZ24;
-		case 6: return PSM_PSMZ16;
-		case 7: return PSM_PSMZ16S;
-		}
-
-		return -1;
-	}
-
-	static int EncodeZPSM(int psm)
-	{
-		switch(psm)
-		{
-		case PSM_PSMZ32: return 0;
-		case PSM_PSMZ24: return 1;
-		case PSM_PSMZ16: return 2;
-		case PSM_PSMZ16S: return 3;
-		}
-
-		return -1;
-	}
-
-	static int DecodeZPSM(int index)
-	{
-		switch(index)
-		{
-		case 0: return PSM_PSMZ32;
-		case 1: return PSM_PSMZ24;
-		case 2: return PSM_PSMZ16;
-		case 3: return PSM_PSMZ16S;
-		}
-
-		return -1;
-	}
 
 	// address
 
@@ -991,13 +874,13 @@ public:
 	{
 		GSVector4i c, r, g, b, a;
 
-		// sse4 is slower because when we call this function addr is already in a temp memory location and not in a sse reg (ReadZBufX is the opposite)
+		// TODO
 
 		switch(PSM)
 		{
 		case PSM_PSMCT32: 
 		case PSM_PSMZ32: 
-			#if 0//_M_SSE >= 0x400
+			#if _M_SSE >= 0x400
 			c = addr.gather32_32(m_vm32);
 			#else
 			c = GSVector4i(
@@ -1009,7 +892,7 @@ public:
 			break;
 		case PSM_PSMCT24: 
 		case PSM_PSMZ24: 
-			#if 0//_M_SSE >= 0x400
+			#if _M_SSE >= 0x400
 			c = addr.gather32_32(m_vm32);
 			#else
 			c = GSVector4i(
@@ -1024,7 +907,7 @@ public:
 		case PSM_PSMCT16S: 
 		case PSM_PSMZ16: 
 		case PSM_PSMZ16S: 
-			#if 0//_M_SSE >= 0x400
+			#if _M_SSE >= 0x400
 			c = addr.gather32_32(m_vm16);
 			#else
 			c = GSVector4i(

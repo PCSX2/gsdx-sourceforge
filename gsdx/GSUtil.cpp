@@ -21,26 +21,17 @@
 
 #include "stdafx.h"
 #include "GS.h"
+#include "GSUtil.h"
 
 static struct GSUtilMaps
 {
 	int PrimClassField[8];
+	int PrimVertexCount[8];
 	bool CompatibleBitsField[64][64];
 	bool SharedBitsField[64][64];
 
 	struct GSUtilMaps()
 	{
-		memset(PrimClassField, -1, sizeof(PrimClassField));
-
-		PrimClassField[GS_POINTLIST] = 0;
-		PrimClassField[GS_LINELIST] = 1;
-		PrimClassField[GS_LINESTRIP] = 1;
-		PrimClassField[GS_TRIANGLELIST] = 2;
-		PrimClassField[GS_TRIANGLESTRIP] = 2;
-		PrimClassField[GS_TRIANGLEFAN] = 2;
-		PrimClassField[GS_SPRITE] = 3;
-		PrimClassField[GS_INVALID] = -1;
-
 		memset(CompatibleBitsField, 0, sizeof(CompatibleBitsField));
 
 		CompatibleBitsField[PSM_PSMCT32][PSM_PSMCT24] = true;
@@ -72,41 +63,38 @@ static struct GSUtilMaps
 
 } s_maps;
 
-bool HasSharedBits(DWORD spsm, DWORD dpsm)
+bool GSUtil::HasSharedBits(DWORD spsm, DWORD dpsm)
 {
 	return s_maps.SharedBitsField[spsm][dpsm];
 }
 
-bool HasSharedBits(DWORD sbp, DWORD spsm, DWORD dbp, DWORD dpsm)
+bool GSUtil::HasSharedBits(DWORD sbp, DWORD spsm, DWORD dbp, DWORD dpsm)
 {
 	if(sbp != dbp) return false;
 
 	return HasSharedBits(spsm, dpsm);
 }
 
-bool HasCompatibleBits(DWORD spsm, DWORD dpsm)
+bool GSUtil::HasCompatibleBits(DWORD spsm, DWORD dpsm)
 {
 	if(spsm == dpsm) return true;
 
 	return s_maps.CompatibleBitsField[spsm][dpsm];
 }
 
-int GetPrimClass(DWORD prim)
-{
-	return s_maps.PrimClassField[prim];
-}
-
-bool IsRectInRect(const CRect& inner, const CRect& outer)
+bool GSUtil::IsRectInRect(const CRect& inner, const CRect& outer)
 {
 	return outer.left <= inner.left && inner.right <= outer.right && outer.top <= inner.top && inner.bottom <= outer.bottom;
 }
 
-bool IsRectInRectH(const CRect& inner, const CRect& outer)
+bool GSUtil::IsRectInRectH(const CRect& inner, const CRect& outer)
 {
 	return outer.top <= inner.top && inner.bottom <= outer.bottom;
 }
 
-bool IsRectInRectV(const CRect& inner, const CRect& outer)
+bool GSUtil::IsRectInRectV(const CRect& inner, const CRect& outer)
 {
 	return outer.left <= inner.left && inner.right <= outer.right;
 }
+
+

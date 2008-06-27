@@ -147,18 +147,18 @@ public:
 
 			m_renderer->MinMaxUV(w, h, r);
 
-			if(IsRectInRect(r, m_valid))
+			if(GSUtil::IsRectInRect(r, m_valid))
 			{
 				return false;
 			}
-			else if(IsRectInRectH(r, m_valid) && (r.left >= m_valid.left || r.right <= m_valid.right))
+			else if(GSUtil::IsRectInRectH(r, m_valid) && (r.left >= m_valid.left || r.right <= m_valid.right))
 			{
 				r.top = m_valid.top;
 				r.bottom = m_valid.bottom;
 				if(r.left < m_valid.left) r.right = m_valid.left;
 				else r.left = m_valid.right; // if(r.right > m_valid.right)
 			}
-			else if(IsRectInRectV(r, m_valid) && (r.top >= m_valid.top || r.bottom <= m_valid.bottom))
+			else if(GSUtil::IsRectInRectV(r, m_valid) && (r.top >= m_valid.top || r.bottom <= m_valid.bottom))
 			{
 				r.left = m_valid.left;
 				r.right = m_valid.right;
@@ -253,7 +253,7 @@ public:
 
 			GSTexture* t = m_tex.GetNext(pos);
 
-			if(HasSharedBits(TEX0.TBP0, TEX0.PSM, t->m_TEX0.TBP0, t->m_TEX0.PSM))
+			if(GSUtil::HasSharedBits(TEX0.TBP0, TEX0.PSM, t->m_TEX0.TBP0, t->m_TEX0.PSM))
 			{
 				m_tex.RemoveAt(cur);
 
@@ -355,7 +355,7 @@ public:
 
 			GSTexture* t = m_tex.GetNext(pos);
 
-			if(HasSharedBits(TEX0.TBP0, TEX0.PSM, t->m_TEX0.TBP0, t->m_TEX0.PSM))
+			if(GSUtil::HasSharedBits(TEX0.TBP0, TEX0.PSM, t->m_TEX0.TBP0, t->m_TEX0.PSM))
 			{
 				m_tex.RemoveAt(cur);
 
@@ -481,7 +481,7 @@ public:
 		{
 			t = m_tex.GetAt(pos);
 
-			if(HasSharedBits(t->m_TEX0.TBP0, t->m_TEX0.PSM, TEX0.TBP0, TEX0.PSM))
+			if(GSUtil::HasSharedBits(t->m_TEX0.TBP0, t->m_TEX0.PSM, TEX0.TBP0, TEX0.PSM))
 			{
 				if(TEX0.PSM == t->m_TEX0.PSM && TEX0.TBW == t->m_TEX0.TBW
 				&& TEX0.TW == t->m_TEX0.TW && TEX0.TH == t->m_TEX0.TH
@@ -503,7 +503,7 @@ public:
 			{
 				GSRenderTarget* rt = m_rt.GetAt(pos);
 
-				if(rt->m_dirty.IsEmpty() && HasSharedBits(rt->m_TEX0.TBP0, rt->m_TEX0.PSM, TEX0.TBP0, TEX0.PSM))
+				if(rt->m_dirty.IsEmpty() && GSUtil::HasSharedBits(rt->m_TEX0.TBP0, rt->m_TEX0.PSM, TEX0.TBP0, TEX0.PSM))
 				{
 					t = CreateTexture();
 
@@ -527,7 +527,7 @@ public:
 			{
 				GSDepthStencil* ds = m_ds.GetAt(pos);
 
-				if(ds->m_dirty.IsEmpty() && ds->m_used && HasSharedBits(ds->m_TEX0.TBP0, ds->m_TEX0.PSM, TEX0.TBP0, TEX0.PSM))
+				if(ds->m_dirty.IsEmpty() && ds->m_used && GSUtil::HasSharedBits(ds->m_TEX0.TBP0, ds->m_TEX0.PSM, TEX0.TBP0, TEX0.PSM))
 				{
 					t = CreateTexture();
 
@@ -604,7 +604,7 @@ public:
 
 			GSTexture* t = m_tex.GetNext(pos);
 
-			if(HasSharedBits(BITBLTBUF.DBP, BITBLTBUF.DPSM, t->m_TEX0.TBP0, t->m_TEX0.PSM))
+			if(GSUtil::HasSharedBits(BITBLTBUF.DBP, BITBLTBUF.DPSM, t->m_TEX0.TBP0, t->m_TEX0.PSM))
 			{
 				if(BITBLTBUF.DBW == t->m_TEX0.TBW && !t->m_rendered)
 				{
@@ -619,7 +619,7 @@ public:
 					delete t;
 				}
 			}
-			else if(HasCompatibleBits(BITBLTBUF.DPSM, t->m_TEX0.PSM))
+			else if(GSUtil::HasCompatibleBits(BITBLTBUF.DPSM, t->m_TEX0.PSM))
 			{
 				if(BITBLTBUF.DBW == t->m_TEX0.TBW && !t->m_rendered)
 				{
@@ -652,9 +652,9 @@ public:
 
 			GSRenderTarget* rt = m_rt.GetNext(pos);
 
-			if(HasSharedBits(BITBLTBUF.DBP, BITBLTBUF.DPSM, rt->m_TEX0.TBP0, rt->m_TEX0.PSM))
+			if(GSUtil::HasSharedBits(BITBLTBUF.DBP, BITBLTBUF.DPSM, rt->m_TEX0.TBP0, rt->m_TEX0.PSM))
 			{
-				if(!found && HasCompatibleBits(BITBLTBUF.DPSM, rt->m_TEX0.PSM))
+				if(!found && GSUtil::HasCompatibleBits(BITBLTBUF.DPSM, rt->m_TEX0.PSM))
 				{
 					rt->m_dirty.AddTail(GSDirtyRect(BITBLTBUF.DPSM, r));
 					rt->m_TEX0.TBW = BITBLTBUF.DBW;
@@ -667,7 +667,7 @@ public:
 				}
 			}
 
-			if(HasSharedBits(BITBLTBUF.DPSM, rt->m_TEX0.PSM) && BITBLTBUF.DBP < rt->m_TEX0.TBP0)
+			if(GSUtil::HasSharedBits(BITBLTBUF.DPSM, rt->m_TEX0.PSM) && BITBLTBUF.DBP < rt->m_TEX0.TBP0)
 			{
 				DWORD rowsize = BITBLTBUF.DBW * 8192;
 				DWORD offset = (DWORD)((rt->m_TEX0.TBP0 - BITBLTBUF.DBP) * 256);
@@ -697,9 +697,9 @@ public:
 
 			GSDepthStencil* ds = m_ds.GetNext(pos);
 
-			if(HasSharedBits(BITBLTBUF.DBP, BITBLTBUF.DPSM, ds->m_TEX0.TBP0, ds->m_TEX0.PSM))
+			if(GSUtil::HasSharedBits(BITBLTBUF.DBP, BITBLTBUF.DPSM, ds->m_TEX0.TBP0, ds->m_TEX0.PSM))
 			{
-				if(!found && HasCompatibleBits(BITBLTBUF.DPSM, ds->m_TEX0.PSM))
+				if(!found && GSUtil::HasCompatibleBits(BITBLTBUF.DPSM, ds->m_TEX0.PSM))
 				{
 					ds->m_dirty.AddTail(GSDirtyRect(BITBLTBUF.DPSM, r));
 					ds->m_TEX0.TBW = BITBLTBUF.DBW;
@@ -712,7 +712,7 @@ public:
 				}
 			}
 
-			if(HasSharedBits(BITBLTBUF.DPSM, ds->m_TEX0.PSM) && BITBLTBUF.DBP < ds->m_TEX0.TBP0)
+			if(GSUtil::HasSharedBits(BITBLTBUF.DPSM, ds->m_TEX0.PSM) && BITBLTBUF.DBP < ds->m_TEX0.TBP0)
 			{
 				DWORD rowsize = BITBLTBUF.DBW * 8192;
 				DWORD offset = (DWORD)((ds->m_TEX0.TBP0 - BITBLTBUF.DBP) * 256);
@@ -744,12 +744,17 @@ public:
 
 			GSRenderTarget* rt = m_rt.GetNext(pos);
 
-			if(HasSharedBits(BITBLTBUF.SBP, BITBLTBUF.SPSM, rt->m_TEX0.TBP0, rt->m_TEX0.PSM))
+			if(GSUtil::HasSharedBits(BITBLTBUF.SBP, BITBLTBUF.SPSM, rt->m_TEX0.TBP0, rt->m_TEX0.PSM))
 			{
-				if(HasCompatibleBits(BITBLTBUF.SPSM, rt->m_TEX0.PSM))
+				if(GSUtil::HasCompatibleBits(BITBLTBUF.SPSM, rt->m_TEX0.PSM))
 				{
 					rt->Read(r);
 					return;
+				}
+				// ffx-2 riku changing to her default (shoots some reflecting glass at the end), 16-bit rt read as 32-bit
+				else if(BITBLTBUF.SPSM == PSM_PSMCT32 && (rt->m_TEX0.PSM == PSM_PSMCT16 || rt->m_TEX0.PSM == PSM_PSMCT16S)) 
+				{
+					rt->Read(CRect(r.left, r.top, r.right, r.top + (r.bottom - r.top) * 2));
 				}
 				else
 				{

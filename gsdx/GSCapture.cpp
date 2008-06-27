@@ -49,7 +49,6 @@ GSSource : public CBaseFilter, private CCritSec, public IGSSource
 	CSize m_size;
 	REFERENCE_TIME m_atpf;
 	REFERENCE_TIME m_now;
-	CAutoPtr<CBaseOutputPin> m_output;
 
 	STDMETHODIMP NonDelegatingQueryInterface(REFIID riid, void** ppv)
 	{
@@ -60,13 +59,54 @@ GSSource : public CBaseFilter, private CCritSec, public IGSSource
 
 	class GSSourceOutputPin : public CBaseOutputPin
 	{
-		CMediaType m_mt;
+		CSize m_size;
+		CAtlArray<CMediaType> m_mts;
 
 	public:
-		GSSourceOutputPin(CMediaType& mt, CBaseFilter* pFilter, CCritSec* pLock, HRESULT& hr)
+		GSSourceOutputPin(CSize size, REFERENCE_TIME atpf, CBaseFilter* pFilter, CCritSec* pLock, HRESULT& hr)
 			: CBaseOutputPin("GSSourceOutputPin", pFilter, pLock, &hr, L"Output")
-			, m_mt(mt)
+			, m_size(size)
 		{
+			CMediaType mt;
+			mt.majortype = MEDIATYPE_Video;
+			mt.formattype = FORMAT_VideoInfo;
+
+			VIDEOINFOHEADER vih;
+			memset(&vih, 0, sizeof(vih));
+			vih.AvgTimePerFrame = atpf;
+			vih.bmiHeader.biSize = sizeof(vih.bmiHeader);
+			vih.bmiHeader.biWidth = m_size.cx;
+			vih.bmiHeader.biHeight = m_size.cy;
+
+			#if _M_SSE >= 0x400
+
+			// YUY2
+
+			mt.subtype = MEDIASUBTYPE_YUY2;
+			mt.lSampleSize = m_size.cx * m_size.cy * 2;
+
+			vih.bmiHeader.biCompression = '2YUY';
+			vih.bmiHeader.biPlanes = 1;
+			vih.bmiHeader.biBitCount = 16;
+			vih.bmiHeader.biSizeImage = m_size.cx * m_size.cy * 2;
+			mt.SetFormat((BYTE*)&vih, sizeof(vih));
+
+			m_mts.Add(mt);
+
+			#endif
+
+			// RGB32
+
+			mt.subtype = MEDIASUBTYPE_RGB32;
+			mt.lSampleSize = m_size.cx * m_size.cy * 4;
+
+			vih.bmiHeader.biCompression = BI_RGB;
+			vih.bmiHeader.biPlanes = 1;
+			vih.bmiHeader.biBitCount = 32;
+			vih.bmiHeader.biSizeImage = m_size.cx * m_size.cy * 4;
+			mt.SetFormat((BYTE*)&vih, sizeof(vih));
+
+			m_mts.Add(mt);
 		}
 
 		HRESULT GSSourceOutputPin::DecideBufferSize(IMemAllocator* pAlloc, ALLOCATOR_PROPERTIES* pProperties)
@@ -97,15 +137,26 @@ GSSource : public CBaseFilter, private CCritSec, public IGSSource
 
 	    HRESULT CheckMediaType(const CMediaType* pmt)
 		{
-			return pmt->majortype == MEDIATYPE_Video && pmt->subtype == MEDIASUBTYPE_RGB32 ? S_OK : E_FAIL;
+			for(int i = 0, j = m_mts.GetCount(); i < j; i++)
+			{
+				if(m_mts[i].majortype == pmt->majortype && m_mts[i].subtype == pmt->subtype)
+				{
+					return S_OK;
+				}
+			}
+
+			return E_FAIL;
 		}
 
-	    HRESULT GetMediaType(int iPosition, CMediaType* pmt)
+	    HRESULT GetMediaType(int i, CMediaType* pmt)
 		{
 			CheckPointer(pmt, E_POINTER);
-			if(iPosition < 0) return E_INVALIDARG;
-			if(iPosition > 0) return VFW_S_NO_MORE_ITEMS;
-			*pmt = m_mt;
+
+			if(i < 0) return E_INVALIDARG;
+			if(i > 1) return VFW_S_NO_MORE_ITEMS;
+
+			*pmt = m_mts[i];
+
 			return S_OK;
 		}
 
@@ -113,7 +164,14 @@ GSSource : public CBaseFilter, private CCritSec, public IGSSource
 		{
 			return E_NOTIMPL;
 		}
+
+		const CMediaType& CurrentMediaType()
+		{
+			return m_mt;
+		}
 	};
+
+	CAutoPtr<GSSourceOutputPin> m_output;
 
 public:
 
@@ -124,28 +182,7 @@ public:
 		, m_atpf(10000000i64 / fps)
 		, m_now(0)
 	{
-		int size = w * h * 4;
-
-		CMediaType mt;
-
-		mt.majortype = MEDIATYPE_Video;
-		mt.subtype = MEDIASUBTYPE_RGB32;
-		mt.formattype = FORMAT_VideoInfo;
-		mt.lSampleSize = size;
-
-		VIDEOINFOHEADER vih;
-		memset(&vih, 0, sizeof(vih));
-		vih.AvgTimePerFrame = m_atpf;
-		vih.bmiHeader.biSize = sizeof(vih.bmiHeader);
-		vih.bmiHeader.biCompression = BI_RGB;
-		vih.bmiHeader.biPlanes = 1;
-		vih.bmiHeader.biWidth = w;
-		vih.bmiHeader.biHeight = -h;
-		vih.bmiHeader.biBitCount = 32;
-		vih.bmiHeader.biSizeImage = size;
-		mt.SetFormat((BYTE*)&vih, sizeof(vih));
-
-		m_output.Attach(new GSSourceOutputPin(mt, this, this, hr));
+		m_output.Attach(new GSSourceOutputPin(m_size, m_atpf, this, this, hr));
 	}
 
 	DECLARE_IUNKNOWN;
@@ -189,54 +226,99 @@ public:
 		sample->SetTime(&start, &stop);
 		sample->SetSyncPoint(TRUE);
 
-		CMediaType mt;
-		m_output->GetMediaType(0, &mt);
+		const CMediaType& mt = m_output->CurrentMediaType();
 
 		BYTE* src = (BYTE*)bits;
-		int srcpitch = pitch;
 
 		BYTE* dst = NULL;
 		sample->GetPointer(&dst);
-		int dstpitch = ((VIDEOINFOHEADER*)mt.Format())->bmiHeader.biWidth * 4;
 
 		int w = m_size.cx;
 		int h = m_size.cy;
+		int srcpitch = pitch;
 
-		for(int j = 0; j < h; j++, dst += dstpitch, src += srcpitch)
+		#if _M_SSE >= 0x400
+
+		if(mt.subtype == MEDIASUBTYPE_YUY2)
 		{
-			#if _M_SSE >= 0x301
+			int dstpitch = ((VIDEOINFOHEADER*)mt.Format())->bmiHeader.biWidth * 2;
 
-			GSVector4i* s = (GSVector4i*)src;
-			GSVector4i* d = (GSVector4i*)dst;
+			const GSVector4 ys(0.098f, 0.504f, 0.257f);
+			const GSVector4 us(0.439f / 2, -0.291f / 2, -0.148f / 2);
+			const GSVector4 vs(-0.071f / 2, -0.368f / 2, 0.439f / 2);
+			const GSVector4 offset(16, 128, 16, 128);
 
-			GSVector4i mask(2, 1, 0, 3, 6, 5, 4, 7, 10, 9, 8, 11, 14, 13, 12, 15);
-
-			for(int i = 0, w4 = w >> 2; i < w4; i++)
+			for(int j = 0; j < h; j++, dst += dstpitch, src += srcpitch)
 			{
-				d[i] = s[i].shuffle8(mask);
+				DWORD* s = (DWORD*)src;
+				WORD* d = (WORD*)dst;
+
+				for(int i = 0; i < w; i += 2)
+				{
+					GSVector4 c0 = GSVector4(s[i + 0]);
+					GSVector4 c1 = GSVector4(s[i + 1]);
+					GSVector4 c2 = c0 + c1;
+
+					GSVector4 lo = c0.dp<0x71>(ys) | c2.dp<0x72>(vs);
+					GSVector4 hi = c1.dp<0x74>(ys) | c2.dp<0x78>(us);
+
+					GSVector4 c = (lo | hi) + offset;
+
+					*((DWORD*)&d[i]) = GSVector4i(c).rgba32();
+				}
 			}
+		}
+		else 
+		
+		#endif
 
-			#elif _M_SSE >= 0x200
+		if(mt.subtype == MEDIASUBTYPE_RGB32)
+		{
+			int dstpitch = ((VIDEOINFOHEADER*)mt.Format())->bmiHeader.biWidth * 4;
 
-			GSVector4i* s = (GSVector4i*)src;
-			GSVector4i* d = (GSVector4i*)dst;
+			dst += dstpitch * (h - 1);
+			dstpitch = -dstpitch;
 
-			for(int i = 0, w4 = w >> 2; i < w4; i++)
+			for(int j = 0; j < h; j++, dst += dstpitch, src += srcpitch)
 			{
-				d[i] = ((s[i] & 0x00ff0000) >> 16) | ((s[i] & 0x000000ff) << 16) | (s[i] & 0x0000ff00);
+				#if _M_SSE >= 0x301
+
+				GSVector4i* s = (GSVector4i*)src;
+				GSVector4i* d = (GSVector4i*)dst;
+
+				GSVector4i mask(2, 1, 0, 3, 6, 5, 4, 7, 10, 9, 8, 11, 14, 13, 12, 15);
+
+				for(int i = 0, w4 = w >> 2; i < w4; i++)
+				{
+					d[i] = s[i].shuffle8(mask);
+				}
+
+				#elif _M_SSE >= 0x200
+
+				GSVector4i* s = (GSVector4i*)src;
+				GSVector4i* d = (GSVector4i*)dst;
+
+				for(int i = 0, w4 = w >> 2; i < w4; i++)
+				{
+					d[i] = ((s[i] & 0x00ff0000) >> 16) | ((s[i] & 0x000000ff) << 16) | (s[i] & 0x0000ff00);
+				}
+
+				#else
+
+				DWORD* s = (DWORD*)src;
+				DWORD* d = (DWORD*)dst;
+				
+				for(int i = 0; i < w; i++)
+				{
+					d[i] = ((s[i] & 0x00ff0000) >> 16) | ((s[i] & 0x000000ff) << 16) | (s[i] & 0x0000ff00);
+				}
+
+				#endif
 			}
-
-			#else
-
-			DWORD* s = (DWORD*)src;
-			DWORD* d = (DWORD*)dst;
-			
-			for(int i = 0; i < w; i++)
-			{
-				d[i] = ((s[i] & 0x00ff0000) >> 16) | ((s[i] & 0x000000ff) << 16) | (s[i] & 0x0000ff00);
-			}
-
-			#endif
+		}
+		else
+		{
+			return E_FAIL;
 		}
 
 		if(FAILED(m_output->Deliver(sample)))
@@ -269,6 +351,35 @@ GSCapture::~GSCapture()
 	EndCapture();
 }
 
+#define BeginEnumPins(pBaseFilter, pEnumPins, pPin) \
+	{CComPtr<IEnumPins> pEnumPins; \
+	if(pBaseFilter && SUCCEEDED(pBaseFilter->EnumPins(&pEnumPins))) \
+	{ \
+		for(CComPtr<IPin> pPin; S_OK == pEnumPins->Next(1, &pPin, 0); pPin = NULL) \
+		{ \
+
+#define EndEnumPins }}}
+
+static IPin* GetFirstPin(IBaseFilter* pBF, PIN_DIRECTION dir)
+{
+	if(!pBF) return(NULL);
+
+	BeginEnumPins(pBF, pEP, pPin)
+	{
+		PIN_DIRECTION dir2;
+		pPin->QueryDirection(&dir2);
+		if(dir == dir2)
+		{
+			IPin* pRet = pPin.Detach();
+			pRet->Release();
+			return(pRet);
+		}
+	}
+	EndEnumPins
+
+	return(NULL);
+}
+
 bool GSCapture::BeginCapture(int fps)
 {
 	CAutoLock cAutoLock(this);
@@ -281,38 +392,41 @@ bool GSCapture::BeginCapture(int fps)
 
 	GSCaptureDlg dlg;
 
-	dlg.DoModal(); // if(IDOK != dlg.DoModal()) return false;
-
-	// TODO: get dimension through the dialog box
+	if(IDOK != dlg.DoModal()) return false;
 
 	m_size.cx = (dlg.m_width + 7) & ~7;
 	m_size.cy = (dlg.m_height + 7) & ~7; 
 
 	//
 
+	HRESULT hr;
+
 	CComPtr<ICaptureGraphBuilder2> cgb;
 	CComPtr<IBaseFilter> mux;
 
-	if(FAILED(m_graph.CoCreateInstance(CLSID_FilterGraph))
-	|| FAILED(cgb.CoCreateInstance(CLSID_CaptureGraphBuilder2))
-	|| FAILED(cgb->SetFiltergraph(m_graph))
-	|| FAILED(cgb->SetOutputFileName(&MEDIASUBTYPE_Avi, CStringW(dlg.m_filename), &mux, NULL)))
+	if(FAILED(hr = m_graph.CoCreateInstance(CLSID_FilterGraph))
+	|| FAILED(hr = cgb.CoCreateInstance(CLSID_CaptureGraphBuilder2))
+	|| FAILED(hr = cgb->SetFiltergraph(m_graph))
+	|| FAILED(hr = cgb->SetOutputFileName(&MEDIASUBTYPE_Avi, CStringW(dlg.m_filename), &mux, NULL)))
 	{
 		return false;
 	}
-
-	HRESULT hr;
 
 	m_src = new GSSource(m_size.cx, m_size.cy, fps, NULL, hr);
 
 	if(FAILED(hr = m_graph->AddFilter(m_src, L"Source"))
-	|| FAILED(hr = m_graph->AddFilter(dlg.m_enc, L"Encoder"))
-	|| FAILED(hr = cgb->RenderStream(NULL, NULL, m_src, dlg.m_enc, mux)))
+	|| FAILED(hr = m_graph->AddFilter(dlg.m_enc, L"Encoder")))
 	{
 		return false;
 	}
 
-	CComQIPtr<IMediaControl>(m_graph)->Run();
+	if(FAILED(hr = m_graph->ConnectDirect(GetFirstPin(m_src, PINDIR_OUTPUT), GetFirstPin(dlg.m_enc, PINDIR_INPUT), NULL))
+	|| FAILED(hr = m_graph->ConnectDirect(GetFirstPin(dlg.m_enc, PINDIR_OUTPUT), GetFirstPin(mux, PINDIR_INPUT), NULL)))
+	{
+		return false;
+	}
+
+	hr = CComQIPtr<IMediaControl>(m_graph)->Run();
 
 	CComQIPtr<IGSSource>(m_src)->DeliverNewSegment();
 

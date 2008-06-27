@@ -29,10 +29,10 @@ __declspec(align(16)) union GSVertexHW9
 {
 	struct
 	{
-		struct {float x, y;} t;
+		GSVector2 t;
 		union {struct {BYTE r, g, b, a;}; DWORD c0;};
 		union {struct {BYTE ta0, ta1, res, f;}; DWORD c1;};
-		union {struct {float _pad[3]; float q;}; struct {float x, y, z, w;} p;};
+		GSVector4 p;
 	};
 	
 	struct {__m128i m128i[2];};
@@ -41,6 +41,8 @@ __declspec(align(16)) union GSVertexHW9
 #if _M_SSE >= 0x200
 	GSVertexHW9& operator = (GSVertexHW9& v) {m128i[0] = v.m128i[0]; m128i[1] = v.m128i[1]; return *this;}
 #endif
+
+	float GetQ() {return p.w;}
 };
 
 __declspec(align(16)) union GSVertexHW10
@@ -78,6 +80,8 @@ __declspec(align(16)) union GSVertexHW10
 #if _M_SSE >= 0x200
 	GSVertexHW10& operator = (GSVertexHW10& v) {m128i[0] = v.m128i[0]; m128i[1] = v.m128i[1]; return *this;}
 #endif
+
+	float GetQ() {return q;}
 };
 
 #pragma pack(pop)

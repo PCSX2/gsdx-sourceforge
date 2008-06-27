@@ -142,6 +142,8 @@ private:
 	template<DWORD sel> 
 	void DrawScanlineEx(int top, int left, int right, const Vertex& v);
 
+	int m_tw;
+
 	void FetchTexture(int x, int y);
 
 	__forceinline void FetchTexel(int x, int y)
@@ -160,7 +162,7 @@ private:
 
 	__forceinline DWORD ReadTexelNoFetch(int x, int y)
 	{
-		return m_tc->texture[y * 1024 + x];
+		return m_tc->texture[(y << m_tw) + x];
 	}
 
 	__forceinline DWORD ReadTexel(int x, int y)

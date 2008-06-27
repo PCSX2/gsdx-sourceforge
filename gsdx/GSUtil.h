@@ -21,10 +21,108 @@
 
 #pragma once
 
-extern bool HasSharedBits(DWORD spsm, DWORD dpsm);
-extern bool HasSharedBits(DWORD sbp, DWORD spsm, DWORD dbp, DWORD dpsm);
-extern bool HasCompatibleBits(DWORD spsm, DWORD dpsm);
-extern int GetPrimClass(DWORD prim);
-extern bool IsRectInRect(const CRect& inner, const CRect& outer);
-extern bool IsRectInRectH(const CRect& inner, const CRect& outer);
-extern bool IsRectInRectV(const CRect& inner, const CRect& outer);
+class GSUtil
+{
+public:
+	static bool HasSharedBits(DWORD spsm, DWORD dpsm);
+	static bool HasSharedBits(DWORD sbp, DWORD spsm, DWORD dbp, DWORD dpsm);
+	static bool HasCompatibleBits(DWORD spsm, DWORD dpsm);
+
+	static bool IsRectInRect(const CRect& inner, const CRect& outer);
+	static bool IsRectInRectH(const CRect& inner, const CRect& outer);
+	static bool IsRectInRectV(const CRect& inner, const CRect& outer);
+	
+	static int GetPrimClass(DWORD prim)
+	{
+		switch(prim)
+		{
+		case GS_POINTLIST: return 0;
+		case GS_LINELIST: return 1;
+		case GS_LINESTRIP: return 1;
+		case GS_TRIANGLELIST: return 2;
+		case GS_TRIANGLESTRIP: return 2;
+		case GS_TRIANGLEFAN: return 2;
+		case GS_SPRITE: return 3;
+		case GS_INVALID: return -1;
+		default: __assume(0);
+		}
+	}
+
+	static int GetPrimVertexCount(DWORD prim)
+	{
+		switch(prim)
+		{
+		case GS_POINTLIST: return 1;
+		case GS_LINELIST: return 2;
+		case GS_LINESTRIP: return 2;
+		case GS_TRIANGLELIST: return 3;
+		case GS_TRIANGLESTRIP: return 3;
+		case GS_TRIANGLEFAN: return 3;
+		case GS_SPRITE: return 2;
+		case GS_INVALID: return 1;
+		default: __assume(0);
+		}
+	}
+
+	static int EncodeFPSM(int psm)
+	{
+		switch(psm)
+		{
+		case PSM_PSMCT32: return 0;
+		case PSM_PSMCT24: return 1;
+		case PSM_PSMCT16: return 2;
+		case PSM_PSMCT16S: return 3;
+		case PSM_PSMZ32: return 4;
+		case PSM_PSMZ24: return 5;
+		case PSM_PSMZ16: return 6;
+		case PSM_PSMZ16S: return 7;
+		}
+
+		return -1;
+	}
+
+	static int DecodeFPSM(int index)
+	{
+		switch(index)
+		{
+		case 0: return PSM_PSMCT32;
+		case 1: return PSM_PSMCT24;
+		case 2: return PSM_PSMCT16;
+		case 3: return PSM_PSMCT16S;
+		case 4: return PSM_PSMZ32;
+		case 5: return PSM_PSMZ24;
+		case 6: return PSM_PSMZ16;
+		case 7: return PSM_PSMZ16S;
+		}
+
+		return -1;
+	}
+
+	static int EncodeZPSM(int psm)
+	{
+		switch(psm)
+		{
+		case PSM_PSMZ32: return 0;
+		case PSM_PSMZ24: return 1;
+		case PSM_PSMZ16: return 2;
+		case PSM_PSMZ16S: return 3;
+		}
+
+		return -1;
+	}
+
+	static int DecodeZPSM(int index)
+	{
+		switch(index)
+		{
+		case 0: return PSM_PSMZ32;
+		case 1: return PSM_PSMZ24;
+		case 2: return PSM_PSMZ16;
+		case 3: return PSM_PSMZ16S;
+		}
+
+		return -1;
+	}
+
+};
+
