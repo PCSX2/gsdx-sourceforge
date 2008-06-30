@@ -112,11 +112,13 @@ bool GSTexture9::Update(CRect r, const void* data, int pitch)
 
 bool GSTexture9::Map(BYTE** bits, int& pitch, const RECT* r)
 {
+	HRESULT hr;
+
 	if(CComPtr<IDirect3DSurface9> surface = *this)
 	{
 		D3DLOCKED_RECT lr;
 
-		if(SUCCEEDED(surface->LockRect(&lr, r, 0)))
+		if(SUCCEEDED(hr = surface->LockRect(&lr, r, 0)))
 		{
 			*bits = (BYTE*)lr.pBits;
 			pitch = (int)lr.Pitch;

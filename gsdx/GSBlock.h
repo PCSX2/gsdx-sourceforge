@@ -1817,15 +1817,17 @@ public:
 		GSVector4i* s = (GSVector4i*)clut;
 		GSVector4i* d = (GSVector4i*)dst;
 
-		GSVector4i r0 = s[0];
-		GSVector4i r1 = s[1];
-		GSVector4i r2 = s[32];
-		GSVector4i r3 = s[33];
+		GSVector4i v0 = s[0];
+		GSVector4i v1 = s[1];
+		GSVector4i v2 = s[32];
+		GSVector4i v3 = s[33];
 
-		d[0] = r0.upl16(r2);
-		d[1] = r0.uph16(r2);
-		d[2] = r1.upl16(r3);
-		d[3] = r1.uph16(r3);
+		GSVector4i::sw16(v0, v2, v1, v3);
+
+		d[0] = v0;
+		d[1] = v1;
+		d[2] = v2;
+		d[3] = v3;
 
 		#else 
 

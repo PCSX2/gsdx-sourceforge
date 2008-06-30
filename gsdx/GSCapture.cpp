@@ -35,7 +35,7 @@ interface __declspec(uuid("59C193BB-C520-41F3-BC1D-E245B80A86FA"))
 IGSSource : public IUnknown
 {
 	STDMETHOD(DeliverNewSegment)() PURE;
-	STDMETHOD(DeliverFrame)(const void* bits, int pitch) PURE;
+	STDMETHOD(DeliverFrame)(const void* bits, int pitch, bool rgba) PURE;
 	STDMETHOD(DeliverEOS)() PURE;
 };
 
@@ -206,7 +206,7 @@ public:
 		return m_output->DeliverNewSegment(0, _I64_MAX, 1.0);
 	}
 
-	STDMETHODIMP DeliverFrame(const void* bits, int pitch)
+	STDMETHODIMP DeliverFrame(const void* bits, int pitch, bool rgba)
 	{
 		if(!m_output || !m_output->IsConnected())
 		{
@@ -248,34 +248,48 @@ public:
 			const GSVector4 vs(-0.071f / 2, -0.368f / 2, 0.439f / 2, 0.0f);
 			const GSVector4 offset(16, 128, 16, 128);
 
-			for(int j = 0; j < h; j++, dst += dstpitch, src += srcpitch)
+			if(rgba)
 			{
-				DWORD* s = (DWORD*)src;
-				WORD* d = (WORD*)dst;
-
-				for(int i = 0; i < w; i += 2)
+				for(int j = 0; j < h; j++, dst += dstpitch, src += srcpitch)
 				{
-					GSVector4 c0 = GSVector4(s[i + 0]);
-					GSVector4 c1 = GSVector4(s[i + 1]);
-					GSVector4 c2 = c0 + c1;
+					DWORD* s = (DWORD*)src;
+					WORD* d = (WORD*)dst;
 
-					#if 0//_M_SSE >= 0x400
+					for(int i = 0; i < w; i += 2)
+					{
+						GSVector4 c0 = GSVector4(s[i + 0]);
+						GSVector4 c1 = GSVector4(s[i + 1]);
+						GSVector4 c2 = c0 + c1;
 
-					GSVector4 lo = c0.dp<0x71>(ys) | c2.dp<0x72>(vs);
-					GSVector4 hi = c1.dp<0x74>(ys) | c2.dp<0x78>(us);
+						GSVector4 lo = (c0 * ys).hadd(c2 * vs);
+						GSVector4 hi = (c1 * ys).hadd(c2 * us);
 
-					GSVector4 c = (lo | hi) + offset;
+						GSVector4 c = lo.hadd(hi) + offset;
 
-					#else
+						*((DWORD*)&d[i]) = GSVector4i(c).rgba32();
+					}
+				}
+			}
+			else
+			{
+				for(int j = 0; j < h; j++, dst += dstpitch, src += srcpitch)
+				{
+					DWORD* s = (DWORD*)src;
+					WORD* d = (WORD*)dst;
 
-					GSVector4 lo = (c0 * ys).hadd(c2 * vs);
-					GSVector4 hi = (c1 * ys).hadd(c2 * us);
+					for(int i = 0; i < w; i += 2)
+					{
+						GSVector4 c0 = GSVector4(s[i + 0]).zyxw();
+						GSVector4 c1 = GSVector4(s[i + 1]).zyxw();
+						GSVector4 c2 = c0 + c1;
 
-					GSVector4 c = lo.hadd(hi) + offset;
+						GSVector4 lo = (c0 * ys).hadd(c2 * vs);
+						GSVector4 hi = (c1 * ys).hadd(c2 * us);
 
-					#endif
+						GSVector4 c = lo.hadd(hi) + offset;
 
-					*((DWORD*)&d[i]) = GSVector4i(c).rgba32();
+						*((DWORD*)&d[i]) = GSVector4i(c).rgba32();
+					}
 				}
 			}
 		}
@@ -292,39 +306,46 @@ public:
 
 			for(int j = 0; j < h; j++, dst += dstpitch, src += srcpitch)
 			{
-				#if _M_SSE >= 0x301
-
-				GSVector4i* s = (GSVector4i*)src;
-				GSVector4i* d = (GSVector4i*)dst;
-
-				GSVector4i mask(2, 1, 0, 3, 6, 5, 4, 7, 10, 9, 8, 11, 14, 13, 12, 15);
-
-				for(int i = 0, w4 = w >> 2; i < w4; i++)
+				if(rgba)
 				{
-					d[i] = s[i].shuffle8(mask);
+					#if _M_SSE >= 0x301
+
+					GSVector4i* s = (GSVector4i*)src;
+					GSVector4i* d = (GSVector4i*)dst;
+
+					GSVector4i mask(2, 1, 0, 3, 6, 5, 4, 7, 10, 9, 8, 11, 14, 13, 12, 15);
+
+					for(int i = 0, w4 = w >> 2; i < w4; i++)
+					{
+						d[i] = s[i].shuffle8(mask);
+					}
+
+					#elif _M_SSE >= 0x200
+
+					GSVector4i* s = (GSVector4i*)src;
+					GSVector4i* d = (GSVector4i*)dst;
+
+					for(int i = 0, w4 = w >> 2; i < w4; i++)
+					{
+						d[i] = ((s[i] & 0x00ff0000) >> 16) | ((s[i] & 0x000000ff) << 16) | (s[i] & 0x0000ff00);
+					}
+
+					#else
+
+					DWORD* s = (DWORD*)src;
+					DWORD* d = (DWORD*)dst;
+					
+					for(int i = 0; i < w; i++)
+					{
+						d[i] = ((s[i] & 0x00ff0000) >> 16) | ((s[i] & 0x000000ff) << 16) | (s[i] & 0x0000ff00);
+					}
+
+					#endif
 				}
-
-				#elif _M_SSE >= 0x200
-
-				GSVector4i* s = (GSVector4i*)src;
-				GSVector4i* d = (GSVector4i*)dst;
-
-				for(int i = 0, w4 = w >> 2; i < w4; i++)
+				else
 				{
-					d[i] = ((s[i] & 0x00ff0000) >> 16) | ((s[i] & 0x000000ff) << 16) | (s[i] & 0x0000ff00);
+					memcpy(dst, src, w * 4);
 				}
-
-				#else
-
-				DWORD* s = (DWORD*)src;
-				DWORD* d = (DWORD*)dst;
-				
-				for(int i = 0; i < w; i++)
-				{
-					d[i] = ((s[i] & 0x00ff0000) >> 16) | ((s[i] & 0x000000ff) << 16) | (s[i] & 0x0000ff00);
-				}
-
-				#endif
 			}
 		}
 		else
@@ -437,6 +458,30 @@ bool GSCapture::BeginCapture(int fps)
 		return false;
 	}
 
+	BeginEnumFilters(m_graph, pEF, pBF)
+	{
+		CFilterInfo fi;
+		pBF->QueryFilterInfo(&fi);
+		printf("Filter [%p]: %s\n", pBF.p, CStringA(fi.achName));
+
+		BeginEnumPins(pBF, pEP, pPin)
+		{
+			CComPtr<IPin> pPinTo;
+			pPin->ConnectedTo(&pPinTo);
+
+			CPinInfo pi;
+			pPin->QueryPinInfo(&pi);
+			printf("- Pin [%p - %p]: %s (%s)\n", pPin.p, pPinTo.p, CStringA(pi.achName), pi.dir ? "out" : "in");
+ 
+			BeginEnumMediaTypes(pPin, pEMT, pmt)
+			{
+			}
+			EndEnumMediaTypes(pmt)
+		}
+		EndEnumPins
+	}
+	EndEnumFilters
+
 	hr = CComQIPtr<IMediaControl>(m_graph)->Run();
 
 	CComQIPtr<IGSSource>(m_src)->DeliverNewSegment();
@@ -446,7 +491,7 @@ bool GSCapture::BeginCapture(int fps)
 	return true;
 }
 
-bool GSCapture::DeliverFrame(const void* bits, int pitch)
+bool GSCapture::DeliverFrame(const void* bits, int pitch, bool rgba)
 {
 	CAutoLock cAutoLock(this);
 
@@ -459,7 +504,7 @@ bool GSCapture::DeliverFrame(const void* bits, int pitch)
 
 	if(m_src)
 	{
-		CComQIPtr<IGSSource>(m_src)->DeliverFrame(bits, pitch);
+		CComQIPtr<IGSSource>(m_src)->DeliverFrame(bits, pitch, rgba);
 
 		return true;
 	}

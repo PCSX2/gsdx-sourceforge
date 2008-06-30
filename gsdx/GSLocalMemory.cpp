@@ -77,9 +77,9 @@ GSLocalMemory::GSLocalMemory()
 
 	memset(m_vm8, 0, m_vmsize);
 
-	m_pCLUT = (WORD*)_aligned_malloc(256 * 2 * sizeof(WORD) * 2, 16);
-	m_pCLUT32 = (DWORD*)_aligned_malloc(256 * sizeof(DWORD), 16);
-	m_pCLUT64 = (UINT64*)_aligned_malloc(256 * sizeof(UINT64), 16);
+	m_clut = (WORD*)_aligned_malloc(256 * 2 * sizeof(WORD) * 2, 16);
+	m_clut32 = (DWORD*)_aligned_malloc(256 * sizeof(DWORD), 16);
+	m_clut64 = (UINT64*)_aligned_malloc(256 * sizeof(UINT64), 16);
 
 	for(int bp = 0; bp < 32; bp++)
 	{
@@ -374,9 +374,9 @@ GSLocalMemory::~GSLocalMemory()
 {
 	VirtualFree(m_vm8, 0, MEM_RELEASE);
 
-	_aligned_free(m_pCLUT);
-	_aligned_free(m_pCLUT32);
-	_aligned_free(m_pCLUT64);	
+	_aligned_free(m_clut);
+	_aligned_free(m_clut32);
+	_aligned_free(m_clut64);	
 }
 
 bool GSLocalMemory::FillRect(const CRect& r, DWORD c, DWORD psm, DWORD fbp, DWORD fbw)
@@ -585,7 +585,7 @@ bool GSLocalMemory::WriteCLUT(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT)
 	DWORD bp = TEX0.CBP;
 	DWORD bw = TEX0.CSM == 0 ? 1 : TEXCLUT.CBW;
 
-	WORD* pCLUT = m_pCLUT + (TEX0.CSA << 4);
+	WORD* clut = m_clut + (TEX0.CSA << 4);
 
 	// NOTE: TEX0.CPSM == PSM_PSMCT24 is non-standard, KH uses it
 
@@ -593,28 +593,28 @@ bool GSLocalMemory::WriteCLUT(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT)
 	{
 		if(TEX0.CPSM == PSM_PSMCT16 || TEX0.CPSM == PSM_PSMCT16S)
 		{
-			WORD* vm = &m_vm16[TEX0.CPSM == PSM_PSMCT16 ? BlockAddress16(0, 0, bp, bw) : BlockAddress16S(0, 0, bp, bw)];
+			WORD* src = &m_vm16[TEX0.CPSM == PSM_PSMCT16 ? BlockAddress16(0, 0, bp, bw) : BlockAddress16S(0, 0, bp, bw)];
 
 			if(TEX0.PSM == PSM_PSMT8 || TEX0.PSM == PSM_PSMT8H)
 			{
-				WriteCLUT_T16_I8_CSM1(vm, pCLUT);
+				WriteCLUT_T16_I8_CSM1(src, clut);
 			}
 			else if(TEX0.PSM == PSM_PSMT4HH || TEX0.PSM == PSM_PSMT4HL || TEX0.PSM == PSM_PSMT4)
 			{
-				WriteCLUT_T16_I4_CSM1(vm, pCLUT);
+				WriteCLUT_T16_I4_CSM1(src, clut);
 			}
 		}
 		else if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 		{
-			DWORD* vm = &m_vm32[BlockAddress32(0, 0, bp, bw)];
+			DWORD* src = &m_vm32[BlockAddress32(0, 0, bp, bw)];
 
 			if(TEX0.PSM == PSM_PSMT8 || TEX0.PSM == PSM_PSMT8H)
 			{
-				WriteCLUT_T32_I8_CSM1(vm, pCLUT);
+				WriteCLUT_T32_I8_CSM1(src, clut);
 			}
 			else if(TEX0.PSM == PSM_PSMT4HH || TEX0.PSM == PSM_PSMT4HL || TEX0.PSM == PSM_PSMT4)
 			{
-				WriteCLUT_T32_I4_CSM1(vm, pCLUT);
+				WriteCLUT_T32_I4_CSM1(src, clut);
 			}
 		}
 	}
@@ -632,7 +632,7 @@ bool GSLocalMemory::WriteCLUT(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT)
 		{
 			for(int i = 0; i < pal; i++)
 			{
-				pCLUT[i] = (WORD)(this->*rp)((TEXCLUT.COU << 4) + i, TEXCLUT.COV, bp, bw);
+				clut[i] = (WORD)(this->*rp)((TEXCLUT.COU << 4) + i, TEXCLUT.COV, bp, bw);
 			}
 		}
 		else if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
@@ -641,8 +641,8 @@ bool GSLocalMemory::WriteCLUT(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT)
 			{
 				DWORD dw = (this->*rp)((TEXCLUT.COU << 4) + i, TEXCLUT.COV, bp, bw);
 
-				pCLUT[i] = (WORD)(dw & 0xffff);
-				pCLUT[i + 256] = (WORD)(dw >> 16);
+				clut[i] = (WORD)(dw & 0xffff);
+				clut[i + 256] = (WORD)(dw >> 16);
 			}
 		}
 	}
@@ -652,11 +652,11 @@ bool GSLocalMemory::WriteCLUT(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT)
 
 //
 
-void GSLocalMemory::ReadCLUT(GIFRegTEX0 TEX0, DWORD* pCLUT32)
+void GSLocalMemory::ReadCLUT(GIFRegTEX0 TEX0, DWORD* clut32)
 {
-	ASSERT(pCLUT32);
+	ASSERT(clut32);
 
-	WORD* pCLUT = m_pCLUT + (TEX0.CSA << 4);
+	WORD* clut = m_clut + (TEX0.CSA << 4);
 
 	if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 	{
@@ -664,12 +664,12 @@ void GSLocalMemory::ReadCLUT(GIFRegTEX0 TEX0, DWORD* pCLUT32)
 		{
 		case PSM_PSMT8:
 		case PSM_PSMT8H:
-			ReadCLUT_T32_I8(pCLUT, pCLUT32);
+			ReadCLUT_T32_I8(clut, clut32);
 			break;
 		case PSM_PSMT4:
 		case PSM_PSMT4HL:
 		case PSM_PSMT4HH:
-			ReadCLUT_T32_I4(pCLUT, pCLUT32);
+			ReadCLUT_T32_I4(clut, clut32);
 			break;
 		}
 	}
@@ -679,12 +679,12 @@ void GSLocalMemory::ReadCLUT(GIFRegTEX0 TEX0, DWORD* pCLUT32)
 		{
 		case PSM_PSMT8:
 		case PSM_PSMT8H:
-			ReadCLUT_T16_I8(pCLUT, pCLUT32);
+			ReadCLUT_T16_I8(clut, clut32);
 			break;
 		case PSM_PSMT4:
 		case PSM_PSMT4HL:
 		case PSM_PSMT4HH:
-			ReadCLUT_T16_I4(pCLUT, pCLUT32);
+			ReadCLUT_T16_I4(clut, clut32);
 			break;
 		}
 	}
@@ -692,9 +692,9 @@ void GSLocalMemory::ReadCLUT(GIFRegTEX0 TEX0, DWORD* pCLUT32)
 
 void GSLocalMemory::SetupCLUT(GIFRegTEX0 TEX0)
 {
-	// TODO: cache m_pCLUT*
+	// TODO: cache m_clut*
 
-	ReadCLUT(TEX0, m_pCLUT32);
+	ReadCLUT(TEX0, m_clut32);
 
 	switch(TEX0.PSM)
 	{
@@ -704,8 +704,8 @@ void GSLocalMemory::SetupCLUT(GIFRegTEX0 TEX0)
 		// sse2?
 		if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 		{
-			DWORD* src = m_pCLUT32;
-			DWORD* dst = (DWORD*)m_pCLUT64;
+			DWORD* src = m_clut32;
+			DWORD* dst = (DWORD*)m_clut64;
 
 			for(int j = 0; j < 16; j++, dst += 32)
 			{
@@ -720,8 +720,8 @@ void GSLocalMemory::SetupCLUT(GIFRegTEX0 TEX0)
 		}
 		else
 		{
-			DWORD* src = m_pCLUT32;
-			DWORD* dst = (DWORD*)m_pCLUT64;
+			DWORD* src = m_clut32;
+			DWORD* dst = (DWORD*)m_clut64;
 
 			for(int j = 0; j < 16; j++, dst += 32)
 			{
@@ -740,11 +740,11 @@ void GSLocalMemory::SetupCLUT(GIFRegTEX0 TEX0)
 
 //
 
-void GSLocalMemory::ReadCLUT32(GIFRegTEX0 TEX0, GIFRegTEXA TEXA, DWORD* pCLUT32)
+void GSLocalMemory::ReadCLUT32(GIFRegTEX0 TEX0, GIFRegTEXA TEXA, DWORD* clut32)
 {
-	ASSERT(pCLUT32);
+	ASSERT(clut32);
 
-	WORD* pCLUT = m_pCLUT + (TEX0.CSA << 4);
+	WORD* clut = m_clut + (TEX0.CSA << 4);
 
 	if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 	{
@@ -752,26 +752,26 @@ void GSLocalMemory::ReadCLUT32(GIFRegTEX0 TEX0, GIFRegTEXA TEXA, DWORD* pCLUT32)
 		{
 		case PSM_PSMT8:
 		case PSM_PSMT8H:
-			ReadCLUT_T32_I8(pCLUT, pCLUT32);
+			ReadCLUT_T32_I8(clut, clut32);
 			break;
 		case PSM_PSMT4:
 		case PSM_PSMT4HL:
 		case PSM_PSMT4HH:
-			ReadCLUT_T32_I4(pCLUT, pCLUT32);
+			ReadCLUT_T32_I4(clut, clut32);
 			break;
 		}
 	}
 	else if(TEX0.CPSM == PSM_PSMCT16 || TEX0.CPSM == PSM_PSMCT16S)
 	{
-		Expand16(pCLUT, pCLUT32, m_psm[TEX0.PSM].pal, &TEXA);
+		Expand16(clut, clut32, m_psm[TEX0.PSM].pal, &TEXA);
 	}
 }
 
 void GSLocalMemory::SetupCLUT32(GIFRegTEX0 TEX0, GIFRegTEXA TEXA)
 {
-	// TODO: cache m_pCLUT*
+	// TODO: cache m_clut*
 
-	ReadCLUT32(TEX0, TEXA, m_pCLUT32);
+	ReadCLUT32(TEX0, TEXA, m_clut32);
 
 	switch(TEX0.PSM)
 	{
@@ -780,8 +780,8 @@ void GSLocalMemory::SetupCLUT32(GIFRegTEX0 TEX0, GIFRegTEXA TEXA)
 	case PSM_PSMT4HH:
 		// sse2?
 		{
-			DWORD* src = m_pCLUT32;
-			DWORD* dst = (DWORD*)m_pCLUT64;
+			DWORD* src = m_clut32;
+			DWORD* dst = (DWORD*)m_clut64;
 
 			for(int j = 0; j < 16; j++, dst += 32)
 			{
@@ -799,9 +799,9 @@ void GSLocalMemory::SetupCLUT32(GIFRegTEX0 TEX0, GIFRegTEXA TEXA)
 	}
 }
 
-void GSLocalMemory::CopyCLUT32(DWORD* pCLUT32, int n)
+void GSLocalMemory::CopyCLUT32(DWORD* clut32, int n)
 {
-	memcpy(pCLUT32, m_pCLUT32, sizeof(DWORD) * n);
+	memcpy(clut32, m_clut32, sizeof(DWORD) * n);
 }
 
 #define IsTopLeftAligned(dsax, tx, ty, bw, bh) \
@@ -2131,7 +2131,7 @@ void GSLocalMemory::ReadTexture16S(const CRect& r, BYTE* dst, int dstpitch, GIFR
 
 void GSLocalMemory::ReadTexture8(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	DWORD* pal = m_pCLUT32;
+	DWORD* pal = m_clut32;
 
 	FOREACH_BLOCK_START(r, 16, 16, 8)
 	{
@@ -2142,7 +2142,7 @@ void GSLocalMemory::ReadTexture8(const CRect& r, BYTE* dst, int dstpitch, GIFReg
 
 void GSLocalMemory::ReadTexture4(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	UINT64* pal = m_pCLUT64;
+	UINT64* pal = m_clut64;
 
 	FOREACH_BLOCK_START(r, 32, 16, 4)
 	{
@@ -2153,7 +2153,7 @@ void GSLocalMemory::ReadTexture4(const CRect& r, BYTE* dst, int dstpitch, GIFReg
 
 void GSLocalMemory::ReadTexture8H(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	DWORD* pal = m_pCLUT32;
+	DWORD* pal = m_clut32;
 
 	FOREACH_BLOCK_START(r, 8, 8, 32)
 	{
@@ -2164,7 +2164,7 @@ void GSLocalMemory::ReadTexture8H(const CRect& r, BYTE* dst, int dstpitch, GIFRe
 
 void GSLocalMemory::ReadTexture4HL(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	DWORD* pal = m_pCLUT32;
+	DWORD* pal = m_clut32;
 
 	FOREACH_BLOCK_START(r, 8, 8, 32)
 	{
@@ -2175,7 +2175,7 @@ void GSLocalMemory::ReadTexture4HL(const CRect& r, BYTE* dst, int dstpitch, GIFR
 
 void GSLocalMemory::ReadTexture4HH(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	DWORD* pal = m_pCLUT32;
+	DWORD* pal = m_clut32;
 
 	FOREACH_BLOCK_START(r, 8, 8, 32)
 	{
@@ -2292,7 +2292,7 @@ void GSLocalMemory::ReadTexture16SNP(const CRect& r, BYTE* dst, int dstpitch, GI
 
 void GSLocalMemory::ReadTexture8NP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	DWORD* pal = m_pCLUT32;
+	DWORD* pal = m_clut32;
 
 	if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 	{
@@ -2320,7 +2320,7 @@ void GSLocalMemory::ReadTexture8NP(const CRect& r, BYTE* dst, int dstpitch, GIFR
 
 void GSLocalMemory::ReadTexture4NP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	UINT64* pal = m_pCLUT64;
+	UINT64* pal = m_clut64;
 
 	if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 	{
@@ -2348,7 +2348,7 @@ void GSLocalMemory::ReadTexture4NP(const CRect& r, BYTE* dst, int dstpitch, GIFR
 
 void GSLocalMemory::ReadTexture8HNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	DWORD* pal = m_pCLUT32;
+	DWORD* pal = m_clut32;
 
 	if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 	{
@@ -2376,7 +2376,7 @@ void GSLocalMemory::ReadTexture8HNP(const CRect& r, BYTE* dst, int dstpitch, GIF
 
 void GSLocalMemory::ReadTexture4HLNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	DWORD* pal = m_pCLUT32;
+	DWORD* pal = m_clut32;
 
 	if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 	{
@@ -2404,7 +2404,7 @@ void GSLocalMemory::ReadTexture4HLNP(const CRect& r, BYTE* dst, int dstpitch, GI
 
 void GSLocalMemory::ReadTexture4HHNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	DWORD* pal = m_pCLUT32;
+	DWORD* pal = m_clut32;
 
 	if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 	{

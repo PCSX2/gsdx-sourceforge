@@ -182,6 +182,11 @@ public:
 	HRESULT CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro, IDirect3DVertexShader9** vs, const D3DVERTEXELEMENT9* layout, int count, IDirect3DVertexDeclaration9** il);
 	HRESULT CompileShader(UINT id, LPCSTR entry, const D3DXMACRO* macro, IDirect3DPixelShader9** ps);
 
+	virtual bool IsCurrentRGBA()
+	{
+		return false;
+	}
+
 	// TODO
 	bool SaveToFileD24S8(IDirect3DSurface9* ds, LPCTSTR fn);
 };
