@@ -92,9 +92,9 @@ protected:
 	static int rowOffset4[2][2048];
 
 	DWORD m_CBP[2];
-	WORD* m_pCLUT;
-	DWORD* m_pCLUT32;
-	UINT64* m_pCLUT64;
+	WORD* m_clut;
+	DWORD* m_clut32;
+	UINT64* m_clut64;
 
 	GIFRegTEX0 m_prevTEX0;
 	GIFRegTEXCLUT m_prevTEXCLUT;
@@ -623,27 +623,27 @@ public:
 
 	__forceinline DWORD ReadTexel8(DWORD addr, GIFRegTEXA& TEXA) 
 	{
-		return m_pCLUT32[ReadPixel8(addr)];
+		return m_clut32[ReadPixel8(addr)];
 	}
 
 	__forceinline DWORD ReadTexel4(DWORD addr, GIFRegTEXA& TEXA) 
 	{
-		return m_pCLUT32[ReadPixel4(addr)];
+		return m_clut32[ReadPixel4(addr)];
 	}
 
 	__forceinline DWORD ReadTexel8H(DWORD addr, GIFRegTEXA& TEXA) 
 	{
-		return m_pCLUT32[ReadPixel8H(addr)];
+		return m_clut32[ReadPixel8H(addr)];
 	}
 
 	__forceinline DWORD ReadTexel4HL(DWORD addr, GIFRegTEXA& TEXA)
 	{
-		return m_pCLUT32[ReadPixel4HL(addr)];
+		return m_clut32[ReadPixel4HL(addr)];
 	}
 
 	__forceinline DWORD ReadTexel4HH(DWORD addr, GIFRegTEXA& TEXA) 
 	{
-		return m_pCLUT32[ReadPixel4HH(addr)];
+		return m_clut32[ReadPixel4HH(addr)];
 	}
 
 	__forceinline DWORD ReadTexel32(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
@@ -1047,15 +1047,15 @@ public:
 	bool IsCLUTUpdating(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT);
 	bool WriteCLUT(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT);
 
-	void ReadCLUT(GIFRegTEX0 TEX0, DWORD* pCLUT32);
+	void ReadCLUT(GIFRegTEX0 TEX0, DWORD* clut32);
 	void SetupCLUT(GIFRegTEX0 TEX0);
 
 	// expands 16->32
 
-	void ReadCLUT32(GIFRegTEX0 TEX0, GIFRegTEXA TEXA, DWORD* pCLUT32);
+	void ReadCLUT32(GIFRegTEX0 TEX0, GIFRegTEXA TEXA, DWORD* clut32);
 	void SetupCLUT32(GIFRegTEX0 TEX0, GIFRegTEXA TEXA);
-	void CopyCLUT32(DWORD* pCLUT32, int n);
-	DWORD* GetCLUT32() {return m_pCLUT32;}
+	void CopyCLUT32(DWORD* clut32, int n);
+	DWORD* GetCLUT32() {return m_clut32;}
 
 	//
 

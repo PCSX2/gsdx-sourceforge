@@ -50,33 +50,43 @@ protected:
 
 		while(msg.message != WM_QUIT && PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
 		{
-			if(msg.message == WM_KEYDOWN)
+			if(OnMessage(msg))
 			{
-				int step = (::GetAsyncKeyState(VK_SHIFT) & 0x8000) ? -1 : 1;
-
-				if(msg.wParam == VK_F5)
-				{
-					m_interlace = (m_interlace + 7 + step) % 7;
-					continue;
-				}
-
-				if(msg.wParam == VK_F6)
-				{
-					m_aspectratio = (m_aspectratio + 3 + step) % 3;
-					continue;
-				}			
-
-				if(msg.wParam == VK_F7)
-				{
-					SetWindowText(_T("PCSX2"));
-					m_osd = !m_osd;
-					continue;
-				}
+				continue;
 			}
 
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
+	}
+
+	virtual bool OnMessage(const MSG& msg)
+	{
+		if(msg.message == WM_KEYDOWN)
+		{
+			int step = (::GetAsyncKeyState(VK_SHIFT) & 0x8000) ? -1 : 1;
+
+			if(msg.wParam == VK_F5)
+			{
+				m_interlace = (m_interlace + 7 + step) % 7;
+				return true;
+			}
+
+			if(msg.wParam == VK_F6)
+			{
+				m_aspectratio = (m_aspectratio + 3 + step) % 3;
+				return true;
+			}			
+
+			if(msg.wParam == VK_F7)
+			{
+				SetWindowText(_T("PCSX2"));
+				m_osd = !m_osd;
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 public:
@@ -231,13 +241,36 @@ str.Format(_T("%d %f %f %f %f "), i, o.x, o.y, dr[i].z, dr[i].w);
 
 			if(offscreen.Map(&bits, pitch))
 			{
-				m_capture.DeliverFrame(bits, pitch);
+				m_capture.DeliverFrame(bits, pitch, m_dev.IsCurrentRGBA());
+
+				offscreen.Unmap();
 			}
 
 			m_dev.Recycle(offscreen);
 		}
 	}
 
+	virtual bool OnMessage(const MSG& msg)
+	{
+		if(msg.message == WM_KEYDOWN)
+		{
+			if(msg.wParam == VK_F12)
+			{
+				if(m_capture.IsCapturing())
+				{
+					m_capture.EndCapture();
+				}
+				else
+				{
+					m_capture.BeginCapture(GetFPS());
+				}
+
+				return true;
+			}
+		}
+
+		return __super::OnMessage(msg);
+	}
 
 public:
 	Device m_dev;
@@ -438,20 +471,6 @@ public:
 
 	bool MakeSnapshot(LPCTSTR path)
 	{
-		if((::GetAsyncKeyState(VK_CONTROL) & 0x8000))
-		{
-			if(m_capture.IsCapturing())
-			{
-				m_capture.EndCapture();
-			}
-			else
-			{
-				m_capture.BeginCapture(GetFPS());
-			}
-
-			return true;
-		}
-
 		CString fn;
 
 		fn.Format(_T("%s_%s"), path, CTime::GetCurrentTime().Format(_T("%Y%m%d%H%M%S")));

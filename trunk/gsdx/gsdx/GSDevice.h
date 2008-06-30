@@ -236,4 +236,9 @@ public:
 
 		return true;
 	}
+
+	virtual bool IsCurrentRGBA()
+	{
+		return true;
+	}
 };
