@@ -73,6 +73,35 @@ BOOL GSdxApp::InitInstance()
 
 	SetRegistryKey(_T("Gabest"));
 
+	CString str;
+	GetModuleFileName(AfxGetInstanceHandle(), str.GetBuffer(MAX_PATH), MAX_PATH);
+	str.ReleaseBuffer();
+
+	CPath path(str);
+	path.RenameExtension(_T(".ini"));
+	
+	CPath fn = path;
+	fn.StripPath();
+
+	path.RemoveFileSpec();
+	path.Append(_T("..\\inis"));
+	CreateDirectory(path, NULL);
+	path.Append(fn);
+
+	if(m_pszRegistryKey)
+	{
+		free((void*)m_pszRegistryKey);
+	}
+
+	m_pszRegistryKey = NULL;
+	
+	if(m_pszProfileName)
+	{
+		free((void*)m_pszProfileName);
+	}
+
+	m_pszProfileName = _tcsdup((LPCTSTR)path);
+
 	return TRUE;
 }
 
@@ -469,4 +498,269 @@ EXPORT_C GSReplay(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow)
 
 		fclose(fp);
 	}
+}
+
+EXPORT_C GSBenchmark(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow)
+{
+	::SetPriorityClass(::GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+
+	FILE* file = _tfopen(_T("c:\\log.txt"), _T("a"));
+
+	_ftprintf(file, _T("-------------------------\n\n"));
+
+	if(1)
+	{
+		GSLocalMemory mem;
+
+		static struct {int psm; LPCSTR name;} s_format[] = 
+		{
+			{PSM_PSMCT32, "32"},
+			{PSM_PSMCT24, "24"},
+			{PSM_PSMCT16, "16"},
+			{PSM_PSMCT16S, "16S"},
+			{PSM_PSMT8, "8"},
+			{PSM_PSMT4, "4"},
+			{PSM_PSMT8H, "8H"},
+			{PSM_PSMT4HL, "4HL"},
+			{PSM_PSMT4HH, "4HH"},
+			{PSM_PSMZ32, "32Z"},
+			{PSM_PSMZ24, "24Z"},
+			{PSM_PSMZ16, "16Z"},
+			{PSM_PSMZ16S, "16ZS"},
+		};
+
+		BYTE* ptr = (BYTE*)_aligned_malloc(1024 * 1024 * 4, 16);
+
+		for(int i = 0; i < 1024 * 1024 * 4; i++) ptr[i] = (BYTE)i;
+
+		// 
+
+		for(int tbw = 5; tbw <= 10; tbw++)
+		{
+			int n = 256 << ((10 - tbw) * 2);
+
+			int w = 1 << tbw;
+			int h = 1 << tbw;
+
+			_ftprintf(file, _T("%d x %d\n\n"), w, h);
+
+			for(int i = 0; i < countof(s_format); i++)
+			{
+				const GSLocalMemory::psm_t& psm = GSLocalMemory::m_psm[s_format[i].psm];
+
+				GSLocalMemory::writeImage wi = psm.wi;
+				GSLocalMemory::readImage ri = psm.ri;
+				GSLocalMemory::readTexture rtx = psm.rtx;
+
+				GIFRegBITBLTBUF BITBLTBUF;
+
+				BITBLTBUF.DBP = 0;
+				BITBLTBUF.DBW = w / 64;
+				BITBLTBUF.DPSM = s_format[i].psm;
+				BITBLTBUF.SBP = 0;
+				BITBLTBUF.SBW = w / 64;
+				BITBLTBUF.SPSM = s_format[i].psm;
+				
+				GIFRegTRXPOS TRXPOS;
+
+				TRXPOS.SSAX = 0;
+				TRXPOS.SSAY = 0;
+				TRXPOS.DSAX = 0;
+				TRXPOS.DSAY = 0;
+
+				GIFRegTRXREG TRXREG;
+
+				TRXREG.RRW = w;
+				TRXREG.RRH = h;
+
+
+				CRect r(0, 0, w, h);
+
+				GIFRegTEX0 TEX0;
+
+				TEX0.TBP0 = 0;
+				TEX0.TBW = w / 64;
+
+				GIFRegTEXA TEXA;
+
+				TEXA.TA0 = 0;
+				TEXA.TA1 = 0x80;
+				TEXA.AEM = 0;
+
+				int trlen = w * h * psm.trbpp / 8;
+				int len = w * h * psm.bpp / 8;
+
+				clock_t start, end;
+
+				_ftprintf(file, _T("[%4s] "), s_format[i].name);
+
+				start = clock();
+
+				for(int j = 0; j < n; j++)
+				{
+					int x = 0;
+					int y = 0;
+
+					(mem.*wi)(x, y, ptr, trlen, BITBLTBUF, TRXPOS, TRXREG);
+				}
+
+				end = clock();
+
+				_ftprintf(file, _T("%6d %6d | "), (int)((float)trlen * n / (end - start) / 1000), (int)((float)(w * h) * n / (end - start) / 1000));
+
+				start = clock();
+
+				for(int j = 0; j < n; j++)
+				{
+					int x = 0;
+					int y = 0;
+
+					(mem.*ri)(x, y, ptr, trlen, BITBLTBUF, TRXPOS, TRXREG);
+				}
+
+				end = clock();
+
+				_ftprintf(file, _T("%6d %6d | "), (int)((float)trlen * n / (end - start) / 1000), (int)((float)(w * h) * n / (end - start) / 1000));
+
+				start = clock();
+
+				for(int j = 0; j < n; j++)
+				{
+					(mem.*rtx)(r, ptr, w * 4, TEX0, TEXA);
+				}
+
+				end = clock();
+
+				_ftprintf(file, _T("%6d %6d "), (int)((float)len * n / (end - start) / 1000), (int)((float)(w * h) * n / (end - start) / 1000));
+
+				_ftprintf(file, _T("\n"));
+
+				fflush(file);
+			}
+
+			_ftprintf(file, _T("\n"));
+		}
+
+		_aligned_free(ptr);
+	}
+
+	if(0)
+	{
+		BYTE regs[0x2000];
+		GSsetBaseMem(regs);
+
+		HWND hWnd = NULL;
+		GSopen(&hWnd, _T(""), true, 6);
+
+		s_gs->m_env.COLCLAMP.CLAMP = 1;
+		s_gs->m_env.PRIM.ABE = 1;
+		s_gs->m_env.PRIM.TME = 1;
+		s_gs->m_env.PRIM.IIP = 1;
+		s_gs->m_env.TEXA.TA0 = 0;
+		s_gs->m_env.TEXA.TA1 = 0x80;
+		s_gs->m_env.TEXA.AEM = 0;
+		s_gs->m_context->ALPHA.A = 0;
+		s_gs->m_context->ALPHA.B = 1;
+		s_gs->m_context->ALPHA.C = 0;
+		s_gs->m_context->ALPHA.D = 1;
+		s_gs->m_context->CLAMP.WMS = 1;
+		s_gs->m_context->CLAMP.WMT = 1;
+		s_gs->m_context->CLAMP.MINU = 0;
+		s_gs->m_context->CLAMP.MINV = 0;
+		s_gs->m_context->CLAMP.MAXU = 511;
+		s_gs->m_context->CLAMP.MAXV = 511;
+		s_gs->m_context->FRAME.FBP = 0 >> 5;
+		s_gs->m_context->FRAME.FBW = 8;
+		s_gs->m_context->FRAME.PSM = PSM_PSMCT32;
+		s_gs->m_context->SCISSOR.SCAX0 = 0;
+		s_gs->m_context->SCISSOR.SCAY0 = 0;
+		s_gs->m_context->SCISSOR.SCAX1 = 511;
+		s_gs->m_context->SCISSOR.SCAY1 = 511;
+		s_gs->m_context->TEST.ZTE = 1;
+		s_gs->m_context->TEST.ZTST = 2;
+		s_gs->m_context->TEX0.TBP0 = 0x2000;
+		s_gs->m_context->TEX0.TBW = 8;
+		s_gs->m_context->TEX0.PSM = PSM_PSMCT32;
+		s_gs->m_context->TEX0.TFX = 0;
+		s_gs->m_context->TEX0.TCC = 1;
+		s_gs->m_context->TEX0.TW = 9;
+		s_gs->m_context->TEX0.TH = 9;
+		s_gs->m_context->TEX1.MMAG = 1;
+		s_gs->m_context->TEX1.MMIN = 1;
+		s_gs->m_context->ZBUF.ZBP = 0x1000 >> 5;
+		s_gs->m_context->ZBUF.PSM = PSM_PSMZ32;
+
+		GSRasterizer* ras = ((GSRendererSW<GSDeviceNull>*)s_gs)->GetRasterizer();
+
+		int count = 512 * 512;
+
+		GSVertexSW* vertices = (GSVertexSW*)_aligned_malloc(count * sizeof(GSVertexSW), 16);
+/*
+		// point
+
+		for(int j = 0; j < 512; j++)
+		{
+			for(int i = 0; i < 512; i++)
+			{
+				GSVertexSW& v = vertices[(j << 7) + i];
+
+				v.p = GSVector4(i, j, 0, 0);
+				v.t = GSVector4((float)i + 0.5, (float)j + 0.5, 1.0f, 0.0f);
+				v.c = GSVector4(128.0f);
+			}
+		}
+
+		s_gs->PRIM->PRIM = GS_POINTLIST;
+
+		ras->Draw(vertices, count);
+
+		vertices[0].p = GSVector4(0, 0, 0, 0);
+		vertices[0].t = GSVector4(0.5, 0.5, 1.0f, 0.0f);
+		vertices[0].c = GSVector4(128.0f);
+		vertices[1].p = GSVector4(512, 512, 0, 0);
+		vertices[1].t = GSVector4(512.5f, 512.5f, 1.0f, 0.0f);
+		vertices[1].c = GSVector4(128.0f);
+
+		for(int i = 2; i < 512 * 512; i += 2)
+		{
+			memcpy(&vertices[i], &vertices[0], sizeof(vertices[0]) * 2);
+		}
+
+		// sprite
+
+		s_gs->PRIM->PRIM = GS_SPRITE;
+
+		ras->Draw(vertices, count);
+*/
+		// triangle
+
+		vertices[0].p = GSVector4(0, 0, 0, 0);
+		vertices[0].t = GSVector4(0.5, 0.5, 1.0f, 0.0f);
+		vertices[0].c = GSVector4(128.0f);
+		vertices[1].p = GSVector4(512, 0, 0, 0);
+		vertices[1].t = GSVector4(512.5f, 0.5f, 1.0f, 0.0f);
+		vertices[1].c = GSVector4(128.0f);
+		vertices[2].p = GSVector4(512, 512, 0, 0);
+		vertices[2].t = GSVector4(512.5f, 512.5f, 1.0f, 0.0f);
+		vertices[2].c = GSVector4(128.0f);
+
+		for(int i = 3; i < 512 * 512 - 2; i += 3)
+		{
+			memcpy(&vertices[i], &vertices[0], sizeof(vertices[0]) * 3);
+		}
+
+		s_gs->PRIM->PRIM = GS_TRIANGLELIST;
+
+		ras->Draw(vertices, 999);
+
+		//
+
+		_aligned_free(vertices);
+
+		GSclose();
+	}
+
+	//
+
+	fclose(file);
 }

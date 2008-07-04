@@ -32,6 +32,7 @@
 #include "GSPerfMon.h"
 #include "GSVector.h"
 #include "GSDevice.h"
+#include "GSCrc.h"
 
 class GSState
 {
@@ -149,10 +150,10 @@ public:
 
 	GSPerfMon m_perfmon;
 	bool m_nloophack;
-	bool m_ffx;
 	DWORD m_crc;
 	int m_options;
 	int m_frameskip;
+	CRC::Game m_game;
 
 	CString m_dumpfn;
 	FILE* m_dumpfp;

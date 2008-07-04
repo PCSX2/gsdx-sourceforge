@@ -21,14 +21,12 @@
 
 #include "stdafx.h"
 #include "GSState.h"
-#include "GSCrc.h"
 
 GSState::GSState(BYTE* base, bool mt, void (*irq)(), int nloophack)
 	: m_mt(mt)
 	, m_irq(irq)
 	, m_nloophack_org(nloophack)
 	, m_nloophack(nloophack == 1)
-	, m_ffx(false)
 	, m_crc(0)
 	, m_options(0)
 	, m_path3hack(0)
@@ -1590,35 +1588,11 @@ void GSState::SetGameCRC(DWORD crc, int options)
 {
 	m_crc = crc;
 	m_options = options;
+	m_game = CRC::Lookup(crc);
 
 	if(m_nloophack_org == 2)
 	{
-		switch(crc)
-		{
-		case 0xa39517ab: // ffx pal/eu
-		case 0xa39517ae: // ffx pal/fr
-		case 0x941bb7d9: // ffx pal/de
-		case 0xa39517a9: // ffx pal/it
-		case 0x941bb7de: // ffx pal/es
-		case 0xb4414ea1: // ffx pal/ru
-		case 0xee97db5b: // ffx pal/ru
-		case 0xaec495cc: // ffx pal/ru
-		case 0xbb3d833a: // ffx ntsc/us
-		case 0x6a4efe60: // ffx ntsc/j
-		case 0x3866ca7e: // ffx int. ntsc/asia (SLPM-67513, some kind of a asia version) 
-		case 0x658597e2: // ffx int. ntsc/j
-			m_ffx = true;
-		case 0x9aac5309: // ffx-2 pal/e
-		case 0x9aac530c: // ffx-2 pal/fr
-		case 0x9aac530a: // ffx-2 pal/fr? (maybe belgium or luxembourg version)
-		case 0x9aac530d: // ffx-2 pal/de
-		case 0x9aac530b: // ffx-2 pal/it
-		case 0x48fe0c71: // ffx-2 ntsc/us
-		case 0xe1fd9a2d: // ffx-2 int+lm ntsc/j
-		case 0xf0a6d880: // harvest moon ntsc/us
-			m_nloophack = true;
-			break;
-		}
+		m_nloophack = m_game.nloophack;
 	}
 }
 
@@ -2084,51 +2058,35 @@ bool GSState::IsBadFrame(int& skip)
 	fi.TBP0 = m_context->TEX0.TBP0;
 	fi.TPSM = m_context->TEX0.PSM;
 
-	static CAtlMap<DWORD, GetSkipCount> m_crc2gsc;
+	static CAtlMap<CRC::Title, GetSkipCount> map;
 
-	if(m_crc2gsc.IsEmpty())
+	if(map.IsEmpty())
 	{
-		m_crc2gsc[CRC::Okami_US] = GSC_Okami;
-		m_crc2gsc[CRC::Okami_FR] = GSC_Okami;
-		m_crc2gsc[CRC::MetalGearSolid3_US] = GSC_MetalGearSolid3;
-		m_crc2gsc[CRC::MetalGearSolid3_FR] = GSC_MetalGearSolid3;
-		m_crc2gsc[CRC::MetalGearSolid3_EU]=GSC_MetalGearSolid3;
-		m_crc2gsc[CRC::MetalGearSolid3] = GSC_MetalGearSolid3;
-		m_crc2gsc[CRC::DBZBT2_US] = GSC_DBZBT2;
-		m_crc2gsc[CRC::DBZBT2_EU] = GSC_DBZBT2;
-		m_crc2gsc[CRC::DBZBT3_US] = GSC_DBZBT3;
-		m_crc2gsc[CRC::DBZBT3_EU] = GSC_DBZBT3;
-		m_crc2gsc[CRC::SFEX3_US] = GSC_SFEX3;
-		m_crc2gsc[CRC::SFEX3_US2] = GSC_SFEX3;
-		m_crc2gsc[CRC::Bully_US] = GSC_Bully;
-		m_crc2gsc[CRC::BullyCC_EU] = GSC_BullyCC;
-		m_crc2gsc[CRC::SoTC_US] = GSC_SoTC;
-		m_crc2gsc[CRC::SoTC_EU] = GSC_SoTC; // not tested
-		m_crc2gsc[CRC::OnePieceGrandAdventure_US] = GSC_OnePieceGrandAdventure;
-		m_crc2gsc[CRC::ICO_US] = GSC_ICO;
-		m_crc2gsc[CRC::ICO_US2] = GSC_ICO;
-		m_crc2gsc[CRC::GT4_1] = GSC_GT4; 
-		m_crc2gsc[CRC::GT4_2] = GSC_GT4;
-		m_crc2gsc[CRC::GT4_3] = GSC_GT4;
-		m_crc2gsc[CRC::WildArms5_UNDUB] = GSC_WildArms5;
-		m_crc2gsc[CRC::WildArms5_US] = GSC_WildArms5;
-		m_crc2gsc[CRC::Manhunt2] = GSC_Manhunt2;
-		m_crc2gsc[CRC::CrashBandicootWoC] = GSC_CrashBandicootWoC;
-		m_crc2gsc[CRC::ResidentEvil4] = GSC_ResidentEvil4;
-		m_crc2gsc[CRC::ResidentEvil4_US] = GSC_ResidentEvil4;
-		m_crc2gsc[CRC::Spartan] = GSC_Spartan;
-		m_crc2gsc[CRC::AceCombat4] = GSC_AceCombat4;
-		m_crc2gsc[CRC::Drakengard2] = GSC_Drakengard2;
-		m_crc2gsc[CRC::Tekken5] = GSC_Tekken5;
-		m_crc2gsc[CRC::IkkiTousen_JP] = GSC_IkkiTousen;
-		m_crc2gsc[CRC::GodOfWar_US] = GSC_GodOfWar;
-		m_crc2gsc[CRC::GodOfWar_EU] = GSC_GodOfWar;
-		m_crc2gsc[CRC::GodOfWar_1] = GSC_GodOfWar;
-		m_crc2gsc[CRC::GodOfWar_2] = GSC_GodOfWar;
-		m_crc2gsc[CRC::GodOfWar2_RU] = GSC_GodOfWar;
+		map[CRC::Okami] = GSC_Okami;
+		map[CRC::MetalGearSolid3] = GSC_MetalGearSolid3;
+		map[CRC::DBZBT2] = GSC_DBZBT2;
+		map[CRC::DBZBT3] = GSC_DBZBT3;
+		map[CRC::SFEX3] = GSC_SFEX3;
+		map[CRC::Bully] = GSC_Bully;
+		map[CRC::BullyCC] = GSC_BullyCC;
+		map[CRC::SoTC] = GSC_SoTC;
+		map[CRC::OnePieceGrandAdventure] = GSC_OnePieceGrandAdventure;
+		map[CRC::ICO] = GSC_ICO;
+		map[CRC::GT4] = GSC_GT4;
+		map[CRC::WildArms5] = GSC_WildArms5;
+		map[CRC::Manhunt2] = GSC_Manhunt2;
+		map[CRC::CrashBandicootWoC] = GSC_CrashBandicootWoC;
+		map[CRC::ResidentEvil4] = GSC_ResidentEvil4;
+		map[CRC::Spartan] = GSC_Spartan;
+		map[CRC::AceCombat4] = GSC_AceCombat4;
+		map[CRC::Drakengard2] = GSC_Drakengard2;
+		map[CRC::Tekken5] = GSC_Tekken5;
+		map[CRC::IkkiTousen] = GSC_IkkiTousen;
+		map[CRC::GodOfWar] = GSC_GodOfWar;
+		map[CRC::GodOfWar2] = GSC_GodOfWar;
 	}
 
-	if(CAtlMap<DWORD, GetSkipCount>::CPair* pair = m_crc2gsc.Lookup(m_crc))
+	if(CAtlMap<CRC::Title, GetSkipCount>::CPair* pair = map.Lookup(m_game.title))
 	{
 		if(!pair->m_value(fi, skip))
 		{

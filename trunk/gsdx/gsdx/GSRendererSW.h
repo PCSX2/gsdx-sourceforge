@@ -197,6 +197,11 @@ protected:
 
 	void Draw()
 	{
+		if(s_n >= 2455)
+		{
+			s_save = 1;
+		}
+
 		if(s_dump)
 		{
 			CString str;
@@ -300,5 +305,10 @@ public:
 		{
 			delete m_rmt.RemoveHead();
 		}
+	}
+
+	GSRasterizer* GetRasterizer()
+	{
+		return m_rst;
 	}
 };

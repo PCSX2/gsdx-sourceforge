@@ -879,6 +879,11 @@ public:
 		return GSVector4i(_mm_castps_si128(_mm_loadh_pi(_mm_setzero_ps(), (__m64*)p)));
 	}
 
+	static GSVector4i loadh(const void* p, const GSVector4i& v)
+	{
+		return GSVector4i(_mm_castps_si128(_mm_loadh_pi(_mm_castsi128_ps(v.m), (__m64*)p)));
+	}
+
 	static GSVector4i loadu(const void* p)
 	{
 		return GSVector4i(_mm_loadu_si128((__m128i*)p));
@@ -886,12 +891,17 @@ public:
 
 	static GSVector4i loadu(const void* pl, const void* ph)
 	{
+		return loadh(ph, loadl(pl));
+	}
+/*
+	static GSVector4i loadu(const void* pl, const void* ph)
+	{
 		__m128i lo = _mm_loadl_epi64((__m128i*)pl);
 		__m128i hi = _mm_loadl_epi64((__m128i*)ph);
 
 		return GSVector4i(_mm_unpacklo_epi64(lo, hi));
 	}
-
+*/
 	template<bool aligned> static GSVector4i load(const void* p)
 	{
 		return GSVector4i(aligned ? _mm_load_si128((__m128i*)p) : _mm_loadu_si128((__m128i*)p));
