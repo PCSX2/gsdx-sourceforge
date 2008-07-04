@@ -32,4 +32,5 @@ EXPORTS
 	GSsetGameCRC		
 	GSsetFrameSkip		
 	GSgetLastTag
-	GSReplay			
+	GSReplay
+	GSBenchmark

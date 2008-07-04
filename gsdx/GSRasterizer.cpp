@@ -36,7 +36,7 @@ GSRasterizer::GSRasterizer(GSState* state, int id, int threads)
 	, m_fbco(NULL)
 	, m_zbco(NULL)
 {
-	m_tc = (TextureCache*)_aligned_malloc(sizeof(TextureCache), 16);
+	m_tc = (TextureCache*)VirtualAlloc(NULL, sizeof(TextureCache), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 	m_tc->dirty = true;
 
 	InvalidateTextureCache();
@@ -81,7 +81,7 @@ GSRasterizer::GSRasterizer(GSState* state, int id, int threads)
 
 GSRasterizer::~GSRasterizer()
 {
-	_aligned_free(m_tc);
+	VirtualFree(m_tc, 0, MEM_RELEASE);
 
 	_aligned_free(m_slenv);
 
@@ -323,7 +323,7 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 		slenv->t.max = slenv->t.max.xxxxl().xxxxh();
 		slenv->t.mask = slenv->t.mask.xxzz();
 
-		m_tw = max(context->TEX0.TW, TEXTURE_CACHE_WIDTH);
+		m_tw = (int)max(context->TEX0.TW, TEXTURE_CACHE_WIDTH);
 	}
 
 	//
@@ -883,17 +883,17 @@ else if(steps == 3) g_slp3++;
 		GSVector4i zm = slenv->zm;
 		GSVector4i test = GSVector4i::zero();
 
-		GSVector4i zi = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & 1);
+		GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & 1);
+		GSVector4i zd;
 
 		if(ztst > 1)
 		{
-			GSVector4i zs = zi - 0x80000000;
-			GSVector4i zd = m_state->m_mem.ReadZBufX(zpsm, za) - 0x80000000;
+			zd = m_state->m_mem.ReadZBufX(zpsm, za);
 
 			switch(ztst)
 			{
-			case 2: test = zs < zd; break; // ge
-			case 3: test = zs <= zd; break; // g
+			case 2: test = (zs - 0x80000000) < (zd - 0x80000000); break; // ge
+			case 3: test = (zs - 0x80000000) <= (zd - 0x80000000); break; // g
 			default: __assume(0);
 			}
 
@@ -1136,7 +1136,7 @@ else if(steps == 3) g_slp3++;
 
 		if(ztst > 0)
 		{
-			m_state->m_mem.WriteZBufX(zpsm, za, zi, zm, pixels);
+			m_state->m_mem.WriteZBufX(zpsm, za, zs, zm, pixels);
 		}
 
 		}

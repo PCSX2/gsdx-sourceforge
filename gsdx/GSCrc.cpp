@@ -22,51 +22,96 @@
 #include "StdAfx.h"
 #include "GSCrc.h"
 
-DWORD CRC::MetalSlug6 = 0x2113EA2E;
-DWORD CRC::TomoyoAfter_JP = 0x42E05BAF;
-DWORD CRC::Clannad_JP = 0x7800DC84;
-DWORD CRC::FFXII_EU1 = 0x78da0252;
-DWORD CRC::FFXII_EU2 = 0xc1274668; 
-DWORD CRC::FFXII_EU3 = 0xdc2a467e;
-DWORD CRC::FFXII_EU4 = 0xca284668;
-DWORD CRC::ShadowHearts = 0x8BE3D7B2;
-DWORD CRC::ShadowHearts_US = 0xDEFA4763;
-DWORD CRC::Okami_US = 0x21068223;
-DWORD CRC::Okami_FR = 0x891f223f;
-DWORD CRC::MetalGearSolid3_US = 0x053D2239;
-DWORD CRC::MetalGearSolid3_FR = 0x086273D2;
-DWORD CRC::MetalGearSolid3_EU = 0x26A6E286; 
-DWORD CRC::MetalGearSolid3 = 0xAA31B5BF;
-DWORD CRC::DBZBT2_US = 0x278722BF;
-DWORD CRC::DBZBT2_EU = 0X0393B6BE;
-DWORD CRC::DBZBT3_US = 0x428113C2;
-DWORD CRC::DBZBT3_EU = 0xA422BB13;
-DWORD CRC::SFEX3_US = 0x72B3802A;
-DWORD CRC::SFEX3_US2 = 0x71521863;
-DWORD CRC::Bully_US = 0x28703748;
-DWORD CRC::BullyCC_EU = 0xC78A495D;
-DWORD CRC::SoTC_US = 0xC19A374E;
-DWORD CRC::SoTC_EU = 0x7D8F539A;
-DWORD CRC::OnePieceGrandAdventure_US = 0x3122B508;
-DWORD CRC::ICO_US = 0x6F8545DB;
-DWORD CRC::ICO_US2 = 0x5C991F4E;
-DWORD CRC::GT4_1 = 0x44A61C8F;
-DWORD CRC::GT4_2 = 0x0086E35B;
-DWORD CRC::GT4_3 = 0x77E61C8A;
-DWORD CRC::WildArms5_UNDUB = 0xC164550A;
-DWORD CRC::WildArms5_US = 0xC1640D2C;
-DWORD CRC::Manhunt2 = 0x8B029334;
-DWORD CRC::CrashBandicootWoC = 0x09F49E37;
-DWORD CRC::ResidentEvil4_US = 0x013E349D;
-DWORD CRC::ResidentEvil4 = 0x6BA2F6B9;
-DWORD CRC::Spartan = 0x72E1E60E;
-DWORD CRC::AceCombat4 = 0x1B9B7563;
-DWORD CRC::Drakengard2 = 0xEC432B24;
-DWORD CRC::Tekken5 = 0x1F88EE37;
-DWORD CRC::IkkiTousen_JP = 0x9E98B8AE;
-DWORD CRC::GodOfWar_US = 0xD6385328;
-DWORD CRC::GodOfWar_EU = 0xFB0E6D72;
-DWORD CRC::GodOfWar_1 = 0xA61A4C6D;
-DWORD CRC::GodOfWar_2 = 0xE23D532B;
-DWORD CRC::GodOfWar2_RU = 0x2F123FD8;
-DWORD CRC::JackieChanAdv = 0x5D482F18;
+CRC::Game CRC::m_games[] = 
+{
+	{0x00000000, None, Unknown, false},
+	{0x2113EA2E, MetalSlug6, Unknown, false},
+	{0x42E05BAF, TomoyoAfter, JP, false},
+	{0x7800DC84, Clannad, JP, false},
+	{0xa39517ab, FFX, EU, true},
+	{0xa39517ae, FFX, FR, true},
+	{0x941bb7d9, FFX, DE, true},
+	{0xa39517a9, FFX, IT, true},
+	{0x941bb7de, FFX, ES, true},
+	{0xb4414ea1, FFX, RU, true},
+	{0xee97db5b, FFX, RU, true},
+	{0xaec495cc, FFX, RU, true},
+	{0xbb3d833a, FFX, US, true},
+	{0x6a4efe60, FFX, JP, true},
+	{0x3866ca7e, FFX, ASIA, true}, // int.
+	{0x658597e2, FFX, JP, true}, // int.
+	{0x9aac5309, FFX2, EU, true},
+	{0x9aac530c, FFX2, FR, true},
+	{0x9aac530a, FFX2, FR, true}, // ?
+	{0x9aac530d, FFX2, DE, true},
+	{0x9aac530b, FFX2, IT, true},
+	{0x48fe0c71, FFX2, US, true},
+	{0xe1fd9a2d, FFX2, JP, true}, // int.
+	{0x78da0252, FFXII, EU, false},
+	{0xc1274668, FFXII, EU, false},
+	{0xdc2a467e, FFXII, EU, false},
+	{0xca284668, FFXII, EU, false},
+	{0x8BE3D7B2, ShadowHearts, Unknown, false},
+	{0xDEFA4763, ShadowHearts, US, false},
+	{0x21068223, Okami, US, false},
+	{0x891f223f, Okami, FR, false},
+	{0x053D2239, MetalGearSolid3, US, false},
+	{0x086273D2, MetalGearSolid3, FR, false},
+	{0x26A6E286, MetalGearSolid3, EU, false},
+	{0xAA31B5BF, MetalGearSolid3, Unknown, false},
+	{0x278722BF, DBZBT2, US, false},
+	{0xFE961D28, DBZBT2, US, false},
+	{0X0393B6BE, DBZBT2, EU, false},
+	{0x428113C2, DBZBT3, US, false},
+	{0xA422BB13, DBZBT3, EU, false},
+	{0x72B3802A, SFEX3, US, false},
+	{0x71521863, SFEX3, US, false},
+	{0x28703748, Bully, US, false},
+	{0xC78A495D, BullyCC, US, false},
+	{0xC19A374E, SoTC, US, false},
+	{0x7D8F539A, SoTC, EU, false},
+	{0x3122B508, OnePieceGrandAdventure, US, false},
+	{0x6F8545DB, ICO, US, false},
+	{0x5C991F4E, ICO, Unknown, false},
+	{0x44A61C8F, GT4, Unknown, false},
+	{0x0086E35B, GT4, Unknown, false},
+	{0x77E61C8A, GT4, Unknown, false},
+	{0xC164550A, WildArms5, JPUNDUB, false},
+	{0xC1640D2C, WildArms5, US, false},
+	{0x8B029334, Manhunt2, Unknown, false},
+	{0x09F49E37, CrashBandicootWoC, Unknown, false},
+	{0x013E349D, ResidentEvil4, US, false},
+	{0x6BA2F6B9, ResidentEvil4, Unknown, false},
+	{0x72E1E60E, Spartan, Unknown, false},
+	{0x1B9B7563, AceCombat4, Unknown, false},
+	{0xEC432B24, Drakengard2, Unknown, false},
+	{0x1F88EE37, Tekken5, Unknown, false},
+	{0x9E98B8AE, IkkiTousen, JP, false},
+	{0xD6385328, GodOfWar, US, false},
+	{0xFB0E6D72, GodOfWar, EU, false},
+	{0xA61A4C6D, GodOfWar, Unknown, false},
+	{0xE23D532B, GodOfWar, Unknown, false},
+	{0x2F123FD8, GodOfWar2, RU, false},
+	{0x5D482F18, JackieChanAdv, Unknown, false},
+	{0xf0a6d880, HarvestMoon, US, true},
+};
+
+CAtlMap<DWORD, CRC::Game*> CRC::m_map;
+
+CRC::Game CRC::Lookup(DWORD crc)
+{
+	if(m_map.IsEmpty())
+	{
+		for(int i = 0; i < countof(m_games); i++)
+		{
+			m_map[m_games[i].crc] = &m_games[i];
+		}
+	}
+
+	if(CAtlMap<DWORD, Game*>::CPair* pair = m_map.Lookup(crc))
+	{
+		return *pair->m_value;
+	}
+
+	return m_games[0];
+}

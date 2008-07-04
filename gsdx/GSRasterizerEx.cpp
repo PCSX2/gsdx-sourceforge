@@ -26,8 +26,10 @@ void GSRasterizer::InitEx()
 {
 	// our little "profile guided optimization", gathered from different games
 
-	// ffx
+	m_dsmap[0x445068c0] = &GSRasterizer::DrawScanlineEx<0x445068c0>;
 
+	// ffx
+/**/
 	m_dsmap[0x465204c9] = &GSRasterizer::DrawScanlineEx<0x465204c9>;
 	m_dsmap[0x000984e9] = &GSRasterizer::DrawScanlineEx<0x000984e9>;
 	m_dsmap[0x4251a809] = &GSRasterizer::DrawScanlineEx<0x4251a809>;
@@ -933,6 +935,7 @@ void GSRasterizer::InitEx()
 	m_dsmap[0x44504488] = &GSRasterizer::DrawScanlineEx<0x44504488>;
 	m_dsmap[0x46507808] = &GSRasterizer::DrawScanlineEx<0x46507808>;
 	m_dsmap[0x48507848] = &GSRasterizer::DrawScanlineEx<0x48507848>;
+
 /*
 	CAtlMap<DWORD, bool> dsmap;
 
@@ -1038,17 +1041,17 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 		GSVector4i zm = slenv->zm;
 		GSVector4i test = GSVector4i::zero();
 
-		GSVector4i zi = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & 1);
+		GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & 1);
+		GSVector4i zd;
 
 		if(ztst > 1)
 		{
-			GSVector4i zs = zi - 0x80000000;
-			GSVector4i zd = m_state->m_mem.ReadZBufX(zpsm, za) - 0x80000000;
+			zd = m_state->m_mem.ReadZBufX(zpsm, za);
 
 			switch(ztst)
 			{
-			case 2: test = zs < zd; break; // ge
-			case 3: test = zs <= zd; break; // g
+			case 2: test = (zs - 0x80000000) < (zd - 0x80000000); break; // ge
+			case 3: test = (zs - 0x80000000) <= (zd - 0x80000000); break; // g
 			default: __assume(0);
 			}
 
@@ -1286,7 +1289,7 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 
 		if(ztst > 0 && !(atst == 0 && afail != 2))
 		{
-			m_state->m_mem.WriteZBufX(zpsm, za, zi, zm, pixels);
+			m_state->m_mem.WriteZBufX(zpsm, za, zs, zm, pixels);
 		}
 
 		}

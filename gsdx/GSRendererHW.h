@@ -320,7 +320,7 @@ protected:
 	{
 		#pragma region ffxii pal video conversion
 
-		if(m_crc == CRC::FFXII_EU1 || m_crc == CRC::FFXII_EU2 || m_crc == CRC::FFXII_EU3 || m_crc == CRC::FFXII_EU4)
+		if(m_game.title == CRC::FFXII && m_game.region == CRC::EU)
 		{
 			static DWORD* video = NULL;
 			static bool ok = false;
@@ -377,7 +377,7 @@ protected:
 
 		#pragma region ffx random battle transition (z buffer written directly, clear it now)
 
-		if(m_ffx)
+		if(m_game.title == CRC::FFX)
 		{
 			DWORD FBP = m_context->FRAME.Block();
 			DWORD ZBP = m_context->ZBUF.Block();
@@ -395,7 +395,7 @@ protected:
 
 		#pragma region metal slug missing red channel fix
 		
-		if(m_crc == CRC::MetalSlug6)
+		if(m_game.title == CRC::MetalSlug6)
 		{
 			for(int i = 0, j = m_count; i < j; i++)
 			{
@@ -412,7 +412,7 @@ protected:
 
 		#pragma region tomoyo after, clannad (palette uploaded in a point list, pure genius...)
 
-		if(m_crc == CRC::TomoyoAfter_JP || m_crc == CRC::Clannad_JP)
+		if(m_game.title == CRC::TomoyoAfter || m_game.title == CRC::Clannad)
 		{
 			if(prim == GS_POINTLIST && !PRIM->TME)
 			{
@@ -466,7 +466,7 @@ protected:
 	{
 		#pragma region dbzbt2 palette readback (cannot detect yet, when fetching the texture later)
 
-		if(m_crc == CRC::DBZBT2_US || m_crc == CRC::DBZBT2_EU)
+		if(m_game.title == CRC::DBZBT2)
 		{
 			DWORD FBP = m_context->FRAME.Block();
 			DWORD TBP0 = m_context->TEX0.TBP0;
@@ -490,7 +490,7 @@ protected:
 	{
 		#pragma region dbzbt2 palette should stay 64 x 64
 
-		if(m_crc == CRC::DBZBT2_US || m_crc == CRC::DBZBT2_EU)
+		if(m_game.title == CRC::DBZBT2)
 		{
 			DWORD FBP = m_context->FRAME.Block();
 
@@ -530,7 +530,7 @@ public:
 	{
 		__super::SetGameCRC(crc, options);
 
-		if(crc == CRC::JackieChanAdv)
+		if(m_game.title == CRC::JackieChanAdv)
 		{
 			m_width = 1280;
 		}
