@@ -2082,15 +2082,22 @@ void GSLocalMemory::ReadTexture32(const CRect& r, BYTE* dst, int dstpitch, GIFRe
 
 void GSLocalMemory::ReadTexture24(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	__declspec(align(16)) DWORD block[8 * 8];
-
-	FOREACH_BLOCK_START(r, 8, 8, 32)
+	if(TEXA.AEM)
 	{
-		ReadBlock32<true>((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
-
-		ExpandBlock24(block, ptr + (x - r.left) * 4, dstpitch, &TEXA);
+		FOREACH_BLOCK_START(r, 8, 8, 32)
+		{
+			ReadAndExpandBlock24<true>((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, TEXA);
+		}
+		FOREACH_BLOCK_END
 	}
-	FOREACH_BLOCK_END
+	else
+	{
+		FOREACH_BLOCK_START(r, 8, 8, 32)
+		{
+			ReadAndExpandBlock24<false>((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, TEXA);
+		}
+		FOREACH_BLOCK_END
+	}
 }
 
 void GSLocalMemory::ReadTexture16(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
@@ -2101,7 +2108,7 @@ void GSLocalMemory::ReadTexture16(const CRect& r, BYTE* dst, int dstpitch, GIFRe
 	{
 		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
 
-		ExpandBlock16(block, ptr + (x - r.left) * 4, dstpitch, &TEXA);
+		ExpandBlock16(block, ptr + (x - r.left) * 4, dstpitch, TEXA);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2114,7 +2121,7 @@ void GSLocalMemory::ReadTexture16S(const CRect& r, BYTE* dst, int dstpitch, GIFR
 	{
 		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16S(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
 
-		ExpandBlock16(block, ptr + (x - r.left) * 4, dstpitch, &TEXA);
+		ExpandBlock16(block, ptr + (x - r.left) * 4, dstpitch, TEXA);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2185,15 +2192,22 @@ void GSLocalMemory::ReadTexture32Z(const CRect& r, BYTE* dst, int dstpitch, GIFR
 
 void GSLocalMemory::ReadTexture24Z(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	__declspec(align(16)) DWORD block[8 * 8];
-
-	FOREACH_BLOCK_START(r, 8, 8, 32)
+	if(TEXA.AEM)
 	{
-		ReadBlock32<true>((BYTE*)&m_vm32[BlockAddress32Z(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
-
-		ExpandBlock24(block, ptr + (x - r.left) * 4, dstpitch, &TEXA);
+		FOREACH_BLOCK_START(r, 8, 8, 32)
+		{
+			ReadAndExpandBlock24<true>((BYTE*)&m_vm32[BlockAddress32Z(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, TEXA);
+		}
+		FOREACH_BLOCK_END
 	}
-	FOREACH_BLOCK_END
+	else
+	{
+		FOREACH_BLOCK_START(r, 8, 8, 32)
+		{
+			ReadAndExpandBlock24<false>((BYTE*)&m_vm32[BlockAddress32Z(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, TEXA);
+		}
+		FOREACH_BLOCK_END
+	}
 }
 
 void GSLocalMemory::ReadTexture16Z(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
@@ -2204,7 +2218,7 @@ void GSLocalMemory::ReadTexture16Z(const CRect& r, BYTE* dst, int dstpitch, GIFR
 	{
 		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16Z(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
 
-		ExpandBlock16(block, ptr + (x - r.left) * 4, dstpitch, &TEXA);
+		ExpandBlock16(block, ptr + (x - r.left) * 4, dstpitch, TEXA);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2217,7 +2231,7 @@ void GSLocalMemory::ReadTexture16SZ(const CRect& r, BYTE* dst, int dstpitch, GIF
 	{
 		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16SZ(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
 
-		ExpandBlock16(block, ptr + (x - r.left) * 4, dstpitch, &TEXA);
+		ExpandBlock16(block, ptr + (x - r.left) * 4, dstpitch, TEXA);
 	}
 	FOREACH_BLOCK_END
 }
