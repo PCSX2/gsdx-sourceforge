@@ -461,7 +461,7 @@ public:
 		GSVector4i* d1 = (GSVector4i*)&dst[dstpitch * 1];
 
 		GSVector4i::store<aligned>(&d0[0], v0);
-		GSVector4i::store<aligned>(&d0[1], v1);
+		GSVector4i::store<aligned>(&d0[1], v2);
 		GSVector4i::store<aligned>(&d1[0], v1);
 		GSVector4i::store<aligned>(&d1[1], v3);
 
