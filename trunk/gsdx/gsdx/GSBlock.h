@@ -945,57 +945,56 @@ public:
 		#endif
 	}
 
-	static void ExpandBlock24(DWORD* src, BYTE* dst, int dstpitch, GIFRegTEXA* TEXA) // do not inline, uses too many xmm regs
+	template<bool AEM> static void ExpandBlock24(DWORD* src, BYTE* dst, int dstpitch, const GIFRegTEXA& TEXA)
 	{
 		#if _M_SSE >= 0x200
 
-		GSVector4i TA0(TEXA->TA0 << 24);
-		GSVector4i rgbx = m_rgbx;
+		GSVector4i TA0(TEXA.TA0 << 24);
+		GSVector4i mask = m_rgbx;
 
-		if(TEXA->AEM == 0)
+		for(int i = 0; i < 4; i++, dst += dstpitch * 2)
 		{
-			for(int i = 0; i < 8; i++, dst += dstpitch)
-			{
-				GSVector4i v0 = ((GSVector4i*)src)[i * 2 + 0] & rgbx;
-				GSVector4i v1 = ((GSVector4i*)src)[i * 2 + 1] & rgbx;
+			GSVector4i v0 = ((GSVector4i*)src)[i * 4 + 0] & mask;
+			GSVector4i v1 = ((GSVector4i*)src)[i * 4 + 1] & mask;
+			GSVector4i v2 = ((GSVector4i*)src)[i * 4 + 2] & mask;
+			GSVector4i v3 = ((GSVector4i*)src)[i * 4 + 3] & mask;
 
-				((GSVector4i*)dst)[0] = v0 | TA0;
-				((GSVector4i*)dst)[1] = v1 | TA0;
+			GSVector4i* d0 = (GSVector4i*)&dst[dstpitch * 0];
+			GSVector4i* d1 = (GSVector4i*)&dst[dstpitch * 1];
+
+			if(AEM)
+			{
+				d0[0] = v0 | TA0.andnot(v0 == GSVector4i::zero()); // TA0 & (v0 != GSVector4i::zero())
+				d0[1] = v1 | TA0.andnot(v1 == GSVector4i::zero()); // TA0 & (v1 != GSVector4i::zero())
+				d1[0] = v2 | TA0.andnot(v2 == GSVector4i::zero()); // TA0 & (v2 != GSVector4i::zero())
+				d1[1] = v3 | TA0.andnot(v3 == GSVector4i::zero()); // TA0 & (v3 != GSVector4i::zero())
 			}
-		}
-		else
-		{
-			for(int i = 0; i < 8; i++, dst += dstpitch)
+			else
 			{
-				GSVector4i v0 = ((GSVector4i*)src)[i * 2 + 0] & rgbx;
-				GSVector4i v1 = ((GSVector4i*)src)[i * 2 + 1] & rgbx;
-
-				((GSVector4i*)dst)[0] = v0 | TA0.andnot(v0 == GSVector4i::zero()); // TA0 & (v0 != GSVector4i::zero())
-				((GSVector4i*)dst)[1] = v1 | TA0.andnot(v1 == GSVector4i::zero()); // TA0 & (v1 != GSVector4i::zero())
+				d0[0] = v0 | TA0;
+				d0[1] = v1 | TA0;
+				d1[0] = v2 | TA0;
+				d1[1] = v3 | TA0;
 			}
 		}
 
 		#else
 
-		DWORD TA0 = TEXA->TA0 << 24;
+		DWORD TA0 = TEXA.TA0 << 24;
 
-		if(TEXA->AEM == 0)
+		for(int j = 0; j < 8; j++, src += 8, dst += dstpitch)
 		{
-			for(int j = 0; j < 8; j++, src += 8, dst += dstpitch)
+			for(int i = 0; i < 8; i++)
 			{
-				for(int i = 0; i < 8; i++)
+				DWORD c = src[i] & 0xffffff;
+
+				if(AEM)
 				{
-					((DWORD*)dst)[i] = TA0 | (src[i] & 0xffffff);
+					((DWORD*)dst)[i] = c | (c ? TA0 : 0);
 				}
-			}
-		}
-		else
-		{
-			for(int j = 0; j < 8; j++, src += 8, dst += dstpitch)
-			{
-				for(int i = 0; i < 8; i++)
+				else
 				{
-					((DWORD*)dst)[i] = ((src[i] & 0xffffff) ? TA0 : 0) | (src[i] & 0xffffff);
+					((DWORD*)dst)[i] = c | TA0;
 				}
 			}
 		}
@@ -1003,40 +1002,19 @@ public:
 		#endif
 	}
 
-	static void ExpandBlock16(WORD* src, BYTE* dst, int dstpitch, GIFRegTEXA* TEXA) // do not inline, uses too many xmm regs
+	static void ExpandBlock16(WORD* src, BYTE* dst, int dstpitch, const GIFRegTEXA& TEXA) // do not inline, uses too many xmm regs
 	{
 		#if _M_SSE >= 0x200
 
-		GSVector4i TA0(TEXA->TA0 << 24);
-		GSVector4i TA1(TEXA->TA1 << 24);
+		GSVector4i TA0(TEXA.TA0 << 24);
+		GSVector4i TA1(TEXA.TA1 << 24);
 		GSVector4i rm = m_rxxx;
 		GSVector4i gm = m_xgxx;
 		GSVector4i bm = m_xxbx;
 		GSVector4i am = m_xxxa;
 		GSVector4i l, h;
 
-		if(TEXA->AEM == 0)
-		{
-			for(int i = 0; i < 8; i++, dst += dstpitch)
-			{
-				GSVector4i v0 = ((GSVector4i*)src)[i * 2 + 0];
-
-				l = v0.upl16();
-				h = v0.uph16();
-
-				((GSVector4i*)dst)[0] = ((l & rm) << 3) | ((l & gm) << 6) | ((l & bm) << 9) | TA1.blend(TA0, l < am);
-				((GSVector4i*)dst)[1] = ((h & rm) << 3) | ((h & gm) << 6) | ((h & bm) << 9) | TA1.blend(TA0, h < am);
-
-				GSVector4i v1 = ((GSVector4i*)src)[i * 2 + 1];
-
-				l = v1.upl16();
-				h = v1.uph16();
-
-				((GSVector4i*)dst)[2] = ((l & rm) << 3) | ((l & gm) << 6) | ((l & bm) << 9) | TA1.blend(TA0, l < am);
-				((GSVector4i*)dst)[3] = ((h & rm) << 3) | ((h & gm) << 6) | ((h & bm) << 9) | TA1.blend(TA0, h < am);
-			}
-		}
-		else
+		if(TEXA.AEM)
 		{
 			for(int i = 0; i < 8; i++, dst += dstpitch)
 			{
@@ -1057,19 +1035,40 @@ public:
 				((GSVector4i*)dst)[3] = ((h & rm) << 3) | ((h & gm) << 6) | ((h & bm) << 9) | TA1.blend(TA0, h < am).andnot(h == GSVector4i::zero());
 			}
 		}
+		else
+		{
+			for(int i = 0; i < 8; i++, dst += dstpitch)
+			{
+				GSVector4i v0 = ((GSVector4i*)src)[i * 2 + 0];
+
+				l = v0.upl16();
+				h = v0.uph16();
+
+				((GSVector4i*)dst)[0] = ((l & rm) << 3) | ((l & gm) << 6) | ((l & bm) << 9) | TA1.blend(TA0, l < am);
+				((GSVector4i*)dst)[1] = ((h & rm) << 3) | ((h & gm) << 6) | ((h & bm) << 9) | TA1.blend(TA0, h < am);
+
+				GSVector4i v1 = ((GSVector4i*)src)[i * 2 + 1];
+
+				l = v1.upl16();
+				h = v1.uph16();
+
+				((GSVector4i*)dst)[2] = ((l & rm) << 3) | ((l & gm) << 6) | ((l & bm) << 9) | TA1.blend(TA0, l < am);
+				((GSVector4i*)dst)[3] = ((h & rm) << 3) | ((h & gm) << 6) | ((h & bm) << 9) | TA1.blend(TA0, h < am);
+			}
+		}
 
 		#else
 
-		DWORD TA0 = TEXA->TA0 << 24;
-		DWORD TA1 = TEXA->TA1 << 24;
+		DWORD TA0 = TEXA.TA0 << 24;
+		DWORD TA1 = TEXA.TA1 << 24;
 
-		if(!TEXA->AEM)
+		if(TEXA.AEM)
 		{
 			for(int j = 0; j < 8; j++, src += 16, dst += dstpitch)
 			{
 				for(int i = 0; i < 16; i++)
 				{
-					((DWORD*)dst)[i] = ((src[i] & 0x8000) ? TA1 : TA0) | ((src[i] & 0x7c00) << 9) | ((src[i] & 0x03e0) << 6) | ((src[i] & 0x001f) << 3);
+					((DWORD*)dst)[i] = ((src[i] & 0x8000) ? TA1 : src[i] ? TA0 : 0) | ((src[i] & 0x7c00) << 9) | ((src[i] & 0x03e0) << 6) | ((src[i] & 0x001f) << 3);
 				}
 			}
 		}
@@ -1079,7 +1078,7 @@ public:
 			{
 				for(int i = 0; i < 16; i++)
 				{
-					((DWORD*)dst)[i] = ((src[i] & 0x8000) ? TA1 : src[i] ? TA0 : 0) | ((src[i] & 0x7c00) << 9) | ((src[i] & 0x03e0) << 6) | ((src[i] & 0x001f) << 3);
+					((DWORD*)dst)[i] = ((src[i] & 0x8000) ? TA1 : TA0) | ((src[i] & 0x7c00) << 9) | ((src[i] & 0x03e0) << 6) | ((src[i] & 0x001f) << 3);
 				}
 			}
 		}
@@ -1431,6 +1430,67 @@ public:
 			for(int i = 0; i < 8; i++)
 			{
 				((DWORD*)dst)[d[i]] = (((DWORD*)dst)[d[i]] & ~0xff000000) | (src[i] << 24);
+			}
+		}
+
+		#endif
+	}
+
+	template<bool AEM> __forceinline static void ReadAndExpandBlock24(BYTE* src, BYTE* dst, int dstpitch, const GIFRegTEXA& TEXA)
+	{
+		#if _M_SSE >= 0x200
+
+		GSVector4i TA0(TEXA.TA0 << 24);
+		GSVector4i mask = m_rgbx;
+
+		for(int i = 0; i < 4; i++, dst += dstpitch * 2)
+		{
+			GSVector4i v0 = ((GSVector4i*)src)[i * 4 + 0];
+			GSVector4i v1 = ((GSVector4i*)src)[i * 4 + 1];
+			GSVector4i v2 = ((GSVector4i*)src)[i * 4 + 2];
+			GSVector4i v3 = ((GSVector4i*)src)[i * 4 + 3];
+
+			GSVector4i::sw64(v0, v1, v2, v3);
+
+			GSVector4i* d0 = (GSVector4i*)&dst[dstpitch * 0];
+			GSVector4i* d1 = (GSVector4i*)&dst[dstpitch * 1];
+
+			if(AEM)
+			{
+				d0[0] = (v0 & mask) | TA0.andnot(v0 == GSVector4i::zero()); // TA0 & (v0 != GSVector4i::zero())
+				d0[1] = (v1 & mask) | TA0.andnot(v1 == GSVector4i::zero()); // TA0 & (v1 != GSVector4i::zero())
+				d1[0] = (v2 & mask) | TA0.andnot(v2 == GSVector4i::zero()); // TA0 & (v2 != GSVector4i::zero())
+				d1[1] = (v3 & mask) | TA0.andnot(v3 == GSVector4i::zero()); // TA0 & (v3 != GSVector4i::zero())
+			}
+			else
+			{
+				d0[0] = (v0 & mask) | TA0;
+				d0[1] = (v1 & mask) | TA0;
+				d1[0] = (v2 & mask) | TA0;
+				d1[1] = (v3 & mask) | TA0;
+			}
+		}
+
+		#else
+
+		DWORD TA0 = TEXA.TA0 << 24;
+
+		const DWORD* s = &columnTable32[0][0];
+
+		for(int j = 0; j < 8; j++, s += 8, dst += dstpitch)
+		{
+			for(int i = 0; i < 8; i++)
+			{
+				DWORD c = ((DWORD*)src)[s[i]] & 0xffffff;
+
+				if(AEM)
+				{
+					((DWORD*)dst)[i] = c | (c ? TA0 : 0);
+				}
+				else
+				{
+					((DWORD*)dst)[i] = c | TA0;
+				}
 			}
 		}
 

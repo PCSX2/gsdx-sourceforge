@@ -29,7 +29,7 @@ void GSRasterizer::InitEx()
 	m_dsmap[0x445068c0] = &GSRasterizer::DrawScanlineEx<0x445068c0>;
 
 	// ffx
-/**/
+
 	m_dsmap[0x465204c9] = &GSRasterizer::DrawScanlineEx<0x465204c9>;
 	m_dsmap[0x000984e9] = &GSRasterizer::DrawScanlineEx<0x000984e9>;
 	m_dsmap[0x4251a809] = &GSRasterizer::DrawScanlineEx<0x4251a809>;
