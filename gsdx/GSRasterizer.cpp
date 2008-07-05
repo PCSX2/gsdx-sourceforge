@@ -159,7 +159,7 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 	m_sel.afail = context->TEST.AFAIL;
 	m_sel.fge = PRIM->FGE;
 	m_sel.rfb = 
-		PRIM->ABE || env.PABE.PABE || 
+		PRIM->ABE || env.PABE.PABE || context->TEST.DATE ||
 		context->FRAME.FBMSK != 0 && context->FRAME.FBMSK != 0xffffffff || 
 		context->TEST.ATE && context->TEST.ATST != 1 && context->TEST.AFAIL == 3;
 	m_sel.date = context->FRAME.PSM != PSM_PSMCT24 ? context->TEST.DATE : 0;

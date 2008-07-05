@@ -221,6 +221,26 @@ static INT32 GSopen(void* dsp, char* title, int mt, int renderer)
 {
 	AFX_MANAGE_STATE(AfxGetStaticModuleState());
 
+	CString str;
+
+	str.Format(_T("d3dx9_%d.dll"), D3DX_SDK_VERSION);
+
+	if(HINSTANCE hDll = LoadLibrary(str))
+	{
+		FreeLibrary(hDll);
+	}
+	else
+	{
+		int res = AfxMessageBox(_T("Please update DirectX!\n\nWould you like to open the download page in your browser?"), MB_YESNO);
+
+		if(res == IDYES)
+		{
+			ShellExecute(NULL, _T("open"), _T("http://www.microsoft.com/downloads/details.aspx?FamilyId=2DA43D38-DB71-4C1B-BC6A-9B6652CD92A3"), NULL, NULL, SW_SHOWNORMAL);
+		}
+
+		return -1;
+	}
+
 	GSclose();
 
 	// TODO 

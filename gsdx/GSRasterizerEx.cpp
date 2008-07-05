@@ -124,7 +124,7 @@ void GSRasterizer::InitEx()
 	m_dsmap[0x000228a8] = &GSRasterizer::DrawScanlineEx<0x000228a8>;
 	m_dsmap[0x48562808] = &GSRasterizer::DrawScanlineEx<0x48562808>;
 	m_dsmap[0x445204a8] = &GSRasterizer::DrawScanlineEx<0x445204a8>;
-	m_dsmap[0x00204408] = &GSRasterizer::DrawScanlineEx<0x00204408>;
+	m_dsmap[0x00304408] = &GSRasterizer::DrawScanlineEx<0x00304408>;
 	m_dsmap[0x48522848] = &GSRasterizer::DrawScanlineEx<0x48522848>;
 	m_dsmap[0x44522848] = &GSRasterizer::DrawScanlineEx<0x44522848>;
 	m_dsmap[0x485604a8] = &GSRasterizer::DrawScanlineEx<0x485604a8>;
@@ -480,7 +480,7 @@ void GSRasterizer::InitEx()
 	m_dsmap[0x48520498] = &GSRasterizer::DrawScanlineEx<0x48520498>;
 	m_dsmap[0x44534898] = &GSRasterizer::DrawScanlineEx<0x44534898>;
 	m_dsmap[0x685868d8] = &GSRasterizer::DrawScanlineEx<0x685868d8>;
-	m_dsmap[0x00204498] = &GSRasterizer::DrawScanlineEx<0x00204498>;
+	m_dsmap[0x00304498] = &GSRasterizer::DrawScanlineEx<0x00304498>;
 	m_dsmap[0x445c28d8] = &GSRasterizer::DrawScanlineEx<0x445c28d8>;
 	m_dsmap[0x00034498] = &GSRasterizer::DrawScanlineEx<0x00034498>;
 
