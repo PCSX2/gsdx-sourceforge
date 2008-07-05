@@ -1047,8 +1047,10 @@ void GSState::FlushWrite(BYTE* mem, int len)
 /*
 		static int n = 0;
 		CString str;
-		str.Format(_T("c:\\temp1\\[%04d]_%d_%d_%d_%d.bmp"), n++, r.left, r.top, r.right, r.bottom);
-		m_mem.SaveBMP(str, m_context->FRAME.Block(), m_context->FRAME.FBW, m_context->FRAME.PSM, 640, 448);
+		str.Format(_T("c:\\temp1\\[%04d]_%05x_%d_%d_%d_%d_%d_%d.bmp"), 
+			n++, (int)m_env.BITBLTBUF.DBP, (int)m_env.BITBLTBUF.DBW, (int)m_env.BITBLTBUF.DPSM, 
+			r.left, r.top, r.right, r.bottom);
+		m_mem.SaveBMP(str, m_env.BITBLTBUF.DBP, m_env.BITBLTBUF.DBW, m_env.BITBLTBUF.DPSM, r.Width(), r.Height());
 */
 	}
 }
@@ -1057,14 +1059,23 @@ void GSState::FlushWrite(BYTE* mem, int len)
 
 void GSState::Write(BYTE* mem, int len)
 {
-	/*
-	TRACE(_T("Write len=%d DBP=%05x DPSM=%d DSAX=%d DSAY=%d RRW=%d RRH=%d\n"), 
-		  len, (int)m_env.BITBLTBUF.DBP, (int)m_env.BITBLTBUF.DPSM, 
+/**/
+	TRACE(_T("Write len=%d DBP=%05x DBW=%d DPSM=%d DSAX=%d DSAY=%d RRW=%d RRH=%d\n"), 
+		  len, (int)m_env.BITBLTBUF.DBP, (int)m_env.BITBLTBUF.DBW, (int)m_env.BITBLTBUF.DPSM, 
 		  (int)m_env.TRXPOS.DSAX, (int)m_env.TRXPOS.DSAY,
 		  (int)m_env.TRXREG.RRW, (int)m_env.TRXREG.RRH);
-	*/
 
 	if(len == 0) return;
+
+	if(m_game.title == CRC::NamcoXCapcom)
+	{
+		
+		if(m_env.BITBLTBUF.DBP == 0x03018 && m_env.BITBLTBUF.DBW == 11 && m_env.BITBLTBUF.DPSM == PSM_PSMT8
+		|| m_env.BITBLTBUF.DBP == 0x03b80 && m_env.BITBLTBUF.DBW == 5 && m_env.BITBLTBUF.DPSM == PSM_PSMT8)
+		{
+			m_env.BITBLTBUF.DBW--; // WTF
+		}
+	}
 
 	if(m_y >= m_env.TRXREG.RRH) return; // TODO: handle overflow during writing data too (just chop len below somewhere)
 
@@ -1116,8 +1127,8 @@ void GSState::Write(BYTE* mem, int len)
 void GSState::Read(BYTE* mem, int len)
 {
 	/*
-	TRACE(_T("Read len=%d SBP=%05x SPSM=%d SSAX=%d SSAY=%d RRW=%d RRH=%d\n"), 
-		  len, (int)m_env.BITBLTBUF.SBP, (int)m_env.BITBLTBUF.SPSM, 
+	TRACE(_T("Read len=%d SBP=%05x SBW=%d SPSM=%d SSAX=%d SSAY=%d RRW=%d RRH=%d\n"), 
+		  len, (int)m_env.BITBLTBUF.SBP, (int)m_env.BITBLTBUF.SBW, (int)m_env.BITBLTBUF.SPSM, 
 		  (int)m_env.TRXPOS.SSAX, (int)m_env.TRXPOS.SSAY,
 		  (int)m_env.TRXREG.RRW, (int)m_env.TRXREG.RRH);
 	*/

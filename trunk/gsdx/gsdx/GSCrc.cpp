@@ -94,6 +94,7 @@ CRC::Game CRC::m_games[] =
 	{0x2F123FD8, GodOfWar2, RU, false},
 	{0x5D482F18, JackieChanAdv, Unknown, false},
 	{0xf0a6d880, HarvestMoon, US, true},
+	{0x75c01a04, NamcoXCapcom, US, false},
 };
 
 CAtlMap<DWORD, CRC::Game*> CRC::m_map;

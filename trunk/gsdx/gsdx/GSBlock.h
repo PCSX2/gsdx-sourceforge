@@ -900,7 +900,7 @@ public:
 		#if _M_SSE >= 0x200
 
 		GSVector4i zero = GSVector4i::zero();
-		GSVector4i mask(0x0f0f0f0f);
+		GSVector4i mask(0xf0f0f0f0);
 
 		for(int i = 0; i < 2; i++, src += srcpitch * 4)
 		{

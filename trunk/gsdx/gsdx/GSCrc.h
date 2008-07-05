@@ -58,6 +58,7 @@ public:
 		GodOfWar2,
 		JackieChanAdv,
 		HarvestMoon,
+		NamcoXCapcom,
 	};
 
 	enum Region 

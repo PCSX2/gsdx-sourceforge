@@ -197,9 +197,9 @@ protected:
 
 	void Draw()
 	{
-		if(s_n >= 2455)
+		if(s_n >= 61)
 		{
-			s_save = 1;
+			s_save = s_save;
 		}
 
 		if(s_dump)
