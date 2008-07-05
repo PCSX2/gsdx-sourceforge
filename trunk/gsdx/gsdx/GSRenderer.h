@@ -289,9 +289,9 @@ public:
 		, m_psrr(psrr)
 	{
 		s_n = 0;
-		s_dump = false;
-		s_save = false;
-		s_savez = false;
+		s_dump = !!AfxGetApp()->GetProfileInt(_T("Debug"), _T("dump"), 0);
+		s_save = !!AfxGetApp()->GetProfileInt(_T("Debug"), _T("save"), 0);
+		s_savez = !!AfxGetApp()->GetProfileInt(_T("Debug"), _T("savez"), 0);
 	}
 
 	bool Create(LPCTSTR title)
