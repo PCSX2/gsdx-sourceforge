@@ -1436,6 +1436,262 @@ public:
 		#endif
 	}
 
+	__forceinline static void UnpackAndWriteBlock4HL(BYTE* src, int srcpitch, BYTE* dst)
+	{
+		#if _M_SSE >= 0x301
+
+		GSVector4i mask(0x0f0f0f0f);
+		GSVector4i mask0 = m_uw8hmask0;
+		GSVector4i mask1 = m_uw8hmask1;
+		GSVector4i mask2 = m_uw8hmask2;
+		GSVector4i mask3 = m_uw8hmask3;
+		GSVector4i mask4(0x0f000000);
+
+		for(int i = 0; i < 2; i++, src += srcpitch * 4)
+		{
+			GSVector4i v(
+				*(DWORD*)&src[srcpitch * 0], 
+				*(DWORD*)&src[srcpitch * 1], 
+				*(DWORD*)&src[srcpitch * 2], 
+				*(DWORD*)&src[srcpitch * 3]);
+
+			GSVector4i lo = v & mask;
+			GSVector4i hi = (v >> 4) & mask;
+
+			{
+				GSVector4i v4 = lo.upl8(hi);
+
+				GSVector4i v0 = v4.shuffle8(mask0);
+				GSVector4i v1 = v4.shuffle8(mask1);
+				GSVector4i v2 = v4.shuffle8(mask2);
+				GSVector4i v3 = v4.shuffle8(mask3);
+
+				((GSVector4i*)dst)[i * 8 + 0] = ((GSVector4i*)dst)[i * 8 + 0].blend(v0, mask4);
+				((GSVector4i*)dst)[i * 8 + 1] = ((GSVector4i*)dst)[i * 8 + 1].blend(v1, mask4);
+				((GSVector4i*)dst)[i * 8 + 2] = ((GSVector4i*)dst)[i * 8 + 2].blend(v2, mask4);
+				((GSVector4i*)dst)[i * 8 + 3] = ((GSVector4i*)dst)[i * 8 + 3].blend(v3, mask4);
+			}
+
+			{
+				GSVector4i v4 = lo.uph8(hi);
+
+				GSVector4i v0 = v4.shuffle8(mask0);
+				GSVector4i v1 = v4.shuffle8(mask1);
+				GSVector4i v2 = v4.shuffle8(mask2);
+				GSVector4i v3 = v4.shuffle8(mask3);
+
+				((GSVector4i*)dst)[i * 8 + 4] = ((GSVector4i*)dst)[i * 8 + 4].blend(v0, mask4);
+				((GSVector4i*)dst)[i * 8 + 5] = ((GSVector4i*)dst)[i * 8 + 5].blend(v1, mask4);
+				((GSVector4i*)dst)[i * 8 + 6] = ((GSVector4i*)dst)[i * 8 + 6].blend(v2, mask4);
+				((GSVector4i*)dst)[i * 8 + 7] = ((GSVector4i*)dst)[i * 8 + 7].blend(v3, mask4);
+			}
+		}
+
+		#elif _M_SSE >= 0x200
+/*
+		__declspec(align(16)) DWORD block[8 * 8];
+
+		UnpackBlock4HL(src, srcpitch, block);
+
+		WriteBlock32<true, 0x0f000000>(dst, (BYTE*)block, sizeof(block) / 8);
+*/
+		GSVector4i mask(0x0f0f0f0f);
+		GSVector4i mask2(0x0f000000);
+
+		for(int i = 0; i < 2; i++, src += srcpitch * 4)
+		{
+			GSVector4i v(
+				*(DWORD*)&src[srcpitch * 0], 
+				*(DWORD*)&src[srcpitch * 1], 
+				*(DWORD*)&src[srcpitch * 2], 
+				*(DWORD*)&src[srcpitch * 3]);
+
+			GSVector4i lo = v & mask;
+			GSVector4i hi = (v >> 4) & mask;
+
+			{
+				GSVector4i v4 = lo.upl8(hi);
+
+				GSVector4i v5 = v4.upl8(v4);
+				GSVector4i v6 = v4.uph8(v4);
+
+				GSVector4i v0 = v5.upl16(v5);
+				GSVector4i v1 = v5.uph16(v5);
+				GSVector4i v2 = v6.upl16(v6);
+				GSVector4i v3 = v6.uph16(v6);
+
+				GSVector4i::sw64(v0, v2, v1, v3);
+
+				((GSVector4i*)dst)[i * 8 + 0] = ((GSVector4i*)dst)[i * 8 + 0].blend(v0, mask2);
+				((GSVector4i*)dst)[i * 8 + 1] = ((GSVector4i*)dst)[i * 8 + 1].blend(v1, mask2);
+				((GSVector4i*)dst)[i * 8 + 2] = ((GSVector4i*)dst)[i * 8 + 2].blend(v2, mask2);
+				((GSVector4i*)dst)[i * 8 + 3] = ((GSVector4i*)dst)[i * 8 + 3].blend(v3, mask2);
+			}
+
+			{
+				GSVector4i v4 = lo.uph8(hi);
+
+				GSVector4i v5 = v4.upl8(v4);
+				GSVector4i v6 = v4.uph8(v4);
+
+				GSVector4i v0 = v5.upl16(v5);
+				GSVector4i v1 = v5.uph16(v5);
+				GSVector4i v2 = v6.upl16(v6);
+				GSVector4i v3 = v6.uph16(v6);
+
+				GSVector4i::sw64(v0, v2, v1, v3);
+
+				((GSVector4i*)dst)[i * 8 + 4] = ((GSVector4i*)dst)[i * 8 + 4].blend(v0, mask2);
+				((GSVector4i*)dst)[i * 8 + 5] = ((GSVector4i*)dst)[i * 8 + 5].blend(v1, mask2);
+				((GSVector4i*)dst)[i * 8 + 6] = ((GSVector4i*)dst)[i * 8 + 6].blend(v2, mask2);
+				((GSVector4i*)dst)[i * 8 + 7] = ((GSVector4i*)dst)[i * 8 + 7].blend(v3, mask2);
+			}
+		}
+
+		#else
+
+		const DWORD* d = &columnTable32[0][0];
+
+		for(int j = 0; j < 8; j++, d += 8, src += srcpitch)
+		{
+			for(int i = 0; i < 4; i++)
+			{
+				((DWORD*)dst)[d[i * 2 + 0]] = (((DWORD*)dst)[d[i * 2 + 0]] & ~0x0f000000) | ((src[i] & 0x0f) << 24);
+				((DWORD*)dst)[d[i * 2 + 1]] = (((DWORD*)dst)[d[i * 2 + 1]] & ~0x0f000000) | ((src[i] & 0xf0) << 20);
+			}
+		}
+
+		#endif
+	}
+
+	__forceinline static void UnpackAndWriteBlock4HH(BYTE* src, int srcpitch, BYTE* dst)
+	{
+		#if _M_SSE >= 0x301
+
+		GSVector4i mask(0xf0f0f0f0);
+		GSVector4i mask0 = m_uw8hmask0;
+		GSVector4i mask1 = m_uw8hmask1;
+		GSVector4i mask2 = m_uw8hmask2;
+		GSVector4i mask3 = m_uw8hmask3;
+		GSVector4i mask4(0xf0000000);
+
+		for(int i = 0; i < 2; i++, src += srcpitch * 4)
+		{
+			GSVector4i v(
+				*(DWORD*)&src[srcpitch * 0], 
+				*(DWORD*)&src[srcpitch * 1], 
+				*(DWORD*)&src[srcpitch * 2], 
+				*(DWORD*)&src[srcpitch * 3]);
+
+			GSVector4i lo = (v << 4) & mask;
+			GSVector4i hi = v & mask;
+
+			{
+				GSVector4i v4 = lo.upl8(hi);
+
+				GSVector4i v0 = v4.shuffle8(mask0);
+				GSVector4i v1 = v4.shuffle8(mask1);
+				GSVector4i v2 = v4.shuffle8(mask2);
+				GSVector4i v3 = v4.shuffle8(mask3);
+
+				((GSVector4i*)dst)[i * 8 + 0] = ((GSVector4i*)dst)[i * 8 + 0].blend(v0, mask4);
+				((GSVector4i*)dst)[i * 8 + 1] = ((GSVector4i*)dst)[i * 8 + 1].blend(v1, mask4);
+				((GSVector4i*)dst)[i * 8 + 2] = ((GSVector4i*)dst)[i * 8 + 2].blend(v2, mask4);
+				((GSVector4i*)dst)[i * 8 + 3] = ((GSVector4i*)dst)[i * 8 + 3].blend(v3, mask4);
+			}
+
+			{
+				GSVector4i v4 = lo.uph8(hi);
+
+				GSVector4i v0 = v4.shuffle8(mask0);
+				GSVector4i v1 = v4.shuffle8(mask1);
+				GSVector4i v2 = v4.shuffle8(mask2);
+				GSVector4i v3 = v4.shuffle8(mask3);
+
+				((GSVector4i*)dst)[i * 8 + 4] = ((GSVector4i*)dst)[i * 8 + 4].blend(v0, mask4);
+				((GSVector4i*)dst)[i * 8 + 5] = ((GSVector4i*)dst)[i * 8 + 5].blend(v1, mask4);
+				((GSVector4i*)dst)[i * 8 + 6] = ((GSVector4i*)dst)[i * 8 + 6].blend(v2, mask4);
+				((GSVector4i*)dst)[i * 8 + 7] = ((GSVector4i*)dst)[i * 8 + 7].blend(v3, mask4);
+			}
+		}
+
+		#elif _M_SSE >= 0x200
+/*
+		__declspec(align(16)) DWORD block[8 * 8];
+
+		UnpackBlock4HH(src, srcpitch, block);
+
+		WriteBlock32<true, 0xf0000000>(dst, (BYTE*)block, sizeof(block) / 8);
+*/
+		GSVector4i mask(0xf0f0f0f0);
+		GSVector4i mask2(0xf0000000);
+
+		for(int i = 0; i < 2; i++, src += srcpitch * 4)
+		{
+			GSVector4i v(
+				*(DWORD*)&src[srcpitch * 0], 
+				*(DWORD*)&src[srcpitch * 1], 
+				*(DWORD*)&src[srcpitch * 2], 
+				*(DWORD*)&src[srcpitch * 3]);
+
+			GSVector4i lo = (v << 4) & mask;
+			GSVector4i hi = v & mask;
+
+			{
+				GSVector4i v4 = lo.upl8(hi);
+
+				GSVector4i v5 = v4.upl8(v4);
+				GSVector4i v6 = v4.uph8(v4);
+
+				GSVector4i v0 = v5.upl16(v5);
+				GSVector4i v1 = v5.uph16(v5);
+				GSVector4i v2 = v6.upl16(v6);
+				GSVector4i v3 = v6.uph16(v6);
+
+				GSVector4i::sw64(v0, v2, v1, v3);
+
+				((GSVector4i*)dst)[i * 8 + 0] = ((GSVector4i*)dst)[i * 8 + 0].blend(v0, mask2);
+				((GSVector4i*)dst)[i * 8 + 1] = ((GSVector4i*)dst)[i * 8 + 1].blend(v1, mask2);
+				((GSVector4i*)dst)[i * 8 + 2] = ((GSVector4i*)dst)[i * 8 + 2].blend(v2, mask2);
+				((GSVector4i*)dst)[i * 8 + 3] = ((GSVector4i*)dst)[i * 8 + 3].blend(v3, mask2);
+			}
+
+			{
+				GSVector4i v4 = lo.uph8(hi);
+
+				GSVector4i v5 = v4.upl8(v4);
+				GSVector4i v6 = v4.uph8(v4);
+
+				GSVector4i v0 = v5.upl16(v5);
+				GSVector4i v1 = v5.uph16(v5);
+				GSVector4i v2 = v6.upl16(v6);
+				GSVector4i v3 = v6.uph16(v6);
+
+				GSVector4i::sw64(v0, v2, v1, v3);
+
+				((GSVector4i*)dst)[i * 8 + 4] = ((GSVector4i*)dst)[i * 8 + 4].blend(v0, mask2);
+				((GSVector4i*)dst)[i * 8 + 5] = ((GSVector4i*)dst)[i * 8 + 5].blend(v1, mask2);
+				((GSVector4i*)dst)[i * 8 + 6] = ((GSVector4i*)dst)[i * 8 + 6].blend(v2, mask2);
+				((GSVector4i*)dst)[i * 8 + 7] = ((GSVector4i*)dst)[i * 8 + 7].blend(v3, mask2);
+			}
+		}
+
+		#else
+
+		const DWORD* d = &columnTable32[0][0];
+
+		for(int j = 0; j < 8; j++, d += 8, src += srcpitch)
+		{
+			for(int i = 0; i < 4; i++)
+			{
+				((DWORD*)dst)[d[i * 2 + 0]] = (((DWORD*)dst)[d[i * 2 + 0]] & ~0xf0000000) | ((src[i] & 0x0f) << 28);
+				((DWORD*)dst)[d[i * 2 + 1]] = (((DWORD*)dst)[d[i * 2 + 1]] & ~0xf0000000) | ((src[i] & 0xf0) << 24);
+			}
+		}
+
+		#endif
+	}
+
 	template<bool AEM> __forceinline static void ReadAndExpandBlock24(BYTE* src, BYTE* dst, int dstpitch, const GIFRegTEXA& TEXA)
 	{
 		#if _M_SSE >= 0x200

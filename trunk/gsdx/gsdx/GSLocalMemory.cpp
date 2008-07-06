@@ -1354,17 +1354,13 @@ void GSLocalMemory::WriteImage4HL(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 	}
 	else
 	{
-		__declspec(align(16)) DWORD block[8 * 8];
-
 		th += ty;
 
 		for(int y = ty; y < th; y += 8, src += srcpitch * 8)
 		{
 			for(int x = tx; x < tw; x += 8)
 			{
-				UnpackBlock4HL(src + (x - tx) / 2, srcpitch, block);
-
-				WriteBlock32<true, 0x0f000000>((BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], (BYTE*)block, sizeof(block) / 8);
+				UnpackAndWriteBlock4HL(src + (x - tx) / 2, srcpitch, (BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)]);
 			}
 		}
 
@@ -1389,17 +1385,13 @@ void GSLocalMemory::WriteImage4HH(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 	}
 	else
 	{
-		__declspec(align(16)) DWORD block[8 * 8];
-
 		th += ty;
 
 		for(int y = ty; y < th; y += 8, src += srcpitch * 8)
 		{
 			for(int x = tx; x < tw; x += 8)
 			{
-				UnpackBlock4HH(src + (x - tx) / 2, srcpitch, block);
-
-				WriteBlock32<true, 0xf0000000>((BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], (BYTE*)block, sizeof(block) / 8);
+				UnpackAndWriteBlock4HH(src + (x - tx) / 2, srcpitch, (BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)]);
 			}
 		}
 
