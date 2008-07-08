@@ -608,6 +608,11 @@ template<int i> void GSState::GIFRegHandlerTEX0(GIFReg* r)
 	FlushWrite();
 
 	m_mem.WriteCLUT(r->TEX0, m_env.TEXCLUT);
+
+	if((m_env.CTXT[i].TEX0.TBW & 1) && (m_env.CTXT[i].TEX0.PSM == PSM_PSMT8 || m_env.CTXT[i].TEX0.PSM == PSM_PSMT4))
+	{
+		m_env.CTXT[i].TEX0.TBW &= ~1;
+	}
 }
 
 template<int i> void GSState::GIFRegHandlerCLAMP(GIFReg* r)
@@ -923,6 +928,16 @@ void GSState::GIFRegHandlerBITBLTBUF(GIFReg* r)
 	}
 
 	m_env.BITBLTBUF = r->BITBLTBUF;
+
+	if((m_env.BITBLTBUF.SBW & 1) && (m_env.BITBLTBUF.SPSM == PSM_PSMT8 || m_env.BITBLTBUF.SPSM == PSM_PSMT4))
+	{
+		m_env.BITBLTBUF.SBW &= ~1;
+	}
+
+	if((m_env.BITBLTBUF.DBW & 1) && (m_env.BITBLTBUF.DPSM == PSM_PSMT8 || m_env.BITBLTBUF.DPSM == PSM_PSMT4))
+	{
+		m_env.BITBLTBUF.DBW &= ~1; // namcoXcapcom: 5, 11, refered to as 4, 10 in TEX0.TBW later
+	}
 }
 
 void GSState::GIFRegHandlerTRXPOS(GIFReg* r)
@@ -1059,23 +1074,13 @@ void GSState::FlushWrite(BYTE* mem, int len)
 
 void GSState::Write(BYTE* mem, int len)
 {
-/**/
+/*
 	TRACE(_T("Write len=%d DBP=%05x DBW=%d DPSM=%d DSAX=%d DSAY=%d RRW=%d RRH=%d\n"), 
 		  len, (int)m_env.BITBLTBUF.DBP, (int)m_env.BITBLTBUF.DBW, (int)m_env.BITBLTBUF.DPSM, 
 		  (int)m_env.TRXPOS.DSAX, (int)m_env.TRXPOS.DSAY,
 		  (int)m_env.TRXREG.RRW, (int)m_env.TRXREG.RRH);
-
+*/
 	if(len == 0) return;
-
-	if(m_game.title == CRC::NamcoXCapcom)
-	{
-		
-		if(m_env.BITBLTBUF.DBP == 0x03018 && m_env.BITBLTBUF.DBW == 11 && m_env.BITBLTBUF.DPSM == PSM_PSMT8
-		|| m_env.BITBLTBUF.DBP == 0x03b80 && m_env.BITBLTBUF.DBW == 5 && m_env.BITBLTBUF.DPSM == PSM_PSMT8)
-		{
-			m_env.BITBLTBUF.DBW--; // WTF
-		}
-	}
 
 	if(m_y >= m_env.TRXREG.RRH) return; // TODO: handle overflow during writing data too (just chop len below somewhere)
 

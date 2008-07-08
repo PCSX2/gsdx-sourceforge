@@ -105,6 +105,30 @@ BOOL GSdxApp::InitInstance()
 	return TRUE;
 }
 
+static bool CheckSSE()
+{
+	__try
+	{
+		static __m128i m;
+
+		#if _M_SSE >= 0x402
+		m.m128i_i32[0] = _mm_popcnt_u32(1234);
+		#elif _M_SSE >= 0x401
+		m = _mm_packus_epi32(m, m);
+		#elif _M_SSE >= 0x301
+		m = _mm_alignr_epi8(m, m, 1);
+		#elif _M_SSE >= 0x200
+		m = _mm_packs_epi32(m, m);
+		#endif
+	}
+	__except(EXCEPTION_EXECUTE_HANDLER)
+	{
+		return false;
+	}
+
+	return true;
+}
+
 //
 
 #define PS2E_LT_GS 0x01
@@ -137,8 +161,10 @@ EXPORT_C_(char*) PS2EgetLibName()
 	sl.AddTail(s);
 #endif
 
-#if _M_SSE >= 0x400
-	sl.AddTail(_T("SSE4"));
+#if _M_SSE >= 0x402
+	sl.AddTail(_T("SSE42"));
+#elif _M_SSE >= 0x401
+	sl.AddTail(_T("SSE41"));
 #elif _M_SSE >= 0x301
 	sl.AddTail(_T("SSSE3"));
 #elif _M_SSE >= 0x200
@@ -221,6 +247,8 @@ static INT32 GSopen(void* dsp, char* title, int mt, int renderer)
 {
 	AFX_MANAGE_STATE(AfxGetStaticModuleState());
 
+	// 
+
 	CString str;
 
 	str.Format(_T("d3dx9_%d.dll"), D3DX_SDK_VERSION);
@@ -240,6 +268,18 @@ static INT32 GSopen(void* dsp, char* title, int mt, int renderer)
 
 		return -1;
 	}
+
+	// 
+
+	if(!CheckSSE())
+	{
+		CString str;
+		str.Format(_T("This CPU does not support SSE %d.%02d"), _M_SSE >> 8, _M_SSE & 0xff);
+		AfxMessageBox(str, MB_OK);
+		return -1;
+	}
+
+	//
 
 	GSclose();
 
@@ -555,6 +595,7 @@ EXPORT_C GSBenchmark(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow
 
 		// 
 
+		//for(int tbw = 5; tbw <= 10; tbw++)
 		for(int tbw = 5; tbw <= 10; tbw++)
 		{
 			int n = 256 << ((10 - tbw) * 2);

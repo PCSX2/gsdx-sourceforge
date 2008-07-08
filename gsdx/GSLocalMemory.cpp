@@ -30,11 +30,13 @@
 #define ASSERT_BLOCK(r, w, h) \
 	ASSERT((r).Width() >= w && (r).Height() >= h && !((r).left&(w-1)) && !((r).top&(h-1)) && !((r).right&(w-1)) && !((r).bottom&(h-1))); \
 
-#define FOREACH_BLOCK_START(r, w, h, t) \
-	for(int y = (r).top; y < (r).bottom; y += (h)) \
-	{ 	ASSERT_BLOCK(r, w, h); \
-		BYTE* ptr = dst + (y-(r).top)*dstpitch; \
-		for(int x = (r).left; x < (r).right; x += (w)) \
+#define FOREACH_BLOCK_START(w, h, bpp) \
+	DWORD bp = TEX0.TBP0; \
+	DWORD bw = TEX0.TBW; \
+	int offset = dstpitch * h - (r.right - r.left) * bpp / 8; \
+	for(int y = r.top; y < r.bottom; y += h, dst += offset) \
+	{ ASSERT_BLOCK(r, w, h); \
+		for(int x = r.left; x < r.right; x += w, dst += w * bpp / 8) \
 		{ \
 
 #define FOREACH_BLOCK_END }}
@@ -813,6 +815,9 @@ void GSLocalMemory::WriteImage32(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 {
 	if(TRXREG.RRW == 0) return;
 
+	DWORD bp = BITBLTBUF.DBP;
+	DWORD bw = BITBLTBUF.DBW;
+
 	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX) * 4;
 	int th = len / srcpitch;
 
@@ -832,14 +837,14 @@ void GSLocalMemory::WriteImage32(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 			{
 				for(int x = tx; x < twa; x += 8)
 				{
-					WriteBlock32<false, 0xffffffff>((BYTE*)&m_vm32[BlockAddress32(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
+					WriteBlock32<false, 0xffffffff>((BYTE*)&m_vm32[BlockAddress32(x, ty, bp, bw)], src + (x - tx) * 4, srcpitch);
 				}
 
 				for(int i = 0; i < 8; i++, ty++, src += srcpitch)
 				{
 					for(int x = twa; x < tw; x++)
 					{
-						WritePixel32(x, ty, ((DWORD*)src)[x - tx], BITBLTBUF.DBP, BITBLTBUF.DBW);
+						WritePixel32(x, ty, ((DWORD*)src)[x - tx], bp, bw);
 					}
 				}
 			}
@@ -857,14 +862,14 @@ void GSLocalMemory::WriteImage32(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 			{
 				for(int x = tx; x < twa; x += 8)
 				{
-					WriteColumn32<false, 0xffffffff>(ty, (BYTE*)&m_vm32[BlockAddress32(x, ty & ~7, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
+					WriteColumn32<false, 0xffffffff>(ty, (BYTE*)&m_vm32[BlockAddress32(x, ty & ~7, bp, bw)], src + (x - tx) * 4, srcpitch);
 				}
 
 				for(int i = 0; i < 2; i++, ty++, src += srcpitch)
 				{
 					for(int x = twa; x < tw; x++)
 					{
-						WritePixel32(x, ty, ((DWORD*)src)[x - tx], BITBLTBUF.DBP, BITBLTBUF.DBW);
+						WritePixel32(x, ty, ((DWORD*)src)[x - tx], bp, bw);
 					}
 				}
 			}
@@ -882,7 +887,7 @@ void GSLocalMemory::WriteImage32(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 			{
 				for(int x = tx; x < tw; x += 8)
 				{
-					WriteBlock32<false, 0xffffffff>((BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
+					WriteBlock32<false, 0xffffffff>((BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)], src + (x - tx) * 4, srcpitch);
 				}
 			}
 		}
@@ -892,7 +897,7 @@ void GSLocalMemory::WriteImage32(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 			{
 				for(int x = tx; x < tw; x += 8)
 				{
-					WriteBlock32<true, 0xffffffff>((BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
+					WriteBlock32<true, 0xffffffff>((BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)], src + (x - tx) * 4, srcpitch);
 				}
 			}
 		}
@@ -904,6 +909,9 @@ void GSLocalMemory::WriteImage32(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 void GSLocalMemory::WriteImage24(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
 {
 	if(TRXREG.RRW == 0) return;
+
+	DWORD bp = BITBLTBUF.DBP;
+	DWORD bw = BITBLTBUF.DBW;
 
 	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX) * 3;
 	int th = len / srcpitch;
@@ -924,7 +932,7 @@ void GSLocalMemory::WriteImage24(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 		{
 			for(int x = tx; x < tw; x += 8)
 			{
-				UnpackAndWriteBlock24(src + (x - tx) * 3, srcpitch, (BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)]);
+				UnpackAndWriteBlock24(src + (x - tx) * 3, srcpitch, (BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)]);
 			}
 		}
 
@@ -935,6 +943,9 @@ void GSLocalMemory::WriteImage24(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 void GSLocalMemory::WriteImage16(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
 {
 	if(TRXREG.RRW == 0) return;
+
+	DWORD bp = BITBLTBUF.DBP;
+	DWORD bw = BITBLTBUF.DBW;
 
 	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX) * 2;
 	int th = len / srcpitch;
@@ -955,14 +966,14 @@ void GSLocalMemory::WriteImage16(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 			{
 				for(int x = tx; x < twa; x += 16)
 				{
-					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16(x, ty, bp, bw)], src + (x - tx) * 2, srcpitch);
 				}
 
 				for(int i = 0; i < 8; i++, ty++, src += srcpitch)
 				{
 					for(int x = twa; x < tw; x++)
 					{
-						WritePixel16(x, ty, ((WORD*)src)[x - tx], BITBLTBUF.DBP, BITBLTBUF.DBW);
+						WritePixel16(x, ty, ((WORD*)src)[x - tx], bp, bw);
 					}
 				}
 			}
@@ -980,14 +991,14 @@ void GSLocalMemory::WriteImage16(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 			{
 				for(int x = tx; x < twa; x += 16)
 				{
-					WriteColumn16<false>(ty, (BYTE*)&m_vm16[BlockAddress16(x, ty & ~7, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteColumn16<false>(ty, (BYTE*)&m_vm16[BlockAddress16(x, ty & ~7, bp, bw)], src + (x - tx) * 2, srcpitch);
 				}
 
 				for(int i = 0; i < 2; i++, ty++, src += srcpitch)
 				{
 					for(int x = twa; x < tw; x++)
 					{
-						WritePixel16(x, ty, ((WORD*)src)[x - tx], BITBLTBUF.DBP, BITBLTBUF.DBW);
+						WritePixel16(x, ty, ((WORD*)src)[x - tx], bp, bw);
 					}
 				}
 			}
@@ -1005,7 +1016,7 @@ void GSLocalMemory::WriteImage16(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 			{
 				for(int x = tx; x < tw; x += 16)
 				{
-					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16(x, y, bp, bw)], src + (x - tx) * 2, srcpitch);
 				}
 			}
 		}
@@ -1015,7 +1026,7 @@ void GSLocalMemory::WriteImage16(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 			{
 				for(int x = tx; x < tw; x += 16)
 				{
-					WriteBlock16<true>((BYTE*)&m_vm16[BlockAddress16(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<true>((BYTE*)&m_vm16[BlockAddress16(x, y, bp, bw)], src + (x - tx) * 2, srcpitch);
 				}
 			}
 		}
@@ -1028,6 +1039,9 @@ void GSLocalMemory::WriteImage16S(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 {
 	if(TRXREG.RRW == 0) return;
 
+	DWORD bp = BITBLTBUF.DBP;
+	DWORD bw = BITBLTBUF.DBW;
+
 	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX) * 2;
 	int th = len / srcpitch;
 
@@ -1047,14 +1061,14 @@ void GSLocalMemory::WriteImage16S(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < twa; x += 16)
 				{
-					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16S(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16S(x, ty, bp, bw)], src + (x - tx) * 2, srcpitch);
 				}
 
 				for(int i = 0; i < 8; i++, ty++, src += srcpitch)
 				{
 					for(int x = twa; x < tw; x++)
 					{
-						WritePixel16S(x, ty, ((WORD*)src)[x - tx], BITBLTBUF.DBP, BITBLTBUF.DBW);
+						WritePixel16S(x, ty, ((WORD*)src)[x - tx], bp, bw);
 					}
 				}
 			}
@@ -1072,14 +1086,14 @@ void GSLocalMemory::WriteImage16S(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < twa; x += 16)
 				{
-					WriteColumn16<false>(ty, (BYTE*)&m_vm16[BlockAddress16S(x, ty & ~7, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteColumn16<false>(ty, (BYTE*)&m_vm16[BlockAddress16S(x, ty & ~7, bp, bw)], src + (x - tx) * 2, srcpitch);
 				}
 
 				for(int i = 0; i < 2; i++, ty++, src += srcpitch)
 				{
 					for(int x = twa; x < tw; x++)
 					{
-						WritePixel16S(x, ty, ((WORD*)src)[x - tx], BITBLTBUF.DBP, BITBLTBUF.DBW);
+						WritePixel16S(x, ty, ((WORD*)src)[x - tx], bp, bw);
 					}
 				}
 			}
@@ -1097,7 +1111,7 @@ void GSLocalMemory::WriteImage16S(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < tw; x += 16)
 				{
-					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16S(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16S(x, y, bp, bw)], src + (x - tx) * 2, srcpitch);
 				}
 			}
 		}
@@ -1107,7 +1121,7 @@ void GSLocalMemory::WriteImage16S(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < tw; x += 16)
 				{
-					WriteBlock16<true>((BYTE*)&m_vm16[BlockAddress16S(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<true>((BYTE*)&m_vm16[BlockAddress16S(x, y, bp, bw)], src + (x - tx) * 2, srcpitch);
 				}
 			}
 		}
@@ -1119,6 +1133,9 @@ void GSLocalMemory::WriteImage16S(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 void GSLocalMemory::WriteImage8(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
 {
 	if(TRXREG.RRW == 0) return;
+
+	DWORD bp = BITBLTBUF.DBP;
+	DWORD bw = BITBLTBUF.DBW;
 
 	int tw = TRXREG.RRW, srcpitch = TRXREG.RRW - TRXPOS.DSAX;
 	int th = len / srcpitch;
@@ -1139,14 +1156,14 @@ void GSLocalMemory::WriteImage8(int& tx, int& ty, BYTE* src, int len, GIFRegBITB
 			{
 				for(int x = tx; x < twa; x += 16)
 				{
-					WriteBlock8<false>((BYTE*)&m_vm8[BlockAddress8(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx), srcpitch);
+					WriteBlock8<false>((BYTE*)&m_vm8[BlockAddress8(x, ty, bp, bw)], src + (x - tx), srcpitch);
 				}
 
 				for(int i = 0; i < 16; i++, ty++, src += srcpitch)
 				{
 					for(int x = twa; x < tw; x++)
 					{
-						WritePixel8(x, ty, src[x - tx], BITBLTBUF.DBP, BITBLTBUF.DBW);
+						WritePixel8(x, ty, src[x - tx], bp, bw);
 					}
 				}
 			}
@@ -1164,14 +1181,14 @@ void GSLocalMemory::WriteImage8(int& tx, int& ty, BYTE* src, int len, GIFRegBITB
 			{
 				for(int x = tx; x < twa; x += 16)
 				{
-					WriteColumn8<false>(ty, (BYTE*)&m_vm8[BlockAddress8(x, ty & ~15, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx), srcpitch);
+					WriteColumn8<false>(ty, (BYTE*)&m_vm8[BlockAddress8(x, ty & ~15, bp, bw)], src + (x - tx), srcpitch);
 				}
 
 				for(int i = 0; i < 4; i++, ty++, src += srcpitch)
 				{
 					for(int x = twa; x < tw; x++)
 					{
-						WritePixel8(x, ty, src[x - tx], BITBLTBUF.DBP, BITBLTBUF.DBW);
+						WritePixel8(x, ty, src[x - tx], bp, bw);
 					}
 				}
 			}
@@ -1189,7 +1206,7 @@ void GSLocalMemory::WriteImage8(int& tx, int& ty, BYTE* src, int len, GIFRegBITB
 			{
 				for(int x = tx; x < tw; x += 16)
 				{
-					WriteBlock8<false>((BYTE*)&m_vm8[BlockAddress8(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx), srcpitch);
+					WriteBlock8<false>((BYTE*)&m_vm8[BlockAddress8(x, y, bp, bw)], src + (x - tx), srcpitch);
 				}
 			}
 		}
@@ -1199,7 +1216,7 @@ void GSLocalMemory::WriteImage8(int& tx, int& ty, BYTE* src, int len, GIFRegBITB
 			{
 				for(int x = tx; x < tw; x += 16)
 				{
-					WriteBlock8<true>((BYTE*)&m_vm8[BlockAddress8(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx), srcpitch);
+					WriteBlock8<true>((BYTE*)&m_vm8[BlockAddress8(x, y, bp, bw)], src + (x - tx), srcpitch);
 				}
 			}
 		}
@@ -1211,6 +1228,9 @@ void GSLocalMemory::WriteImage8(int& tx, int& ty, BYTE* src, int len, GIFRegBITB
 void GSLocalMemory::WriteImage4(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
 {
 	if(TRXREG.RRW == 0) return;
+
+	DWORD bp = BITBLTBUF.DBP;
+	DWORD bw = BITBLTBUF.DBW;
 
 	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX) / 2;
 	int th = len / srcpitch;
@@ -1231,7 +1251,7 @@ void GSLocalMemory::WriteImage4(int& tx, int& ty, BYTE* src, int len, GIFRegBITB
 			{
 				for(int x = tx; x < twa; x += 32)
 				{
-					WriteBlock4<false>((BYTE*)&m_vm8[BlockAddress4(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW) >> 1], src + (x - tx) / 2, srcpitch);
+					WriteBlock4<false>((BYTE*)&m_vm8[BlockAddress4(x, ty, bp, bw) >> 1], src + (x - tx) / 2, srcpitch);
 				}
 
 				for(int i = 0; i < 16; i++, ty++, src += srcpitch)
@@ -1240,8 +1260,8 @@ void GSLocalMemory::WriteImage4(int& tx, int& ty, BYTE* src, int len, GIFRegBITB
 
 					for(int x = twa; x < tw; x += 2, s++)
 					{
-						WritePixel4(x, ty, *s & 0xf, BITBLTBUF.DBP, BITBLTBUF.DBW),
-						WritePixel4(x + 1, ty, *s >> 4, BITBLTBUF.DBP, BITBLTBUF.DBW);
+						WritePixel4(x, ty, *s & 0xf, bp, bw),
+						WritePixel4(x + 1, ty, *s >> 4, bp, bw);
 					}
 				}
 			}
@@ -1259,7 +1279,7 @@ void GSLocalMemory::WriteImage4(int& tx, int& ty, BYTE* src, int len, GIFRegBITB
 			{
 				for(int x = tx; x < twa; x += 32)
 				{
-					WriteColumn4<false>(ty, (BYTE*)&m_vm8[BlockAddress4(x, ty & ~15, BITBLTBUF.DBP, BITBLTBUF.DBW) >> 1], src + (x - tx) / 2, srcpitch);
+					WriteColumn4<false>(ty, (BYTE*)&m_vm8[BlockAddress4(x, ty & ~15, bp, bw) >> 1], src + (x - tx) / 2, srcpitch);
 				}
 
 				for(int i = 0; i < 4; i++, ty++, src += srcpitch)
@@ -1268,8 +1288,8 @@ void GSLocalMemory::WriteImage4(int& tx, int& ty, BYTE* src, int len, GIFRegBITB
 
 					for(int x = twa; x < tw; x += 2, s++)
 					{
-						WritePixel4(x, ty, *s & 0xf, BITBLTBUF.DBP, BITBLTBUF.DBW),
-						WritePixel4(x + 1, ty, *s >> 4, BITBLTBUF.DBP, BITBLTBUF.DBW);
+						WritePixel4(x, ty, *s & 0xf, bp, bw),
+						WritePixel4(x + 1, ty, *s >> 4, bp, bw);
 					}
 				}
 			}
@@ -1287,7 +1307,7 @@ void GSLocalMemory::WriteImage4(int& tx, int& ty, BYTE* src, int len, GIFRegBITB
 			{
 				for(int x = tx; x < tw; x += 32)
 				{
-					WriteBlock4<false>((BYTE*)&m_vm8[BlockAddress4(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW) >> 1], src + (x - tx) / 2, srcpitch);
+					WriteBlock4<false>((BYTE*)&m_vm8[BlockAddress4(x, y, bp, bw) >> 1], src + (x - tx) / 2, srcpitch);
 				}
 			}
 		}
@@ -1297,7 +1317,7 @@ void GSLocalMemory::WriteImage4(int& tx, int& ty, BYTE* src, int len, GIFRegBITB
 			{
 				for(int x = tx; x < tw; x += 32)
 				{
-					WriteBlock4<true>((BYTE*)&m_vm8[BlockAddress4(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW) >> 1], src + (x - tx) / 2, srcpitch);
+					WriteBlock4<true>((BYTE*)&m_vm8[BlockAddress4(x, y, bp, bw) >> 1], src + (x - tx) / 2, srcpitch);
 				}
 			}
 		}
@@ -1309,6 +1329,9 @@ void GSLocalMemory::WriteImage4(int& tx, int& ty, BYTE* src, int len, GIFRegBITB
 void GSLocalMemory::WriteImage8H(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
 {
 	if(TRXREG.RRW == 0) return;
+
+	DWORD bp = BITBLTBUF.DBP;
+	DWORD bw = BITBLTBUF.DBW;
 
 	int tw = TRXREG.RRW, srcpitch = TRXREG.RRW - TRXPOS.DSAX;
 	int th = len / srcpitch;
@@ -1329,7 +1352,7 @@ void GSLocalMemory::WriteImage8H(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 		{
 			for(int x = tx; x < tw; x += 8)
 			{
-				UnpackAndWriteBlock8H(src + (x - tx), srcpitch, (BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)]);
+				UnpackAndWriteBlock8H(src + (x - tx), srcpitch, (BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)]);
 			}
 		}
 
@@ -1341,6 +1364,9 @@ void GSLocalMemory::WriteImage4HL(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 {
 	if(TRXREG.RRW == 0) return;
 
+	DWORD bp = BITBLTBUF.DBP;
+	DWORD bw = BITBLTBUF.DBW;
+
 	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX) / 2;
 	int th = len / srcpitch;
 
@@ -1360,7 +1386,7 @@ void GSLocalMemory::WriteImage4HL(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 		{
 			for(int x = tx; x < tw; x += 8)
 			{
-				UnpackAndWriteBlock4HL(src + (x - tx) / 2, srcpitch, (BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)]);
+				UnpackAndWriteBlock4HL(src + (x - tx) / 2, srcpitch, (BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)]);
 			}
 		}
 
@@ -1372,6 +1398,9 @@ void GSLocalMemory::WriteImage4HH(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 {
 	if(TRXREG.RRW == 0) return;
 
+	DWORD bp = BITBLTBUF.DBP;
+	DWORD bw = BITBLTBUF.DBW;
+
 	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX) / 2;
 	int th = len / srcpitch;
 
@@ -1391,7 +1420,7 @@ void GSLocalMemory::WriteImage4HH(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 		{
 			for(int x = tx; x < tw; x += 8)
 			{
-				UnpackAndWriteBlock4HH(src + (x - tx) / 2, srcpitch, (BYTE*)&m_vm32[BlockAddress32(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)]);
+				UnpackAndWriteBlock4HH(src + (x - tx) / 2, srcpitch, (BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)]);
 			}
 		}
 
@@ -1402,6 +1431,9 @@ void GSLocalMemory::WriteImage4HH(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 void GSLocalMemory::WriteImage32Z(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
 {
 	if(TRXREG.RRW == 0) return;
+
+	DWORD bp = BITBLTBUF.DBP;
+	DWORD bw = BITBLTBUF.DBW;
 
 	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX) * 4;
 	int th = len / srcpitch;
@@ -1422,14 +1454,14 @@ void GSLocalMemory::WriteImage32Z(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < twa; x += 8)
 				{
-					WriteBlock32<false, 0xffffffff>((BYTE*)&m_vm32[BlockAddress32Z(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
+					WriteBlock32<false, 0xffffffff>((BYTE*)&m_vm32[BlockAddress32Z(x, ty, bp, bw)], src + (x - tx) * 4, srcpitch);
 				}
 
 				for(int i = 0; i < 8; i++, ty++, src += srcpitch)
 				{
 					for(int x = twa; x < tw; x++)
 					{
-						WritePixel32Z(x, ty, ((DWORD*)src)[x - tx], BITBLTBUF.DBP, BITBLTBUF.DBW);
+						WritePixel32Z(x, ty, ((DWORD*)src)[x - tx], bp, bw);
 					}
 				}
 			}
@@ -1447,14 +1479,14 @@ void GSLocalMemory::WriteImage32Z(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < twa; x += 8)
 				{
-					WriteColumn32<false, 0xffffffff>(ty, (BYTE*)&m_vm32[BlockAddress32Z(x, ty & ~7, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
+					WriteColumn32<false, 0xffffffff>(ty, (BYTE*)&m_vm32[BlockAddress32Z(x, ty & ~7, bp, bw)], src + (x - tx) * 4, srcpitch);
 				}
 
 				for(int i = 0; i < 2; i++, ty++, src += srcpitch)
 				{
 					for(int x = twa; x < tw; x++)
 					{
-						WritePixel32Z(x, ty, ((DWORD*)src)[x - tx], BITBLTBUF.DBP, BITBLTBUF.DBW);
+						WritePixel32Z(x, ty, ((DWORD*)src)[x - tx], bp, bw);
 					}
 				}
 			}
@@ -1472,7 +1504,7 @@ void GSLocalMemory::WriteImage32Z(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < tw; x += 8)
 				{
-					WriteBlock32<false, 0xffffffff>((BYTE*)&m_vm32[BlockAddress32Z(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
+					WriteBlock32<false, 0xffffffff>((BYTE*)&m_vm32[BlockAddress32Z(x, y, bp, bw)], src + (x - tx) * 4, srcpitch);
 				}
 			}
 		}
@@ -1482,7 +1514,7 @@ void GSLocalMemory::WriteImage32Z(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < tw; x += 8)
 				{
-					WriteBlock32<true, 0xffffffff>((BYTE*)&m_vm32[BlockAddress32Z(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 4, srcpitch);
+					WriteBlock32<true, 0xffffffff>((BYTE*)&m_vm32[BlockAddress32Z(x, y, bp, bw)], src + (x - tx) * 4, srcpitch);
 				}
 			}
 		}
@@ -1494,6 +1526,9 @@ void GSLocalMemory::WriteImage32Z(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 void GSLocalMemory::WriteImage24Z(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
 {
 	if(TRXREG.RRW == 0) return;
+
+	DWORD bp = BITBLTBUF.DBP;
+	DWORD bw = BITBLTBUF.DBW;
 
 	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX) * 3;
 	int th = len / srcpitch;
@@ -1514,7 +1549,7 @@ void GSLocalMemory::WriteImage24Z(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 		{
 			for(int x = tx; x < tw; x += 8)
 			{
-				UnpackAndWriteBlock24(src + (x - tx) * 3, srcpitch, (BYTE*)&m_vm32[BlockAddress32Z(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)]);
+				UnpackAndWriteBlock24(src + (x - tx) * 3, srcpitch, (BYTE*)&m_vm32[BlockAddress32Z(x, y, bp, bw)]);
 			}
 		}
 
@@ -1525,6 +1560,9 @@ void GSLocalMemory::WriteImage24Z(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 void GSLocalMemory::WriteImage16Z(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
 {
 	if(TRXREG.RRW == 0) return;
+
+	DWORD bp = BITBLTBUF.DBP;
+	DWORD bw = BITBLTBUF.DBW;
 
 	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX) * 2;
 	int th = len / srcpitch;
@@ -1545,14 +1583,14 @@ void GSLocalMemory::WriteImage16Z(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < twa; x += 16)
 				{
-					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16Z(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16Z(x, ty, bp, bw)], src + (x - tx) * 2, srcpitch);
 				}
 
 				for(int i = 0; i < 8; i++, ty++, src += srcpitch)
 				{
 					for(int x = twa; x < tw; x++)
 					{
-						WritePixel16Z(x, ty, ((WORD*)src)[x - tx], BITBLTBUF.DBP, BITBLTBUF.DBW);
+						WritePixel16Z(x, ty, ((WORD*)src)[x - tx], bp, bw);
 					}
 				}
 			}
@@ -1570,14 +1608,14 @@ void GSLocalMemory::WriteImage16Z(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < twa; x += 16)
 				{
-					WriteColumn16<false>(ty, (BYTE*)&m_vm16[BlockAddress16Z(x, ty & ~7, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteColumn16<false>(ty, (BYTE*)&m_vm16[BlockAddress16Z(x, ty & ~7, bp, bw)], src + (x - tx) * 2, srcpitch);
 				}
 
 				for(int i = 0; i < 2; i++, ty++, src += srcpitch)
 				{
 					for(int x = twa; x < tw; x++)
 					{
-						WritePixel16Z(x, ty, ((WORD*)src)[x - tx], BITBLTBUF.DBP, BITBLTBUF.DBW);
+						WritePixel16Z(x, ty, ((WORD*)src)[x - tx], bp, bw);
 					}
 				}
 			}
@@ -1595,7 +1633,7 @@ void GSLocalMemory::WriteImage16Z(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < tw; x += 16)
 				{
-					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16Z(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16Z(x, y, bp, bw)], src + (x - tx) * 2, srcpitch);
 				}
 			}
 		}
@@ -1605,7 +1643,7 @@ void GSLocalMemory::WriteImage16Z(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 			{
 				for(int x = tx; x < tw; x += 16)
 				{
-					WriteBlock16<true>((BYTE*)&m_vm16[BlockAddress16Z(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<true>((BYTE*)&m_vm16[BlockAddress16Z(x, y, bp, bw)], src + (x - tx) * 2, srcpitch);
 				}
 			} 
 		}
@@ -1618,6 +1656,9 @@ void GSLocalMemory::WriteImage16SZ(int& tx, int& ty, BYTE* src, int len, GIFRegB
 {
 	if(TRXREG.RRW == 0) return;
 
+	DWORD bp = BITBLTBUF.DBP;
+	DWORD bw = BITBLTBUF.DBW;
+
 	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX) * 2;
 	int th = len / srcpitch;
 
@@ -1637,14 +1678,14 @@ void GSLocalMemory::WriteImage16SZ(int& tx, int& ty, BYTE* src, int len, GIFRegB
 			{
 				for(int x = tx; x < twa; x += 16)
 				{
-					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16SZ(x, ty, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16SZ(x, ty, bp, bw)], src + (x - tx) * 2, srcpitch);
 				}
 
 				for(int i = 0; i < 8; i++, ty++, src += srcpitch)
 				{
 					for(int x = twa; x < tw; x++)
 					{
-						WritePixel16SZ(x, ty, ((WORD*)src)[x - tx], BITBLTBUF.DBP, BITBLTBUF.DBW);
+						WritePixel16SZ(x, ty, ((WORD*)src)[x - tx], bp, bw);
 					}
 				}
 			}
@@ -1662,14 +1703,14 @@ void GSLocalMemory::WriteImage16SZ(int& tx, int& ty, BYTE* src, int len, GIFRegB
 			{
 				for(int x = tx; x < twa; x += 16)
 				{
-					WriteColumn16<false>(ty, (BYTE*)&m_vm16[BlockAddress16SZ(x, ty & ~7, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteColumn16<false>(ty, (BYTE*)&m_vm16[BlockAddress16SZ(x, ty & ~7, bp, bw)], src + (x - tx) * 2, srcpitch);
 				}
 
 				for(int i = 0; i < 2; i++, ty++, src += srcpitch)
 				{
 					for(int x = twa; x < tw; x++)
 					{
-						WritePixel16SZ(x, ty, ((WORD*)src)[x - tx], BITBLTBUF.DBP, BITBLTBUF.DBW);
+						WritePixel16SZ(x, ty, ((WORD*)src)[x - tx], bp, bw);
 					}
 				}
 			}
@@ -1687,7 +1728,7 @@ void GSLocalMemory::WriteImage16SZ(int& tx, int& ty, BYTE* src, int len, GIFRegB
 			{
 				for(int x = tx; x < tw; x += 16)
 				{
-					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16SZ(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16SZ(x, y, bp, bw)], src + (x - tx) * 2, srcpitch);
 				}
 			}
 		}
@@ -1697,7 +1738,7 @@ void GSLocalMemory::WriteImage16SZ(int& tx, int& ty, BYTE* src, int len, GIFRegB
 			{
 				for(int x = tx; x < tw; x += 16)
 				{
-					WriteBlock16<true>((BYTE*)&m_vm16[BlockAddress16SZ(x, y, BITBLTBUF.DBP, BITBLTBUF.DBW)], src + (x - tx) * 2, srcpitch);
+					WriteBlock16<true>((BYTE*)&m_vm16[BlockAddress16SZ(x, y, bp, bw)], src + (x - tx) * 2, srcpitch);
 				}
 			}
 		}
@@ -2065,28 +2106,29 @@ void GSLocalMemory::ReadImageX(int& tx, int& ty, BYTE* dst, int len, GIFRegBITBL
 
 void GSLocalMemory::ReadTexture32(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	FOREACH_BLOCK_START(r, 8, 8, 32)
+	FOREACH_BLOCK_START(8, 8, 32)
 	{
-		ReadBlock32<true>((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch);
+		ReadBlock32<true>((BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)], dst, dstpitch);
 	}
 	FOREACH_BLOCK_END
+
 }
 
 void GSLocalMemory::ReadTexture24(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
 	if(TEXA.AEM)
 	{
-		FOREACH_BLOCK_START(r, 8, 8, 32)
+		FOREACH_BLOCK_START(8, 8, 32)
 		{
-			ReadAndExpandBlock24<true>((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, TEXA);
+			ReadAndExpandBlock24<true>((BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)], dst, dstpitch, TEXA);
 		}
 		FOREACH_BLOCK_END
 	}
 	else
 	{
-		FOREACH_BLOCK_START(r, 8, 8, 32)
+		FOREACH_BLOCK_START(8, 8, 32)
 		{
-			ReadAndExpandBlock24<false>((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, TEXA);
+			ReadAndExpandBlock24<false>((BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)], dst, dstpitch, TEXA);
 		}
 		FOREACH_BLOCK_END
 	}
@@ -2096,11 +2138,11 @@ void GSLocalMemory::ReadTexture16(const CRect& r, BYTE* dst, int dstpitch, GIFRe
 {
 	__declspec(align(16)) WORD block[16 * 8];
 
-	FOREACH_BLOCK_START(r, 16, 8, 16)
+	FOREACH_BLOCK_START(16, 8, 32)
 	{
-		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
+		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16(x, y, bp, bw)], (BYTE*)block, sizeof(block) / 8);
 
-		ExpandBlock16(block, ptr + (x - r.left) * 4, dstpitch, TEXA);
+		ExpandBlock16(block, dst, dstpitch, TEXA);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2109,11 +2151,11 @@ void GSLocalMemory::ReadTexture16S(const CRect& r, BYTE* dst, int dstpitch, GIFR
 {
 	__declspec(align(16)) WORD block[16 * 8];
 
-	FOREACH_BLOCK_START(r, 16, 8, 16S)
+	FOREACH_BLOCK_START(16, 8, 32)
 	{
-		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16S(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
+		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16S(x, y, bp, bw)], (BYTE*)block, sizeof(block) / 8);
 
-		ExpandBlock16(block, ptr + (x - r.left) * 4, dstpitch, TEXA);
+		ExpandBlock16(block, dst, dstpitch, TEXA);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2122,9 +2164,9 @@ void GSLocalMemory::ReadTexture8(const CRect& r, BYTE* dst, int dstpitch, GIFReg
 {
 	DWORD* pal = m_clut32;
 
-	FOREACH_BLOCK_START(r, 16, 16, 8)
+	FOREACH_BLOCK_START(16, 16, 32)
 	{
-		ReadAndExpandBlock8_32((BYTE*)&m_vm8[BlockAddress8(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
+		ReadAndExpandBlock8_32((BYTE*)&m_vm8[BlockAddress8(x, y, bp, bw)], dst, dstpitch, pal);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2133,9 +2175,9 @@ void GSLocalMemory::ReadTexture4(const CRect& r, BYTE* dst, int dstpitch, GIFReg
 {
 	UINT64* pal = m_clut64;
 
-	FOREACH_BLOCK_START(r, 32, 16, 4)
+	FOREACH_BLOCK_START(32, 16, 32)
 	{
-		ReadAndExpandBlock4_32((BYTE*)&m_vm8[BlockAddress4(x, y, TEX0.TBP0, TEX0.TBW) >> 1], ptr + (x - r.left) * 4, dstpitch, pal);
+		ReadAndExpandBlock4_32((BYTE*)&m_vm8[BlockAddress4(x, y, bp, bw) >> 1], dst, dstpitch, pal);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2144,9 +2186,9 @@ void GSLocalMemory::ReadTexture8H(const CRect& r, BYTE* dst, int dstpitch, GIFRe
 {
 	DWORD* pal = m_clut32;
 
-	FOREACH_BLOCK_START(r, 8, 8, 32)
+	FOREACH_BLOCK_START(8, 8, 32)
 	{
-		ReadAndExpandBlock8H_32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
+		ReadAndExpandBlock8H_32((BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)], dst, dstpitch, pal);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2155,9 +2197,9 @@ void GSLocalMemory::ReadTexture4HL(const CRect& r, BYTE* dst, int dstpitch, GIFR
 {
 	DWORD* pal = m_clut32;
 
-	FOREACH_BLOCK_START(r, 8, 8, 32)
+	FOREACH_BLOCK_START(8, 8, 32)
 	{
-		ReadAndExpandBlock4HL_32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
+		ReadAndExpandBlock4HL_32((BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)], dst, dstpitch, pal);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2166,18 +2208,18 @@ void GSLocalMemory::ReadTexture4HH(const CRect& r, BYTE* dst, int dstpitch, GIFR
 {
 	DWORD* pal = m_clut32;
 
-	FOREACH_BLOCK_START(r, 8, 8, 32)
+	FOREACH_BLOCK_START(8, 8, 32)
 	{
-		ReadAndExpandBlock4HH_32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
+		ReadAndExpandBlock4HH_32((BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)], dst, dstpitch, pal);
 	}
 	FOREACH_BLOCK_END
 }
 
 void GSLocalMemory::ReadTexture32Z(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	FOREACH_BLOCK_START(r, 8, 8, 32)
+	FOREACH_BLOCK_START(8, 8, 32)
 	{
-		ReadBlock32<true>((BYTE*)&m_vm32[BlockAddress32Z(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch);
+		ReadBlock32<true>((BYTE*)&m_vm32[BlockAddress32Z(x, y, bp, bw)], dst, dstpitch);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2186,17 +2228,17 @@ void GSLocalMemory::ReadTexture24Z(const CRect& r, BYTE* dst, int dstpitch, GIFR
 {
 	if(TEXA.AEM)
 	{
-		FOREACH_BLOCK_START(r, 8, 8, 32)
+		FOREACH_BLOCK_START(8, 8, 32)
 		{
-			ReadAndExpandBlock24<true>((BYTE*)&m_vm32[BlockAddress32Z(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, TEXA);
+			ReadAndExpandBlock24<true>((BYTE*)&m_vm32[BlockAddress32Z(x, y, bp, bw)], dst, dstpitch, TEXA);
 		}
 		FOREACH_BLOCK_END
 	}
 	else
 	{
-		FOREACH_BLOCK_START(r, 8, 8, 32)
+		FOREACH_BLOCK_START(8, 8, 32)
 		{
-			ReadAndExpandBlock24<false>((BYTE*)&m_vm32[BlockAddress32Z(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, TEXA);
+			ReadAndExpandBlock24<false>((BYTE*)&m_vm32[BlockAddress32Z(x, y, bp, bw)], dst, dstpitch, TEXA);
 		}
 		FOREACH_BLOCK_END
 	}
@@ -2206,11 +2248,11 @@ void GSLocalMemory::ReadTexture16Z(const CRect& r, BYTE* dst, int dstpitch, GIFR
 {
 	__declspec(align(16)) WORD block[16 * 8];
 
-	FOREACH_BLOCK_START(r, 16, 8, 16)
+	FOREACH_BLOCK_START(16, 8, 32)
 	{
-		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16Z(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
+		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16Z(x, y, bp, bw)], (BYTE*)block, sizeof(block) / 8);
 
-		ExpandBlock16(block, ptr + (x - r.left) * 4, dstpitch, TEXA);
+		ExpandBlock16(block, dst, dstpitch, TEXA);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2219,11 +2261,11 @@ void GSLocalMemory::ReadTexture16SZ(const CRect& r, BYTE* dst, int dstpitch, GIF
 {
 	__declspec(align(16)) WORD block[16 * 8];
 
-	FOREACH_BLOCK_START(r, 16, 8, 16S)
+	FOREACH_BLOCK_START(16, 8, 32)
 	{
-		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16SZ(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
+		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16SZ(x, y, bp, bw)], (BYTE*)block, sizeof(block) / 8);
 
-		ExpandBlock16(block, ptr + (x - r.left) * 4, dstpitch, TEXA);
+		ExpandBlock16(block, dst, dstpitch, TEXA);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2270,18 +2312,18 @@ void GSLocalMemory::ReadTextureNC(const CRect& r, BYTE* dst, int dstpitch, GIFRe
 
 void GSLocalMemory::ReadTexture16NP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	FOREACH_BLOCK_START(r, 16, 8, 16)
+	FOREACH_BLOCK_START(16, 8, 16)
 	{
-		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 2, dstpitch);
+		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16(x, y, bp, bw)], dst, dstpitch);
 	}
 	FOREACH_BLOCK_END
 }
 
 void GSLocalMemory::ReadTexture16SNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	FOREACH_BLOCK_START(r, 16, 8, 16S)
+	FOREACH_BLOCK_START(16, 8, 16)
 	{
-		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16S(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 2, dstpitch);
+		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16S(x, y, bp, bw)], dst, dstpitch);
 	}
 	FOREACH_BLOCK_END
 }
@@ -2292,9 +2334,9 @@ void GSLocalMemory::ReadTexture8NP(const CRect& r, BYTE* dst, int dstpitch, GIFR
 
 	if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 	{
-		FOREACH_BLOCK_START(r, 16, 16, 8)
+		FOREACH_BLOCK_START(16, 16, 32)
 		{
-			ReadAndExpandBlock8_32((BYTE*)&m_vm8[BlockAddress8(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
+			ReadAndExpandBlock8_32((BYTE*)&m_vm8[BlockAddress8(x, y, bp, bw)], dst, dstpitch, pal);
 		}
 		FOREACH_BLOCK_END
 	}
@@ -2304,11 +2346,11 @@ void GSLocalMemory::ReadTexture8NP(const CRect& r, BYTE* dst, int dstpitch, GIFR
 
 		__declspec(align(16)) BYTE block[16 * 16];
 
-		FOREACH_BLOCK_START(r, 16, 16, 8)
+		FOREACH_BLOCK_START(16, 16, 16)
 		{
-			ReadBlock8<true>((BYTE*)&m_vm8[BlockAddress8(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 16);
+			ReadBlock8<true>((BYTE*)&m_vm8[BlockAddress8(x, y, bp, bw)], (BYTE*)block, sizeof(block) / 16);
 
-			ExpandBlock8_16(block, ptr + (x - r.left) * 2, dstpitch, pal);
+			ExpandBlock8_16(block, dst, dstpitch, pal);
 		}
 		FOREACH_BLOCK_END
 	}
@@ -2320,9 +2362,9 @@ void GSLocalMemory::ReadTexture4NP(const CRect& r, BYTE* dst, int dstpitch, GIFR
 
 	if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 	{
-		FOREACH_BLOCK_START(r, 32, 16, 4)
+		FOREACH_BLOCK_START(32, 16, 32)
 		{
-			ReadAndExpandBlock4_32((BYTE*)&m_vm8[BlockAddress4(x, y, TEX0.TBP0, TEX0.TBW) >> 1], ptr + (x - r.left) * 4, dstpitch, pal);
+			ReadAndExpandBlock4_32((BYTE*)&m_vm8[BlockAddress4(x, y, bp, bw) >> 1], dst, dstpitch, pal);
 		}
 		FOREACH_BLOCK_END
 	}
@@ -2332,11 +2374,11 @@ void GSLocalMemory::ReadTexture4NP(const CRect& r, BYTE* dst, int dstpitch, GIFR
 
 		__declspec(align(16)) BYTE block[(32 / 2) * 16];
 
-		FOREACH_BLOCK_START(r, 32, 16, 4)
+		FOREACH_BLOCK_START(32, 16, 16)
 		{
-			ReadBlock4<true>((BYTE*)&m_vm8[BlockAddress4(x, y, TEX0.TBP0, TEX0.TBW)>>1], (BYTE*)block, sizeof(block) / 16);
+			ReadBlock4<true>((BYTE*)&m_vm8[BlockAddress4(x, y, bp, bw)>>1], (BYTE*)block, sizeof(block) / 16);
 
-			ExpandBlock4_16(block, ptr + (x - r.left) * 2, dstpitch, pal);
+			ExpandBlock4_16(block, dst, dstpitch, pal);
 		}
 		FOREACH_BLOCK_END
 	}
@@ -2348,9 +2390,9 @@ void GSLocalMemory::ReadTexture8HNP(const CRect& r, BYTE* dst, int dstpitch, GIF
 
 	if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 	{
-		FOREACH_BLOCK_START(r, 8, 8, 32)
+		FOREACH_BLOCK_START(8, 8, 32)
 		{
-			ReadAndExpandBlock8H_32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
+			ReadAndExpandBlock8H_32((BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)], dst, dstpitch, pal);
 		}
 		FOREACH_BLOCK_END
 	}
@@ -2360,11 +2402,11 @@ void GSLocalMemory::ReadTexture8HNP(const CRect& r, BYTE* dst, int dstpitch, GIF
 
 		__declspec(align(16)) DWORD block[8 * 8];
 
-		FOREACH_BLOCK_START(r, 8, 8, 32)
+		FOREACH_BLOCK_START(8, 8, 16)
 		{
-			ReadBlock32<true>((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
+			ReadBlock32<true>((BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)], (BYTE*)block, sizeof(block) / 8);
 
-			ExpandBlock8H_16(block, ptr + (x - r.left) * 2, dstpitch, pal);
+			ExpandBlock8H_16(block, dst, dstpitch, pal);
 		}
 		FOREACH_BLOCK_END
 	}
@@ -2376,9 +2418,9 @@ void GSLocalMemory::ReadTexture4HLNP(const CRect& r, BYTE* dst, int dstpitch, GI
 
 	if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 	{
-		FOREACH_BLOCK_START(r, 8, 8, 32)
+		FOREACH_BLOCK_START(8, 8, 32)
 		{
-			ReadAndExpandBlock4HL_32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
+			ReadAndExpandBlock4HL_32((BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)], dst, dstpitch, pal);
 		}
 		FOREACH_BLOCK_END
 	}
@@ -2388,11 +2430,11 @@ void GSLocalMemory::ReadTexture4HLNP(const CRect& r, BYTE* dst, int dstpitch, GI
 
 		__declspec(align(16)) DWORD block[8 * 8];
 
-		FOREACH_BLOCK_START(r, 8, 8, 32)
+		FOREACH_BLOCK_START(8, 8, 16)
 		{
-			ReadBlock32<true>((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
+			ReadBlock32<true>((BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)], (BYTE*)block, sizeof(block) / 8);
 
-			ExpandBlock4HL_16(block, ptr + (x - r.left) * 2, dstpitch, pal);
+			ExpandBlock4HL_16(block, dst, dstpitch, pal);
 		}
 		FOREACH_BLOCK_END
 	}
@@ -2404,9 +2446,9 @@ void GSLocalMemory::ReadTexture4HHNP(const CRect& r, BYTE* dst, int dstpitch, GI
 
 	if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 	{
-		FOREACH_BLOCK_START(r, 8, 8, 32)
+		FOREACH_BLOCK_START(8, 8, 32)
 		{
-			ReadAndExpandBlock4HH_32((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 4, dstpitch, pal);
+			ReadAndExpandBlock4HH_32((BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)], dst, dstpitch, pal);
 		}
 		FOREACH_BLOCK_END
 	}
@@ -2416,11 +2458,11 @@ void GSLocalMemory::ReadTexture4HHNP(const CRect& r, BYTE* dst, int dstpitch, GI
 
 		__declspec(align(16)) DWORD block[8 * 8];
 
-		FOREACH_BLOCK_START(r, 8, 8, 32)
+		FOREACH_BLOCK_START(8, 8, 16)
 		{
-			ReadBlock32<true>((BYTE*)&m_vm32[BlockAddress32(x, y, TEX0.TBP0, TEX0.TBW)], (BYTE*)block, sizeof(block) / 8);
+			ReadBlock32<true>((BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)], (BYTE*)block, sizeof(block) / 8);
 
-			ExpandBlock4HH_16(block, ptr + (x - r.left) * 2, dstpitch, pal);
+			ExpandBlock4HH_16(block, dst, dstpitch, pal);
 		}
 		FOREACH_BLOCK_END
 	}
@@ -2428,18 +2470,18 @@ void GSLocalMemory::ReadTexture4HHNP(const CRect& r, BYTE* dst, int dstpitch, GI
 
 void GSLocalMemory::ReadTexture16ZNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	FOREACH_BLOCK_START(r, 16, 8, 16)
+	FOREACH_BLOCK_START(16, 8, 16)
 	{
-		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16Z(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 2, dstpitch);
+		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16Z(x, y, bp, bw)], dst, dstpitch);
 	}
 	FOREACH_BLOCK_END
 }
 
 void GSLocalMemory::ReadTexture16SZNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	FOREACH_BLOCK_START(r, 16, 8, 16S)
+	FOREACH_BLOCK_START(16, 8, 16)
 	{
-		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16SZ(x, y, TEX0.TBP0, TEX0.TBW)], ptr + (x - r.left) * 2, dstpitch);
+		ReadBlock16<true>((BYTE*)&m_vm16[BlockAddress16SZ(x, y, bp, bw)], dst, dstpitch);
 	}
 	FOREACH_BLOCK_END
 }

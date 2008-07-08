@@ -145,7 +145,7 @@ public:
 	UINT32 rgba32() const
 	{
 		__m128i r = m; 
-		#if _M_SSE >= 0x400
+		#if _M_SSE >= 0x401
 		r = _mm_packus_epi32(r, r); 
 		#else
 		r = _mm_packs_epi32(r, r); // good enough for colors...
@@ -157,7 +157,7 @@ public:
 	UINT64 rgba64() const
 	{
 		__m128i r = m; 
-		#if _M_SSE >= 0x400
+		#if _M_SSE >= 0x401
 		r = _mm_packus_epi32(r, r); 
 		#else
 		r = _mm_packs_epi32(r, r); // good enough for colors...
@@ -169,7 +169,7 @@ public:
 		#endif
 	}
 
-	#if _M_SSE >= 0x400
+	#if _M_SSE >= 0x401
 	GSVector4i sat_i8(const GSVector4i& a, const GSVector4i& b) const 
 	{
 		return GSVector4i(_mm_min_epi8(_mm_max_epi8(m, a), b));
@@ -181,7 +181,7 @@ public:
 		return GSVector4i(_mm_min_epi16(_mm_max_epi16(m, a), b));
 	}
 
-	#if _M_SSE >= 0x400
+	#if _M_SSE >= 0x401
 	GSVector4i sat_i32(const GSVector4i& a, const GSVector4i& b) const 
 	{
 		return GSVector4i(_mm_min_epi32(_mm_max_epi32(m, a), b));
@@ -193,14 +193,14 @@ public:
 		return GSVector4i(_mm_min_epu8(_mm_max_epu8(m, a), b));
 	}
 
-	#if _M_SSE >= 0x400
+	#if _M_SSE >= 0x401
 	GSVector4i sat_u16(const GSVector4i& a, const GSVector4i& b) const 
 	{
 		return GSVector4i(_mm_min_epu16(_mm_max_epu16(m, a), b));
 	}
 	#endif
 
-	#if _M_SSE >= 0x400
+	#if _M_SSE >= 0x401
 	GSVector4i sat_u32(const GSVector4i& a, const GSVector4i& b) const 
 	{
 		return GSVector4i(_mm_min_epu32(_mm_max_epu32(m, a), b));
@@ -212,7 +212,7 @@ public:
 		return GSVector4i(_mm_blendv_epi8(m, a, mask));
 	}
 
-	#if _M_SSE >= 0x400
+	#if _M_SSE >= 0x401
 	template<int mask> GSVector4i blend16(const GSVector4i& a) const
 	{
 		return GSVector4i(_mm_blend_epi16(m, a, mask));
@@ -246,7 +246,7 @@ public:
 		return GSVector4i(_mm_packs_epi32(m, a));
 	}
 	
-	#if _M_SSE >= 0x400
+	#if _M_SSE >= 0x401
 	GSVector4i pu32(const GSVector4i& a) const
 	{
 		return GSVector4i(_mm_packus_epi32(m, a));
@@ -403,6 +403,58 @@ public:
 		return GSVector4i(_mm_srli_epi64(m, i));
 	}
 
+	GSVector4i add8(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_add_epi8(m, v.m));
+	}
+
+	GSVector4i add16(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_add_epi16(m, v.m));
+	}
+
+	GSVector4i add32(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_add_epi32(m, v.m));
+	}
+
+	GSVector4i sub8(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_sub_epi8(m, v.m));
+	}
+
+	GSVector4i sub16(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_sub_epi16(m, v.m));
+	}
+
+	GSVector4i sub32(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_sub_epi32(m, v.m));
+	}
+
+	GSVector4i mul16hs(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_mulhi_epi16(m, v.m));
+	}
+
+	GSVector4i mul16hu(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_mulhi_epu16(m, v.m));
+	}
+
+	GSVector4i mul16l(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_mullo_epi16(m, v.m));
+	}
+
+	#if _M_SSE >= 0x301
+	GSVector4i mul16hrs(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_mulhrs_epi16(m, v.m));
+	}
+	#endif
+
 	GSVector4i andnot(const GSVector4i& v) const
 	{
 		return GSVector4i(_mm_andnot_si128(v.m, m));
@@ -413,7 +465,17 @@ public:
 		return _mm_movemask_epi8(m);
 	}
 
-	#if _M_SSE >= 0x400
+	template<int i> GSVector4i insert16(int a) const
+	{
+		return GSVector4i(_mm_insert_epi16(m, a, i));
+	}
+
+	template<int i> int extract16() const
+	{
+		return _mm_extract_epi16(m, i);
+	}
+
+	#if _M_SSE >= 0x401
 
 	template<int i> GSVector4i insert8(int a) const
 	{
@@ -423,16 +485,6 @@ public:
 	template<int i> int extract8() const
 	{
 		return _mm_extract_epi8(m, i);
-	}
-
-	template<int i> GSVector4i insert16(int a) const
-	{
-		return GSVector4i(_mm_insert_epi16(m, a, i));
-	}
-
-	template<int i> int extract16() const
-	{
-		return _mm_extract_epi16(m, i);
 	}
 
 	template<int i> GSVector4i insert32(int a) const
@@ -862,7 +914,7 @@ public:
 		return GSVector4i(0) == GSVector4i(0);
 	}
 
-	#if _M_SSE >= 0x400
+	#if _M_SSE >= 0x401
 	static GSVector4i loadnt(const void* p)
 	{
 		return GSVector4i(_mm_stream_load_si128((__m128i*)p));
@@ -919,6 +971,11 @@ public:
 	}
 	#endif
 
+	static void storent(void* p, const GSVector4i& v)
+	{
+		_mm_stream_si128((__m128i*)p, v.m);
+	}
+
 	static void storel(void* p, const GSVector4i& v)
 	{
 		_mm_storel_epi64((__m128i*)p, v.m);
@@ -940,7 +997,7 @@ public:
 		GSVector4i::storeh(ph, v);
 	}
 
-	template<bool aligned> static void store(const void* p, const GSVector4i& v)
+	template<bool aligned> static void store(void* p, const GSVector4i& v)
 	{
 		if(aligned) _mm_store_si128((__m128i*)p, v.m);
 		else _mm_storeu_si128((__m128i*)p, v.m);
@@ -1186,6 +1243,11 @@ public:
 		return (v1 < v2) | (v1 == v2);
 	}
 
+	template<int i> GSVector4i shuffle() const
+	{
+		return GSVector4i(_mm_shuffle_epi32(m, _MM_SHUFFLE(i, i, i, i)));
+	}
+
 	#define VECTOR4i_SHUFFLE_4(xs, xn, ys, yn, zs, zn, ws, wn) \
 		GSVector4i xs##ys##zs##ws() const {return GSVector4i(_mm_shuffle_epi32(m, _MM_SHUFFLE(wn, zn, yn, xn)));} \
 		GSVector4i xs##ys##zs##ws##l() const {return GSVector4i(_mm_shufflelo_epi16(m, _MM_SHUFFLE(wn, zn, yn, xn)));} \
@@ -1392,7 +1454,7 @@ public:
 		#endif
 	}
 
-	#if _M_SSE >= 0x400
+	#if _M_SSE >= 0x401
 	template<int i> GSVector4 dp(const GSVector4& v) const 
 	{
 		return GSVector4(_mm_dp_ps(m, v.m, i));
@@ -1434,6 +1496,16 @@ public:
 		return GSVector4(_mm_unpackhi_ps(m, a));
 	}
 
+	GSVector4 l2h(const GSVector4& a) const
+	{
+		return GSVector4(_mm_movelh_ps(m, a));
+	}	
+
+	GSVector4 h2l(const GSVector4& a) const
+	{
+		return GSVector4(_mm_movehl_ps(m, a));
+	}	
+
 	GSVector4 andnot(const GSVector4& v) const
 	{
 		return GSVector4(_mm_andnot_ps(v.m, m));
@@ -1461,8 +1533,26 @@ public:
 
 	__forceinline static void transpose(GSVector4& a, GSVector4& b, GSVector4& c, GSVector4& d)
 	{
-		_MM_TRANSPOSE4_PS(a.m, b.m, c.m, d.m);
-	}
+		GSVector4 v0 = a.xyxy(b);
+		GSVector4 v1 = c.xyxy(d);
+		GSVector4 v2 = a.zwzw(b);
+		GSVector4 v3 = c.zwzw(d);
+
+		a = v0.xzxz(v1);
+		b = v0.ywyw(v1);
+		c = v2.xzxz(v3);
+		d = v2.ywyw(v3);
+/*
+		GSVector4 v0 = a.upl(b);
+		GSVector4 v1 = a.uph(b);
+		GSVector4 v2 = c.upl(d);
+		GSVector4 v3 = c.uph(d);
+
+		a = v0.l2h(v2);
+		b = v2.h2l(v0);
+		c = v1.l2h(v3);
+		d = v3.h2l(v1);
+*/	}
 
 	void operator += (const GSVector4& v) 
 	{
@@ -1602,6 +1692,11 @@ public:
 	friend GSVector4 operator <= (const GSVector4& v1, const GSVector4& v2) 
 	{
 		return GSVector4(_mm_cmple_ps(v1, v2));
+	}
+
+	template<int i> GSVector4 shuffle() const
+	{
+		return GSVector4(_mm_shuffle_ps(m, m, _MM_SHUFFLE(i, i, i, i)));
 	}
 
 	#define VECTOR4_SHUFFLE_4(xs, xn, ys, yn, zs, zn, ws, wn) \

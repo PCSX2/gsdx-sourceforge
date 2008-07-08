@@ -130,12 +130,14 @@ public:
 
 	static DWORD PageAddress8(int x, int y, DWORD bp, DWORD bw)
 	{
-		return ((bp >> 5) + (y >> 6) * ((bw + 1) >> 1) + (x >> 7)) << 13; 
+		ASSERT((bw & 1) == 0);
+		return ((bp >> 5) + (y >> 6) * (bw >> 1) + (x >> 7)) << 13; 
 	}
 
 	static DWORD PageAddress4(int x, int y, DWORD bp, DWORD bw)
 	{
-		return ((bp >> 5) + (y >> 7) * ((bw + 1) >> 1) + (x >> 7)) << 14;
+		ASSERT((bw & 1) == 0);
+		return ((bp >> 5) + (y >> 7) * (bw >> 1) + (x >> 7)) << 14;
 	}
 
 	static DWORD BlockAddress32(int x, int y, DWORD bp, DWORD bw)
@@ -161,14 +163,16 @@ public:
 
 	static DWORD BlockAddress8(int x, int y, DWORD bp, DWORD bw)
 	{
-		DWORD page = bp + ((y >> 1) & ~0x1f) * ((bw+1)>>1) + ((x >> 2) & ~0x1f); 
+		ASSERT((bw & 1) == 0);
+		DWORD page = bp + ((y >> 1) & ~0x1f) * (bw >> 1) + ((x >> 2) & ~0x1f); 
 		DWORD block = blockTable8[(y >> 4) & 3][(x >> 4) & 7];
 		return (page + block) << 8;
 	}
 
 	static DWORD BlockAddress4(int x, int y, DWORD bp, DWORD bw)
 	{
-		DWORD page = bp + ((y >> 2) & ~0x1f) * ((bw+1)>>1) + ((x >> 2) & ~0x1f); 
+		ASSERT((bw & 1) == 0);
+		DWORD page = bp + ((y >> 2) & ~0x1f) * (bw >> 1) + ((x >> 2) & ~0x1f); 
 		DWORD block = blockTable4[(y >> 4) & 7][(x >> 5) & 3];
 		return (page + block) << 9;
 	}
@@ -223,16 +227,18 @@ public:
 
 	static DWORD PixelAddressOrg8(int x, int y, DWORD bp, DWORD bw)
 	{
-		DWORD page = bp + ((y >> 1) & ~0x1f) * ((bw + 1)>>1) + ((x >> 2) & ~0x1f); 
+		ASSERT((bw & 1) == 0);
+		DWORD page = bp + ((y >> 1) & ~0x1f) * (bw >> 1) + ((x >> 2) & ~0x1f); 
 		DWORD block = blockTable8[(y >> 4) & 3][(x >> 4) & 7];
 		DWORD word = ((page + block) << 8) + columnTable8[y & 15][x & 15];
-	//	ASSERT(word < 1024*1024*4);
+		ASSERT(word < 1024*1024*4);
 		return word;
 	}
 
 	static DWORD PixelAddressOrg4(int x, int y, DWORD bp, DWORD bw)
 	{
-		DWORD page = bp + ((y >> 2) & ~0x1f) * ((bw + 1)>>1) + ((x >> 2) & ~0x1f); 
+		ASSERT((bw & 1) == 0);
+		DWORD page = bp + ((y >> 2) & ~0x1f) * (bw >> 1) + ((x >> 2) & ~0x1f); 
 		DWORD block = blockTable4[(y >> 4) & 7][(x >> 5) & 3];
 		DWORD word = ((page + block) << 9) + columnTable4[y & 15][x & 31];
 		ASSERT(word < 1024*1024*8);
@@ -289,14 +295,16 @@ public:
 
 	static __forceinline DWORD PixelAddress8(int x, int y, DWORD bp, DWORD bw)
 	{
-		DWORD page = (bp >> 5) + (y >> 6) * ((bw + 1)>>1) + (x >> 7); 
+		ASSERT((bw & 1) == 0);
+		DWORD page = (bp >> 5) + (y >> 6) * (bw >> 1) + (x >> 7); 
 		DWORD word = (page << 13) + pageOffset8[bp & 0x1f][y & 0x3f][x & 0x7f];
 		return word;
 	}
 
 	static __forceinline DWORD PixelAddress4(int x, int y, DWORD bp, DWORD bw)
 	{
-		DWORD page = (bp >> 5) + (y >> 7) * ((bw + 1)>>1) + (x >> 7);
+		ASSERT((bw & 1) == 0);
+		DWORD page = (bp >> 5) + (y >> 7) * (bw >> 1) + (x >> 7);
 		DWORD word = (page << 14) + pageOffset4[bp & 0x1f][y & 0x7f][x & 0x7f];
 		return word;
 	}
@@ -880,7 +888,7 @@ public:
 		{
 		case PSM_PSMCT32: 
 		case PSM_PSMZ32: 
-			#if _M_SSE >= 0x400
+			#if _M_SSE >= 0x401
 			c = addr.gather32_32(m_vm32);
 			#else
 			c = GSVector4i(
@@ -892,7 +900,7 @@ public:
 			break;
 		case PSM_PSMCT24: 
 		case PSM_PSMZ24: 
-			#if _M_SSE >= 0x400
+			#if _M_SSE >= 0x401
 			c = addr.gather32_32(m_vm32);
 			#else
 			c = GSVector4i(
@@ -907,7 +915,7 @@ public:
 		case PSM_PSMCT16S: 
 		case PSM_PSMZ16: 
 		case PSM_PSMZ16S: 
-			#if _M_SSE >= 0x400
+			#if _M_SSE >= 0x401
 			c = addr.gather32_32(m_vm16);
 			#else
 			c = GSVector4i(
@@ -933,7 +941,7 @@ public:
 		switch(PSM)
 		{
 		case PSM_PSMZ32: 
-			#if _M_SSE >= 0x400
+			#if _M_SSE >= 0x401
 			z = addr.gather32_32(m_vm32);
 			#else
 			z = GSVector4i(
@@ -944,7 +952,7 @@ public:
 			#endif
 			break;
 		case PSM_PSMZ24: 
-			#if _M_SSE >= 0x400
+			#if _M_SSE >= 0x401
 			z = addr.gather32_32(m_vm32) & 0x00ffffff;
 			#else
 			z = GSVector4i(
@@ -957,7 +965,7 @@ public:
 			break;
 		case PSM_PSMZ16: 
 		case PSM_PSMZ16S: 
-			#if _M_SSE >= 0x400
+			#if _M_SSE >= 0x401
 			z = addr.gather32_32(m_vm16);
 			#else
 			z = GSVector4i(
