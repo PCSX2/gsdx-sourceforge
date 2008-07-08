@@ -105,7 +105,7 @@
 
 // sse4
 
-#if _M_SSE >= 0x400
+#if _M_SSE >= 0x401
 
 	#include <smmintrin.h>
 

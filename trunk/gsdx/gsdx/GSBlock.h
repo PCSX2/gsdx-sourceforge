@@ -68,7 +68,7 @@ public:
 		{
 			GSVector4i v4((int)mask);
 
-			#if _M_SSE >= 0x400
+			#if _M_SSE >= 0x401
 
 			if(mask == 0xff000000 || mask == 0x00ffffff)
 			{
@@ -87,7 +87,7 @@ public:
 			((GSVector4i*)dst)[i * 4 + 2] = ((GSVector4i*)dst)[i * 4 + 2].blend(v2, v4);
 			((GSVector4i*)dst)[i * 4 + 3] = ((GSVector4i*)dst)[i * 4 + 3].blend(v3, v4);
 
-			#if _M_SSE >= 0x400
+			#if _M_SSE >= 0x401
 			
 			}
 
@@ -1090,7 +1090,7 @@ public:
 	{
 		for(int j = 0; j < 16; j++, dst += dstpitch)
 		{
-			#if _M_SSE >= 0x400
+			#if _M_SSE >= 0x401
 
 			GSVector4i* s = (GSVector4i*)src;
 			GSVector4i* d = (GSVector4i*)dst;
@@ -1112,7 +1112,7 @@ public:
 	{
 		for(int j = 0; j < 16; j++, dst += dstpitch)
 		{
-			#if _M_SSE >= 0x400
+			#if _M_SSE >= 0x401
 
 			GSVector4i* s = (GSVector4i*)src;
 			GSVector4i* d = (GSVector4i*)dst;
@@ -1134,7 +1134,7 @@ public:
 	{
 		for(int j = 0; j < 16; j++, dst += dstpitch)
 		{
-			#if _M_SSE >= 0x400
+			#if _M_SSE >= 0x401
 
 			GSVector4i* s = (GSVector4i*)src;
 			GSVector4i* d = (GSVector4i*)dst;
@@ -1156,7 +1156,7 @@ public:
 	{
 		for(int j = 0; j < 16; j++, dst += dstpitch)
 		{
-			#if _M_SSE >= 0x400
+			#if _M_SSE >= 0x401
 
 			GSVector4i* s = (GSVector4i*)src;
 			GSVector4i* d = (GSVector4i*)dst;
@@ -1178,7 +1178,7 @@ public:
 	{
 		for(int j = 0; j < 8; j++, dst += dstpitch)
 		{
-			#if _M_SSE >= 0x400
+			#if _M_SSE >= 0x401
 
 			GSVector4i* s = (GSVector4i*)src;
 			GSVector4i* d = (GSVector4i*)dst;
@@ -1201,7 +1201,7 @@ public:
 	{
 		for(int j = 0; j < 8; j++, dst += dstpitch)
 		{
-			#if _M_SSE >= 0x400
+			#if _M_SSE >= 0x401
 
 			GSVector4i* s = (GSVector4i*)src;
 			GSVector4i* d = (GSVector4i*)dst;
@@ -1226,7 +1226,7 @@ public:
 	{
 		for(int j = 0; j < 8; j++, dst += dstpitch)
 		{
-			#if _M_SSE >= 0x400
+			#if _M_SSE >= 0x401
 
 			GSVector4i* s = (GSVector4i*)src;
 			GSVector4i* d = (GSVector4i*)dst;
@@ -1249,7 +1249,7 @@ public:
 	{
 		for(int j = 0; j < 8; j++, dst += dstpitch)
 		{
-			#if _M_SSE >= 0x400
+			#if _M_SSE >= 0x401
 
 			GSVector4i* s = (GSVector4i*)src;
 			GSVector4i* d = (GSVector4i*)dst;
@@ -1274,7 +1274,7 @@ public:
 	{
 		for(int j = 0; j < 8; j++, dst += dstpitch)
 		{
-			#if _M_SSE >= 0x400
+			#if _M_SSE >= 0x401
 
 			GSVector4i* s = (GSVector4i*)src;
 			GSVector4i* d = (GSVector4i*)dst;
@@ -1297,7 +1297,7 @@ public:
 	{
 		for(int j = 0; j < 8; j++, dst += dstpitch)
 		{
-			#if _M_SSE >= 0x400
+			#if _M_SSE >= 0x401
 
 			GSVector4i* s = (GSVector4i*)src;
 			GSVector4i* d = (GSVector4i*)dst;
@@ -1317,8 +1317,6 @@ public:
 			#endif
 		}
 	}
-
-	// TODO: UnpackAndWrite*
 
 	__forceinline static void UnpackAndWriteBlock24(BYTE* src, int srcpitch, BYTE* dst)
 	{
@@ -1755,7 +1753,7 @@ public:
 
 	__forceinline static void ReadAndExpandBlock8_32(BYTE* src, BYTE* dst, int dstpitch, DWORD* pal)
 	{
-		#if _M_SSE >= 0x400
+		#if _M_SSE >= 0x401
 
 		GSVector4i v0, v1, v2, v3;
 
@@ -1825,7 +1823,7 @@ public:
 
 	__forceinline static void ReadAndExpandBlock4_32(BYTE* src, BYTE* dst, int dstpitch, UINT64* pal)
 	{
-		#if _M_SSE >= 0x400
+		#if _M_SSE >= 0x401
 
 		GSVector4i v0, v1, v2, v3;
 
@@ -1917,7 +1915,7 @@ public:
 
 	__forceinline static void ReadAndExpandBlock8H_32(BYTE* src, BYTE* dst, int dstpitch, DWORD* pal)
 	{
-		#if _M_SSE >= 0x400
+		#if _M_SSE >= 0x401
 
 		GSVector4i v0, v1, v2, v3;
 
@@ -1968,7 +1966,7 @@ public:
 
 	__forceinline static void ReadAndExpandBlock4HL_32(BYTE* src, BYTE* dst, int dstpitch, DWORD* pal)
 	{
-		#if _M_SSE >= 0x400
+		#if _M_SSE >= 0x401
 
 		GSVector4i v0, v1, v2, v3;
 
@@ -2019,7 +2017,7 @@ public:
 	
 	__forceinline static void ReadAndExpandBlock4HH_32(BYTE* src, BYTE* dst, int dstpitch, DWORD* pal)
 	{
-		#if _M_SSE >= 0x400
+		#if _M_SSE >= 0x401
 
 		GSVector4i v0, v1, v2, v3;
 
