@@ -936,6 +936,28 @@ void GSRasterizer::InitEx()
 	m_dsmap[0x46507808] = &GSRasterizer::DrawScanlineEx<0x46507808>;
 	m_dsmap[0x48507848] = &GSRasterizer::DrawScanlineEx<0x48507848>;
 
+	// xenosaga2
+
+	m_dsmap[0x000844c8] = &GSRasterizer::DrawScanlineEx<0x000844c8>;
+	m_dsmap[0x4a526808] = &GSRasterizer::DrawScanlineEx<0x4a526808>;
+	m_dsmap[0x64507828] = &GSRasterizer::DrawScanlineEx<0x64507828>;
+	m_dsmap[0x5851a848] = &GSRasterizer::DrawScanlineEx<0x5851a848>;
+	m_dsmap[0x5451a848] = &GSRasterizer::DrawScanlineEx<0x5451a848>;
+	m_dsmap[0x68504428] = &GSRasterizer::DrawScanlineEx<0x68504428>;
+	m_dsmap[0x00320408] = &GSRasterizer::DrawScanlineEx<0x00320408>;
+	m_dsmap[0x5251a848] = &GSRasterizer::DrawScanlineEx<0x5251a848>;
+	m_dsmap[0x00020408] = &GSRasterizer::DrawScanlineEx<0x00020408>;
+	m_dsmap[0x64504428] = &GSRasterizer::DrawScanlineEx<0x64504428>;
+	m_dsmap[0x00086888] = &GSRasterizer::DrawScanlineEx<0x00086888>;
+	m_dsmap[0x895068c8] = &GSRasterizer::DrawScanlineEx<0x895068c8>;
+	m_dsmap[0x00084488] = &GSRasterizer::DrawScanlineEx<0x00084488>;
+	m_dsmap[0x4451b868] = &GSRasterizer::DrawScanlineEx<0x4451b868>;
+	m_dsmap[0x000068c8] = &GSRasterizer::DrawScanlineEx<0x000068c8>;
+	m_dsmap[0x0051b868] = &GSRasterizer::DrawScanlineEx<0x0051b868>;
+	m_dsmap[0x4450a8c8] = &GSRasterizer::DrawScanlineEx<0x4450a8c8>;
+	m_dsmap[0x62504428] = &GSRasterizer::DrawScanlineEx<0x62504428>;
+	m_dsmap[0x54507828] = &GSRasterizer::DrawScanlineEx<0x54507828>;
+
 /*
 	CAtlMap<DWORD, bool> dsmap;
 
@@ -958,6 +980,9 @@ void GSRasterizer::InitEx()
 		{
 			sel.afail = 0;
 		}
+
+		ASSERT(!sel.date || sel.rfb);
+		ASSERT(!sel.abe || sel.rfb);
 
 		if(!sel.rfb)
 		{
@@ -1002,10 +1027,10 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 	int fpsm = GSUtil::DecodeFPSM(((sel >> 0) & 7));
 	int zpsm = GSUtil::DecodeZPSM(((sel >> 3) & 3));
 
-	GSVector4i fa_base = m_fbco->addr[top];
+	GSVector4i fa_base = slenv->fbco[top];
 	GSVector4i* fa_offset = (GSVector4i*)&slenv->fo[top & 7][left];
 
-	GSVector4i za_base = m_zbco->addr[top];
+	GSVector4i za_base = slenv->zbco[top];
 	GSVector4i* za_offset = (GSVector4i*)&slenv->zo[top & 7][left];
 
 	GSVector4 vp = v.p;
@@ -1161,7 +1186,7 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 			case 5: case 6: t = GSVector4i(c[3]) < slenv->aref; break; // ge, g
 			case 7: t = GSVector4i(c[3]) == slenv->aref; break; // ne 
 			default: __assume(0);
-			}		
+			}
 
 			switch(afail)
 			{

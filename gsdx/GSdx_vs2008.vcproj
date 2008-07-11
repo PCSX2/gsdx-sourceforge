@@ -788,7 +788,6 @@
 		</Configuration>
 		<Configuration
 			Name="Debug SSE4|Win32"
-			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
 			InheritedPropertySheets="..\common.vsprops;..\debug.vsprops;..\sse4.vsprops"
 			UseOfMFC="1"

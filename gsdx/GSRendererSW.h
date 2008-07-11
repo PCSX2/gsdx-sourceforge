@@ -197,11 +197,6 @@ protected:
 
 	void Draw()
 	{
-		if(s_n >= 61)
-		{
-			s_save = s_save;
-		}
-
 		if(s_dump)
 		{
 			CString str;

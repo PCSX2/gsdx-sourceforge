@@ -330,12 +330,14 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 
 	SetupColumnOffset();
 
+	slenv->fbco = m_fbco->addr;
+	slenv->zbco = m_zbco->addr;
+
 	//
 
 	m_solidrect = true;
 
-	if(m_state->PRIM->IIP || m_state->PRIM->TME 
-	|| m_state->PRIM->ABE || m_state->PRIM->FGE
+	if(PRIM->IIP || PRIM->TME || PRIM->ABE || PRIM->FGE
 	|| context->TEST.ZTE && context->TEST.ZTST != 1 
 	|| context->TEST.ATE && context->TEST.ATST != 1
 	|| context->TEST.DATE
@@ -844,10 +846,10 @@ else if(steps == 3) g_slp3++;
 	int fpsm = GSUtil::DecodeFPSM(iFPSM);
 	int zpsm = GSUtil::DecodeZPSM(iZPSM);
 
-	GSVector4i fa_base = m_fbco->addr[top];
+	GSVector4i fa_base = slenv->fbco[top];
 	GSVector4i* fa_offset = (GSVector4i*)&slenv->fo[top & 7][left];
 
-	GSVector4i za_base = m_zbco->addr[top];
+	GSVector4i za_base = slenv->zbco[top];
 	GSVector4i* za_offset = (GSVector4i*)&slenv->zo[top & 7][left];
 
 	GSVector4 vp = v.p;

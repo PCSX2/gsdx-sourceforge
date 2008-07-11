@@ -1010,7 +1010,7 @@ public:
 			tmp = (ga >> 16) | (rb >> 9) | (ga >> 6) | (rb >> 3);
 			for(int i = 0; i < pixels; i++)
 				if(mask.u32[i] != 0xffffffff)
-					WritePixel16(addr.u32[i], tmp.u16[i*2]); 
+					WritePixel16(addr.u32[i], tmp.u16[i * 2]); 
 			break;
 		default: 
 			ASSERT(0); 
