@@ -751,10 +751,12 @@ public:
 					rt->Read(r);
 					return;
 				}
-				// ffx-2 riku changing to her default (shoots some reflecting glass at the end), 16-bit rt read as 32-bit
 				else if(BITBLTBUF.SPSM == PSM_PSMCT32 && (rt->m_TEX0.PSM == PSM_PSMCT16 || rt->m_TEX0.PSM == PSM_PSMCT16S)) 
 				{
+					// ffx-2 riku changing to her default (shoots some reflecting glass at the end), 16-bit rt read as 32-bit
+
 					rt->Read(CRect(r.left, r.top, r.right, r.top + (r.bottom - r.top) * 2));
+					return;
 				}
 				else
 				{

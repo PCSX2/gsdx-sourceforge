@@ -135,21 +135,30 @@ void GSRendererHW10::DrawingKick(GSVertexHW10* v, int& count)
 		|| v[0].p.x > scissor.z
 		|| v[0].p.y < scissor.y
 		|| v[0].p.y > scissor.w)
+		{
+			count = 0;
 			return;
+		}
 		break;
 	case 2:
 		if(v[0].p.x < scissor.x && v[1].p.x < scissor.x
 		|| v[0].p.x > scissor.z && v[1].p.x > scissor.z
 		|| v[0].p.y < scissor.y && v[1].p.y < scissor.y
 		|| v[0].p.y > scissor.w && v[1].p.y > scissor.w)
+		{
+			count = 0;
 			return;
+		}
 		break;
 	case 3:
 		if(v[0].p.x < scissor.x && v[1].p.x < scissor.x && v[2].p.x < scissor.x
 		|| v[0].p.x > scissor.z && v[1].p.x > scissor.z && v[2].p.x > scissor.z
 		|| v[0].p.y < scissor.y && v[1].p.y < scissor.y && v[2].p.y < scissor.y
 		|| v[0].p.y > scissor.w && v[1].p.y > scissor.w && v[2].p.y > scissor.w)
+		{
+			count = 0;
 			return;
+		}
 		break;
 	default:
 		__assume(0);
