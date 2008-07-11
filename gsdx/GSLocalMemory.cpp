@@ -77,7 +77,7 @@ GSLocalMemory::GSLocalMemory()
 {
 	// TODO: MEM_WRITE_WATCH
 
-	m_vm8 = (BYTE*)VirtualAlloc(NULL, m_vmsize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	m_vm8 = (BYTE*)VirtualAlloc(NULL, m_vmsize * 2, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
 	memset(m_vm8, 0, m_vmsize);
 

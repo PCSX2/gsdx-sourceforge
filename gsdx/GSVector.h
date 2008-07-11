@@ -623,14 +623,14 @@ public:
 	{
 		GSVector4i v;
 
-		v = load((int)ptr[extract8<0>()]);
-		v = v.insert16<1>((int)ptr[extract8<1>()]);
-		v = v.insert16<2>((int)ptr[extract8<2>()]);
-		v = v.insert16<3>((int)ptr[extract8<3>()]);
-		v = v.insert16<4>((int)ptr[extract8<4>()]);
-		v = v.insert16<5>((int)ptr[extract8<5>()]);
-		v = v.insert16<6>((int)ptr[extract8<6>()]);
-		v = v.insert16<7>((int)ptr[extract8<7>()]);
+		v = load((int)ptr[extract16<0>()]);
+		v = v.insert16<1>((int)ptr[extract16<1>()]);
+		v = v.insert16<2>((int)ptr[extract16<2>()]);
+		v = v.insert16<3>((int)ptr[extract16<3>()]);
+		v = v.insert16<4>((int)ptr[extract16<4>()]);
+		v = v.insert16<5>((int)ptr[extract16<5>()]);
+		v = v.insert16<6>((int)ptr[extract16<6>()]);
+		v = v.insert16<7>((int)ptr[extract16<7>()]);
 
 		return v;
 	}
