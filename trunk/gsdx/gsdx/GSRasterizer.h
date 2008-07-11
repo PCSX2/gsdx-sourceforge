@@ -53,6 +53,9 @@ private:
 	{
 		int steps;
 
+		GSVector4i* fbco;
+		GSVector4i* zbco;
+
 		int** fo;
 		int** zo;
 

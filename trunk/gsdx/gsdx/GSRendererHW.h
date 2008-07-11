@@ -516,8 +516,8 @@ public:
 	{
 		if(!m_nativeres)
 		{
-			m_width = AfxGetApp()->GetProfileInt(_T("Settings"), _T("resx"), 1024);
-			m_height = AfxGetApp()->GetProfileInt(_T("Settings"), _T("resy"), 1024);
+			m_width = AfxGetApp()->GetProfileInt(_T("Settings"), _T("resx"), m_width);
+			m_height = AfxGetApp()->GetProfileInt(_T("Settings"), _T("resy"), m_height);
 		}
 	}
 
@@ -532,7 +532,7 @@ public:
 
 		if(m_game.title == CRC::JackieChanAdv)
 		{
-			m_width = 1280;
+			m_width = 1280; // TODO: uses a 1280px wide 16 bit render target, but this only fixes half of the problem
 		}
 	}
 };

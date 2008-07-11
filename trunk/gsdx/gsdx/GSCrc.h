@@ -59,6 +59,7 @@ public:
 		JackieChanAdv,
 		HarvestMoon,
 		NamcoXCapcom,
+		GiTS
 	};
 
 	enum Region 
