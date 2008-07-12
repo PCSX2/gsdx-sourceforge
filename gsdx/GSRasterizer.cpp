@@ -221,8 +221,8 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 	ScanlineEnvironment* slenv = m_slenv;
 
 	slenv->steps = 0;
-	slenv->fo = m_state->m_context->ftbl->rowOffset;
-	slenv->zo = m_state->m_context->ztbl->rowOffset;
+	slenv->fo = m_state->m_context->ftbl->rowOffset[0];
+	slenv->zo = m_state->m_context->ztbl->rowOffset[0];
 	slenv->fm = GSVector4i(context->FRAME.FBMSK);
 	slenv->zm = GSVector4i(context->ZBUF.ZMSK ? 0xffffffff : 0);
 	slenv->datm = GSVector4i(context->TEST.DATM ? 0x80000000 : 0);
@@ -847,10 +847,10 @@ else if(steps == 3) g_slp3++;
 	int zpsm = GSUtil::DecodeZPSM(iZPSM);
 
 	GSVector4i fa_base = slenv->fbco[top];
-	GSVector4i* fa_offset = (GSVector4i*)&slenv->fo[top & 7][left];
+	GSVector4i* fa_offset = (GSVector4i*)&slenv->fo[left];
 
 	GSVector4i za_base = slenv->zbco[top];
-	GSVector4i* za_offset = (GSVector4i*)&slenv->zo[top & 7][left];
+	GSVector4i* za_offset = (GSVector4i*)&slenv->zo[left];
 
 	GSVector4 vp = v.p;
 	GSVector4 z = vp.zzzz(); z += slenv->dz0123;
