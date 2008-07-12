@@ -1028,10 +1028,10 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 	int zpsm = GSUtil::DecodeZPSM(((sel >> 3) & 3));
 
 	GSVector4i fa_base = slenv->fbco[top];
-	GSVector4i* fa_offset = (GSVector4i*)&slenv->fo[top & 7][left];
+	GSVector4i* fa_offset = (GSVector4i*)&slenv->fo[left];
 
 	GSVector4i za_base = slenv->zbco[top];
-	GSVector4i* za_offset = (GSVector4i*)&slenv->zo[top & 7][left];
+	GSVector4i* za_offset = (GSVector4i*)&slenv->zo[left];
 
 	GSVector4 vp = v.p;
 	GSVector4 z = vp.zzzz(); z += slenv->dz0123;

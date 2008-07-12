@@ -56,8 +56,8 @@ private:
 		GSVector4i* fbco;
 		GSVector4i* zbco;
 
-		int** fo;
-		int** zo;
+		int* fo;
+		int* zo;
 
 		GSVector4i fm, zm;
 		struct {GSVector4i min, max, mask;} t; // [u] x 4 [v] x 4
