@@ -41,8 +41,6 @@ GSRasterizer::GSRasterizer(GSState* state, int id, int threads)
 
 	InvalidateTextureCache();
 
-	m_slenv = (ScanlineEnvironment*)_aligned_malloc(sizeof(ScanlineEnvironment), 16);
-
 	// w00t :P
 
 	#define InitDS_IIP(iFPSM, iZPSM, iZTST, iIIP) \
@@ -82,8 +80,6 @@ GSRasterizer::GSRasterizer(GSState* state, int id, int threads)
 GSRasterizer::~GSRasterizer()
 {
 	VirtualFree(m_tc, 0, MEM_RELEASE);
-
-	_aligned_free(m_slenv);
 
 	for(int i = 0, j = m_comap.GetSize(); i < j; i++)
 	{
@@ -218,21 +214,19 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 
 	// m_slenv
 
-	ScanlineEnvironment* slenv = m_slenv;
-
-	slenv->steps = 0;
-	slenv->fo = m_state->m_context->ftbl->rowOffset[0];
-	slenv->zo = m_state->m_context->ztbl->rowOffset[0];
-	slenv->fm = GSVector4i(context->FRAME.FBMSK);
-	slenv->zm = GSVector4i(context->ZBUF.ZMSK ? 0xffffffff : 0);
-	slenv->datm = GSVector4i(context->TEST.DATM ? 0x80000000 : 0);
-	slenv->colclamp = GSVector4i(env.COLCLAMP.CLAMP ? 0xffffffff : 0x00ff00ff);
-	slenv->fba = GSVector4i(context->FBA.FBA ? 0x80000000 : 0);
-	slenv->aref = GSVector4i((int)context->TEST.AREF + (m_sel.atst == 2 ? -1 : m_sel.atst == 6 ? +1 : 0));
-	slenv->afix = GSVector4((float)(int)context->ALPHA.FIX);
-	slenv->f.r = GSVector4((float)(int)env.FOGCOL.FCR);
-	slenv->f.g = GSVector4((float)(int)env.FOGCOL.FCG);
-	slenv->f.b = GSVector4((float)(int)env.FOGCOL.FCB);
+	m_slenv.steps = 0;
+	m_slenv.fo = m_state->m_context->ftbl->rowOffset[0];
+	m_slenv.zo = m_state->m_context->ztbl->rowOffset[0];
+	m_slenv.fm = GSVector4i(context->FRAME.FBMSK);
+	m_slenv.zm = GSVector4i(context->ZBUF.ZMSK ? 0xffffffff : 0);
+	m_slenv.datm = GSVector4i(context->TEST.DATM ? 0x80000000 : 0);
+	m_slenv.colclamp = GSVector4i(env.COLCLAMP.CLAMP ? 0xffffffff : 0x00ff00ff);
+	m_slenv.fba = GSVector4i(context->FBA.FBA ? 0x80000000 : 0);
+	m_slenv.aref = GSVector4i((int)context->TEST.AREF + (m_sel.atst == 2 ? -1 : m_sel.atst == 6 ? +1 : 0));
+	m_slenv.afix = GSVector4((float)(int)context->ALPHA.FIX);
+	m_slenv.f.r = GSVector4((float)(int)env.FOGCOL.FCR);
+	m_slenv.f.g = GSVector4((float)(int)env.FOGCOL.FCG);
+	m_slenv.f.b = GSVector4((float)(int)env.FOGCOL.FCB);
 
 	if(PRIM->TME)
 	{
@@ -270,24 +264,24 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 		switch(context->CLAMP.WMS)
 		{
 		case 0: 
-			slenv->t.min.u16[0] = tw - 1;
-			slenv->t.max.u16[0] = 0;
-			slenv->t.mask.u32[0] = 0xffffffff; 
+			m_slenv.t.min.u16[0] = tw - 1;
+			m_slenv.t.max.u16[0] = 0;
+			m_slenv.t.mask.u32[0] = 0xffffffff; 
 			break;
 		case 1: 
-			slenv->t.min.u16[0] = 0;
-			slenv->t.max.u16[0] = tw - 1;
-			slenv->t.mask.u32[0] = 0; 
+			m_slenv.t.min.u16[0] = 0;
+			m_slenv.t.max.u16[0] = tw - 1;
+			m_slenv.t.mask.u32[0] = 0; 
 			break;
 		case 2: 
-			slenv->t.min.u16[0] = context->CLAMP.MINU;
-			slenv->t.max.u16[0] = context->CLAMP.MAXU;
-			slenv->t.mask.u32[0] = 0; 
+			m_slenv.t.min.u16[0] = context->CLAMP.MINU;
+			m_slenv.t.max.u16[0] = context->CLAMP.MAXU;
+			m_slenv.t.mask.u32[0] = 0; 
 			break;
 		case 3: 
-			slenv->t.min.u16[0] = context->CLAMP.MINU;
-			slenv->t.max.u16[0] = context->CLAMP.MAXU;
-			slenv->t.mask.u32[0] = 0xffffffff; 
+			m_slenv.t.min.u16[0] = context->CLAMP.MINU;
+			m_slenv.t.max.u16[0] = context->CLAMP.MAXU;
+			m_slenv.t.mask.u32[0] = 0xffffffff; 
 			break;
 		default: 
 			__assume(0);
@@ -296,32 +290,32 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 		switch(context->CLAMP.WMT)
 		{
 		case 0: 
-			slenv->t.min.u16[4] = th - 1;
-			slenv->t.max.u16[4] = 0;
-			slenv->t.mask.u32[2] = 0xffffffff; 
+			m_slenv.t.min.u16[4] = th - 1;
+			m_slenv.t.max.u16[4] = 0;
+			m_slenv.t.mask.u32[2] = 0xffffffff; 
 			break;
 		case 1: 
-			slenv->t.min.u16[4] = 0;
-			slenv->t.max.u16[4] = th - 1;
-			slenv->t.mask.u32[2] = 0; 
+			m_slenv.t.min.u16[4] = 0;
+			m_slenv.t.max.u16[4] = th - 1;
+			m_slenv.t.mask.u32[2] = 0; 
 			break;
 		case 2: 
-			slenv->t.min.u16[4] = context->CLAMP.MINV;
-			slenv->t.max.u16[4] = context->CLAMP.MAXV;
-			slenv->t.mask.u32[2] = 0; 
+			m_slenv.t.min.u16[4] = context->CLAMP.MINV;
+			m_slenv.t.max.u16[4] = context->CLAMP.MAXV;
+			m_slenv.t.mask.u32[2] = 0; 
 			break;
 		case 3: 
-			slenv->t.min.u16[4] = context->CLAMP.MINV;
-			slenv->t.max.u16[4] = context->CLAMP.MAXV;
-			slenv->t.mask.u32[2] = 0xffffffff; 
+			m_slenv.t.min.u16[4] = context->CLAMP.MINV;
+			m_slenv.t.max.u16[4] = context->CLAMP.MAXV;
+			m_slenv.t.mask.u32[2] = 0xffffffff; 
 			break;
 		default: 
 			__assume(0);
 		}
 
-		slenv->t.min = slenv->t.min.xxxxl().xxxxh();
-		slenv->t.max = slenv->t.max.xxxxl().xxxxh();
-		slenv->t.mask = slenv->t.mask.xxzz();
+		m_slenv.t.min = m_slenv.t.min.xxxxl().xxxxh();
+		m_slenv.t.max = m_slenv.t.max.xxxxl().xxxxh();
+		m_slenv.t.mask = m_slenv.t.mask.xxzz();
 
 		m_tw = (int)max(context->TEX0.TW, TEXTURE_CACHE_WIDTH);
 	}
@@ -330,8 +324,8 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 
 	SetupColumnOffset();
 
-	slenv->fbco = m_fbco->addr;
-	slenv->zbco = m_zbco->addr;
+	m_slenv.fbco = m_fbco->addr;
+	m_slenv.zbco = m_zbco->addr;
 
 	//
 
@@ -381,7 +375,7 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 		InvalidateTextureCache();
 	}
 
-	m_state->m_perfmon.Put(GSPerfMon::Fillrate, slenv->steps);
+	m_state->m_perfmon.Put(GSPerfMon::Fillrate, m_slenv.steps);
 
 	return count;
 }
@@ -695,7 +689,7 @@ bool GSRasterizer::DrawSolidRect(int left, int top, int right, int bottom, const
 
 	m_state->m_mem.FillRect(r, c, fpsm, fbp, bw);
 
-	// m_slenv->steps += r.Width() * r.Height();
+	// m_slenv.steps += r.Width() * r.Height();
 
 	return true;
 }
@@ -777,51 +771,49 @@ void GSRasterizer::SetupColumnOffset()
 template<bool pos, bool tex, bool col> 
 void GSRasterizer::SetupScanline(const Vertex& dv)
 {
-	ScanlineEnvironment* slenv = m_slenv;
-
 	if(pos)
 	{
 		GSVector4 dp = dv.p;
 
-		slenv->dz0123 = dp.zzzz() * GSVector4(0, 1, 2, 3);	
-		slenv->df0123 = dp.wwww() * GSVector4(0, 1, 2, 3); 
+		m_slenv.dz0123 = dp.zzzz() * GSVector4(0, 1, 2, 3);	
+		m_slenv.df0123 = dp.wwww() * GSVector4(0, 1, 2, 3); 
 
 		GSVector4 dp4 = dp * 4.0f;
 
-		slenv->dz = dp4.zzzz();
-		slenv->df = dp4.wwww();
+		m_slenv.dz = dp4.zzzz();
+		m_slenv.df = dp4.wwww();
 	}
 
 	if(tex)
 	{
 		GSVector4 dt = dv.t;
 
-		slenv->ds0123 = dt.xxxx() * GSVector4(0, 1, 2, 3); 
-		slenv->dt0123 = dt.yyyy() * GSVector4(0, 1, 2, 3); 
-		slenv->dq0123 = dt.zzzz() * GSVector4(0, 1, 2, 3); 
+		m_slenv.ds0123 = dt.xxxx() * GSVector4(0, 1, 2, 3); 
+		m_slenv.dt0123 = dt.yyyy() * GSVector4(0, 1, 2, 3); 
+		m_slenv.dq0123 = dt.zzzz() * GSVector4(0, 1, 2, 3); 
 
 		GSVector4 dt4 = dt * 4.0f;
 
-		slenv->ds = dt4.xxxx();
-		slenv->dt = dt4.yyyy();
-		slenv->dq = dt4.zzzz();
+		m_slenv.ds = dt4.xxxx();
+		m_slenv.dt = dt4.yyyy();
+		m_slenv.dq = dt4.zzzz();
 	}
 
 	if(col)
 	{
 		GSVector4 dc = dv.c;
 
-		slenv->dr0123 = dc.xxxx() * GSVector4(0, 1, 2, 3); 
-		slenv->dg0123 = dc.yyyy() * GSVector4(0, 1, 2, 3); 
-		slenv->db0123 = dc.zzzz() * GSVector4(0, 1, 2, 3); 
-		slenv->da0123 = dc.wwww() * GSVector4(0, 1, 2, 3); 
+		m_slenv.dr0123 = dc.xxxx() * GSVector4(0, 1, 2, 3); 
+		m_slenv.dg0123 = dc.yyyy() * GSVector4(0, 1, 2, 3); 
+		m_slenv.db0123 = dc.zzzz() * GSVector4(0, 1, 2, 3); 
+		m_slenv.da0123 = dc.wwww() * GSVector4(0, 1, 2, 3); 
 
 		GSVector4 dc4 = dc * 4.0f;
 
-		slenv->dr = dc4.xxxx();
-		slenv->dg = dc4.yyyy();
-		slenv->db = dc4.zzzz();
-		slenv->da = dc4.wwww();
+		m_slenv.dr = dc4.xxxx();
+		m_slenv.dg = dc4.yyyy();
+		m_slenv.db = dc4.zzzz();
+		m_slenv.da = dc4.wwww();
 	}
 }
 
@@ -841,35 +833,33 @@ else if(steps == 2) g_slp2++;
 else if(steps == 3) g_slp3++;
 }
 */
-	ScanlineEnvironment* slenv = m_slenv;
-
 	int fpsm = GSUtil::DecodeFPSM(iFPSM);
 	int zpsm = GSUtil::DecodeZPSM(iZPSM);
 
-	GSVector4i fa_base = slenv->fbco[top];
-	GSVector4i* fa_offset = (GSVector4i*)&slenv->fo[left];
+	GSVector4i fa_base = m_slenv.fbco[top];
+	GSVector4i* fa_offset = (GSVector4i*)&m_slenv.fo[left];
 
-	GSVector4i za_base = slenv->zbco[top];
-	GSVector4i* za_offset = (GSVector4i*)&slenv->zo[left];
+	GSVector4i za_base = m_slenv.zbco[top];
+	GSVector4i* za_offset = (GSVector4i*)&m_slenv.zo[left];
 
 	GSVector4 vp = v.p;
-	GSVector4 z = vp.zzzz(); z += slenv->dz0123;
-	GSVector4 f = vp.wwww(); f += slenv->df0123;
+	GSVector4 z = vp.zzzz(); z += m_slenv.dz0123;
+	GSVector4 f = vp.wwww(); f += m_slenv.df0123;
 
 	GSVector4 vt = v.t;
-	GSVector4 s = vt.xxxx(); s += slenv->ds0123;
-	GSVector4 t = vt.yyyy(); t += slenv->dt0123;
-	GSVector4 q = vt.zzzz(); q += slenv->dq0123;
+	GSVector4 s = vt.xxxx(); s += m_slenv.ds0123;
+	GSVector4 t = vt.yyyy(); t += m_slenv.dt0123;
+	GSVector4 q = vt.zzzz(); q += m_slenv.dq0123;
 
 	GSVector4 vc = v.c;
-	GSVector4 r = vc.xxxx(); if(iip) r += slenv->dr0123;
-	GSVector4 g = vc.yyyy(); if(iip) g += slenv->dg0123;
-	GSVector4 b = vc.zzzz(); if(iip) b += slenv->db0123;
-	GSVector4 a = vc.wwww(); if(iip) a += slenv->da0123;
+	GSVector4 r = vc.xxxx(); if(iip) r += m_slenv.dr0123;
+	GSVector4 g = vc.yyyy(); if(iip) g += m_slenv.dg0123;
+	GSVector4 b = vc.zzzz(); if(iip) b += m_slenv.db0123;
+	GSVector4 a = vc.wwww(); if(iip) a += m_slenv.da0123;
 
 	int steps = right - left;
 
-	slenv->steps += steps;
+	m_slenv.steps += steps;
 
 	while(1)
 	{
@@ -881,8 +871,8 @@ else if(steps == 3) g_slp3++;
 		GSVector4i fa = fa_base + GSVector4i::loadu(fa_offset);
 		GSVector4i za = za_base + GSVector4i::loadu(za_offset);
 		
-		GSVector4i fm = slenv->fm;
-		GSVector4i zm = slenv->zm;
+		GSVector4i fm = m_slenv.fm;
+		GSVector4i zm = m_slenv.zm;
 		GSVector4i test = GSVector4i::zero();
 
 		GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & 1);
@@ -1000,10 +990,10 @@ else if(steps == 3) g_slp3++;
 			{
 			case 0: t = GSVector4i::invzero(); break; // never 
 			case 1: t = GSVector4i::zero(); break; // always
-			case 2: case 3: t = GSVector4i(c[3]) > slenv->aref; break; // l, le
-			case 4: t = GSVector4i(c[3]) != slenv->aref; break; // e
-			case 5: case 6: t = GSVector4i(c[3]) < slenv->aref; break; // ge, g
-			case 7: t = GSVector4i(c[3]) == slenv->aref; break; // ne 
+			case 2: case 3: t = GSVector4i(c[3]) > m_slenv.aref; break; // l, le
+			case 4: t = GSVector4i(c[3]) != m_slenv.aref; break; // e
+			case 5: case 6: t = GSVector4i(c[3]) < m_slenv.aref; break; // ge, g
+			case 7: t = GSVector4i(c[3]) == m_slenv.aref; break; // ne 
 			default: __assume(0);
 			}
 
@@ -1062,9 +1052,9 @@ else if(steps == 3) g_slp3++;
 
 		if(m_sel.fge)
 		{
-			c[0] = slenv->f.r.lerp(c[0], f);
-			c[1] = slenv->f.g.lerp(c[1], f);
-			c[2] = slenv->f.b.lerp(c[2], f);
+			c[0] = m_slenv.f.r.lerp(c[0], f);
+			c[1] = m_slenv.f.g.lerp(c[1], f);
+			c[2] = m_slenv.f.b.lerp(c[2], f);
 		}
 
 		GSVector4i d = GSVector4i::zero();
@@ -1075,7 +1065,7 @@ else if(steps == 3) g_slp3++;
 
 			if(m_sel.date)
 			{
-				test |= (d ^ slenv->datm).sra32(31);
+				test |= (d ^ m_slenv.datm).sra32(31);
 
 				if(test.mask() == 0xffff)
 				{
@@ -1094,7 +1084,7 @@ else if(steps == 3) g_slp3++;
 			c[8] = GSVector4::zero();
 			c[9] = GSVector4::zero();
 			c[10] = GSVector4::zero();
-			c[11] = slenv->afix;
+			c[11] = m_slenv.afix;
 
 			int abea = m_sel.abea;
 			int abeb = m_sel.abeb;
@@ -1124,10 +1114,10 @@ else if(steps == 3) g_slp3++;
 		GSVector4i rb = GSVector4i(c[0]).ps32(GSVector4i(c[2]));
 		GSVector4i ga = GSVector4i(c[1]).ps32(GSVector4i(c[3]));
 		
-		GSVector4i rg = rb.upl16(ga) & slenv->colclamp;
-		GSVector4i ba = rb.uph16(ga) & slenv->colclamp;
+		GSVector4i rg = rb.upl16(ga) & m_slenv.colclamp;
+		GSVector4i ba = rb.uph16(ga) & m_slenv.colclamp;
 		
-		GSVector4i s = rg.upl32(ba).pu16(rg.uph32(ba)) | slenv->fba;
+		GSVector4i s = rg.upl32(ba).pu16(rg.uph32(ba)) | m_slenv.fba;
 
 		if(m_sel.rfb)
 		{
@@ -1150,15 +1140,15 @@ else if(steps == 3) g_slp3++;
 
 		fa_offset++;
 		za_offset++;
-		z += slenv->dz;
-		f += slenv->df;
-		s += slenv->ds;
-		t += slenv->dt;
-		q += slenv->dq;
-		if(iip) r += slenv->dr;
-		if(iip) g += slenv->dg;
-		if(iip) b += slenv->db;
-		if(iip) a += slenv->da;
+		z += m_slenv.dz;
+		f += m_slenv.df;
+		s += m_slenv.ds;
+		t += m_slenv.dt;
+		q += m_slenv.dq;
+		if(iip) r += m_slenv.dr;
+		if(iip) g += m_slenv.dg;
+		if(iip) b += m_slenv.db;
+		if(iip) a += m_slenv.da;
 	}
 }
 

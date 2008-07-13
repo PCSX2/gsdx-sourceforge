@@ -23,6 +23,7 @@
 
 #include "GSState.h"
 #include "GSVertexSW.h"
+#include "GSAlignedClass.h"
 
 // - texture cache size should be the size of the page (depends on psm, ttbl->pgs), 
 // but the min fetchable 4 bpp block size (32x16) is the fastest and 99% ok
@@ -33,7 +34,7 @@
 
 // FIXME: the fog effect in re4 needs even bigger cache (128x128) to leave no black lines at the edges (might be the bilinear filter)
 
-class GSRasterizer
+class GSRasterizer : public GSAlignedClass<16>
 {
 protected:
 	typedef GSVertexSW Vertex;
@@ -49,7 +50,7 @@ private:
 		DWORD hash;
 	};
 
-	struct ScanlineEnvironment
+	__declspec(align(16)) struct ScanlineEnvironment
 	{
 		int steps;
 
@@ -113,7 +114,7 @@ private:
 	ColumnOffset* m_fbco;
 	ColumnOffset* m_zbco;
 	ScanlineSelector m_sel;
-	ScanlineEnvironment* m_slenv;
+	ScanlineEnvironment m_slenv;
 	bool m_solidrect;
 
 	struct TextureCache
@@ -177,10 +178,10 @@ private:
 
 	__forceinline GSVector4i Wrap(const GSVector4i& t)
 	{
-		GSVector4i clamp = t.sat_i16(m_slenv->t.min, m_slenv->t.max);
-		GSVector4i repeat = (t & m_slenv->t.min) | m_slenv->t.max;
+		GSVector4i clamp = t.sat_i16(m_slenv.t.min, m_slenv.t.max);
+		GSVector4i repeat = (t & m_slenv.t.min) | m_slenv.t.max;
 
- 		return clamp.blend8(repeat, m_slenv->t.mask);
+ 		return clamp.blend8(repeat, m_slenv.t.mask);
 	}
 
 	void DrawPoint(Vertex* v);

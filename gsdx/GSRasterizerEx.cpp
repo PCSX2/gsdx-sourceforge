@@ -1022,35 +1022,33 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 	const DWORD abec = (sel >> 28) & 3;
 	const DWORD abed = (sel >> 30) & 3;
 
-	ScanlineEnvironment* slenv = m_slenv;
-
 	int fpsm = GSUtil::DecodeFPSM(((sel >> 0) & 7));
 	int zpsm = GSUtil::DecodeZPSM(((sel >> 3) & 3));
 
-	GSVector4i fa_base = slenv->fbco[top];
-	GSVector4i* fa_offset = (GSVector4i*)&slenv->fo[left];
+	GSVector4i fa_base = m_slenv.fbco[top];
+	GSVector4i* fa_offset = (GSVector4i*)&m_slenv.fo[left];
 
-	GSVector4i za_base = slenv->zbco[top];
-	GSVector4i* za_offset = (GSVector4i*)&slenv->zo[left];
+	GSVector4i za_base = m_slenv.zbco[top];
+	GSVector4i* za_offset = (GSVector4i*)&m_slenv.zo[left];
 
 	GSVector4 vp = v.p;
-	GSVector4 z = vp.zzzz(); z += slenv->dz0123;
-	GSVector4 f = vp.wwww(); f += slenv->df0123;
+	GSVector4 z = vp.zzzz(); z += m_slenv.dz0123;
+	GSVector4 f = vp.wwww(); f += m_slenv.df0123;
 
 	GSVector4 vt = v.t;
-	GSVector4 s = vt.xxxx(); s += slenv->ds0123;
-	GSVector4 t = vt.yyyy(); t += slenv->dt0123;
-	GSVector4 q = vt.zzzz(); q += slenv->dq0123;
+	GSVector4 s = vt.xxxx(); s += m_slenv.ds0123;
+	GSVector4 t = vt.yyyy(); t += m_slenv.dt0123;
+	GSVector4 q = vt.zzzz(); q += m_slenv.dq0123;
 
 	GSVector4 vc = v.c;
-	GSVector4 r = vc.xxxx(); if(iip) r += slenv->dr0123;
-	GSVector4 g = vc.yyyy(); if(iip) g += slenv->dg0123;
-	GSVector4 b = vc.zzzz(); if(iip) b += slenv->db0123;
-	GSVector4 a = vc.wwww(); if(iip) a += slenv->da0123;
+	GSVector4 r = vc.xxxx(); if(iip) r += m_slenv.dr0123;
+	GSVector4 g = vc.yyyy(); if(iip) g += m_slenv.dg0123;
+	GSVector4 b = vc.zzzz(); if(iip) b += m_slenv.db0123;
+	GSVector4 a = vc.wwww(); if(iip) a += m_slenv.da0123;
 
 	int steps = right - left;
 
-	slenv->steps += steps;
+	m_slenv.steps += steps;
 
 	while(1)
 	{
@@ -1062,8 +1060,8 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 		GSVector4i fa = fa_base + GSVector4i::loadu(fa_offset);
 		GSVector4i za = za_base + GSVector4i::loadu(za_offset);
 		
-		GSVector4i fm = slenv->fm;
-		GSVector4i zm = slenv->zm;
+		GSVector4i fm = m_slenv.fm;
+		GSVector4i zm = m_slenv.zm;
 		GSVector4i test = GSVector4i::zero();
 
 		GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & 1);
@@ -1181,10 +1179,10 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 			{
 			case 0: t = GSVector4i::invzero(); break; // never 
 			case 1: t = GSVector4i::zero(); break; // always
-			case 2: case 3: t = GSVector4i(c[3]) > slenv->aref; break; // l, le
-			case 4: t = GSVector4i(c[3]) != slenv->aref; break; // e
-			case 5: case 6: t = GSVector4i(c[3]) < slenv->aref; break; // ge, g
-			case 7: t = GSVector4i(c[3]) == slenv->aref; break; // ne 
+			case 2: case 3: t = GSVector4i(c[3]) > m_slenv.aref; break; // l, le
+			case 4: t = GSVector4i(c[3]) != m_slenv.aref; break; // e
+			case 5: case 6: t = GSVector4i(c[3]) < m_slenv.aref; break; // ge, g
+			case 7: t = GSVector4i(c[3]) == m_slenv.aref; break; // ne 
 			default: __assume(0);
 			}
 
@@ -1243,9 +1241,9 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 
 		if(fge)
 		{
-			c[0] = slenv->f.r.lerp(c[0], f);
-			c[1] = slenv->f.g.lerp(c[1], f);
-			c[2] = slenv->f.b.lerp(c[2], f);
+			c[0] = m_slenv.f.r.lerp(c[0], f);
+			c[1] = m_slenv.f.g.lerp(c[1], f);
+			c[2] = m_slenv.f.b.lerp(c[2], f);
 		}
 
 		GSVector4i d = GSVector4i::zero();
@@ -1256,7 +1254,7 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 
 			if(date)
 			{
-				test |= (d ^ slenv->datm).sra32(31);
+				test |= (d ^ m_slenv.datm).sra32(31);
 
 				if(test.mask() == 0xffff)
 				{
@@ -1275,7 +1273,7 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 			c[8] = GSVector4::zero();
 			c[9] = GSVector4::zero();
 			c[10] = GSVector4::zero();
-			c[11] = slenv->afix;
+			c[11] = m_slenv.afix;
 
 			GSVector4 r = (c[abea*4 + 0] - c[abeb*4 + 0]).mod2x(c[abec*4 + 3]) + c[abed*4 + 0];
 			GSVector4 g = (c[abea*4 + 1] - c[abeb*4 + 1]).mod2x(c[abec*4 + 3]) + c[abed*4 + 1];
@@ -1300,10 +1298,10 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 		GSVector4i rb = GSVector4i(c[0]).ps32(GSVector4i(c[2]));
 		GSVector4i ga = GSVector4i(c[1]).ps32(GSVector4i(c[3]));
 		
-		GSVector4i rg = rb.upl16(ga) & slenv->colclamp;
-		GSVector4i ba = rb.uph16(ga) & slenv->colclamp;
+		GSVector4i rg = rb.upl16(ga) & m_slenv.colclamp;
+		GSVector4i ba = rb.uph16(ga) & m_slenv.colclamp;
 		
-		GSVector4i s = rg.upl32(ba).pu16(rg.uph32(ba)) | slenv->fba;
+		GSVector4i s = rg.upl32(ba).pu16(rg.uph32(ba)) | m_slenv.fba;
 
 		if(rfb)
 		{
@@ -1326,14 +1324,14 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 
 		fa_offset++;
 		za_offset++;
-		z += slenv->dz;
-		f += slenv->df;
-		s += slenv->ds;
-		t += slenv->dt;
-		q += slenv->dq;
-		if(iip) r += slenv->dr;
-		if(iip) g += slenv->dg;
-		if(iip) b += slenv->db;
-		if(iip) a += slenv->da;
+		z += m_slenv.dz;
+		f += m_slenv.df;
+		s += m_slenv.ds;
+		t += m_slenv.dt;
+		q += m_slenv.dq;
+		if(iip) r += m_slenv.dr;
+		if(iip) g += m_slenv.dg;
+		if(iip) b += m_slenv.db;
+		if(iip) a += m_slenv.da;
 	}
 }

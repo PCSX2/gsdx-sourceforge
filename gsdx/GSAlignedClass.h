@@ -21,64 +21,18 @@
 
 #pragma once
 
-#include "GS.h"
-#include "GSVector.h"
-#include "GSVertexHW.h"
-#include "GSVertexSW.h"
-
-#pragma pack(push, 1)
-
-__declspec(align(16)) struct GSVertex
+template<int i> class GSAlignedClass
 {
-	union
+public:
+	GSAlignedClass() {}
+
+	void* operator new (size_t size)
 	{
-		struct
-		{
-			GIFRegST ST;
-			GIFRegXYZ XYZ;
-			GIFRegRGBAQ RGBAQ;
-			GIFRegFOG FOG;
-		};
+		return _aligned_malloc(size, i);
+	}
 
-		struct {__m128i m128i[2];};
-		struct {__m128 m128[2];};
-	};
-
-	GIFRegUV UV;
-
-	GSVertex() {memset(this, 0, sizeof(*this));}
+	void operator delete (void* p)
+	{
+		_aligned_free(p);
+	}
 };
-
-struct GSVertexOld
-{
-	GIFRegRGBAQ		RGBAQ;
-	GIFRegST		ST;
-	GIFRegUV		UV;
-	GIFRegXYZ		XYZ;
-	GIFRegFOG		FOG;
-
-	GSVertexOld() {memset(this, 0, sizeof(*this));}
-};
-
-struct GSVertexP
-{
-	GSVector4 p;
-};
-
-struct GSVertexPT1
-{
-	GSVector4 p;
-	GSVector2 t;
-};
-
-struct GSVertexPT2
-{
-	GSVector4 p;
-	GSVector2 t[2];
-};
-
-struct GSVertexNull 
-{
-};
-
-#pragma pack(pop)

@@ -33,8 +33,9 @@
 #include "GSVector.h"
 #include "GSDevice.h"
 #include "GSCrc.h"
+#include "GSAlignedClass.h"
 
-class GSState
+class GSState : public GSAlignedClass<16>
 {
 	typedef void (GSState::*GIFPackedRegHandler)(GIFPackedReg* r);
 

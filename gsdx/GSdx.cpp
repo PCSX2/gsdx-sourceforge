@@ -27,10 +27,6 @@
 #include "GSRendererNull.h"
 #include "GSSettingsDlg.h"
 
-#ifdef _DEBUG
-#define new DEBUG_NEW
-#endif
-
 //
 //	Note!
 //
@@ -316,9 +312,9 @@ static INT32 GSopen(void* dsp, char* title, int mt, int renderer)
 		return -1;
 	}
 
-	s_gs->Show();
+	s_gs->m_wnd.Show();
 
-	*(HWND*)dsp = *s_gs;
+	*(HWND*)dsp = s_gs->m_wnd;
 
 	// if(mt) _mm_setcsr(MXCSR);
 
