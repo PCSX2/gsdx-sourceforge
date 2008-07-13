@@ -80,9 +80,7 @@ void GSRendererHW10::VertexKick(bool skip)
 {
 	GSVertexHW10& v = m_vl.AddTail();
 
-#if 0 //_M_SSE >= 0x200
-
-	// TODO: make m_v aligned
+	#if _M_SSE >= 0x200
 
 	v.m128i[0] = m_v.m128i[0];
 	v.m128i[1] = m_v.m128i[1];
@@ -97,7 +95,7 @@ void GSRendererHW10::VertexKick(bool skip)
 		}
 	}
 
-#else
+	#else
 
 	v.RGBAQ = m_v.RGBAQ;
 	v.FOG = m_v.FOG;
@@ -117,7 +115,7 @@ void GSRendererHW10::VertexKick(bool skip)
 		}
 	}
 
-#endif
+	#endif
 
 	__super::VertexKick(skip);
 }

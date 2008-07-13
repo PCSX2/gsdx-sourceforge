@@ -36,7 +36,7 @@ struct GSRendererSettings
 	bool m_nativeres;
 };
 
-class GSRendererBase :  public GSWnd, public GSState, protected GSRendererSettings
+class GSRendererBase : public GSState, protected GSRendererSettings
 {
 protected:
 	bool m_osd;
@@ -80,7 +80,7 @@ protected:
 
 			if(msg.wParam == VK_F7)
 			{
-				SetWindowText(_T("PCSX2"));
+				m_wnd.SetWindowText(_T("PCSX2"));
 				m_osd = !m_osd;
 				return true;
 			}
@@ -102,8 +102,11 @@ public:
 		m_nativeres = rs.m_nativeres;
 	};
 
+	virtual bool Create(LPCTSTR title) = 0;
 	virtual void VSync(int field) = 0;
 	virtual bool MakeSnapshot(LPCTSTR path) = 0;
+
+	GSWnd m_wnd;
 };
 
 template<class Device> class GSRenderer : public GSRendererBase
@@ -296,12 +299,12 @@ public:
 
 	bool Create(LPCTSTR title)
 	{
-		if(!__super::Create(title))
+		if(!m_wnd.Create(title))
 		{
 			return false;
 		}
 
-		if(!m_dev.Create(m_hWnd))
+		if(!m_dev.Create(m_wnd))
 		{
 			return false;
 		}
@@ -371,7 +374,7 @@ public:
 			if(m_perfmon.Get(GSPerfMon::ABE)) _tprintf(_T("*** NOT SUPPORTED: alpha blending mode ***\n"));
 			if(m_perfmon.Get(GSPerfMon::DepthTexture)) _tprintf(_T("*** NOT SUPPORTED: depth texture ***\n"));		
 
-			SetWindowText(s_stats);
+			m_wnd.SetWindowText(s_stats);
 		}
 
 		if(m_osd)
@@ -400,7 +403,7 @@ public:
 
 		CRect cr;
 		
-		GetClientRect(&cr);
+		m_wnd.GetClientRect(&cr);
 
 		CRect r = cr;
 
@@ -505,7 +508,7 @@ protected:
 
 	void VertexKick(bool skip)
 	{
-		while(m_vl.GetCount() >= m_vprim)
+		if(m_vl.GetCount() >= m_vprim)
 		{
 			if(m_count + 6 > m_maxcount)
 			{

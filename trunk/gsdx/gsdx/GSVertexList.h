@@ -26,7 +26,6 @@ template <class Vertex> class GSVertexList
 	Vertex* m_v[4];
 	int m_head;
 	int m_tail;
-	int m_count;
 
 public:
 	GSVertexList()
@@ -49,26 +48,14 @@ public:
 
 	void RemoveAll()
 	{
-		m_head = m_tail = m_count = 0;
+		m_head = m_tail = 0;
 	}
 
 	Vertex& AddTail()
 	{
-		ASSERT(m_count < 4);
-
 		Vertex& v = *m_v[m_tail];
 		m_tail = (m_tail + 1) & 3;
-		m_count++;
 		return v;
-	}
-
-	void AddTail(Vertex& v)
-	{
-		ASSERT(m_count < 4);
-
-		*m_v[m_tail] = v;
-		m_tail = (m_tail + 1) & 3;
-		m_count++;
 	}
 
 	__forceinline void RemoveAt(int i, Vertex& v)
@@ -92,19 +79,15 @@ public:
 				m_v[(i + 1) & 3] = tmp;
 			}
 		}
-
-		m_count--;
 	}
 
 	void GetAt(int i, Vertex& v)
 	{
-		ASSERT(m_count > 0); 
-
 		v = *m_v[(m_head + i) & 3];
 	}
 
 	int GetCount()
 	{
-		return m_count;
+		return (m_tail + 4 - m_head) & 3;
 	}
 };
