@@ -662,6 +662,54 @@ public:
 		#endif
 	}
 
+	template<bool aligned> static void ReadColumn32(int y, BYTE* src, BYTE* dst, int dstpitch)
+	{
+		switch((y >> 1) & 3)
+		{
+		case 0: ReadColumn32<0, aligned>(src, dst, dstpitch); break;
+		case 1: ReadColumn32<1, aligned>(src, dst, dstpitch); break;
+		case 2: ReadColumn32<2, aligned>(src, dst, dstpitch); break;
+		case 3: ReadColumn32<3, aligned>(src, dst, dstpitch); break;
+		default: __assume(0);
+		}
+	}
+
+	template<bool aligned> static void ReadColumn16(int y, BYTE* src, BYTE* dst, int dstpitch)
+	{
+		switch((y >> 1) & 3)
+		{
+		case 0: ReadColumn16<0, aligned>(src, dst, dstpitch); break;
+		case 1: ReadColumn16<1, aligned>(src, dst, dstpitch); break;
+		case 2: ReadColumn16<2, aligned>(src, dst, dstpitch); break;
+		case 3: ReadColumn16<3, aligned>(src, dst, dstpitch); break;
+		default: __assume(0);
+		}
+	}
+
+	template<bool aligned> static void ReadColumn8(int y, BYTE* src, BYTE* dst, int dstpitch)
+	{
+		switch((y >> 2) & 3)
+		{
+		case 0: ReadColumn8<0, aligned>(src, dst, dstpitch); break;
+		case 1: ReadColumn8<1, aligned>(src, dst, dstpitch); break;
+		case 2: ReadColumn8<2, aligned>(src, dst, dstpitch); break;
+		case 3: ReadColumn8<3, aligned>(src, dst, dstpitch); break;
+		default: __assume(0);
+		}
+	}
+
+	template<bool aligned> static void ReadColumn4(int y, BYTE* src, BYTE* dst, int dstpitch)
+	{
+		switch((y >> 2) & 3)
+		{
+		case 0: ReadColumn4<0, aligned>(src, dst, dstpitch); break;
+		case 1: ReadColumn4<1, aligned>(src, dst, dstpitch); break;
+		case 2: ReadColumn4<2, aligned>(src, dst, dstpitch); break;
+		case 3: ReadColumn4<3, aligned>(src, dst, dstpitch); break;
+		default: __assume(0);
+		}
+	}
+
 	template<bool aligned> static void ReadBlock32(BYTE* src, BYTE* dst, int dstpitch)
 	{
 		#if _M_SSE >= 0x200

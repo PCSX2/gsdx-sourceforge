@@ -968,11 +968,12 @@ struct GIFPath
 	UINT32 _pad[3];
 	GSVector4i regs;
 
-	void ExpandRegs()
+	void SetTag(const void* mem)
 	{
-		GSVector4i mask(0x0f0f0f0f);
-		GSVector4i REGS = GSVector4i::loadl(&tag.ai64[1]);
-		regs = (REGS & mask).upl8((REGS >> 4) & mask);
+		GSVector4i v = GSVector4i::load<false>(mem);
+		GSVector4i::store<true>(&tag, v);
+		nreg = 0;
+		regs = v.uph8(v >> 4) & 0x0f0f0f0f;
 	}
 
 	DWORD GetReg() 

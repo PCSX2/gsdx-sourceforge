@@ -120,7 +120,6 @@ class GSState : public GSAlignedClass<16>
 
 	void FlushWrite();
 	void FlushWrite(BYTE* mem, int len);
-	void StepTransfer(int sx, int ex) {if(++m_x == ex) {m_x = sx; m_y++;}}
 
 protected:
 	bool IsBadFrame(int& skip);
@@ -217,7 +216,7 @@ public:
 	void SoftReset(BYTE mask);
 	void WriteCSR(UINT32 csr) {CSR->ai32[1] = csr;}
 	void ReadFIFO(BYTE* mem, int size);
-	void Transfer(BYTE* mem, int size, int index);
+	template<int index> void Transfer(BYTE* mem, UINT32 size);
 	int Freeze(freezeData* fd, bool sizeonly);
 	int Defrost(const freezeData* fd);
 	void GetLastTag(UINT32* tag) {*tag = m_path3hack; m_path3hack = 0;}

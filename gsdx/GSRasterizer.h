@@ -54,6 +54,8 @@ private:
 	{
 		int steps;
 
+		GSLocalMemory::readTexture rtx;
+
 		GSVector4i* fbco;
 		GSVector4i* zbco;
 

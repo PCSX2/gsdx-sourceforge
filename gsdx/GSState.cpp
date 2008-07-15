@@ -1210,7 +1210,11 @@ void GSState::ReadFIFO(BYTE* mem, int size)
 	}
 }
 
-void GSState::Transfer(BYTE* mem, int size, int index)
+template void GSState::Transfer<0>(BYTE* mem, UINT32 size);
+template void GSState::Transfer<1>(BYTE* mem, UINT32 size);
+template void GSState::Transfer<2>(BYTE* mem, UINT32 size);
+
+template<int index> void GSState::Transfer(BYTE* mem, UINT32 size)
 {
 	GSPerfMonAutoTimer pmat(m_perfmon);
 
@@ -1224,9 +1228,7 @@ void GSState::Transfer(BYTE* mem, int size, int index)
 
 		if(path.tag.NLOOP == 0)
 		{
-			path.tag = *(GIFTag*)mem;
-			path.nreg = 0;
-			path.ExpandRegs();
+			path.SetTag(mem);
 
 			mem += sizeof(GIFTag);
 			size--;
@@ -1347,17 +1349,17 @@ void GSState::Transfer(BYTE* mem, int size, int index)
 
 			case GIF_FLG_IMAGE:
 				{
-					int len = min(size, path.tag.NLOOP);
+					int len = (int)min(size, path.tag.NLOOP);
 
 					//ASSERT(!(len&3));
 
 					switch(m_env.TRXDIR.XDIR)
 					{
 					case 0:
-						Write(mem, len*16);
+						Write(mem, len * 16);
 						break;
 					case 1: 
-						Read(mem, len*16);
+						Read(mem, len * 16);
 						break;
 					case 2: 
 						Move();
@@ -1369,7 +1371,7 @@ void GSState::Transfer(BYTE* mem, int size, int index)
 						__assume(0);
 					}
 
-					mem += len*16;
+					mem += len * 16;
 					path.tag.NLOOP -= len;
 					size -= len;
 				}
@@ -1574,7 +1576,7 @@ int GSState::Defrost(const freezeData* fd)
 		ReadState(&m_path[i].tag, data);
 		ReadState(&m_path[i].nreg, data);
 
-		m_path[i].ExpandRegs();
+		m_path[i].SetTag(&m_path[i].tag); // expand regs
 	}
 
 	ReadState(&m_q, data);

@@ -23,71 +23,67 @@
 
 template <class Vertex> class GSVertexList
 {
-	Vertex* m_v[4];
-	int m_head;
-	int m_tail;
+	void* m_base;
+	Vertex* m_v[3];
+	int m_count;
 
 public:
 	GSVertexList()
+		: m_count(0)
 	{
+		m_base = _aligned_malloc(sizeof(Vertex) * countof(m_v), 16);
+
 		for(int i = 0; i < countof(m_v); i++)
 		{
-			m_v[i] = (Vertex*)_aligned_malloc(sizeof(Vertex), 16);
+			m_v[i] = &((Vertex*)m_base)[i];
 		}
-
-		RemoveAll();
 	}
 
 	virtual ~GSVertexList()
 	{
-		for(int i = 0; i < countof(m_v); i++)
-		{
-			_aligned_free(m_v[i]);
-		}
+		_aligned_free(m_base);
 	}
 
 	void RemoveAll()
 	{
-		m_head = m_tail = 0;
+		m_count = 0;
 	}
 
-	Vertex& AddTail()
+	__forceinline Vertex& AddTail()
 	{
-		Vertex& v = *m_v[m_tail];
-		m_tail = (m_tail + 1) & 3;
-		return v;
+		_mm_prefetch((char*)m_base, _MM_HINT_NTA);
+
+		ASSERT(m_count < 3);
+
+		return *m_v[m_count++];
 	}
 
-	__forceinline void RemoveAt(int i, Vertex& v)
+	__forceinline void RemoveAt(int pos, int keep)
 	{
-		GetAt(i, v);
-
-		i = (m_head + i) & 3;
-
-		if(i == m_head)
+		if(keep == 1)
 		{
-			m_head = (m_head + 1) & 3;
+			Vertex* tmp = m_v[pos + 0];
+			m_v[pos + 0] = m_v[pos + 1];
+			m_v[pos + 1] = tmp;
 		}
-		else 
+		else if(keep == 2)
 		{
-			m_tail = (m_tail + 4 - 1) & 3;
-
-			for(; i != m_tail; i = (i + 1) & 3)
-			{
-				Vertex* tmp = m_v[i];
-				m_v[i] = m_v[(i + 1) & 3];
-				m_v[(i + 1) & 3] = tmp;
-			}
+			Vertex* tmp = m_v[pos + 0];
+			m_v[pos + 0] = m_v[pos + 1];
+			m_v[pos + 1] = m_v[pos + 2];
+			m_v[pos + 2] = tmp;
 		}
+
+		m_count = pos + keep;
 	}
 
-	void GetAt(int i, Vertex& v)
+	__forceinline void GetAt(int i, Vertex& v)
 	{
-		v = *m_v[(m_head + i) & 3];
+		v = *m_v[i];
 	}
 
 	int GetCount()
 	{
-		return (m_tail + 4 - m_head) & 3;
+		return m_count;
 	}
 };

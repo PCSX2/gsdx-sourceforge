@@ -363,20 +363,14 @@ bool GSDevice10::CopyOffscreen(Texture& src, const GSVector4& sr, Texture& dst, 
 
 void GSDevice10::ClearRenderTarget(Texture& t, const GSVector4& c)
 {
-	m_dev->ClearRenderTargetView(t, (const float*)&c);
+	m_dev->ClearRenderTargetView(t, c.v);
 }
 
 void GSDevice10::ClearRenderTarget(Texture& t, DWORD c)
 {
-	float f[] = 
-	{
-		(float)((c >> 0) & 0xff) / 0xff,
-		(float)((c >> 8) & 0xff) / 0xff,
-		(float)((c >> 16) & 0xff) / 0xff,
-		(float)((c >> 24) & 0xff) / 0xff,
-	};
+	GSVector4 color = GSVector4(c) * (1.0f / 255);
 
-	m_dev->ClearRenderTargetView(t, f);
+	m_dev->ClearRenderTargetView(t, color.v);
 }
 
 void GSDevice10::ClearDepth(Texture& t, float c)
