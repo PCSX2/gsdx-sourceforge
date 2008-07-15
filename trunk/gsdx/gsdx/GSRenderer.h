@@ -508,81 +508,81 @@ protected:
 
 	void VertexKick(bool skip)
 	{
-		if(m_vl.GetCount() >= m_vprim)
+		if(m_vl.GetCount() < m_vprim)
 		{
-			if(m_count + 6 > m_maxcount)
-			{
-				m_maxcount = max(10000, m_maxcount * 3/2);
+			return;
+		}
 
-				Vertex* vertices = (Vertex*)_aligned_malloc(sizeof(Vertex) * m_maxcount, 16);
+		if(m_count > m_maxcount)
+		{
+			m_maxcount = max(10000, m_maxcount * 3/2);
+			m_vertices = (Vertex*)_aligned_realloc(m_vertices, sizeof(Vertex) * m_maxcount, 16);
+			m_maxcount -= 100;
+		}
 
-				if(m_vertices)
-				{
-					memcpy(vertices, m_vertices, sizeof(Vertex) * m_count);
+		Vertex* v = &m_vertices[m_count];
 
-					_aligned_free(m_vertices);
-				}
+		int count = 0;
 
-				m_vertices = vertices;
-			}
+		switch(PRIM->PRIM)
+		{
+		case GS_POINTLIST:
+			m_vl.GetAt(0, v[0]);
+			m_vl.RemoveAll();
+			count = 1;
+			break;
+		case GS_LINELIST:
+			m_vl.GetAt(0, v[0]);
+			m_vl.GetAt(1, v[1]);
+			m_vl.RemoveAll();
+			count = 2;
+			break;
+		case GS_LINESTRIP:
+			m_vl.GetAt(0, v[0]);
+			m_vl.GetAt(1, v[1]);
+			m_vl.RemoveAt(0, 1);
+			count = 2;
+			break;
+		case GS_TRIANGLELIST:
+			m_vl.GetAt(0, v[0]);
+			m_vl.GetAt(1, v[1]);
+			m_vl.GetAt(2, v[2]);
+			m_vl.RemoveAll();
+			count = 3;
+			break;
+		case GS_TRIANGLESTRIP:
+			m_vl.GetAt(0, v[0]);
+			m_vl.GetAt(1, v[1]);
+			m_vl.GetAt(2, v[2]);
+			m_vl.RemoveAt(0, 2);
+			count = 3;
+			break;
+		case GS_TRIANGLEFAN:
+			m_vl.GetAt(0, v[0]);
+			m_vl.GetAt(1, v[1]);
+			m_vl.GetAt(2, v[2]);
+			m_vl.RemoveAt(1, 1);
+			count = 3;
+			break;
+		case GS_SPRITE:
+			m_vl.GetAt(0, v[0]);
+			m_vl.GetAt(1, v[1]);
+			m_vl.RemoveAll();
+			count = 2;
+			break;
+		case GS_INVALID:
+			ASSERT(0);
+			m_vl.RemoveAll();
+			return;
+		default:
+			__assume(0);
+		}
 
-			Vertex* v = &m_vertices[m_count];
+		if(!skip)
+		{
+			(this->*m_fpDrawingKickHandlers[PRIM->PRIM])(v, count);
 
-			int count = 0;
-
-			switch(PRIM->PRIM)
-			{
-			case GS_POINTLIST:
-				m_vl.RemoveAt(0, v[0]);
-				count = 1;
-				break;
-			case GS_LINELIST:
-				m_vl.RemoveAt(0, v[0]);
-				m_vl.RemoveAt(0, v[1]);
-				count = 2;
-				break;
-			case GS_LINESTRIP:
-				m_vl.RemoveAt(0, v[0]);
-				m_vl.GetAt(0, v[1]);
-				count = 2;
-				break;
-			case GS_TRIANGLELIST:
-				m_vl.RemoveAt(0, v[0]);
-				m_vl.RemoveAt(0, v[1]);
-				m_vl.RemoveAt(0, v[2]);
-				count = 3;
-				break;
-			case GS_TRIANGLESTRIP:
-				m_vl.RemoveAt(0, v[0]);
-				m_vl.GetAt(0, v[1]);
-				m_vl.GetAt(1, v[2]);
-				count = 3;
-				break;
-			case GS_TRIANGLEFAN:
-				m_vl.GetAt(0, v[0]);
-				m_vl.RemoveAt(1, v[1]);
-				m_vl.GetAt(1, v[2]);
-				count = 3;
-				break;
-			case GS_SPRITE:
-				m_vl.RemoveAt(0, v[0]);
-				m_vl.RemoveAt(0, v[1]);
-				count = 2;
-				break;
-			case GS_INVALID:
-				ASSERT(0);
-				m_vl.RemoveAll();
-				return;
-			default:
-				__assume(0);
-			}
-
-			if(!skip)
-			{
-				(this->*m_fpDrawingKickHandlers[PRIM->PRIM])(v, count);
-
-				m_count += count;
-			}
+			m_count += count;
 		}
 	}
 
@@ -631,12 +631,20 @@ public:
 	GSRendererT(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs, bool psrr = true)
 		: GSRenderer<Device>(base, mt, irq, nloophack, rs, psrr)
 		, m_count(0)
-		, m_maxcount(0)
+		, m_maxcount(10000)
 		, m_vertices(NULL)
 	{
+		m_vertices = (Vertex*)_aligned_malloc(sizeof(Vertex) * m_maxcount, 16);
+		m_maxcount -= 100;
+
 		for(int i = 0; i < countof(m_fpDrawingKickHandlers); i++)
 		{
 			m_fpDrawingKickHandlers[i] = &GSRendererT<Device, Vertex>::DrawingKickNull;
 		}
+	}
+
+	~GSRendererT()
+	{
+		if(m_vertices) _aligned_free(m_vertices);
 	}
 };

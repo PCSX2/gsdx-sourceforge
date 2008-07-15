@@ -53,8 +53,8 @@ GSDevice9::GSDevice9()
 
 GSDevice9::~GSDevice9()
 {
-	delete [] m_vs_cb;
-	delete [] m_ps_cb;
+	if(m_vs_cb) _aligned_free(m_vs_cb);
+	if(m_ps_cb) _aligned_free(m_ps_cb);
 }
 
 bool GSDevice9::Create(HWND hWnd)
@@ -230,8 +230,8 @@ bool GSDevice9::Reset(int w, int h, bool fs)
 	if(m_font) m_font->OnLostDevice();
 	m_font = NULL;
 
-	delete [] m_vs_cb;
-	delete [] m_ps_cb;
+	if(m_vs_cb) _aligned_free(m_vs_cb);
+	if(m_ps_cb) _aligned_free(m_ps_cb);
 
 	m_vb = NULL;
 	m_vb_stride = 0;
@@ -650,9 +650,9 @@ void GSDevice9::VSSetShader(IDirect3DVertexShader9* vs, const float* vs_cb, int 
 		{
 			if(m_vs_cb == NULL || m_vs_cb_len < vs_cb_len)
 			{
-				delete [] m_vs_cb;
+				if(m_vs_cb) _aligned_free(m_vs_cb);
 
-				m_vs_cb = (float*)new BYTE[size];
+				m_vs_cb = (float*)_aligned_malloc(size, 16);
 			}
 
 			memcpy(m_vs_cb, vs_cb, size);
@@ -666,12 +666,17 @@ void GSDevice9::VSSetShader(IDirect3DVertexShader9* vs, const float* vs_cb, int 
 
 void GSDevice9::PSSetShaderResources(IDirect3DTexture9* srv0, IDirect3DTexture9* srv1)
 {
-	if(m_ps_srvs[0] != srv0 || m_ps_srvs[1] != srv1)
+	if(m_ps_srvs[0] != srv0)
 	{
 		m_dev->SetTexture(0, srv0);
-		m_dev->SetTexture(1, srv1);
 
 		m_ps_srvs[0] = srv0;
+	}
+
+	if(m_ps_srvs[1] != srv1)
+	{
+		m_dev->SetTexture(1, srv1);
+
 		m_ps_srvs[1] = srv1;
 	}
 }
@@ -693,9 +698,9 @@ void GSDevice9::PSSetShader(IDirect3DPixelShader9* ps, const float* ps_cb, int p
 		{
 			if(m_ps_cb == NULL || m_ps_cb_len < ps_cb_len)
 			{
-				delete [] m_ps_cb;
+				if(m_ps_cb) _aligned_free(m_ps_cb);
 
-				m_ps_cb = (float*)new BYTE[size];
+				m_ps_cb = (float*)_aligned_malloc(size, 16);
 			}
 
 			memcpy(m_ps_cb, ps_cb, size);
@@ -801,12 +806,17 @@ void GSDevice9::OMSetBlendState(Direct3DBlendState9* bs, DWORD bf)
 
 void GSDevice9::OMSetRenderTargets(IDirect3DSurface9* rtv, IDirect3DSurface9* dsv)
 {
-	if(m_rtv != rtv || m_dsv != dsv)
+	if(m_rtv != rtv)
 	{
 		m_dev->SetRenderTarget(0, rtv);
-		m_dev->SetDepthStencilSurface(dsv);
 
 		m_rtv = rtv;
+	}
+
+	if(m_dsv != dsv)
+	{
+		m_dev->SetDepthStencilSurface(dsv);
+
 		m_dsv = dsv;
 	}
 }

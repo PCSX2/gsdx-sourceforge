@@ -215,6 +215,7 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 	// m_slenv
 
 	m_slenv.steps = 0;
+	m_slenv.rtx = m_state->m_context->ttbl->rtx;
 	m_slenv.fo = m_state->m_context->ftbl->rowOffset[0];
 	m_slenv.zo = m_state->m_context->ztbl->rowOffset[0];
 	m_slenv.fm = GSVector4i(context->FRAME.FBMSK);
@@ -375,7 +376,7 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 		InvalidateTextureCache();
 	}
 
-	m_state->m_perfmon.Put(GSPerfMon::Fillrate, m_slenv.steps);
+	m_state->m_perfmon.Put(GSPerfMon::Fillrate, m_slenv.steps); // TODO: move this to the renderer, not thread safe here
 
 	return count;
 }
@@ -706,7 +707,7 @@ void GSRasterizer::FetchTexture(int x, int y)
 
 	DWORD* dst = &m_tc->texture[(y << m_tw) + x];
 
-	(m_state->m_mem.*m_state->m_context->ttbl->rtx)(r, (BYTE*)dst, (1 << m_tw) * 4, m_state->m_context->TEX0, m_state->m_env.TEXA);
+	(m_state->m_mem.*m_slenv.rtx)(r, (BYTE*)dst, (1 << m_tw) * 4, m_state->m_context->TEX0, m_state->m_env.TEXA);
 
 	m_state->m_perfmon.Put(GSPerfMon::Unswizzle, r.Width() * r.Height() * 4);
 }
