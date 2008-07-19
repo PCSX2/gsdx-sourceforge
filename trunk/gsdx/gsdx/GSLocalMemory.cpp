@@ -586,7 +586,7 @@ bool GSLocalMemory::WriteCLUT(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCL
 	m_clut.write.TEX0 = TEX0;
 	m_clut.write.TEXCLUT = TEXCLUT;
 	m_clut.write.dirty = false;
-	m_clut.read.dirty = false;
+	m_clut.read.dirty = true;
 
 	DWORD bp = TEX0.CBP;
 	DWORD bw = TEX0.CSM == 0 ? 1 : TEXCLUT.CBW;
@@ -658,7 +658,7 @@ bool GSLocalMemory::WriteCLUT(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCL
 
 void GSLocalMemory::UpdateCLUT(const GIFRegTEX0& TEX0)
 {
-	if(1) // FIXME: m_clut.read.dirty || m_clut.read.TEX0.ai32[1] != TEX0.ai32[1])
+	if(m_clut.read.dirty || m_clut.read.TEX0.i64 != TEX0.i64)
 	{
 		m_clut.read.TEX0 = TEX0;
 		m_clut.read.dirty = false;
@@ -700,9 +700,10 @@ void GSLocalMemory::UpdateCLUT(const GIFRegTEX0& TEX0)
 
 void GSLocalMemory::UpdateCLUT32(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA)
 {
-	if(1) // FIXME: m_clut.read.dirty || m_clut.read.TEX0.ai32[1] != TEX0.ai32[1])
+	if(m_clut.read.dirty || m_clut.read.TEX0.i64 != TEX0.i64 || m_clut.read.TEXA.i64 != TEXA.i64)
 	{
 		m_clut.read.TEX0 = TEX0;
+		m_clut.read.TEXA = TEXA;
 		m_clut.read.dirty = false;
 
 		WORD* clut = m_clut.clut + (TEX0.CSA << 4);

@@ -110,6 +110,7 @@ protected:
 		struct
 		{
 			GIFRegTEX0 TEX0;
+			GIFRegTEXA TEXA;
 			bool dirty;
 		} read;
 
