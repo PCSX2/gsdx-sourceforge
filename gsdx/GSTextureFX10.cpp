@@ -82,11 +82,11 @@ bool GSTextureFX10::SetupIA(const GSVertexHW10* vertices, int count, D3D10_PRIMI
 {
 	HRESULT hr;
 
-	if(max(count*3/2, 10000) > m_vb_max)
+	if(max(count * 3 / 2, 10000) > m_vb_max)
 	{
 		m_vb_old = m_vb;
 		m_vb = NULL;
-		m_vb_max = max(count*2, 10000);
+		m_vb_max = max(count * 2, 10000);
 		m_vb_start = 0;
 		m_vb_count = 0;
 	}
@@ -147,7 +147,11 @@ bool GSTextureFX10::SetupVS(VSSelector sel, const VSConstantBuffer* cb)
 {
 	CComPtr<ID3D10VertexShader> vs;
 
-	if(!(vs = m_vs.Lookup(sel)))
+	if(CRBMap<DWORD, CComPtr<ID3D10VertexShader> >::CPair* pair = m_vs.Lookup(sel))
+	{
+		vs = pair->m_value;
+	}
+	else
 	{
 		CStringA str[4];
 
@@ -184,14 +188,12 @@ bool GSTextureFX10::SetupVS(VSSelector sel, const VSConstantBuffer* cb)
 			m_il = il;
 		}
 
-		m_vs.Add(sel, vs);
+		m_vs.SetAt(sel, vs);
 	}
 
-	if(memcmp(&m_vs_cb_cache, cb, sizeof(*cb)))
+	if(m_vs_cb_cache.Update(cb))
 	{
 		(*m_dev)->UpdateSubresource(m_vs_cb, 0, NULL, cb, 0, 0);
-
-		memcpy(&m_vs_cb_cache, cb, sizeof(*cb));
 	}
 
 	m_dev->VSSetShader(vs, m_vs_cb);
@@ -207,7 +209,11 @@ bool GSTextureFX10::SetupGS(GSSelector sel)
 
 	if(sel.prim > 0 && (sel.iip == 0 || sel.prim == 3)) // geometry shader works in every case, but not needed
 	{
-		if(!(gs = m_gs.Lookup(sel)))
+		if(CRBMap<DWORD, CComPtr<ID3D10GeometryShader> >::CPair* pair = m_gs.Lookup(sel))
+		{
+			gs = pair->m_value;
+		}
+		else
 		{
 			CStringA str[2];
 
@@ -223,7 +229,7 @@ bool GSTextureFX10::SetupGS(GSSelector sel)
 
 			hr = m_dev->CompileShader(IDR_TFX10_FX, "gs_main", macro, &gs);
 
-			m_gs.Add(sel, gs);
+			m_gs.SetAt(sel, gs);
 		}
 	}
 
@@ -247,7 +253,11 @@ void GSTextureFX10::UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSampl
 
 	CComPtr<ID3D10PixelShader> ps;
 
-	if(!(ps = m_ps.Lookup(sel)))
+	if(CRBMap<DWORD, CComPtr<ID3D10PixelShader> >::CPair* pair = m_ps.Lookup(sel))
+	{
+		ps = pair->m_value;
+	}
+	else
 	{
 		CStringA str[13];
 
@@ -285,14 +295,12 @@ void GSTextureFX10::UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSampl
 
 		hr = m_dev->CompileShader(IDR_TFX10_FX, "ps_main", macro, &ps);
 
-		m_ps.Add(sel, ps);
+		m_ps.SetAt(sel, ps);
 	}
 
-	if(memcmp(&m_ps_cb_cache, cb, sizeof(*cb)))
+	if(m_ps_cb_cache.Update(cb))
 	{
 		(*m_dev)->UpdateSubresource(m_ps_cb, 0, NULL, cb, 0, 0);
-
-		memcpy(&m_ps_cb_cache, cb, sizeof(*cb));
 	}
 
 	m_dev->PSSetShader(ps, m_ps_cb);
@@ -306,7 +314,11 @@ void GSTextureFX10::UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSampl
 			ssel.min = ssel.mag = 0;
 		}
 
-		if(!(ss = m_ps_ss.Lookup(ssel)))
+		if(CRBMap<DWORD, CComPtr<ID3D10SamplerState> >::CPair* pair = m_ps_ss.Lookup(ssel))
+		{
+			ss = pair->m_value;
+		}
+		else
 		{
 			D3D10_SAMPLER_DESC sd;
 
@@ -328,7 +340,7 @@ void GSTextureFX10::UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSampl
 
 			hr = (*m_dev)->CreateSamplerState(&sd, &ss);
 
-			m_ps_ss.Add(ssel, ss);
+			m_ps_ss.SetAt(ssel, ss);
 		}
 	}
 
@@ -353,7 +365,11 @@ void GSTextureFX10::UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel,
 
 	CComPtr<ID3D10DepthStencilState> dss;
 
-	if(!(dss = m_om_dss.Lookup(dssel)))
+	if(CRBMap<DWORD, CComPtr<ID3D10DepthStencilState> >::CPair* pair = m_om_dss.Lookup(dssel))
+	{
+		dss = pair->m_value;
+	}
+	else
 	{
 		D3D10_DEPTH_STENCIL_DESC dsd;
 
@@ -391,14 +407,18 @@ void GSTextureFX10::UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel,
 
 		hr = (*m_dev)->CreateDepthStencilState(&dsd, &dss);
 
-		m_om_dss.Add(dssel, dss);
+		m_om_dss.SetAt(dssel, dss);
 	}
 
 	m_dev->OMSetDepthStencilState(dss, 1);
 
 	CComPtr<ID3D10BlendState> bs;
 
-	if(!(bs = m_om_bs.Lookup(bsel)))
+	if(CRBMap<DWORD, CComPtr<ID3D10BlendState> >::CPair* pair = m_om_bs.Lookup(bsel))
+	{
+		bs = pair->m_value;
+	}
+	else
 	{
 		D3D10_BLEND_DESC bd;
 
@@ -528,7 +548,7 @@ void GSTextureFX10::UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel,
 
 		hr = (*m_dev)->CreateBlendState(&bd, &bs);
 
-		m_om_bs.Add(bsel, bs);
+		m_om_bs.SetAt(bsel, bs);
 	}
 
 	m_dev->OMSetBlendState(bs, bf);

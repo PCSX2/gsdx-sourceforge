@@ -51,6 +51,7 @@ public:
 	{
 		GSVector4i dx10;
 		GSVector4 dx9;
+		GSVector4 hw;
 		GSVector4 sw;
 	};
 	
@@ -97,6 +98,12 @@ public:
 			(int)((SCISSOR.SCAY1 << 4) + XYOFFSET.OFY));
 
 		scissor->dx9 = GSVector4(scissor->dx10);
+
+		scissor->hw = GSVector4(
+			(int)SCISSOR.SCAX0,
+			(int)SCISSOR.SCAY0,
+			(int)SCISSOR.SCAX1 + 1,
+			(int)SCISSOR.SCAY1 + 1);
 
 		scissor->sw = GSVector4i(
 			(int)SCISSOR.SCAX0,

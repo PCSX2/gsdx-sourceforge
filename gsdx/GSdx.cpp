@@ -591,7 +591,6 @@ EXPORT_C GSBenchmark(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow
 
 		// 
 
-		//for(int tbw = 5; tbw <= 10; tbw++)
 		for(int tbw = 5; tbw <= 10; tbw++)
 		{
 			int n = 256 << ((10 - tbw) * 2);
@@ -611,12 +610,12 @@ EXPORT_C GSBenchmark(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow
 
 				GIFRegBITBLTBUF BITBLTBUF;
 
-				BITBLTBUF.DBP = 0;
-				BITBLTBUF.DBW = w / 64;
-				BITBLTBUF.DPSM = s_format[i].psm;
 				BITBLTBUF.SBP = 0;
 				BITBLTBUF.SBW = w / 64;
 				BITBLTBUF.SPSM = s_format[i].psm;
+				BITBLTBUF.DBP = 0;
+				BITBLTBUF.DBW = w / 64;
+				BITBLTBUF.DPSM = s_format[i].psm;
 				
 				GIFRegTRXPOS TRXPOS;
 
@@ -629,7 +628,6 @@ EXPORT_C GSBenchmark(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow
 
 				TRXREG.RRW = w;
 				TRXREG.RRH = h;
-
 
 				CRect r(0, 0, w, h);
 
@@ -710,9 +708,10 @@ EXPORT_C GSBenchmark(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow
 		GSopen(&hWnd, _T(""), true, 6);
 
 		s_gs->m_env.COLCLAMP.CLAMP = 1;
-		s_gs->m_env.PRIM.ABE = 1;
+		s_gs->m_env.PRIM.ABE = 0;
+		s_gs->m_env.PRIM.FST = 1;
 		s_gs->m_env.PRIM.TME = 1;
-		s_gs->m_env.PRIM.IIP = 1;
+		s_gs->m_env.PRIM.IIP = 0;
 		s_gs->m_env.TEXA.TA0 = 0;
 		s_gs->m_env.TEXA.TA1 = 0x80;
 		s_gs->m_env.TEXA.AEM = 0;
@@ -728,24 +727,24 @@ EXPORT_C GSBenchmark(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow
 		s_gs->m_context->CLAMP.MAXV = 511;
 		s_gs->m_context->FRAME.FBP = 0 >> 5;
 		s_gs->m_context->FRAME.FBW = 8;
-		s_gs->m_context->FRAME.PSM = PSM_PSMCT32;
+		s_gs->m_context->FRAME.PSM = PSM_PSMCT16S;
 		s_gs->m_context->SCISSOR.SCAX0 = 0;
 		s_gs->m_context->SCISSOR.SCAY0 = 0;
 		s_gs->m_context->SCISSOR.SCAX1 = 511;
 		s_gs->m_context->SCISSOR.SCAY1 = 511;
-		s_gs->m_context->TEST.ZTE = 1;
+		s_gs->m_context->TEST.ZTE = 0;
 		s_gs->m_context->TEST.ZTST = 2;
 		s_gs->m_context->TEX0.TBP0 = 0x2000;
 		s_gs->m_context->TEX0.TBW = 8;
 		s_gs->m_context->TEX0.PSM = PSM_PSMCT32;
-		s_gs->m_context->TEX0.TFX = 0;
-		s_gs->m_context->TEX0.TCC = 1;
+		s_gs->m_context->TEX0.TFX = 1;
+		s_gs->m_context->TEX0.TCC = 0;
 		s_gs->m_context->TEX0.TW = 9;
 		s_gs->m_context->TEX0.TH = 9;
-		s_gs->m_context->TEX1.MMAG = 1;
-		s_gs->m_context->TEX1.MMIN = 1;
+		s_gs->m_context->TEX1.MMAG = 0;
+		s_gs->m_context->TEX1.MMIN = 0;
 		s_gs->m_context->ZBUF.ZBP = 0x1000 >> 5;
-		s_gs->m_context->ZBUF.PSM = PSM_PSMZ32;
+		s_gs->m_context->ZBUF.PSM = PSM_PSMZ24;
 
 		GSRasterizer* ras = ((GSRendererSW<GSDeviceNull>*)s_gs)->GetRasterizer();
 
@@ -815,6 +814,44 @@ EXPORT_C GSBenchmark(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow
 		_aligned_free(vertices);
 
 		GSclose();
+	}
+
+	//
+
+	if(0)
+	{
+		GSLocalMemory mem;
+
+		BYTE* ptr = (BYTE*)_aligned_malloc(1024 * 1024 * 4, 16);
+
+		for(int i = 0; i < 1024 * 1024 * 4; i++) ptr[i] = (BYTE)i;
+
+		const GSLocalMemory::psm_t& psm = GSLocalMemory::m_psm[PSM_PSMCT32];
+
+		GSLocalMemory::writeImage wi = psm.wi;
+
+		GIFRegBITBLTBUF BITBLTBUF;
+
+		BITBLTBUF.DBP = 0;
+		BITBLTBUF.DBW = 32;
+		BITBLTBUF.DPSM = PSM_PSMCT32;
+			
+		GIFRegTRXPOS TRXPOS;
+
+		TRXPOS.DSAX = 0;
+		TRXPOS.DSAY = 1;
+
+		GIFRegTRXREG TRXREG;
+
+		TRXREG.RRW = 256;
+		TRXREG.RRH = 256;
+
+		int trlen = 256 * 256 * psm.trbpp / 8;
+
+		int x = 0;
+		int y = 0;
+
+		(mem.*wi)(x, y, ptr, trlen, BITBLTBUF, TRXPOS, TRXREG);
 	}
 
 	//

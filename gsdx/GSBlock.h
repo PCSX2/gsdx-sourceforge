@@ -2281,6 +2281,54 @@ public:
 		#endif
 	}
 
+	__forceinline static void ReadCLUT_T32_I4(WORD* clut, DWORD* dst32, UINT64* dst64)
+	{
+		#if _M_SSE >= 0x200
+
+		GSVector4i* s = (GSVector4i*)clut;
+		GSVector4i* d32 = (GSVector4i*)dst32;
+		GSVector4i* d64 = (GSVector4i*)dst64;
+
+		GSVector4i s0 = s[0];
+		GSVector4i s1 = s[1];
+		GSVector4i s2 = s[32];
+		GSVector4i s3 = s[33];
+
+		GSVector4i::sw16(s0, s2, s1, s3);
+
+		d32[0] = s0;
+		d32[1] = s1;
+		d32[2] = s2;
+		d32[3] = s3;
+
+		ExpandCLUT64_T32(s0, s0, s1, s2, s3, &d64[0]);
+		ExpandCLUT64_T32(s1, s0, s1, s2, s3, &d64[32]);
+		ExpandCLUT64_T32(s2, s0, s1, s2, s3, &d64[64]);
+		ExpandCLUT64_T32(s3, s0, s1, s2, s3, &d64[96]);
+
+		#else 
+
+		for(int i = 0; i < 16; i++)
+		{
+			dst[i] = ((DWORD)clut[i + 256] << 16) | clut[i];
+		}
+
+		DWORD* d = (DWORD*)dst64;
+
+		for(int j = 0; j < 16; j++, d += 32)
+		{
+			DWORD hi = dst32[j];
+
+			for(int i = 0; i < 16; i++)
+			{
+				d[i * 2 + 0] = dst32[i];
+				d[i * 2 + 1] = hi;
+			}
+		}
+
+		#endif
+	}
+
 	static void ReadCLUT_T16_I8(WORD* clut, DWORD* dst)
 	{
 		#if _M_SSE >= 0x200
@@ -2307,13 +2355,13 @@ public:
 		GSVector4i* s = (GSVector4i*)clut;
 		GSVector4i* d = (GSVector4i*)dst;
 
-		GSVector4i r0 = s[0];
-		GSVector4i r1 = s[1];
+		GSVector4i v0 = s[0];
+		GSVector4i v1 = s[1];
 
-		d[0] = r0.upl16();
-		d[1] = r0.uph16();
-		d[2] = r1.upl16();
-		d[3] = r1.uph16();
+		d[0] = v0.upl16();
+		d[1] = v0.uph16();
+		d[2] = v1.upl16();
+		d[3] = v1.uph16();
 
 		#else 
 
@@ -2323,5 +2371,174 @@ public:
 		}
 
 		#endif
+	}
+
+	__forceinline static void ReadCLUT_T16_I4(WORD* clut, DWORD* dst32, UINT64* dst64)
+	{
+		#if _M_SSE >= 0x200
+
+		GSVector4i* s = (GSVector4i*)clut;
+		GSVector4i* d32 = (GSVector4i*)dst32;
+		GSVector4i* d64 = (GSVector4i*)dst64;
+
+		GSVector4i v0 = s[0];
+		GSVector4i v1 = s[1];
+
+		GSVector4i s0 = v0.upl16();
+		GSVector4i s1 = v0.uph16();
+		GSVector4i s2 = v1.upl16();
+		GSVector4i s3 = v1.uph16();
+
+		d32[0] = s0;
+		d32[1] = s1;
+		d32[2] = s2;
+		d32[3] = s3;
+
+		ExpandCLUT64_T16(s0, s0, s1, s2, s3, &d64[0]);
+		ExpandCLUT64_T16(s1, s0, s1, s2, s3, &d64[32]);
+		ExpandCLUT64_T16(s2, s0, s1, s2, s3, &d64[64]);
+		ExpandCLUT64_T16(s3, s0, s1, s2, s3, &d64[96]);
+
+		#else 
+
+		for(int i = 0; i < 16; i++)
+		{
+			dst32[i] = (DWORD)clut[i];
+		}
+
+		DWORD* d = (DWORD*)dst64;
+
+		for(int j = 0; j < 16; j++, d += 32)
+		{
+			DWORD hi = dst32[j] << 16;
+
+			for(int i = 0; i < 16; i++)
+			{
+				d[i * 2 + 0] = hi | (dst32[i] & 0xffff);
+			}
+		}
+
+		#endif
+	}
+
+	static void ExpandCLUT64_T32_I8(DWORD* src, UINT64* dst)
+	{
+		#if _M_SSE >= 0x200
+
+		GSVector4i* s = (GSVector4i*)src;
+		GSVector4i* d = (GSVector4i*)dst;
+
+		GSVector4i s0 = s[0];
+		GSVector4i s1 = s[1];
+		GSVector4i s2 = s[2];
+		GSVector4i s3 = s[3];
+
+		ExpandCLUT64_T32(s0, s0, s1, s2, s3, &d[0]);
+		ExpandCLUT64_T32(s1, s0, s1, s2, s3, &d[32]);
+		ExpandCLUT64_T32(s2, s0, s1, s2, s3, &d[64]);
+		ExpandCLUT64_T32(s3, s0, s1, s2, s3, &d[96]);
+
+		#else 
+
+		DWORD* d = (DWORD*)dst;
+
+		for(int j = 0; j < 16; j++, d += 32)
+		{
+			DWORD hi = src[j];
+
+			for(int i = 0; i < 16; i++)
+			{
+				d[i * 2 + 0] = src[i];
+				d[i * 2 + 1] = hi;
+			}
+		}
+
+		#endif
+	}
+
+	__forceinline static void ExpandCLUT64_T32(const GSVector4i& hi, const GSVector4i& lo0, const GSVector4i& lo1, const GSVector4i& lo2, const GSVector4i& lo3, GSVector4i* dst)
+	{
+		ExpandCLUT64_T32(hi.xxxx(), lo0, &dst[0]);
+		ExpandCLUT64_T32(hi.xxxx(), lo1, &dst[2]);
+		ExpandCLUT64_T32(hi.xxxx(), lo2, &dst[4]);
+		ExpandCLUT64_T32(hi.xxxx(), lo3, &dst[6]);
+		ExpandCLUT64_T32(hi.yyyy(), lo0, &dst[8]);
+		ExpandCLUT64_T32(hi.yyyy(), lo1, &dst[10]);
+		ExpandCLUT64_T32(hi.yyyy(), lo2, &dst[12]);
+		ExpandCLUT64_T32(hi.yyyy(), lo3, &dst[14]);
+		ExpandCLUT64_T32(hi.zzzz(), lo0, &dst[16]);
+		ExpandCLUT64_T32(hi.zzzz(), lo1, &dst[18]);
+		ExpandCLUT64_T32(hi.zzzz(), lo2, &dst[20]);
+		ExpandCLUT64_T32(hi.zzzz(), lo3, &dst[22]);
+		ExpandCLUT64_T32(hi.wwww(), lo0, &dst[24]);
+		ExpandCLUT64_T32(hi.wwww(), lo1, &dst[26]);
+		ExpandCLUT64_T32(hi.wwww(), lo2, &dst[28]);
+		ExpandCLUT64_T32(hi.wwww(), lo3, &dst[30]);
+	}
+
+	__forceinline static void ExpandCLUT64_T32(const GSVector4i& hi, const GSVector4i& lo, GSVector4i* dst)
+	{
+		dst[0] = lo.upl32(hi);
+		dst[1] = lo.uph32(hi);
+	}
+
+	static void ExpandCLUT64_T16_I8(DWORD* src, UINT64* dst)
+	{
+		#if _M_SSE >= 0x200
+
+		GSVector4i* s = (GSVector4i*)src;
+		GSVector4i* d = (GSVector4i*)dst;
+
+		GSVector4i s0 = s[0];
+		GSVector4i s1 = s[1];
+		GSVector4i s2 = s[2];
+		GSVector4i s3 = s[3];
+
+		ExpandCLUT64_T16(s0, s0, s1, s2, s3, &d[0]);
+		ExpandCLUT64_T16(s1, s0, s1, s2, s3, &d[32]);
+		ExpandCLUT64_T16(s2, s0, s1, s2, s3, &d[64]);
+		ExpandCLUT64_T16(s3, s0, s1, s2, s3, &d[96]);
+
+		#else
+
+		DWORD* d = (DWORD*)dst;
+
+		for(int j = 0; j < 16; j++, d += 32)
+		{
+			DWORD hi = src[j] << 16;
+
+			for(int i = 0; i < 16; i++)
+			{
+				d[i * 2 + 0] = hi | (src[i] & 0xffff);
+			}
+		}
+
+		#endif
+	}
+
+	__forceinline static void ExpandCLUT64_T16(const GSVector4i& hi, const GSVector4i& lo0, const GSVector4i& lo1, const GSVector4i& lo2, const GSVector4i& lo3, GSVector4i* dst)
+	{
+		ExpandCLUT64_T16(hi.xxxx(), lo0, &dst[0]);
+		ExpandCLUT64_T16(hi.xxxx(), lo1, &dst[2]);
+		ExpandCLUT64_T16(hi.xxxx(), lo2, &dst[4]);
+		ExpandCLUT64_T16(hi.xxxx(), lo3, &dst[6]);
+		ExpandCLUT64_T16(hi.yyyy(), lo0, &dst[8]);
+		ExpandCLUT64_T16(hi.yyyy(), lo1, &dst[10]);
+		ExpandCLUT64_T16(hi.yyyy(), lo2, &dst[12]);
+		ExpandCLUT64_T16(hi.yyyy(), lo3, &dst[14]);
+		ExpandCLUT64_T16(hi.zzzz(), lo0, &dst[16]);
+		ExpandCLUT64_T16(hi.zzzz(), lo1, &dst[18]);
+		ExpandCLUT64_T16(hi.zzzz(), lo2, &dst[20]);
+		ExpandCLUT64_T16(hi.zzzz(), lo3, &dst[22]);
+		ExpandCLUT64_T16(hi.wwww(), lo0, &dst[24]);
+		ExpandCLUT64_T16(hi.wwww(), lo1, &dst[26]);
+		ExpandCLUT64_T16(hi.wwww(), lo2, &dst[28]);
+		ExpandCLUT64_T16(hi.wwww(), lo3, &dst[30]);
+	}
+
+	__forceinline static void ExpandCLUT64_T16(const GSVector4i& hi, const GSVector4i& lo, GSVector4i* dst)
+	{
+		dst[0] = lo.upl16(hi);
+		dst[1] = lo.uph16(hi);
 	}
 };
