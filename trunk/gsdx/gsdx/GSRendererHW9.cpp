@@ -480,13 +480,7 @@ if(s_dump)
 	int w = rt->m_texture.GetWidth();
 	int h = rt->m_texture.GetHeight();
 
-	CRect scissor(
-		(int)(rt->m_texture.m_scale.x * (m_context->SCISSOR.SCAX0)),
-		(int)(rt->m_texture.m_scale.y * (m_context->SCISSOR.SCAY0)), 
-		(int)(rt->m_texture.m_scale.x * (m_context->SCISSOR.SCAX1 + 1)),
-		(int)(rt->m_texture.m_scale.y * (m_context->SCISSOR.SCAY1 + 1)));
-
-	scissor &= CRect(0, 0, w, h);
+	CRect scissor = (CRect)GSVector4i(GSVector4(rt->m_texture.m_scale).xyxy() * m_context->scissor->hw) & CRect(0, 0, w, h);
 
 	//
 

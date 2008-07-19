@@ -73,3 +73,35 @@
 #define D3DCOLORWRITEENABLE_RGBA (D3DCOLORWRITEENABLE_RGB|D3DCOLORWRITEENABLE_ALPHA)
 
 #define QI(i) (riid == __uuidof(i)) ? GetInterface((i*)this, ppv) :
+
+template<class K, class V> class CRBMapC : public CRBMap<K, V>
+{
+	// CRBMap + a cache for the last value (simple, but already a lot better)
+
+	CPair* m_pair;
+
+public:
+	CRBMapC() : m_pair(NULL) {}
+
+	CPair* Lookup(KINARGTYPE key)
+	{
+		if(m_pair && key == m_pair->m_key)
+		{
+			return m_pair;
+		}
+
+		m_pair = __super::Lookup(key);
+
+		return m_pair;
+	}
+
+	POSITION SetAt(KINARGTYPE key, VINARGTYPE value)
+	{
+		POSITION pos = __super::SetAt(key, value);
+
+		m_pair = __super::GetAt(pos);
+
+		return pos;
+	}
+};
+

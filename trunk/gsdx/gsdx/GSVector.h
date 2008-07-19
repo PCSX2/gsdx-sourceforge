@@ -4,7 +4,7 @@
 
 #pragma pack(push, 1)
 
-class GSVector2
+__declspec(align(8)) class GSVector2
 {
 public:
 	union 
@@ -140,6 +140,11 @@ public:
 	operator __m128i() const 
 	{
 		return m;
+	}
+
+	operator CRect() const
+	{
+		return *(CRect*)&m;
 	}
 
 	UINT32 rgba32() const
@@ -1103,6 +1108,25 @@ public:
 		d = f.uph64(d);
 	}
 
+	__forceinline static bool compare(const void* p0, const void* p1, int size)
+	{
+		ASSERT((size & 15) == 0);
+
+		size >>= 4;
+
+		GSVector4i* v0 = (GSVector4i*)p0;
+		GSVector4i* v1 = (GSVector4i*)p1;
+
+		GSVector4i v = GSVector4i::invzero();
+
+		for(int i = 0; i < size; i++)
+		{
+			v &= v0[i] == v1[i];
+		}
+
+		return v.mask() == 0xffff;
+	}
+
 	void operator += (const GSVector4i& v) 
 	{
 		m = _mm_add_epi32(m, v);
@@ -1319,6 +1343,11 @@ public:
 		m = v.m;
 	}
 
+	explicit GSVector4(const GSVector2& v)
+	{
+		m = _mm_castsi128_ps(_mm_loadl_epi64((__m128i*)&v));
+	}
+
 	explicit GSVector4(float f)
 	{
 		m = _mm_set1_ps(f);
@@ -1464,6 +1493,11 @@ public:
 	GSVector4 sat(const GSVector4& a, const GSVector4& b) const 
 	{
 		return GSVector4(_mm_min_ps(_mm_max_ps(m, a), b));
+	}
+
+	GSVector4 sat(const GSVector4& a) const 
+	{
+		return GSVector4(_mm_min_ps(_mm_max_ps(m, a.xyxy()), a.zwzw()));
 	}
 
 	GSVector4 sat(const float scale = 255) const 

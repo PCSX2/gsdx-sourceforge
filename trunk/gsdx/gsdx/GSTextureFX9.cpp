@@ -50,7 +50,11 @@ bool GSTextureFX9::CreateMskFix(GSTexture9& t, DWORD size, DWORD msk, DWORD fix)
 {
 	DWORD hash = (size << 20) | (msk << 10) | fix;
 
-	if(!m_mskfix.Lookup(hash, t))
+	if(CRBMapC<DWORD, GSTexture9>::CPair* pair = m_mskfix.Lookup(hash))
+	{
+		t = pair->m_value;
+	}
+	else
 	{
 		if(!m_dev->CreateTexture(t, size, 1, D3DFMT_R32F))
 		{
@@ -70,7 +74,7 @@ bool GSTextureFX9::CreateMskFix(GSTexture9& t, DWORD size, DWORD msk, DWORD fix)
 			t.Unmap();
 		}
 
-		m_mskfix[hash] = t;
+		m_mskfix.SetAt(hash, t);
 	}
 
 	return true;
@@ -89,7 +93,11 @@ bool GSTextureFX9::SetupVS(VSSelector sel, const VSConstantBuffer* cb)
 {
 	CComPtr<IDirect3DVertexShader9> vs;
 
-	if(!(vs = m_vs.Lookup(sel)))
+	if(CRBMapC<DWORD, CComPtr<IDirect3DVertexShader9> >::CPair* pair = m_vs.Lookup(sel))
+	{
+		vs = pair->m_value;
+	}
+	else
 	{
 		CStringA str[4];
 
@@ -125,7 +133,7 @@ bool GSTextureFX9::SetupVS(VSSelector sel, const VSConstantBuffer* cb)
 			m_il = il;
 		}
 
-		m_vs.Add(sel, vs);
+		m_vs.SetAt(sel, vs);
 	}
 
 	m_dev->VSSetShader(vs, (const float*)cb, sizeof(*cb) / sizeof(GSVector4));
@@ -179,7 +187,11 @@ void GSTextureFX9::UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSample
 
 	CComPtr<IDirect3DPixelShader9> ps;
 
-	if(!(ps = m_ps.Lookup(sel)))
+	if(CRBMapC<DWORD, CComPtr<IDirect3DPixelShader9> >::CPair* pair = m_ps.Lookup(sel))
+	{
+		ps = pair->m_value;
+	}
+	else
 	{
 		CStringA str[12];
 
@@ -215,7 +227,7 @@ void GSTextureFX9::UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSample
 
 		hr = m_dev->CompileShader(IDR_TFX9_FX, "ps_main", macro, &ps);
 
-		m_ps.Add(sel, ps);
+		m_ps.SetAt(sel, ps);
 	}
 
 	m_dev->PSSetShader(ps, (const float*)cb, sizeof(*cb) / sizeof(GSVector4));
@@ -229,9 +241,11 @@ void GSTextureFX9::UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSample
 			ssel.min = ssel.mag = 0;
 		}
 
-		ss = m_ps_ss.Lookup(ssel);
-
-		if(!ss)
+		if(CRBMapC<DWORD, Direct3DSamplerState9*>::CPair* pair = m_ps_ss.Lookup(ssel))
+		{
+			ss = pair->m_value;
+		}
+		else
 		{
 			ss = new Direct3DSamplerState9();
 
@@ -245,7 +259,7 @@ void GSTextureFX9::UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSample
 			ss->AddressU = ssel.tau ? D3DTADDRESS_WRAP : D3DTADDRESS_CLAMP;
 			ss->AddressV = ssel.tav ? D3DTADDRESS_WRAP : D3DTADDRESS_CLAMP;
 
-			m_ps_ss.Add(ssel, ss);
+			m_ps_ss.SetAt(ssel, ss);
 		}
 	}
 
@@ -266,9 +280,13 @@ void GSTextureFX9::SetupOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, B
 
 void GSTextureFX9::UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, BYTE bf)
 {
-	Direct3DDepthStencilState9* dss = m_om_dss.Lookup(dssel);
+	Direct3DDepthStencilState9* dss = NULL;
 
-	if(!dss)
+	if(CRBMapC<DWORD, Direct3DDepthStencilState9*>::CPair* pair = m_om_dss.Lookup(dssel))
+	{
+		dss = pair->m_value;
+	}
+	else
 	{
 		dss = new Direct3DDepthStencilState9();
 
@@ -300,14 +318,18 @@ void GSTextureFX9::UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, 
 			dss->DepthFunc = ztst[dssel.ztst];
 		}
 
-		m_om_dss.Add(dssel, dss);
+		m_om_dss.SetAt(dssel, dss);
 	}
 
 	m_dev->OMSetDepthStencilState(dss, 3);
 
-	Direct3DBlendState9* bs = m_om_bs.Lookup(bsel);
-
-	if(!bs)
+	Direct3DBlendState9* bs = NULL;
+	
+	if(CRBMapC<DWORD, Direct3DBlendState9*>::CPair* pair = m_om_bs.Lookup(bsel))
+	{
+		bs = pair->m_value;
+	}
+	else
 	{
 		bs = new Direct3DBlendState9();
 
@@ -435,7 +457,7 @@ void GSTextureFX9::UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, 
 		if(bsel.wb) bs->RenderTargetWriteMask |= D3DCOLORWRITEENABLE_BLUE;
 		if(bsel.wa) bs->RenderTargetWriteMask |= D3DCOLORWRITEENABLE_ALPHA;
 
-		m_om_bs.Add(bsel, bs);
+		m_om_bs.SetAt(bsel, bs);
 	}
 
 	m_dev->OMSetBlendState(bs, 0x010101 * bf);

@@ -45,207 +45,207 @@ protected:
 		__super::Reset();
 	}
 
-	void MinMaxUV(GSVector4& mm)
+	GSVector4 MinMaxUV2()
 	{
+		Vertex* v = m_vertices;
+
+		GSVector4 mm;
+
+		#if _M_SSE >= 0x200
+
+		GSVector4 minv(+1e10f);
+		GSVector4 maxv(-1e10f);
+
+		int i = 0;
+
+		#endif
+
 		if(PRIM->FST)
 		{
 			#if _M_SSE >= 0x200
 
-			__m128 min = _mm_set1_ps(+1e10);
-			__m128 max = _mm_set1_ps(-1e10);
-
-			int i = 0;
-
 			for(int count = m_count - 3; i < count; i += 4)
 			{
-				__m128 min0 = _mm_min_ps(m_vertices[i+0].m128[0], min);
-				__m128 max0 = _mm_max_ps(m_vertices[i+0].m128[0], max);
-				__m128 min1 = _mm_min_ps(m_vertices[i+1].m128[0], min);
-				__m128 max1 = _mm_max_ps(m_vertices[i+1].m128[0], max);
-				__m128 min2 = _mm_min_ps(m_vertices[i+2].m128[0], min);
-				__m128 max2 = _mm_max_ps(m_vertices[i+2].m128[0], max);
-				__m128 min3 = _mm_min_ps(m_vertices[i+3].m128[0], min);
-				__m128 max3 = _mm_max_ps(m_vertices[i+3].m128[0], max);
+				GSVector4 v0 = GSVector4(v[i + 0].m128[0]);
+				GSVector4 v1 = GSVector4(v[i + 1].m128[0]);
+				GSVector4 v2 = GSVector4(v[i + 2].m128[0]);
+				GSVector4 v3 = GSVector4(v[i + 3].m128[0]);
 
-				min0 = _mm_min_ps(min0, min1);
-				max0 = _mm_max_ps(max0, max1);
-				min2 = _mm_min_ps(min2, min3);
-				max2 = _mm_max_ps(max2, max3);
-
-				min = _mm_min_ps(min0, min2);
-				max = _mm_max_ps(max0, max2);
+				minv = minv.minv((v0.minv(v1)).minv(v2.minv(v3)));
+				maxv = maxv.maxv((v0.maxv(v1)).maxv(v2.maxv(v3)));
 			}
 
 			for(; i < m_count; i++)
 			{
-				min = _mm_min_ps(m_vertices[i+0].m128[0], min);
-				max = _mm_max_ps(m_vertices[i+0].m128[0], max);
+				GSVector4 v0 = GSVector4(v[i + 0].m128[0]);
+
+				minv = minv.minv(v0);
+				maxv = maxv.maxv(v0);
 			}
 
-			mm.x = ((float*)&min)[0];
-			mm.y = ((float*)&min)[1];
-			mm.z = ((float*)&max)[0];
-			mm.w = ((float*)&max)[1];
+			mm = minv.xyxy(maxv) * GSVector4(16 << m_context->TEX0.TW, 16 << m_context->TEX0.TH, 16 << m_context->TEX0.TW, 16 << m_context->TEX0.TH).rcpnr();
 
 			#else
 
 			for(int i = 0, j = m_count; i < j; i++)
 			{
-				float x = m_vertices[i].t.x;
+				float x = v[i].t.x;
 
 				if(x < mm.x) mm.x = x;
 				if(x > mm.z) mm.z = x;
 				
-				float y = m_vertices[i].t.y;
+				float y = v[i].t.y;
 
 				if(y < mm.y) mm.y = y;
 				if(y > mm.w) mm.w = y;
 			}
 
-			#endif
-
 			mm.x *= 1.0f / (16 << m_context->TEX0.TW);
 			mm.y *= 1.0f / (16 << m_context->TEX0.TH);
 			mm.z *= 1.0f / (16 << m_context->TEX0.TW);
 			mm.w *= 1.0f / (16 << m_context->TEX0.TH);
+
+			#endif
 		}
 		else
 		{
-			// TODO: sse
+			#if 0//_M_SSE >= 0x200
+
+			for(int count = m_count - 3; i < count; i += 4)
+			{
+				GSVector4 v0 = GSVector4(v[i + 0].m128[0]) / GSVector4(v[i + 0].GetQ());
+				GSVector4 v1 = GSVector4(v[i + 1].m128[0]) / GSVector4(v[i + 1].GetQ());
+				GSVector4 v2 = GSVector4(v[i + 2].m128[0]) / GSVector4(v[i + 2].GetQ());
+				GSVector4 v3 = GSVector4(v[i + 3].m128[0]) / GSVector4(v[i + 3].GetQ());
+
+				minv = minv.minv((v0.minv(v1)).minv(v2.minv(v3)));
+				maxv = maxv.maxv((v0.maxv(v1)).maxv(v2.maxv(v3)));
+			}
+
+			for(; i < m_count; i++)
+			{
+				GSVector4 v0 = GSVector4(v[i + 0].m128[0]) / GSVector4(v[i + 0].GetQ());;
+
+				minv = minv.minv(v0);
+				maxv = maxv.maxv(v0);
+			}
+
+			mm = minv.xyxy(maxv);
+
+			#else
+
+			// just can't beat the compiler generated scalar sse code with packed div or rcp
 
 			mm.x = mm.y = +1e10;
 			mm.z = mm.w = -1e10;
 
 			for(int i = 0, j = m_count; i < j; i++)
 			{
-				float w = 1.0f / m_vertices[i].GetQ();
+				float w = 1.0f / v[i].GetQ();
 
-				float x = m_vertices[i].t.x * w;
+				float x = v[i].t.x * w;
 
 				if(x < mm.x) mm.x = x;
 				if(x > mm.z) mm.z = x;
 				
-				float y = m_vertices[i].t.y * w;
+				float y = v[i].t.y * w;
 
 				if(y < mm.y) mm.y = y;
 				if(y > mm.w) mm.w = y;
 			}
+
+			#endif
 		}
+
+		return mm;
 	}
 
 	void MinMaxUV(int w, int h, CRect& r)
 	{
-		r.SetRect(0, 0, w, h);
+		int wms = m_context->CLAMP.WMS;
+		int wmt = m_context->CLAMP.WMT;
 
-		GSVector4 mm(0, 0, 1, 1);
+		int minu = (int)m_context->CLAMP.MINU;
+		int minv = (int)m_context->CLAMP.MINV;
+		int maxu = (int)m_context->CLAMP.MAXU;
+		int maxv = (int)m_context->CLAMP.MAXV;
 
-		if((m_context->CLAMP.WMS < 3 || m_context->CLAMP.WMT < 3) && m_count < 100)
+		GSVector4i vr = GSVector4i(0, 0, w, h);
+
+		GSVector4i wm[3];
+
+		if(wms + wmt < 6)
 		{
-			MinMaxUV(mm);
+			GSVector4 mm = m_count < 100 ? MinMaxUV2() : GSVector4(0.0f, 0.0f, 1.0f, 1.0f);
+
+			GSVector4 v0 = GSVector4(vr);
+			GSVector4 v1 = v0.zwzw();
+
+			GSVector4 mmf = mm.floor();
+			GSVector4 mask = mmf.xyxy() == mmf.zwzw();
+
+			wm[0] = GSVector4i(v0.blend8((mm - mmf) * v1, mask));
+
+			mm *= v1;
+
+			wm[1] = GSVector4i(mm.sat(GSVector4::zero(), v1));
+			wm[2] = GSVector4i(mm.sat(GSVector4(minu, minv, maxu, maxv)));
 		}
+
+		GSVector4i v;
+
+		switch(wms)
+		{
+		case 0:
+			v = wm[wms];
+			if(v.x == 0 && v.z != w) v.z = w; // FIXME
+			vr.x = v.x;
+			vr.z = v.z;
+			break;
+		case 1:
+		case 2:
+			v = wm[wms];
+			if(v.x > v.z) v.x = v.z;
+			vr.x = v.x;
+			vr.z = v.z;
+			break;
+		case 3:
+			if(m_psrr) {vr.x = maxu; vr.z = vr.x + (minu + 1);}
+			//else {vr.x = 0; vr.z = w;}
+			break;
+		default: 
+			__assume(0);
+		}
+
+		switch(wmt)
+		{
+		case 0:
+			v = wm[wmt];
+			if(v.y == 0 && v.w != h) v.w = h; // FIXME
+			vr.y = v.y;
+			vr.w = v.w;
+			break;
+		case 1:
+		case 2:
+			v = wm[wmt];
+			if(v.y > v.w) v.y = v.w;
+			vr.y = v.y;
+			vr.w = v.w;
+			break;
+		case 3:
+			if(m_psrr) {vr.y = maxv; vr.w = vr.y + (minv + 1);}
+			//else {r.y = 0; r.w = w;}
+			break;
+		default:
+			__assume(0);
+		}
+
+		r = vr;
+
+		r.InflateRect(1, 1); // one more pixel because of bilinear filtering
 
 		CSize bs = GSLocalMemory::m_psm[m_context->TEX0.PSM].bs;
 		CSize bsm(bs.cx - 1, bs.cy - 1);
-
-		if(m_context->CLAMP.WMS != 3)
-		{
-			if(m_context->CLAMP.WMS == 0)
-			{
-				float fmin = floor(mm.x);
-				float fmax = floor(mm.z);
-
-				if(fmin != fmax) {mm.x = 0; mm.z = 1.0f;}
-				else {mm.x -= fmin; mm.z -= fmax;}
-
-				// FIXME: 
-				if(mm.x == 0 && mm.z != 1.0f) mm.z = 1.0f;
-			}
-			else if(m_context->CLAMP.WMS == 1)
-			{
-				if(mm.x < 0) mm.x = 0;
-				else if(mm.x > 1.0f) mm.x = 1.0f;
-				if(mm.z < 0) mm.z = 0;
-				else if(mm.z > 1.0f) mm.z = 1.0f;
-				if(mm.x > mm.z) mm.x = mm.z;
-			}
-			else if(m_context->CLAMP.WMS == 2)
-			{
-				float minu = 1.0f * m_context->CLAMP.MINU / w;
-				float maxu = 1.0f * m_context->CLAMP.MAXU / w;
-				if(mm.x < minu) mm.x = minu;
-				else if(mm.x > maxu) mm.x = maxu;
-				if(mm.z < minu) mm.z = minu;
-				else if(mm.z > maxu) mm.z = maxu;
-				if(mm.x > mm.z) mm.x = mm.z;
-			}
-
-			r.left = (int)(mm.x * w);
-			r.right = (int)(mm.z * w);
-		}
-		else
-		{
-			if(m_psrr)
-			{
-				r.left = (int)(m_context->CLAMP.MAXU);
-				r.right = (int)(r.left + (m_context->CLAMP.MINU + 1));
-			}
-			else
-			{
-				r.left = 0;
-				r.right = w;
-			}
-		}
-
-		if(m_context->CLAMP.WMT != 3)
-		{
-			if(m_context->CLAMP.WMT == 0)
-			{
-				float fmin = floor(mm.y);
-				float fmax = floor(mm.w);
-
-				if(fmin != fmax) {mm.y = 0; mm.w = 1.0f;}
-				else {mm.y -= fmin; mm.w -= fmax;}
-
-				// FIXME: 
-				if(mm.y == 0 && mm.w != 1.0f) mm.w = 1.0f;
-			}
-			else if(m_context->CLAMP.WMT == 1)
-			{
-				if(mm.y < 0) mm.y = 0;
-				else if(mm.y > 1.0f) mm.y = 1.0f;
-				if(mm.w < 0) mm.w = 0;
-				else if(mm.w > 1.0f) mm.w = 1.0f;
-				if(mm.y > mm.w) mm.y = mm.w;
-			}
-			else if(m_context->CLAMP.WMT == 2)
-			{
-				float minv = 1.0f * m_context->CLAMP.MINV / h;
-				float maxv = 1.0f * m_context->CLAMP.MAXV / h;
-				if(mm.y < minv) mm.y = minv;
-				else if(mm.y > maxv) mm.y = maxv;
-				if(mm.w < minv) mm.w = minv;
-				else if(mm.w > maxv) mm.w = maxv;
-				if(mm.y > mm.w) mm.y = mm.w;
-			}
-
-			r.top = (int)(mm.y * h);
-			r.bottom = (int)(mm.w * h);
-		}
-		else
-		{
-			if(m_psrr)
-			{
-				r.top = (int)(m_context->CLAMP.MAXV);
-				r.bottom = (int)(r.top + (m_context->CLAMP.MINV + 1));
-			}
-			else
-			{
-				r.top = 0;
-				r.bottom = h;
-			}
-		}
-
-		r.InflateRect(1, 1); // one more pixel because of bilinear filtering
 
 		r.left = max(r.left & ~bsm.cx, 0);
 		r.right = min((r.right + bsm.cx) & ~bsm.cx, w);

@@ -73,7 +73,6 @@ GSLocalMemory::psm_t GSLocalMemory::m_psm[64];
 //
 
 GSLocalMemory::GSLocalMemory()
-	: m_fCLUTMayBeDirty(true)
 {
 	// TODO: MEM_WRITE_WATCH
 
@@ -81,9 +80,13 @@ GSLocalMemory::GSLocalMemory()
 
 	memset(m_vm8, 0, m_vmsize);
 
-	m_clut = (WORD*)_aligned_malloc(256 * 2 * sizeof(WORD) * 2, 16);
-	m_clut32 = (DWORD*)_aligned_malloc(256 * sizeof(DWORD), 16);
-	m_clut64 = (UINT64*)_aligned_malloc(256 * sizeof(UINT64), 16);
+	BYTE* clut = (BYTE*)_aligned_malloc(256 * 2 * sizeof(WORD) * 2 + 256 * sizeof(DWORD) + 256 * sizeof(UINT64), 16);
+
+	m_clut.clut = (WORD*)&clut[0];
+	m_clut.clut32 = (DWORD*)&clut[1024];
+	m_clut.clut64 = (UINT64*)&clut[2048 + 1024];
+	m_clut.write.dirty = true;
+	m_clut.read.dirty = true;
 
 	for(int bp = 0; bp < 32; bp++)
 	{
@@ -167,7 +170,7 @@ GSLocalMemory::GSLocalMemory()
 		m_psm[i].rtNP = &GSLocalMemory::ReadTexel32;
 		m_psm[i].rta = &GSLocalMemory::ReadTexel32;
 		m_psm[i].wfa = &GSLocalMemory::WritePixel32;
-		m_psm[i].wi = &GSLocalMemory::WriteImage32;
+		m_psm[i].wi = &GSLocalMemory::WriteImage<PSM_PSMCT32, 8, 8, 32>;
 		m_psm[i].ri = &GSLocalMemory::ReadImageX; // TODO
 		m_psm[i].rtx = &GSLocalMemory::ReadTexture32;
 		m_psm[i].rtxNP = &GSLocalMemory::ReadTexture32;
@@ -301,18 +304,18 @@ GSLocalMemory::GSLocalMemory()
 	m_psm[PSM_PSMZ16].rtNP = &GSLocalMemory::ReadTexel16ZNP;
 	m_psm[PSM_PSMZ16S].rtNP = &GSLocalMemory::ReadTexel16SZNP;
 
-	m_psm[PSM_PSMCT24].wi = &GSLocalMemory::WriteImage24;
-	m_psm[PSM_PSMCT16].wi = &GSLocalMemory::WriteImage16;
-	m_psm[PSM_PSMCT16S].wi = &GSLocalMemory::WriteImage16S;
-	m_psm[PSM_PSMT8].wi = &GSLocalMemory::WriteImage8;
-	m_psm[PSM_PSMT4].wi = &GSLocalMemory::WriteImage4;
-	m_psm[PSM_PSMT8H].wi = &GSLocalMemory::WriteImage8H;
-	m_psm[PSM_PSMT4HL].wi = &GSLocalMemory::WriteImage4HL;
-	m_psm[PSM_PSMT4HH].wi = &GSLocalMemory::WriteImage4HH;
-	m_psm[PSM_PSMZ32].wi = &GSLocalMemory::WriteImage32Z;
-	m_psm[PSM_PSMZ24].wi = &GSLocalMemory::WriteImage24Z;
-	m_psm[PSM_PSMZ16].wi = &GSLocalMemory::WriteImage16Z;
-	m_psm[PSM_PSMZ16S].wi = &GSLocalMemory::WriteImage16SZ;
+	m_psm[PSM_PSMCT24].wi = &GSLocalMemory::WriteImage24; // TODO
+	m_psm[PSM_PSMCT16].wi = &GSLocalMemory::WriteImage<PSM_PSMCT16, 16, 8, 16>;
+	m_psm[PSM_PSMCT16S].wi = &GSLocalMemory::WriteImage<PSM_PSMCT16S, 16, 8, 16>;
+	m_psm[PSM_PSMT8].wi = &GSLocalMemory::WriteImage<PSM_PSMT8, 16, 16, 8>;
+	m_psm[PSM_PSMT4].wi = &GSLocalMemory::WriteImage<PSM_PSMT4, 32, 16, 4>;
+	m_psm[PSM_PSMT8H].wi = &GSLocalMemory::WriteImage8H; // TODO
+	m_psm[PSM_PSMT4HL].wi = &GSLocalMemory::WriteImage4HL; // TODO
+	m_psm[PSM_PSMT4HH].wi = &GSLocalMemory::WriteImage4HH; // TODO
+	m_psm[PSM_PSMZ32].wi = &GSLocalMemory::WriteImage<PSM_PSMZ32, 8, 8, 32>;
+	m_psm[PSM_PSMZ24].wi = &GSLocalMemory::WriteImage24Z; // TODO
+	m_psm[PSM_PSMZ16].wi = &GSLocalMemory::WriteImage<PSM_PSMZ16, 16, 8, 16>;
+	m_psm[PSM_PSMZ16S].wi = &GSLocalMemory::WriteImage<PSM_PSMZ16S, 16, 8, 16>;
 
 	m_psm[PSM_PSMCT24].rtx = &GSLocalMemory::ReadTexture24;
 	m_psm[PSM_PSMCT16].rtx = &GSLocalMemory::ReadTexture16;
@@ -378,9 +381,7 @@ GSLocalMemory::~GSLocalMemory()
 {
 	VirtualFree(m_vm8, 0, MEM_RELEASE);
 
-	_aligned_free(m_clut);
-	_aligned_free(m_clut32);
-	_aligned_free(m_clut64);	
+	_aligned_free(m_clut.clut);	
 }
 
 bool GSLocalMemory::FillRect(const CRect& r, DWORD c, DWORD psm, DWORD fbp, DWORD fbw)
@@ -539,12 +540,12 @@ bool GSLocalMemory::FillRect(const CRect& r, DWORD c, DWORD psm, DWORD fbp, DWOR
 
 ////////////////////
 
-bool GSLocalMemory::IsCLUTDirty(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT)
+bool GSLocalMemory::IsCLUTDirty(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)
 {
-	return m_fCLUTMayBeDirty || m_prevTEX0.i64 != TEX0.i64 || m_prevTEXCLUT.i64 != TEXCLUT.i64;
+	return m_clut.write.dirty || m_clut.write.TEX0.i64 != TEX0.i64 || m_clut.write.TEXCLUT.i64 != TEXCLUT.i64;
 }
 
-bool GSLocalMemory::IsCLUTUpdating(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT)
+bool GSLocalMemory::IsCLUTUpdating(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)
 {
 	switch(TEX0.CLD)
 	{
@@ -555,25 +556,26 @@ bool GSLocalMemory::IsCLUTUpdating(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT)
 	case 3:
 		break;
 	case 4:
-		if(m_CBP[0] == TEX0.CBP) return false;
+		if(m_clut.CBP[0] == TEX0.CBP) return false;
 	case 5:
-		if(m_CBP[1] == TEX0.CBP) return false;
+		if(m_clut.CBP[1] == TEX0.CBP) return false;
 	}
 
 	return IsCLUTDirty(TEX0, TEXCLUT);
 }
 
-bool GSLocalMemory::WriteCLUT(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT)
+
+bool GSLocalMemory::WriteCLUT(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)
 {
 	switch(TEX0.CLD)
 	{
 	default:
 	case 0: return false;
 	case 1: break;
-	case 2: m_CBP[0] = TEX0.CBP; break;
-	case 3: m_CBP[1] = TEX0.CBP; break;
-	case 4: if(m_CBP[0] == TEX0.CBP) return false;
-	case 5: if(m_CBP[1] == TEX0.CBP) return false;
+	case 2: m_clut.CBP[0] = TEX0.CBP; break;
+	case 3: m_clut.CBP[1] = TEX0.CBP; break;
+	case 4: if(m_clut.CBP[0] == TEX0.CBP) return false;
+	case 5: if(m_clut.CBP[1] == TEX0.CBP) return false;
 	}
 
 	if(!IsCLUTDirty(TEX0, TEXCLUT))
@@ -581,15 +583,15 @@ bool GSLocalMemory::WriteCLUT(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT)
 		return false;
 	}
 
-	m_prevTEX0 = TEX0;
-	m_prevTEXCLUT = TEXCLUT;
-
-	m_fCLUTMayBeDirty = false;
+	m_clut.write.TEX0 = TEX0;
+	m_clut.write.TEXCLUT = TEXCLUT;
+	m_clut.write.dirty = false;
+	m_clut.read.dirty = false;
 
 	DWORD bp = TEX0.CBP;
 	DWORD bw = TEX0.CSM == 0 ? 1 : TEXCLUT.CBW;
 
-	WORD* clut = m_clut + (TEX0.CSA << 4);
+	WORD* clut = m_clut.clut + (TEX0.CSA << 4);
 
 	// NOTE: TEX0.CPSM == PSM_PSMCT24 is non-standard, KH uses it
 
@@ -654,257 +656,439 @@ bool GSLocalMemory::WriteCLUT(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT)
 	return true;
 }
 
-//
-
-void GSLocalMemory::ReadCLUT(GIFRegTEX0 TEX0, DWORD* clut32)
+void GSLocalMemory::UpdateCLUT(const GIFRegTEX0& TEX0)
 {
-	ASSERT(clut32);
-
-	WORD* clut = m_clut + (TEX0.CSA << 4);
-
-	if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
+	if(m_clut.read.dirty || m_clut.read.TEX0.ai32[1] != TEX0.ai32[1])
 	{
-		switch(TEX0.PSM)
-		{
-		case PSM_PSMT8:
-		case PSM_PSMT8H:
-			ReadCLUT_T32_I8(clut, clut32);
-			break;
-		case PSM_PSMT4:
-		case PSM_PSMT4HL:
-		case PSM_PSMT4HH:
-			ReadCLUT_T32_I4(clut, clut32);
-			break;
-		}
-	}
-	else if(TEX0.CPSM == PSM_PSMCT16 || TEX0.CPSM == PSM_PSMCT16S)
-	{
-		switch(TEX0.PSM)
-		{
-		case PSM_PSMT8:
-		case PSM_PSMT8H:
-			ReadCLUT_T16_I8(clut, clut32);
-			break;
-		case PSM_PSMT4:
-		case PSM_PSMT4HL:
-		case PSM_PSMT4HH:
-			ReadCLUT_T16_I4(clut, clut32);
-			break;
-		}
-	}
-}
+		m_clut.read.TEX0 = TEX0;
+		m_clut.read.dirty = false;
 
-void GSLocalMemory::SetupCLUT(GIFRegTEX0 TEX0)
-{
-	// TODO: cache m_clut*
+		WORD* clut = m_clut.clut + (TEX0.CSA << 4);
 
-	ReadCLUT(TEX0, m_clut32);
-
-	switch(TEX0.PSM)
-	{
-	case PSM_PSMT4:
-	case PSM_PSMT4HL:
-	case PSM_PSMT4HH:
-		// sse2?
 		if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 		{
-			DWORD* src = m_clut32;
-			DWORD* dst = (DWORD*)m_clut64;
-
-			for(int j = 0; j < 16; j++, dst += 32)
+			switch(TEX0.PSM)
 			{
-				DWORD hi = src[j];
-
-				for(int i = 0; i < 16; i++)
-				{
-					dst[i * 2 + 0] = src[i];
-					dst[i * 2 + 1] = hi;
-				}
+			case PSM_PSMT8:
+			case PSM_PSMT8H:
+				ReadCLUT_T32_I8(clut, m_clut.clut32);
+				break;
+			case PSM_PSMT4:
+			case PSM_PSMT4HL:
+			case PSM_PSMT4HH:
+				ReadCLUT_T32_I4(clut, m_clut.clut32, m_clut.clut64);
+				break;
 			}
 		}
-		else
+		else if(TEX0.CPSM == PSM_PSMCT16 || TEX0.CPSM == PSM_PSMCT16S)
 		{
-			DWORD* src = m_clut32;
-			DWORD* dst = (DWORD*)m_clut64;
-
-			for(int j = 0; j < 16; j++, dst += 32)
+			switch(TEX0.PSM)
 			{
-				DWORD hi = src[j] << 16;
-
-				for(int i = 0; i < 16; i++)
-				{
-					dst[i * 2 + 0] = hi | (src[i] & 0xffff);
-				}
+			case PSM_PSMT8:
+			case PSM_PSMT8H:
+				ReadCLUT_T16_I8(clut, m_clut.clut32);
+				break;
+			case PSM_PSMT4:
+			case PSM_PSMT4HL:
+			case PSM_PSMT4HH:
+				ReadCLUT_T16_I4(clut, m_clut.clut32, m_clut.clut64);
+				break;
 			}
 		}
-
-		break;
 	}
 }
 
-//
-
-void GSLocalMemory::ReadCLUT32(GIFRegTEX0 TEX0, GIFRegTEXA TEXA, DWORD* clut32)
+void GSLocalMemory::UpdateCLUT32(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA)
 {
-	ASSERT(clut32);
-
-	WORD* clut = m_clut + (TEX0.CSA << 4);
-
-	if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
+	if(m_clut.read.dirty || m_clut.read.TEX0.ai32[1] != TEX0.ai32[1])
 	{
-		switch(TEX0.PSM)
+		m_clut.read.TEX0 = TEX0;
+		m_clut.read.dirty = false;
+
+		WORD* clut = m_clut.clut + (TEX0.CSA << 4);
+
+		if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 		{
-		case PSM_PSMT8:
-		case PSM_PSMT8H:
-			ReadCLUT_T32_I8(clut, clut32);
-			break;
-		case PSM_PSMT4:
-		case PSM_PSMT4HL:
-		case PSM_PSMT4HH:
-			ReadCLUT_T32_I4(clut, clut32);
-			break;
-		}
-	}
-	else if(TEX0.CPSM == PSM_PSMCT16 || TEX0.CPSM == PSM_PSMCT16S)
-	{
-		Expand16(clut, clut32, m_psm[TEX0.PSM].pal, &TEXA);
-	}
-}
-
-void GSLocalMemory::SetupCLUT32(GIFRegTEX0 TEX0, GIFRegTEXA TEXA)
-{
-	// TODO: cache m_clut*
-
-	ReadCLUT32(TEX0, TEXA, m_clut32);
-
-	switch(TEX0.PSM)
-	{
-	case PSM_PSMT4:
-	case PSM_PSMT4HL:
-	case PSM_PSMT4HH:
-		// sse2?
-		{
-			DWORD* src = m_clut32;
-			DWORD* dst = (DWORD*)m_clut64;
-
-			for(int j = 0; j < 16; j++, dst += 32)
+			switch(TEX0.PSM)
 			{
-				DWORD hi = src[j];
-
-				for(int i = 0; i < 16; i++)
-				{
-					dst[i * 2 + 0] = src[i];
-					dst[i * 2 + 1] = hi;
-				}
+			case PSM_PSMT8:
+			case PSM_PSMT8H:
+				ReadCLUT_T32_I8(clut, m_clut.clut32);
+				break;
+			case PSM_PSMT4:
+			case PSM_PSMT4HL:
+			case PSM_PSMT4HH:
+				// TODO: merge these functions
+				ReadCLUT_T32_I4(clut, m_clut.clut32);
+				ExpandCLUT64_T32_I8(m_clut.clut32, (UINT64*)m_clut.clut64);
+				break;
 			}
 		}
-
-		break;
+		else if(TEX0.CPSM == PSM_PSMCT16 || TEX0.CPSM == PSM_PSMCT16S)
+		{
+			switch(TEX0.PSM)
+			{
+			case PSM_PSMT8:
+			case PSM_PSMT8H:
+				Expand16(clut, m_clut.clut32, 256, TEXA);
+				break;
+			case PSM_PSMT4:
+			case PSM_PSMT4HL:
+			case PSM_PSMT4HH:
+				// TODO: merge these functions
+				Expand16(clut, m_clut.clut32, 16, TEXA);
+				ExpandCLUT64_T32_I8(m_clut.clut32, (UINT64*)m_clut.clut64);
+				break;
+			}
+		}
 	}
 }
 
-void GSLocalMemory::CopyCLUT32(DWORD* clut32, int n)
+template<int psm, int bsx, int bsy, bool aligned>
+void GSLocalMemory::WriteImageColumn(int l, int r, int y, int h, BYTE* src, int srcpitch, const GIFRegBITBLTBUF& BITBLTBUF)
 {
-	memcpy(clut32, m_clut32, sizeof(DWORD) * n);
+	DWORD bp = BITBLTBUF.DBP;
+	DWORD bw = BITBLTBUF.DBW;
+
+	const int csy = bsy / 4;
+
+	for(int offset = srcpitch * csy; h >= csy; h -= csy, y += csy, src += offset)
+	{
+		for(int x = l; x < r; x += bsx)
+		{
+			switch(psm)
+			{
+			case PSM_PSMCT32: WriteColumn32<aligned, 0xffffffff>(y, (BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)], &src[x * 4], srcpitch); break;
+			case PSM_PSMCT16: WriteColumn16<aligned>(y, (BYTE*)&m_vm16[BlockAddress16(x, y, bp, bw)], &src[x * 2], srcpitch); break;
+			case PSM_PSMCT16S: WriteColumn16<aligned>(y, (BYTE*)&m_vm16[BlockAddress16S(x, y, bp, bw)], &src[x * 2], srcpitch); break;
+			case PSM_PSMT8: WriteColumn8<aligned>(y, (BYTE*)&m_vm8[BlockAddress8(x, y, bp, bw)], &src[x], srcpitch); break;
+			case PSM_PSMT4: WriteColumn4<aligned>(y, (BYTE*)&m_vm8[BlockAddress4(x, y, bp, bw) >> 1], &src[x >> 1], srcpitch); break;
+			case PSM_PSMZ32: WriteColumn32<aligned, 0xffffffff>(y, (BYTE*)&m_vm32[BlockAddress32Z(x, y, bp, bw)], &src[x * 4], srcpitch); break;
+			case PSM_PSMZ16: WriteColumn16<aligned>(y, (BYTE*)&m_vm16[BlockAddress16Z(x, y, bp, bw)], &src[x * 2], srcpitch); break;
+			case PSM_PSMZ16S: WriteColumn16<aligned>(y, (BYTE*)&m_vm16[BlockAddress16SZ(x, y, bp, bw)], &src[x * 2], srcpitch); break;
+			// TODO
+			default: __assume(0);
+			}
+		}
+	}
 }
 
-#define IsTopLeftAligned(dsax, tx, ty, bw, bh) \
-	((((int)dsax) & ((bw)-1)) == 0 && ((tx) & ((bw)-1)) == 0 && ((int)dsax) == (tx) && ((ty) & ((bh)-1)) == 0)
-
-void GSLocalMemory::WriteImage32(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
+template<int psm, int bsx, int bsy, bool aligned>
+void GSLocalMemory::WriteImageBlock(int l, int r, int y, int h, BYTE* src, int srcpitch, const GIFRegBITBLTBUF& BITBLTBUF)
 {
-	if(TRXREG.RRW == 0) return;
+	DWORD bp = BITBLTBUF.DBP;
+	DWORD bw = BITBLTBUF.DBW;
+
+	for(int offset = srcpitch * bsy; h >= bsy; h -= bsy, y += bsy, src += offset)
+	{
+		for(int x = l; x < r; x += bsx)
+		{
+			switch(psm)
+			{
+			case PSM_PSMCT32: WriteBlock32<aligned, 0xffffffff>((BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)], &src[x * 4], srcpitch); break;
+			case PSM_PSMCT16: WriteBlock16<aligned>((BYTE*)&m_vm16[BlockAddress16(x, y, bp, bw)], &src[x * 2], srcpitch); break;
+			case PSM_PSMCT16S: WriteBlock16<aligned>((BYTE*)&m_vm16[BlockAddress16S(x, y, bp, bw)], &src[x * 2], srcpitch); break;
+			case PSM_PSMT8: WriteBlock8<aligned>((BYTE*)&m_vm8[BlockAddress8(x, y, bp, bw)], &src[x], srcpitch); break;
+			case PSM_PSMT4: WriteBlock4<aligned>((BYTE*)&m_vm8[BlockAddress4(x, y, bp, bw) >> 1], &src[x >> 1], srcpitch); break;
+			case PSM_PSMZ32: WriteBlock32<aligned, 0xffffffff>((BYTE*)&m_vm32[BlockAddress32Z(x, y, bp, bw)], &src[x * 4], srcpitch); break;
+			case PSM_PSMZ16: WriteBlock16<aligned>((BYTE*)&m_vm16[BlockAddress16Z(x, y, bp, bw)], &src[x * 2], srcpitch); break;
+			case PSM_PSMZ16S: WriteBlock16<aligned>((BYTE*)&m_vm16[BlockAddress16SZ(x, y, bp, bw)], &src[x * 2], srcpitch); break;
+			// TODO
+			default: __assume(0);
+			}
+		}
+	}
+}
+
+template<int psm, int bsx, int bsy>
+void GSLocalMemory::WriteImageLeftRight(int l, int r, int y, int h, BYTE* src, int srcpitch, const GIFRegBITBLTBUF& BITBLTBUF)
+{
+	DWORD bp = BITBLTBUF.DBP;
+	DWORD bw = BITBLTBUF.DBW;
+
+	for(; h > 0; y++, h--, src += srcpitch)
+	{
+		for(int x = l; x < r; x++)
+		{
+			switch(psm)
+			{
+			case PSM_PSMCT32: WritePixel32(x, y, *(DWORD*)&src[x * 4], bp, bw); break;
+			case PSM_PSMCT16: WritePixel16(x, y, *(WORD*)&src[x * 2], bp, bw); break;
+			case PSM_PSMCT16S: WritePixel16S(x, y, *(WORD*)&src[x * 2], bp, bw); break;
+			case PSM_PSMT8: WritePixel8(x, y, src[x], bp, bw); break;
+			case PSM_PSMT4: WritePixel4(x, y, src[x >> 1] >> ((x & 1) << 2), bp, bw); break;
+			case PSM_PSMZ32: WritePixel32Z(x, y, *(DWORD*)&src[x * 4], bp, bw); break;
+			case PSM_PSMZ16: WritePixel16Z(x, y, *(WORD*)&src[x * 2], bp, bw); break;
+			case PSM_PSMZ16S: WritePixel16SZ(x, y, *(WORD*)&src[x * 2], bp, bw); break;
+			// TODO
+			default: __assume(0);
+			}			
+		}
+	}
+}
+
+template<int psm, int bsx, int bsy, int trbpp>
+void GSLocalMemory::WriteImageTopBottom(int l, int r, int y, int h, BYTE* src, int srcpitch, const GIFRegBITBLTBUF& BITBLTBUF)
+{
+	__declspec(align(16)) BYTE buff[64]; // merge buffer for one column
 
 	DWORD bp = BITBLTBUF.DBP;
 	DWORD bw = BITBLTBUF.DBW;
 
-	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX) * 4;
-	int th = len / srcpitch;
+	const int csy = bsy / 4;
 
-	bool aligned = IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 8, 8);
+	// merge incomplete column
 
-	if(!aligned || (tw & 7) || (th & 7) || (len % srcpitch))
+	int y2 = y & (csy - 1);
+
+	if(y2 > 0)
 	{
-		if(aligned && tw >= 8 && th >= 8)
+		int h2 = min(h, csy - y2);
+
+		for(int x = l; x < r; x += bsx)
 		{
-			int twa = tw & ~7;
-			int tha = th & ~7;
+			BYTE* dst = NULL;
 
-			len -= tha * srcpitch;
-			th -= tha;
-
-			for(int j = 0; j < tha; j += 8)
+			switch(psm)
 			{
-				for(int x = tx; x < twa; x += 8)
-				{
-					WriteBlock32<false, 0xffffffff>((BYTE*)&m_vm32[BlockAddress32(x, ty, bp, bw)], src + (x - tx) * 4, srcpitch);
-				}
+			case PSM_PSMCT32: dst = (BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)]; break;
+			case PSM_PSMCT16: dst = (BYTE*)&m_vm16[BlockAddress16(x, y, bp, bw)]; break;
+			case PSM_PSMCT16S: dst = (BYTE*)&m_vm16[BlockAddress16S(x, y, bp, bw)]; break;
+			case PSM_PSMT8: dst = (BYTE*)&m_vm8[BlockAddress8(x, y, bp, bw)]; break;
+			case PSM_PSMT4: dst = (BYTE*)&m_vm8[BlockAddress4(x, y, bp, bw) >> 1]; break;
+			case PSM_PSMZ32: dst = (BYTE*)&m_vm32[BlockAddress32Z(x, y, bp, bw)]; break;
+			case PSM_PSMZ16: dst = (BYTE*)&m_vm16[BlockAddress16Z(x, y, bp, bw)]; break;
+			case PSM_PSMZ16S: dst = (BYTE*)&m_vm16[BlockAddress16SZ(x, y, bp, bw)]; break;
+			// TODO
+			default: __assume(0);
+			}
 
-				for(int i = 0; i < 8; i++, ty++, src += srcpitch)
-				{
-					for(int x = twa; x < tw; x++)
-					{
-						WritePixel32(x, ty, ((DWORD*)src)[x - tx], bp, bw);
-					}
-				}
+			switch(psm)
+			{
+			case PSM_PSMCT32:
+			case PSM_PSMZ32: 
+				ReadColumn32<true>(y, dst, buff, 32);
+				memcpy(&buff[32], &src[x * 4], 32);
+				WriteColumn32<true, 0xffffffff>(y, dst, buff, 32);
+				break;
+			case PSM_PSMCT16:
+			case PSM_PSMCT16S:
+			case PSM_PSMZ16:
+			case PSM_PSMZ16S:
+				ReadColumn16<true>(y, dst, buff, 32);
+				memcpy(&buff[32], &src[x * 2], 32);
+				WriteColumn16<true>(y, dst, buff, 32);
+				break;
+			case PSM_PSMT8: 
+				ReadColumn8<true>(y, dst, buff, 16);
+				memcpy(&buff[y2 * 16], &src[x], h2 * 16);
+				WriteColumn8<true>(y, dst, buff, 16);
+				break;
+			case PSM_PSMT4: 
+				ReadColumn4<true>(y, dst, buff, 16);
+				memcpy(&buff[y2 * 16], &src[x >> 1], h2 * 16);
+				WriteColumn4<true>(y, dst, buff, 16);
+				break;
+			// TODO
+			default: 
+				__assume(0);
 			}
 		}
 
-		if(len > 0 && tw >= 8 && th >= 2 && IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 8, 2))
-		{
-			int twa = tw & ~7;
-			int tha = th & ~1;
-
-			len -= tha * srcpitch;
-			th -= tha;
-
-			for(int j = 0; j < tha; j += 2)
-			{
-				for(int x = tx; x < twa; x += 8)
-				{
-					WriteColumn32<false, 0xffffffff>(ty, (BYTE*)&m_vm32[BlockAddress32(x, ty & ~7, bp, bw)], src + (x - tx) * 4, srcpitch);
-				}
-
-				for(int i = 0; i < 2; i++, ty++, src += srcpitch)
-				{
-					for(int x = twa; x < tw; x++)
-					{
-						WritePixel32(x, ty, ((DWORD*)src)[x - tx], bp, bw);
-					}
-				}
-			}
-		}
-
-		WriteImageX(tx, ty, src, len, BITBLTBUF, TRXPOS, TRXREG);
+		src += srcpitch * h2;
+		y += h2;
+		h -= h2;
 	}
-	else
+
+	// write whole columns
+
 	{
-		th += ty;
+		int h2 = h & ~(csy - 1);
 
-		if((DWORD_PTR)src & 0xf)
+		if(h2 > 0)
 		{
-			for(int y = ty; y < th; y += 8, src += srcpitch * 8)
+			if(((DWORD_PTR)&src[l * trbpp >> 3] & 15) == 0 && (srcpitch & 15) == 0)
 			{
-				for(int x = tx; x < tw; x += 8)
-				{
-					WriteBlock32<false, 0xffffffff>((BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)], src + (x - tx) * 4, srcpitch);
-				}
+				WriteImageColumn<psm, bsx, bsy, true>(l, r, y, h2, src, srcpitch, BITBLTBUF);
+			}
+			else
+			{
+				WriteImageColumn<psm, bsx, bsy, false>(l, r, y, h2, src, srcpitch, BITBLTBUF);
+			}
+
+			src += srcpitch * h2;
+			y += h2;
+			h -= h2;
+		}
+	}
+
+	// merge incomplete column
+
+	if(h >= 1)
+	{
+		for(int x = l; x < r; x += bsx)
+		{
+			BYTE* dst = NULL;
+
+			switch(psm)
+			{
+			case PSM_PSMCT32: dst = (BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)]; break;
+			case PSM_PSMCT16: dst = (BYTE*)&m_vm16[BlockAddress16(x, y, bp, bw)]; break;
+			case PSM_PSMCT16S: dst = (BYTE*)&m_vm16[BlockAddress16S(x, y, bp, bw)]; break;
+			case PSM_PSMT8: dst = (BYTE*)&m_vm8[BlockAddress8(x, y, bp, bw)]; break;
+			case PSM_PSMT4: dst = (BYTE*)&m_vm8[BlockAddress4(x, y, bp, bw) >> 1]; break;
+			case PSM_PSMZ32: dst = (BYTE*)&m_vm32[BlockAddress32Z(x, y, bp, bw)]; break;
+			case PSM_PSMZ16: dst = (BYTE*)&m_vm16[BlockAddress16Z(x, y, bp, bw)]; break;
+			case PSM_PSMZ16S: dst = (BYTE*)&m_vm16[BlockAddress16SZ(x, y, bp, bw)]; break;
+			// TODO
+			default: __assume(0);
+			}
+
+			switch(psm)
+			{
+			case PSM_PSMCT32:
+			case PSM_PSMZ32: 
+				ReadColumn32<true>(y, dst, buff, 32);
+				memcpy(&buff[0], &src[x * 4], 32);
+				WriteColumn32<true, 0xffffffff>(y, dst, buff, 32);
+				break;
+			case PSM_PSMCT16:
+			case PSM_PSMCT16S:
+			case PSM_PSMZ16:
+			case PSM_PSMZ16S:
+				ReadColumn16<true>(y, dst, buff, 32);
+				memcpy(&buff[0], &src[x * 2], 32);
+				WriteColumn16<true>(y, dst, buff, 32);
+				break;
+			case PSM_PSMT8: 
+				ReadColumn8<true>(y, dst, buff, 16);
+				memcpy(&buff[0], &src[x], h * 16);
+				WriteColumn8<true>(y, dst, buff, 16);
+				break;
+			case PSM_PSMT4: 
+				ReadColumn4<true>(y, dst, buff, 16);
+				memcpy(&buff[0], &src[x >> 1], h * 16);
+				WriteColumn4<true>(y, dst, buff, 16);
+				break;
+			// TODO
+			default: 
+				__assume(0);
 			}
 		}
-		else
-		{
-			for(int y = ty; y < th; y += 8, src += srcpitch * 8)
-			{
-				for(int x = tx; x < tw; x += 8)
-				{
-					WriteBlock32<true, 0xffffffff>((BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)], src + (x - tx) * 4, srcpitch);
-				}
-			}
-		}
-
-		ty = th;
 	}
 }
+
+template<int psm, int bsx, int bsy, int trbpp>
+void GSLocalMemory::WriteImage(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
+{
+	if(TRXREG.RRW == 0) return;
+
+	int l = (int)TRXPOS.DSAX;
+	int r = (int)TRXREG.RRW;
+
+	// finish the incomplete row first
+
+	if(tx != l) 
+	{
+		int n = min(len, (r - tx) * trbpp >> 3);
+		WriteImageX(tx, ty, src, n, BITBLTBUF, TRXPOS, TRXREG);
+		src += n;
+		len -= n;
+	}
+
+	int la = (l + (bsx - 1)) & ~(bsx - 1);
+	int ra = r & ~(bsx - 1);
+	int srcpitch = (r - l) * trbpp >> 3;
+	int h = len / srcpitch;
+
+	// transfer width >= block width, and there is at least one full row
+
+	if(ra - la >= bsx && h > 0)
+	{
+		BYTE* s = &src[-l * trbpp >> 3];
+
+		src += srcpitch * h;
+		len -= srcpitch * h;
+
+		// left part
+
+		if(l < la)
+		{
+			WriteImageLeftRight<psm, bsx, bsy>(l, la, ty, h, s, srcpitch, BITBLTBUF);
+		}
+
+		// right part
+
+		if(ra < r)
+		{
+			WriteImageLeftRight<psm, bsx, bsy>(ra, r, ty, h, s, srcpitch, BITBLTBUF);
+		}
+
+		// horizontally aligned part
+
+		if(la < ra)
+		{
+			// top part
+
+			{
+				int h2 = min(h, bsy - (ty & (bsy - 1)));
+
+				if(h2 < bsy)
+				{
+					WriteImageTopBottom<psm, bsx, bsy, trbpp>(la, ra, ty, h2, s, srcpitch, BITBLTBUF);
+
+					s += srcpitch * h2;
+					ty += h2;
+					h -= h2;
+				}
+			}
+
+			// horizontally and vertically aligned part
+
+			{
+				int h2 = h & ~(bsy - 1);
+
+				if(h2 > 0)
+				{
+					if(((DWORD_PTR)&s[la * trbpp >> 3] & 15) == 0 && (srcpitch & 15) == 0)
+					{
+						WriteImageBlock<psm, bsx, bsy, true>(la, ra, ty, h2, s, srcpitch, BITBLTBUF);
+					}
+					else
+					{
+						WriteImageBlock<psm, bsx, bsy, false>(la, ra, ty, h2, s, srcpitch, BITBLTBUF);
+					}
+
+					s += srcpitch * h2;
+					ty += h2;
+					h -= h2;
+				}
+			}
+
+			// bottom part
+
+			if(h > 0)
+			{
+				WriteImageTopBottom<psm, bsx, bsy, trbpp>(la, ra, ty, h, s, srcpitch, BITBLTBUF);
+
+				// s += srcpitch * h;
+				ty += h;
+				// h -= h;
+			}
+		}
+	}
+
+	// the rest
+
+	if(len > 0)
+	{
+		WriteImageX(tx, ty, src, len, BITBLTBUF, TRXPOS, TRXREG);
+	}
+}
+
+
+#define IsTopLeftAligned(dsax, tx, ty, bw, bh) \
+	((((int)dsax) & ((bw)-1)) == 0 && ((tx) & ((bw)-1)) == 0 && ((int)dsax) == (tx) && ((ty) & ((bh)-1)) == 0)
 
 void GSLocalMemory::WriteImage24(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
 {
@@ -939,393 +1123,6 @@ void GSLocalMemory::WriteImage24(int& tx, int& ty, BYTE* src, int len, GIFRegBIT
 		ty = th;
 	}
 }
-
-void GSLocalMemory::WriteImage16(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
-{
-	if(TRXREG.RRW == 0) return;
-
-	DWORD bp = BITBLTBUF.DBP;
-	DWORD bw = BITBLTBUF.DBW;
-
-	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX) * 2;
-	int th = len / srcpitch;
-
-	bool aligned = IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 16, 8);
-
-	if(!aligned || (tw & 15) || (th & 7) || (len % srcpitch))
-	{
-		if(aligned && tw >= 16 && th >= 8)
-		{
-			int twa = tw & ~15;
-			int tha = th & ~7;
-
-			len -= tha * srcpitch;
-			th -= tha;
-
-			for(int j = 0; j < tha; j += 8)
-			{
-				for(int x = tx; x < twa; x += 16)
-				{
-					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16(x, ty, bp, bw)], src + (x - tx) * 2, srcpitch);
-				}
-
-				for(int i = 0; i < 8; i++, ty++, src += srcpitch)
-				{
-					for(int x = twa; x < tw; x++)
-					{
-						WritePixel16(x, ty, ((WORD*)src)[x - tx], bp, bw);
-					}
-				}
-			}
-		}
-
-		if(len > 0 && tw >= 16 && th >= 2 && IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 16, 2))
-		{
-			int twa = tw & ~15;
-			int tha = th & ~1;
-
-			len -= tha * srcpitch;
-			th -= tha;
-
-			for(int j = 0; j < tha; j += 2)
-			{
-				for(int x = tx; x < twa; x += 16)
-				{
-					WriteColumn16<false>(ty, (BYTE*)&m_vm16[BlockAddress16(x, ty & ~7, bp, bw)], src + (x - tx) * 2, srcpitch);
-				}
-
-				for(int i = 0; i < 2; i++, ty++, src += srcpitch)
-				{
-					for(int x = twa; x < tw; x++)
-					{
-						WritePixel16(x, ty, ((WORD*)src)[x - tx], bp, bw);
-					}
-				}
-			}
-		}
-
-		WriteImageX(tx, ty, src, len, BITBLTBUF, TRXPOS, TRXREG);
-	}
-	else
-	{
-		th += ty;
-
-		if((DWORD_PTR)src & 0xf)
-		{
-			for(int y = ty; y < th; y += 8, src += srcpitch * 8)
-			{
-				for(int x = tx; x < tw; x += 16)
-				{
-					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16(x, y, bp, bw)], src + (x - tx) * 2, srcpitch);
-				}
-			}
-		}
-		else
-		{
-			for(int y = ty; y < th; y += 8, src += srcpitch * 8)
-			{
-				for(int x = tx; x < tw; x += 16)
-				{
-					WriteBlock16<true>((BYTE*)&m_vm16[BlockAddress16(x, y, bp, bw)], src + (x - tx) * 2, srcpitch);
-				}
-			}
-		}
-
-		ty = th;
-	}
-}
-
-void GSLocalMemory::WriteImage16S(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
-{
-	if(TRXREG.RRW == 0) return;
-
-	DWORD bp = BITBLTBUF.DBP;
-	DWORD bw = BITBLTBUF.DBW;
-
-	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX) * 2;
-	int th = len / srcpitch;
-
-	bool aligned = IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 16, 8);
-
-	if(!aligned || (tw & 15) || (th & 7) || (len % srcpitch))
-	{
-		if(aligned && tw >= 16 && th >= 8)
-		{
-			int twa = tw & ~15;
-			int tha = th & ~7;
-
-			len -= tha * srcpitch;
-			th -= tha;
-
-			for(int j = 0; j < tha; j += 8)
-			{
-				for(int x = tx; x < twa; x += 16)
-				{
-					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16S(x, ty, bp, bw)], src + (x - tx) * 2, srcpitch);
-				}
-
-				for(int i = 0; i < 8; i++, ty++, src += srcpitch)
-				{
-					for(int x = twa; x < tw; x++)
-					{
-						WritePixel16S(x, ty, ((WORD*)src)[x - tx], bp, bw);
-					}
-				}
-			}
-		}
-
-		if(len > 0 && tw >= 16 && th >= 2 && IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 16, 2))
-		{
-			int twa = tw & ~15;
-			int tha = th & ~1;
-
-			len -= tha * srcpitch;
-			th -= tha;
-
-			for(int j = 0; j < tha; j += 2)
-			{
-				for(int x = tx; x < twa; x += 16)
-				{
-					WriteColumn16<false>(ty, (BYTE*)&m_vm16[BlockAddress16S(x, ty & ~7, bp, bw)], src + (x - tx) * 2, srcpitch);
-				}
-
-				for(int i = 0; i < 2; i++, ty++, src += srcpitch)
-				{
-					for(int x = twa; x < tw; x++)
-					{
-						WritePixel16S(x, ty, ((WORD*)src)[x - tx], bp, bw);
-					}
-				}
-			}
-		}
-
-		WriteImageX(tx, ty, src, len, BITBLTBUF, TRXPOS, TRXREG);
-	}
-	else
-	{
-		th += ty;
-
-		if((DWORD_PTR)src & 0xf)
-		{
-			for(int y = ty; y < th; y += 8, src += srcpitch * 8)
-			{
-				for(int x = tx; x < tw; x += 16)
-				{
-					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16S(x, y, bp, bw)], src + (x - tx) * 2, srcpitch);
-				}
-			}
-		}
-		else
-		{
-			for(int y = ty; y < th; y += 8, src += srcpitch * 8)
-			{
-				for(int x = tx; x < tw; x += 16)
-				{
-					WriteBlock16<true>((BYTE*)&m_vm16[BlockAddress16S(x, y, bp, bw)], src + (x - tx) * 2, srcpitch);
-				}
-			}
-		}
-
-		ty = th;
-	}
-}
-
-void GSLocalMemory::WriteImage8(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
-{
-	if(TRXREG.RRW == 0) return;
-
-	DWORD bp = BITBLTBUF.DBP;
-	DWORD bw = BITBLTBUF.DBW;
-
-	int tw = TRXREG.RRW, srcpitch = TRXREG.RRW - TRXPOS.DSAX;
-	int th = len / srcpitch;
-
-	bool aligned = IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 16, 16);
-
-	if(!aligned || (tw & 15) || (th & 15) || (len % srcpitch))
-	{
-		if(aligned && tw >= 16 && th >= 16)
-		{
-			int twa = tw & ~15;
-			int tha = th & ~15;
-
-			len -= tha * srcpitch;
-			th -= tha;
-
-			for(int j = 0; j < tha; j += 16)
-			{
-				for(int x = tx; x < twa; x += 16)
-				{
-					WriteBlock8<false>((BYTE*)&m_vm8[BlockAddress8(x, ty, bp, bw)], src + (x - tx), srcpitch);
-				}
-
-				for(int i = 0; i < 16; i++, ty++, src += srcpitch)
-				{
-					for(int x = twa; x < tw; x++)
-					{
-						WritePixel8(x, ty, src[x - tx], bp, bw);
-					}
-				}
-			}
-		}
-
-		if(len > 0 && tw >= 16 && th >= 4 && IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 16, 4))
-		{
-			int twa = tw & ~15;
-			int tha = th & ~3;
-
-			len -= tha * srcpitch;
-			th -= tha;
-
-			for(int j = 0; j < tha; j += 4)
-			{
-				for(int x = tx; x < twa; x += 16)
-				{
-					WriteColumn8<false>(ty, (BYTE*)&m_vm8[BlockAddress8(x, ty & ~15, bp, bw)], src + (x - tx), srcpitch);
-				}
-
-				for(int i = 0; i < 4; i++, ty++, src += srcpitch)
-				{
-					for(int x = twa; x < tw; x++)
-					{
-						WritePixel8(x, ty, src[x - tx], bp, bw);
-					}
-				}
-			}
-		}
-
-		WriteImageX(tx, ty, src, len, BITBLTBUF, TRXPOS, TRXREG);
-	}
-	else
-	{
-		th += ty;
-
-		if((DWORD_PTR)src & 0xf)
-		{
-			for(int y = ty; y < th; y += 16, src += srcpitch * 16)
-			{
-				for(int x = tx; x < tw; x += 16)
-				{
-					WriteBlock8<false>((BYTE*)&m_vm8[BlockAddress8(x, y, bp, bw)], src + (x - tx), srcpitch);
-				}
-			}
-		}
-		else
-		{
-			for(int y = ty; y < th; y += 16, src += srcpitch * 16)
-			{
-				for(int x = tx; x < tw; x += 16)
-				{
-					WriteBlock8<true>((BYTE*)&m_vm8[BlockAddress8(x, y, bp, bw)], src + (x - tx), srcpitch);
-				}
-			}
-		}
-
-		ty = th;
-	}
-}
-
-void GSLocalMemory::WriteImage4(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
-{
-	if(TRXREG.RRW == 0) return;
-
-	DWORD bp = BITBLTBUF.DBP;
-	DWORD bw = BITBLTBUF.DBW;
-
-	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX) / 2;
-	int th = len / srcpitch;
-
-	bool aligned = IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 32, 16);
-
-	if(!aligned || (tw & 31) || (th & 15) || (len % srcpitch))
-	{
-		if(aligned && tw >= 32 && th >= 16)
-		{
-			int twa = tw & ~31;
-			int tha = th & ~15;
-
-			len -= tha * srcpitch;
-			th -= tha;
-
-			for(int j = 0; j < tha; j += 16)
-			{
-				for(int x = tx; x < twa; x += 32)
-				{
-					WriteBlock4<false>((BYTE*)&m_vm8[BlockAddress4(x, ty, bp, bw) >> 1], src + (x - tx) / 2, srcpitch);
-				}
-
-				for(int i = 0; i < 16; i++, ty++, src += srcpitch)
-				{
-					BYTE* s = src + (twa - tx) / 2;
-
-					for(int x = twa; x < tw; x += 2, s++)
-					{
-						WritePixel4(x, ty, *s & 0xf, bp, bw),
-						WritePixel4(x + 1, ty, *s >> 4, bp, bw);
-					}
-				}
-			}
-		}
-
-		if(len > 0 && tw >= 32 && th >= 4 && IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 32, 4))
-		{
-			int twa = tw & ~31;
-			int tha = th & ~3;
-
-			len -= tha * srcpitch;
-			th -= tha;
-
-			for(int j = 0; j < tha; j += 4)
-			{
-				for(int x = tx; x < twa; x += 32)
-				{
-					WriteColumn4<false>(ty, (BYTE*)&m_vm8[BlockAddress4(x, ty & ~15, bp, bw) >> 1], src + (x - tx) / 2, srcpitch);
-				}
-
-				for(int i = 0; i < 4; i++, ty++, src += srcpitch)
-				{
-					BYTE* s = src + (twa - tx) / 2;
-
-					for(int x = twa; x < tw; x += 2, s++)
-					{
-						WritePixel4(x, ty, *s & 0xf, bp, bw),
-						WritePixel4(x + 1, ty, *s >> 4, bp, bw);
-					}
-				}
-			}
-		}
-
-		WriteImageX(tx, ty, src, len, BITBLTBUF, TRXPOS, TRXREG);
-	}
-	else
-	{
-		th += ty;
-
-		if((DWORD_PTR)src & 0xf)
-		{
-			for(int y = ty; y < th; y += 16, src += srcpitch * 16)
-			{
-				for(int x = tx; x < tw; x += 32)
-				{
-					WriteBlock4<false>((BYTE*)&m_vm8[BlockAddress4(x, y, bp, bw) >> 1], src + (x - tx) / 2, srcpitch);
-				}
-			}
-		}
-		else
-		{
-			for(int y = ty; y < th; y += 16, src += srcpitch * 16)
-			{
-				for(int x = tx; x < tw; x += 32)
-				{
-					WriteBlock4<true>((BYTE*)&m_vm8[BlockAddress4(x, y, bp, bw) >> 1], src + (x - tx) / 2, srcpitch);
-				}
-			}
-		}
-
-		ty = th;
-	}
-}
-
 void GSLocalMemory::WriteImage8H(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
 {
 	if(TRXREG.RRW == 0) return;
@@ -1427,102 +1224,6 @@ void GSLocalMemory::WriteImage4HH(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 		ty = th;
 	}
 }
-
-void GSLocalMemory::WriteImage32Z(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
-{
-	if(TRXREG.RRW == 0) return;
-
-	DWORD bp = BITBLTBUF.DBP;
-	DWORD bw = BITBLTBUF.DBW;
-
-	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX) * 4;
-	int th = len / srcpitch;
-
-	bool aligned = IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 8, 8);
-
-	if(!aligned || (tw & 7) || (th & 7) || (len % srcpitch))
-	{
-		if(aligned && tw >= 8 && th >= 8)
-		{
-			int twa = tw & ~7;
-			int tha = th & ~7;
-
-			len -= tha * srcpitch;
-			th -= tha;
-
-			for(int j = 0; j < tha; j += 8)
-			{
-				for(int x = tx; x < twa; x += 8)
-				{
-					WriteBlock32<false, 0xffffffff>((BYTE*)&m_vm32[BlockAddress32Z(x, ty, bp, bw)], src + (x - tx) * 4, srcpitch);
-				}
-
-				for(int i = 0; i < 8; i++, ty++, src += srcpitch)
-				{
-					for(int x = twa; x < tw; x++)
-					{
-						WritePixel32Z(x, ty, ((DWORD*)src)[x - tx], bp, bw);
-					}
-				}
-			}
-		}
-
-		if(len > 0 && tw >= 8 && th >= 2 && IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 8, 2))
-		{
-			int twa = tw & ~7;
-			int tha = th & ~1;
-
-			len -= tha * srcpitch;
-			th -= tha;
-
-			for(int j = 0; j < tha; j += 2)
-			{
-				for(int x = tx; x < twa; x += 8)
-				{
-					WriteColumn32<false, 0xffffffff>(ty, (BYTE*)&m_vm32[BlockAddress32Z(x, ty & ~7, bp, bw)], src + (x - tx) * 4, srcpitch);
-				}
-
-				for(int i = 0; i < 2; i++, ty++, src += srcpitch)
-				{
-					for(int x = twa; x < tw; x++)
-					{
-						WritePixel32Z(x, ty, ((DWORD*)src)[x - tx], bp, bw);
-					}
-				}
-			}
-		}
-
-		WriteImageX(tx, ty, src, len, BITBLTBUF, TRXPOS, TRXREG);
-	}
-	else
-	{
-		th += ty;
-
-		if((DWORD_PTR)src & 0xf)
-		{
-			for(int y = ty; y < th; y += 8, src += srcpitch * 8)
-			{
-				for(int x = tx; x < tw; x += 8)
-				{
-					WriteBlock32<false, 0xffffffff>((BYTE*)&m_vm32[BlockAddress32Z(x, y, bp, bw)], src + (x - tx) * 4, srcpitch);
-				}
-			}
-		}
-		else
-		{
-			for(int y = ty; y < th; y += 8, src += srcpitch * 8)
-			{
-				for(int x = tx; x < tw; x += 8)
-				{
-					WriteBlock32<true, 0xffffffff>((BYTE*)&m_vm32[BlockAddress32Z(x, y, bp, bw)], src + (x - tx) * 4, srcpitch);
-				}
-			}
-		}
-
-		ty = th;
-	}
-}
-
 void GSLocalMemory::WriteImage24Z(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
 {
 	if(TRXREG.RRW == 0) return;
@@ -1556,197 +1257,6 @@ void GSLocalMemory::WriteImage24Z(int& tx, int& ty, BYTE* src, int len, GIFRegBI
 		ty = th;
 	}
 }
-
-void GSLocalMemory::WriteImage16Z(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
-{
-	if(TRXREG.RRW == 0) return;
-
-	DWORD bp = BITBLTBUF.DBP;
-	DWORD bw = BITBLTBUF.DBW;
-
-	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX) * 2;
-	int th = len / srcpitch;
-
-	bool aligned = IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 16, 8);
-
-	if(!aligned || (tw & 15) || (th & 7) || (len % srcpitch))
-	{
-		if(aligned && tw >= 16 && th >= 8)
-		{
-			int twa = tw & ~15;
-			int tha = th & ~7;
-
-			len -= tha * srcpitch;
-			th -= tha;
-
-			for(int j = 0; j < tha; j += 8)
-			{
-				for(int x = tx; x < twa; x += 16)
-				{
-					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16Z(x, ty, bp, bw)], src + (x - tx) * 2, srcpitch);
-				}
-
-				for(int i = 0; i < 8; i++, ty++, src += srcpitch)
-				{
-					for(int x = twa; x < tw; x++)
-					{
-						WritePixel16Z(x, ty, ((WORD*)src)[x - tx], bp, bw);
-					}
-				}
-			}
-		}
-
-		if(len > 0 && tw >= 16 && th >= 2 && IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 16, 2))
-		{
-			int twa = tw & ~15;
-			int tha = th & ~1;
-
-			len -= tha * srcpitch;
-			th -= tha;
-
-			for(int j = 0; j < tha; j += 2)
-			{
-				for(int x = tx; x < twa; x += 16)
-				{
-					WriteColumn16<false>(ty, (BYTE*)&m_vm16[BlockAddress16Z(x, ty & ~7, bp, bw)], src + (x - tx) * 2, srcpitch);
-				}
-
-				for(int i = 0; i < 2; i++, ty++, src += srcpitch)
-				{
-					for(int x = twa; x < tw; x++)
-					{
-						WritePixel16Z(x, ty, ((WORD*)src)[x - tx], bp, bw);
-					}
-				}
-			}
-		}
-
-		WriteImageX(tx, ty, src, len, BITBLTBUF, TRXPOS, TRXREG);
-	}
-	else
-	{
-		th += ty;
-
-		if((DWORD_PTR)src & 0xf)
-		{
-			for(int y = ty; y < th; y += 8, src += srcpitch * 8)
-			{
-				for(int x = tx; x < tw; x += 16)
-				{
-					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16Z(x, y, bp, bw)], src + (x - tx) * 2, srcpitch);
-				}
-			}
-		}
-		else
-		{
-			for(int y = ty; y < th; y += 8, src += srcpitch * 8)
-			{
-				for(int x = tx; x < tw; x += 16)
-				{
-					WriteBlock16<true>((BYTE*)&m_vm16[BlockAddress16Z(x, y, bp, bw)], src + (x - tx) * 2, srcpitch);
-				}
-			} 
-		}
-
-		ty = th;
-	}
-}
-
-void GSLocalMemory::WriteImage16SZ(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
-{
-	if(TRXREG.RRW == 0) return;
-
-	DWORD bp = BITBLTBUF.DBP;
-	DWORD bw = BITBLTBUF.DBW;
-
-	int tw = TRXREG.RRW, srcpitch = (TRXREG.RRW - TRXPOS.DSAX) * 2;
-	int th = len / srcpitch;
-
-	bool aligned = IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 16, 8);
-
-	if(!aligned || (tw & 15) || (th & 7) || (len % srcpitch))
-	{
-		if(aligned && tw >= 16 && th >= 8)
-		{
-			int twa = tw & ~15;
-			int tha = th & ~7;
-
-			len -= tha * srcpitch;
-			th -= tha;
-
-			for(int j = 0; j < tha; j += 8)
-			{
-				for(int x = tx; x < twa; x += 16)
-				{
-					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16SZ(x, ty, bp, bw)], src + (x - tx) * 2, srcpitch);
-				}
-
-				for(int i = 0; i < 8; i++, ty++, src += srcpitch)
-				{
-					for(int x = twa; x < tw; x++)
-					{
-						WritePixel16SZ(x, ty, ((WORD*)src)[x - tx], bp, bw);
-					}
-				}
-			}
-		}
-
-		if(len > 0 && tw >= 16 && th >= 2 && IsTopLeftAligned(TRXPOS.DSAX, tx, ty, 16, 2))
-		{
-			int twa = tw & ~15;
-			int tha = th & ~1;
-
-			len -= tha * srcpitch;
-			th -= tha;
-
-			for(int j = 0; j < tha; j += 2)
-			{
-				for(int x = tx; x < twa; x += 16)
-				{
-					WriteColumn16<false>(ty, (BYTE*)&m_vm16[BlockAddress16SZ(x, ty & ~7, bp, bw)], src + (x - tx) * 2, srcpitch);
-				}
-
-				for(int i = 0; i < 2; i++, ty++, src += srcpitch)
-				{
-					for(int x = twa; x < tw; x++)
-					{
-						WritePixel16SZ(x, ty, ((WORD*)src)[x - tx], bp, bw);
-					}
-				}
-			}
-		}
-
-		WriteImageX(tx, ty, src, len, BITBLTBUF, TRXPOS, TRXREG);
-	}
-	else
-	{
-		th += ty;
-
-		if((DWORD_PTR)src & 0xf)
-		{
-			for(int y = ty; y < th; y += 8, src += srcpitch * 8)
-			{
-				for(int x = tx; x < tw; x += 16)
-				{
-					WriteBlock16<false>((BYTE*)&m_vm16[BlockAddress16SZ(x, y, bp, bw)], src + (x - tx) * 2, srcpitch);
-				}
-			}
-		}
-		else
-		{
-			for(int y = ty; y < th; y += 8, src += srcpitch * 8)
-			{
-				for(int x = tx; x < tw; x += 16)
-				{
-					WriteBlock16<true>((BYTE*)&m_vm16[BlockAddress16SZ(x, y, bp, bw)], src + (x - tx) * 2, srcpitch);
-				}
-			}
-		}
-
-		ty = th;
-	}
-}
-
 void GSLocalMemory::WriteImageX(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG)
 {
 	if(len <= 0) return;
@@ -2162,7 +1672,7 @@ void GSLocalMemory::ReadTexture16S(const CRect& r, BYTE* dst, int dstpitch, GIFR
 
 void GSLocalMemory::ReadTexture8(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	DWORD* pal = m_clut32;
+	DWORD* pal = m_clut.clut32;
 
 	FOREACH_BLOCK_START(16, 16, 32)
 	{
@@ -2173,7 +1683,7 @@ void GSLocalMemory::ReadTexture8(const CRect& r, BYTE* dst, int dstpitch, GIFReg
 
 void GSLocalMemory::ReadTexture4(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	UINT64* pal = m_clut64;
+	UINT64* pal = m_clut.clut64;
 
 	FOREACH_BLOCK_START(32, 16, 32)
 	{
@@ -2184,7 +1694,7 @@ void GSLocalMemory::ReadTexture4(const CRect& r, BYTE* dst, int dstpitch, GIFReg
 
 void GSLocalMemory::ReadTexture8H(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	DWORD* pal = m_clut32;
+	DWORD* pal = m_clut.clut32;
 
 	FOREACH_BLOCK_START(8, 8, 32)
 	{
@@ -2195,7 +1705,7 @@ void GSLocalMemory::ReadTexture8H(const CRect& r, BYTE* dst, int dstpitch, GIFRe
 
 void GSLocalMemory::ReadTexture4HL(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	DWORD* pal = m_clut32;
+	DWORD* pal = m_clut.clut32;
 
 	FOREACH_BLOCK_START(8, 8, 32)
 	{
@@ -2206,7 +1716,7 @@ void GSLocalMemory::ReadTexture4HL(const CRect& r, BYTE* dst, int dstpitch, GIFR
 
 void GSLocalMemory::ReadTexture4HH(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	DWORD* pal = m_clut32;
+	DWORD* pal = m_clut.clut32;
 
 	FOREACH_BLOCK_START(8, 8, 32)
 	{
@@ -2330,7 +1840,7 @@ void GSLocalMemory::ReadTexture16SNP(const CRect& r, BYTE* dst, int dstpitch, GI
 
 void GSLocalMemory::ReadTexture8NP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	DWORD* pal = m_clut32;
+	DWORD* pal = m_clut.clut32;
 
 	if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 	{
@@ -2358,7 +1868,7 @@ void GSLocalMemory::ReadTexture8NP(const CRect& r, BYTE* dst, int dstpitch, GIFR
 
 void GSLocalMemory::ReadTexture4NP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	UINT64* pal = m_clut64;
+	UINT64* pal = m_clut.clut64;
 
 	if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 	{
@@ -2386,7 +1896,7 @@ void GSLocalMemory::ReadTexture4NP(const CRect& r, BYTE* dst, int dstpitch, GIFR
 
 void GSLocalMemory::ReadTexture8HNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	DWORD* pal = m_clut32;
+	DWORD* pal = m_clut.clut32;
 
 	if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 	{
@@ -2414,7 +1924,7 @@ void GSLocalMemory::ReadTexture8HNP(const CRect& r, BYTE* dst, int dstpitch, GIF
 
 void GSLocalMemory::ReadTexture4HLNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	DWORD* pal = m_clut32;
+	DWORD* pal = m_clut.clut32;
 
 	if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 	{
@@ -2442,7 +1952,7 @@ void GSLocalMemory::ReadTexture4HLNP(const CRect& r, BYTE* dst, int dstpitch, GI
 
 void GSLocalMemory::ReadTexture4HHNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
 {
-	DWORD* pal = m_clut32;
+	DWORD* pal = m_clut.clut32;
 
 	if(TEX0.CPSM == PSM_PSMCT32 || TEX0.CPSM == PSM_PSMCT24)
 	{
@@ -2873,7 +2383,7 @@ static const GSVector4i s_bm(0x00007c00);
 static const GSVector4i s_gm(0x000003e0);
 static const GSVector4i s_rm(0x0000001f);
 
-void GSLocalMemory::Expand16(WORD* src, DWORD* dst, int w, GIFRegTEXA* TEXA)
+void GSLocalMemory::Expand16(WORD* src, DWORD* dst, int w, const GIFRegTEXA& TEXA)
 {
 #if _M_SSE >= 0x200
 
@@ -2884,15 +2394,15 @@ void GSLocalMemory::Expand16(WORD* src, DWORD* dst, int w, GIFRegTEXA* TEXA)
 	const GSVector4i bm = s_bm;
 	const GSVector4i am = s_am;
 
-	GSVector4i TA0(TEXA->TA0 << 24);
-	GSVector4i TA1(TEXA->TA1 << 24);
+	GSVector4i TA0(TEXA.TA0 << 24);
+	GSVector4i TA1(TEXA.TA1 << 24);
 
 	GSVector4i c, cl, ch;
 
 	GSVector4i* s = (GSVector4i*)src;
 	GSVector4i* d = (GSVector4i*)dst;
 
-	if(!TEXA->AEM)
+	if(!TEXA.AEM)
 	{
 		for(int i = 0, j = w >> 3; i < j; i++)
 		{
@@ -2917,10 +2427,10 @@ void GSLocalMemory::Expand16(WORD* src, DWORD* dst, int w, GIFRegTEXA* TEXA)
 
 #else
 
-	DWORD TA0 = (DWORD)TEXA->TA0 << 24;
-	DWORD TA1 = (DWORD)TEXA->TA1 << 24;
+	DWORD TA0 = (DWORD)TEXA.TA0 << 24;
+	DWORD TA1 = (DWORD)TEXA.TA1 << 24;
 
-	if(!TEXA->AEM)
+	if(!TEXA.AEM)
 	{
 		for(int i = 0; i < w; i++)
 		{

@@ -81,9 +81,11 @@ GSRasterizer::~GSRasterizer()
 {
 	VirtualFree(m_tc, 0, MEM_RELEASE);
 
-	for(int i = 0, j = m_comap.GetSize(); i < j; i++)
+	POSITION pos = m_comap.GetHeadPosition();
+
+	while(pos)
 	{
-		_aligned_free(m_comap.GetValueAt(i));
+		_aligned_free(m_comap.GetNextValue(pos));
 	}
 
 	m_comap.RemoveAll();
@@ -233,14 +235,14 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 	{
 		DWORD hash = context->TEX0.ai32[0]; // TBP0, TBW, PSM
 
-		DWORD* clut = m_state->m_mem.GetCLUT32();
-		DWORD pal = GSLocalMemory::m_psm[context->TEX0.PSM].pal;
+		const DWORD* clut = m_state->m_mem.GetCLUT32();
+		const DWORD pal = GSLocalMemory::m_psm[context->TEX0.PSM].pal;
 
 		if(m_tc->hash == hash)
 		{
 			if(pal > 0)
 			{
-				if(memcmp(m_tc->clut, clut, pal * sizeof(clut[0])) != 0)
+				if(!GSVector4i::compare(m_tc->clut, clut, pal * sizeof(clut[0])))
 				{
 					m_tc->hash = 0;
 				}
@@ -724,23 +726,25 @@ void GSRasterizer::SetupColumnOffset()
 
 	if(!m_fbco || m_fbco->hash != hash)
 	{
-		ColumnOffset* fbco = m_comap.Lookup(hash);
+		CRBMapC<DWORD, ColumnOffset*>::CPair* pair = m_comap.Lookup(hash);
 
-		if(!fbco)
+		if(pair)
 		{
-			fbco = (ColumnOffset*)_aligned_malloc(sizeof(ColumnOffset), 16);
+			m_fbco = pair->m_value;
+		}
+		else
+		{
+			m_fbco = (ColumnOffset*)_aligned_malloc(sizeof(ColumnOffset), 16);
 
-			fbco->hash = hash;
+			m_fbco->hash = hash;
 
 			for(int i = 0, j = 1024; i < j; i++)
 			{
-				fbco->addr[i] = GSVector4i((int)context->ftbl->pa(0, i, context->FRAME.Block(), context->FRAME.FBW));
+				m_fbco->addr[i] = GSVector4i((int)context->ftbl->pa(0, i, context->FRAME.Block(), context->FRAME.FBW));
 			}
 
-			m_comap.Add(hash, fbco);
+			m_comap.SetAt(hash, m_fbco);
 		}
-
-		m_fbco = fbco;
 	}
 
 	// zb
@@ -749,23 +753,25 @@ void GSRasterizer::SetupColumnOffset()
 
 	if(!m_zbco || m_zbco->hash != hash)
 	{
-		ColumnOffset* zbco = m_comap.Lookup(hash);
+		CRBMapC<DWORD, ColumnOffset*>::CPair* pair = m_comap.Lookup(hash);
 
-		if(!zbco)
+		if(pair)
 		{
-			zbco = (ColumnOffset*)_aligned_malloc(sizeof(ColumnOffset), 16);
+			m_zbco = pair->m_value;
+		}
+		else
+		{
+			m_zbco = (ColumnOffset*)_aligned_malloc(sizeof(ColumnOffset), 16);
 
-			zbco->hash = hash;
+			m_zbco->hash = hash;
 
 			for(int i = 0, j = 1024; i < j; i++)
 			{
-				zbco->addr[i] = GSVector4i((int)context->ztbl->pa(0, i, context->ZBUF.Block(), context->FRAME.FBW));
+				m_zbco->addr[i] = GSVector4i((int)context->ztbl->pa(0, i, context->ZBUF.Block(), context->FRAME.FBW));
 			}
 
-			m_comap.Add(hash, zbco);
+			m_comap.SetAt(hash, m_zbco);
 		}
-
-		m_zbco = zbco;
 	}
 }
 

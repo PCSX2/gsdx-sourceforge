@@ -24,14 +24,9 @@
 class GSUtil
 {
 public:
-	static bool HasSharedBits(DWORD spsm, DWORD dpsm);
-	static bool HasSharedBits(DWORD sbp, DWORD spsm, DWORD dbp, DWORD dpsm);
-	static bool HasCompatibleBits(DWORD spsm, DWORD dpsm);
-
-	static bool IsRectInRect(const CRect& inner, const CRect& outer);
-	static bool IsRectInRectH(const CRect& inner, const CRect& outer);
-	static bool IsRectInRectV(const CRect& inner, const CRect& outer);
-	
+	static int GetPrimClass(DWORD prim);
+	static int GetPrimVertexCount(DWORD prim);
+	/*
 	static int GetPrimClass(DWORD prim)
 	{
 		switch(prim)
@@ -63,7 +58,15 @@ public:
 		default: __assume(0);
 		}
 	}
+	*/
+	static bool HasSharedBits(DWORD spsm, DWORD dpsm);
+	static bool HasSharedBits(DWORD sbp, DWORD spsm, DWORD dbp, DWORD dpsm);
+	static bool HasCompatibleBits(DWORD spsm, DWORD dpsm);
 
+	static bool IsRectInRect(const CRect& inner, const CRect& outer);
+	static bool IsRectInRectH(const CRect& inner, const CRect& outer);
+	static bool IsRectInRectV(const CRect& inner, const CRect& outer);
+	
 	static int EncodeFPSM(int psm)
 	{
 		switch(psm)

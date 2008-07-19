@@ -28,7 +28,7 @@ class GSTextureFX10
 public:
 	#pragma pack(push, 1)
 
-	struct VSConstantBuffer
+	__declspec(align(16)) struct VSConstantBuffer
 	{
 		GSVector4 VertexScale;
 		GSVector4 VertexOffset;
@@ -36,6 +36,27 @@ public:
 		float _pad[2];
 
 		struct VSConstantBuffer() {memset(this, 0, sizeof(*this));}
+
+		__forceinline bool Update(const VSConstantBuffer* cb)
+		{
+			GSVector4i* a = (GSVector4i*)this;
+			GSVector4i* b = (GSVector4i*)cb;
+
+			GSVector4i b0 = b[0];
+			GSVector4i b1 = b[1];
+			GSVector4i b2 = b[2];
+
+			if(((a[0] == b0) & (a[1] == b1) & (a[2] == b2)).mask() != 0xffff)
+			{
+				a[0] = b0;
+				a[1] = b1;
+				a[2] = b2;
+
+				return true;
+			}
+
+			return false;
+		}
 	};
 
 	union VSSelector
@@ -53,7 +74,7 @@ public:
 		operator DWORD() {return dw & 0x7f;}
 	};
 
-	struct PSConstantBuffer
+	__declspec(align(16)) struct PSConstantBuffer
 	{
 		GSVector4 FogColor;
 		float MINU;
@@ -72,6 +93,31 @@ public:
 		GSVector2 rWrH;
 
 		struct PSConstantBuffer() {memset(this, 0, sizeof(*this));}
+
+		__forceinline bool Update(const PSConstantBuffer* cb)
+		{
+			GSVector4i* a = (GSVector4i*)this;
+			GSVector4i* b = (GSVector4i*)cb;
+
+			GSVector4i b0 = b[0];
+			GSVector4i b1 = b[1];
+			GSVector4i b2 = b[2];
+			GSVector4i b3 = b[3];
+			GSVector4i b4 = b[4];
+
+			if(((a[0] == b0) & (a[1] == b1) & (a[2] == b2) & (a[3] == b3) & (a[4] == b4)).mask() != 0xffff)
+			{
+				a[0] = b0;
+				a[1] = b1;
+				a[2] = b2;
+				a[3] = b3;
+				a[4] = b4;
+
+				return true;
+			}
+
+			return false;
+		}
 	};
 
 	union PSSelector
@@ -166,14 +212,14 @@ public:
 private:
 	GSDevice10* m_dev;
 	CComPtr<ID3D10InputLayout> m_il;
-	CSimpleMap<DWORD, CComPtr<ID3D10VertexShader> > m_vs;
+	CRBMapC<DWORD, CComPtr<ID3D10VertexShader> > m_vs;
 	CComPtr<ID3D10Buffer> m_vs_cb;
-	CSimpleMap<DWORD, CComPtr<ID3D10GeometryShader> > m_gs;
-	CSimpleMap<DWORD, CComPtr<ID3D10PixelShader> > m_ps;
+	CRBMapC<DWORD, CComPtr<ID3D10GeometryShader> > m_gs;
+	CRBMapC<DWORD, CComPtr<ID3D10PixelShader> > m_ps;
 	CComPtr<ID3D10Buffer> m_ps_cb;
-	CSimpleMap<DWORD, CComPtr<ID3D10SamplerState> > m_ps_ss;
-	CSimpleMap<DWORD, CComPtr<ID3D10DepthStencilState> > m_om_dss;	
-	CSimpleMap<DWORD, CComPtr<ID3D10BlendState> > m_om_bs;	
+	CRBMapC<DWORD, CComPtr<ID3D10SamplerState> > m_ps_ss;
+	CRBMapC<DWORD, CComPtr<ID3D10DepthStencilState> > m_om_dss;	
+	CRBMapC<DWORD, CComPtr<ID3D10BlendState> > m_om_bs;	
 
 	CComPtr<ID3D10Buffer> m_vb, m_vb_old;
 	int m_vb_max;

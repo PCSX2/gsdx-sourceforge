@@ -91,23 +91,38 @@ protected:
 	static int rowOffset8[2][2048];
 	static int rowOffset4[2][2048];
 
-	DWORD m_CBP[2];
-	WORD* m_clut;
-	DWORD* m_clut32;
-	UINT64* m_clut64;
+	// TODO: create a nice separate class for this
 
-	GIFRegTEX0 m_prevTEX0;
-	GIFRegTEXCLUT m_prevTEXCLUT;
-	bool m_fCLUTMayBeDirty;
+	struct GSClut
+	{
+		DWORD CBP[2];
+		WORD* clut;
+		DWORD* clut32;
+		UINT64* clut64;
 
-	static void Expand16(WORD* src, DWORD* dst, int w, GIFRegTEXA* TEXA);
+		struct
+		{
+			GIFRegTEX0 TEX0;
+			GIFRegTEXCLUT TEXCLUT;
+			bool dirty;
+		} write;
 
-	__forceinline static DWORD Expand24To32(DWORD c, GIFRegTEXA& TEXA)
+		struct
+		{
+			GIFRegTEX0 TEX0;
+			bool dirty;
+		} read;
+
+	} m_clut;
+
+	static void Expand16(WORD* src, DWORD* dst, int w, const GIFRegTEXA& TEXA);
+
+	__forceinline static DWORD Expand24To32(DWORD c, const GIFRegTEXA& TEXA)
 	{
 		return (((!TEXA.AEM | (c & 0xffffff)) ? TEXA.TA0 : 0) << 24) | (c & 0xffffff);
 	}
 
-	__forceinline static DWORD Expand16To32(WORD c, GIFRegTEXA& TEXA)
+	__forceinline static DWORD Expand16To32(WORD c, const GIFRegTEXA& TEXA)
 	{
 		return (((c & 0x8000) ? TEXA.TA1 : (!TEXA.AEM | c) ? TEXA.TA0 : 0) << 24) | ((c & 0x7c00) << 9) | ((c & 0x03e0) << 6) | ((c & 0x001f) << 3);
 	}
@@ -631,27 +646,27 @@ public:
 
 	__forceinline DWORD ReadTexel8(DWORD addr, GIFRegTEXA& TEXA) 
 	{
-		return m_clut32[ReadPixel8(addr)];
+		return m_clut.clut32[ReadPixel8(addr)];
 	}
 
 	__forceinline DWORD ReadTexel4(DWORD addr, GIFRegTEXA& TEXA) 
 	{
-		return m_clut32[ReadPixel4(addr)];
+		return m_clut.clut32[ReadPixel4(addr)];
 	}
 
 	__forceinline DWORD ReadTexel8H(DWORD addr, GIFRegTEXA& TEXA) 
 	{
-		return m_clut32[ReadPixel8H(addr)];
+		return m_clut.clut32[ReadPixel8H(addr)];
 	}
 
 	__forceinline DWORD ReadTexel4HL(DWORD addr, GIFRegTEXA& TEXA)
 	{
-		return m_clut32[ReadPixel4HL(addr)];
+		return m_clut.clut32[ReadPixel4HL(addr)];
 	}
 
 	__forceinline DWORD ReadTexel4HH(DWORD addr, GIFRegTEXA& TEXA) 
 	{
-		return m_clut32[ReadPixel4HH(addr)];
+		return m_clut.clut32[ReadPixel4HH(addr)];
 	}
 
 	__forceinline DWORD ReadTexel32(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA)
@@ -1050,36 +1065,36 @@ public:
 
 	// CLUT
 
-	void InvalidateCLUT() {m_fCLUTMayBeDirty = true;}
-	bool IsCLUTDirty(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT);
-	bool IsCLUTUpdating(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT);
-	bool WriteCLUT(GIFRegTEX0 TEX0, GIFRegTEXCLUT TEXCLUT);
-
-	void ReadCLUT(GIFRegTEX0 TEX0, DWORD* clut32);
-	void SetupCLUT(GIFRegTEX0 TEX0);
-
-	// expands 16->32
-
-	void ReadCLUT32(GIFRegTEX0 TEX0, GIFRegTEXA TEXA, DWORD* clut32);
-	void SetupCLUT32(GIFRegTEX0 TEX0, GIFRegTEXA TEXA);
-	void CopyCLUT32(DWORD* clut32, int n);
-	DWORD* GetCLUT32() {return m_clut32;}
+	void InvalidateCLUT() {m_clut.write.dirty = true;}
+	bool IsCLUTDirty(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT);
+	bool IsCLUTUpdating(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT);
+	bool WriteCLUT(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT);
+	void UpdateCLUT(const GIFRegTEX0& TEX0);
+	void UpdateCLUT32(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA); // expands 16->32
+	const DWORD* GetCLUT32() {return m_clut.clut32;}
 
 	//
 
-	void WriteImage32(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
+	template<int psm, int bsx, int bsy, bool aligned>
+	void WriteImageColumn(int l, int r, int y, int h, BYTE* src, int srcpitch, const GIFRegBITBLTBUF& BITBLTBUF);
+
+	template<int psm, int bsx, int bsy, bool aligned>
+	void WriteImageBlock(int l, int r, int y, int h, BYTE* src, int srcpitch, const GIFRegBITBLTBUF& BITBLTBUF);
+
+	template<int psm, int bsx, int bsy>
+	void WriteImageLeftRight(int l, int r, int y, int h, BYTE* src, int srcpitch, const GIFRegBITBLTBUF& BITBLTBUF);
+
+	template<int psm, int bsx, int bsy, int trbpp>
+	void WriteImageTopBottom(int l, int r, int y, int h, BYTE* src, int srcpitch, const GIFRegBITBLTBUF& BITBLTBUF);
+
+	template<int psm, int bsx, int bsy, int trbpp>
+	void WriteImage(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
+
 	void WriteImage24(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
-	void WriteImage16(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
-	void WriteImage16S(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
-	void WriteImage8(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
-	void WriteImage4(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
 	void WriteImage8H(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
 	void WriteImage4HL(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
 	void WriteImage4HH(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
-	void WriteImage32Z(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
 	void WriteImage24Z(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
-	void WriteImage16Z(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
-	void WriteImage16SZ(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
 	void WriteImageX(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
 
 	// TODO: ReadImage32/24/...

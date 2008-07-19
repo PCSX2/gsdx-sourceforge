@@ -175,7 +175,7 @@ public:
 
 	public:
 		GIFRegCLAMP m_CLAMP;
-		DWORD m_clut[256]; // *
+		DWORD* m_clut; // *
 		CRect m_valid;
 		int m_bpp;
 		int m_bpp2;
@@ -188,7 +188,14 @@ public:
 			, m_bpp2(0)
 			, m_rendered(false)
 		{
+			m_clut = (DWORD*)_aligned_malloc(256 * sizeof(DWORD), 16);
+
 			memset(m_clut, 0, sizeof(m_clut));
+		}
+
+		~GSTexture()
+		{
+			_aligned_free(m_clut);
 		}
 
 		virtual bool Create() = 0;
@@ -415,14 +422,12 @@ public:
 		const GIFRegTEX0& TEX0 = m_renderer->m_context->TEX0;
 		const GIFRegCLAMP& CLAMP = m_renderer->m_context->CLAMP;
 
-		DWORD clut[256];
-
-		int pal = GSLocalMemory::m_psm[TEX0.PSM].pal;
+		const DWORD* clut = m_renderer->m_mem.GetCLUT32();
+		const int pal = GSLocalMemory::m_psm[TEX0.PSM].pal;
 
 		if(pal > 0)
 		{
-			m_renderer->m_mem.SetupCLUT(TEX0);
-			m_renderer->m_mem.CopyCLUT32(clut, pal);
+			m_renderer->m_mem.UpdateCLUT(TEX0);
 
 			/*
 			POSITION pos = m_tex.GetHeadPosition();
@@ -486,7 +491,7 @@ public:
 				if(TEX0.PSM == t->m_TEX0.PSM && TEX0.TBW == t->m_TEX0.TBW
 				&& TEX0.TW == t->m_TEX0.TW && TEX0.TH == t->m_TEX0.TH
 				&& (m_renderer->m_psrr || (CLAMP.WMS != 3 && t->m_CLAMP.WMS != 3 && CLAMP.WMT != 3 && t->m_CLAMP.WMT != 3 || CLAMP.i64 == t->m_CLAMP.i64))
-				&& (pal == 0 || TEX0.CPSM == t->m_TEX0.CPSM && !memcmp(t->m_clut, clut, pal * sizeof(clut[0]))))
+				&& (pal == 0 || TEX0.CPSM == t->m_TEX0.CPSM && GSVector4i::compare(t->m_clut, clut, pal * sizeof(clut[0]))))
 				{
 					m_tex.MoveToHead(pos);
 
