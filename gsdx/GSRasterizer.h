@@ -112,7 +112,7 @@ private:
 	};
 
 	CRect m_scissor;
-	CRBMap<DWORD, ColumnOffset*> m_comap;
+	CRBMapC<DWORD, ColumnOffset*> m_comap;
 	ColumnOffset* m_fbco;
 	ColumnOffset* m_zbco;
 	ScanlineSelector m_sel;
