@@ -384,7 +384,7 @@ GSLocalMemory::~GSLocalMemory()
 	_aligned_free(m_clut.clut);	
 }
 
-bool GSLocalMemory::FillRect(const CRect& r, DWORD c, DWORD psm, DWORD fbp, DWORD fbw)
+bool GSLocalMemory::FillRect(const CRect& r, DWORD c, DWORD psm, DWORD bp, DWORD bw)
 {
 	const psm_t& tbl = m_psm[psm];
 
@@ -416,7 +416,7 @@ bool GSLocalMemory::FillRect(const CRect& r, DWORD c, DWORD psm, DWORD fbp, DWOR
 	{
 		for(int x = r.left; x < r.right; x++)
 		{
-			(this->*wp)(x, y, c, fbp, fbw);
+			(this->*wp)(x, y, c, bp, bw);
 		}
 	}
 
@@ -428,12 +428,12 @@ bool GSLocalMemory::FillRect(const CRect& r, DWORD c, DWORD psm, DWORD fbp, DWOR
 			{
 				for(int x = r.left; x < clip.left; x++)
 				{
-					(this->*wp)(x, ys, c, fbp, fbw);
+					(this->*wp)(x, ys, c, bp, bw);
 				}
 
 				for(int x = clip.right; x < r.right; x++)
 				{
-					(this->*wp)(x, ys, c, fbp, fbw);
+					(this->*wp)(x, ys, c, bp, bw);
 				}
 			}
 		}
@@ -450,7 +450,7 @@ bool GSLocalMemory::FillRect(const CRect& r, DWORD c, DWORD psm, DWORD fbp, DWOR
 		{
 			for(int x = clip.left; x < clip.right; x += w)
 			{
-				GSVector4i* p = (GSVector4i*)&m_vm8[ba(x, y, fbp, fbw) << 2 >> shift];
+				GSVector4i* p = (GSVector4i*)&m_vm8[ba(x, y, bp, bw) << 2 >> shift];
 
 				for(int i = 0; i < 16; i += 4)
 				{
@@ -470,7 +470,7 @@ bool GSLocalMemory::FillRect(const CRect& r, DWORD c, DWORD psm, DWORD fbp, DWOR
 		{
 			for(int x = clip.left; x < clip.right; x += w)
 			{
-				DWORD* p = &m_vm32[ba(x, y, fbp, fbw)];
+				DWORD* p = &m_vm32[ba(x, y, bp, bw)];
 
 				for(int i = 0; i < 64; i += 4)
 				{
@@ -494,7 +494,7 @@ bool GSLocalMemory::FillRect(const CRect& r, DWORD c, DWORD psm, DWORD fbp, DWOR
 		{
 			for(int x = clip.left; x < clip.right; x += w)
 			{
-				GSVector4i* p = (GSVector4i*)&m_vm8[ba(x, y, fbp, fbw) << 2 >> shift];
+				GSVector4i* p = (GSVector4i*)&m_vm8[ba(x, y, bp, bw) << 2 >> shift];
 
 				for(int i = 0; i < 16; i += 4)
 				{
@@ -512,7 +512,7 @@ bool GSLocalMemory::FillRect(const CRect& r, DWORD c, DWORD psm, DWORD fbp, DWOR
 		{
 			for(int x = clip.left; x < clip.right; x += w)
 			{
-				DWORD* p = (DWORD*)&m_vm8[ba(x, y, fbp, fbw) << 2 >> shift];
+				DWORD* p = (DWORD*)&m_vm8[ba(x, y, bp, bw) << 2 >> shift];
 
 				for(int i = 0; i < 64; i += 4)
 				{
@@ -531,7 +531,7 @@ bool GSLocalMemory::FillRect(const CRect& r, DWORD c, DWORD psm, DWORD fbp, DWOR
 	{
 		for(int x = r.left; x < r.right; x++)
 		{
-			(this->*wp)(x, y, c, fbp, fbw);
+			(this->*wp)(x, y, c, bp, bw);
 		}
 	}
 

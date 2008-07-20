@@ -726,7 +726,7 @@ void GSRasterizer::SetupColumnOffset()
 
 	if(!m_fbco || m_fbco->hash != hash)
 	{
-		CRBMapC<DWORD, ColumnOffset*>::CPair* pair = m_comap.Lookup(hash);
+		CRBMap<DWORD, ColumnOffset*>::CPair* pair = m_comap.Lookup(hash);
 
 		if(pair)
 		{
@@ -753,7 +753,7 @@ void GSRasterizer::SetupColumnOffset()
 
 	if(!m_zbco || m_zbco->hash != hash)
 	{
-		CRBMapC<DWORD, ColumnOffset*>::CPair* pair = m_comap.Lookup(hash);
+		CRBMap<DWORD, ColumnOffset*>::CPair* pair = m_comap.Lookup(hash);
 
 		if(pair)
 		{

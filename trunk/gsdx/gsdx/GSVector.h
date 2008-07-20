@@ -175,10 +175,17 @@ public:
 	}
 
 	#if _M_SSE >= 0x401
+
 	GSVector4i sat_i8(const GSVector4i& a, const GSVector4i& b) const 
 	{
 		return GSVector4i(_mm_min_epi8(_mm_max_epi8(m, a), b));
 	}
+
+	GSVector4i sat_i8(const GSVector4i& a) const 
+	{
+		return GSVector4i(_mm_min_epi8(_mm_max_epi8(m, a.xyxy()), a.zwzw()));
+	}
+
 	#endif
 
 	GSVector4i sat_i16(const GSVector4i& a, const GSVector4i& b) const 
@@ -186,11 +193,23 @@ public:
 		return GSVector4i(_mm_min_epi16(_mm_max_epi16(m, a), b));
 	}
 
+	GSVector4i sat_i16(const GSVector4i& a) const 
+	{
+		return GSVector4i(_mm_min_epi16(_mm_max_epi16(m, a.xyxy()), a.zwzw()));
+	}
+
 	#if _M_SSE >= 0x401
+
 	GSVector4i sat_i32(const GSVector4i& a, const GSVector4i& b) const 
 	{
 		return GSVector4i(_mm_min_epi32(_mm_max_epi32(m, a), b));
 	}
+
+	GSVector4i sat_i32(const GSVector4i& a) const 
+	{
+		return GSVector4i(_mm_min_epi32(_mm_max_epi32(m, a.xyxy()), a.zwzw()));
+	}
+
 	#endif
 
 	GSVector4i sat_u8(const GSVector4i& a, const GSVector4i& b) const 
@@ -198,18 +217,37 @@ public:
 		return GSVector4i(_mm_min_epu8(_mm_max_epu8(m, a), b));
 	}
 
+	GSVector4i sat_u8(const GSVector4i& a) const 
+	{
+		return GSVector4i(_mm_min_epu8(_mm_max_epu8(m, a.xyxy()), a.zwzw()));
+	}
+
 	#if _M_SSE >= 0x401
+
 	GSVector4i sat_u16(const GSVector4i& a, const GSVector4i& b) const 
 	{
 		return GSVector4i(_mm_min_epu16(_mm_max_epu16(m, a), b));
 	}
+
+	GSVector4i sat_u16(const GSVector4i& a) const 
+	{
+		return GSVector4i(_mm_min_epu16(_mm_max_epu16(m, a.xyxy()), a.zwzw()));
+	}
+
 	#endif
 
 	#if _M_SSE >= 0x401
+
 	GSVector4i sat_u32(const GSVector4i& a, const GSVector4i& b) const 
 	{
 		return GSVector4i(_mm_min_epu32(_mm_max_epu32(m, a), b));
 	}
+
+	GSVector4i sat_u32(const GSVector4i& a) const 
+	{
+		return GSVector4i(_mm_min_epu32(_mm_max_epu32(m, a.xyxy()), a.zwzw()));
+	}
+
 	#endif
 
 	GSVector4i blend8(const GSVector4i& a, const GSVector4i& mask) const
@@ -791,18 +829,18 @@ public:
 
 	#endif
 
-	template<class T> __forceinline void gather8_4(const T* ptr, GSVector4i* dst) const
+	template<class T> __forceinline void gather8_4(const T* RESTRICT ptr, GSVector4i* RESTRICT dst) const
 	{
 		dst[0] = gather8_4<0>(ptr);
 		dst[1] = gather8_4<8>(ptr);
 	}
 
-	__forceinline void gather8_8(const BYTE* ptr, GSVector4i* dst) const
+	__forceinline void gather8_8(const BYTE* RESTRICT ptr, GSVector4i* RESTRICT dst) const
 	{
 		dst[0] = gather8_8<>(ptr);
 	}
 
-	template<class T> __forceinline void gather16_4(const T* ptr, GSVector4i* dst) const
+	template<class T> __forceinline void gather16_4(const T* RESTRICT ptr, GSVector4i* RESTRICT dst) const
 	{
 		dst[0] = gather16_4<0>(ptr);
 		dst[1] = gather16_4<4>(ptr);
@@ -810,18 +848,18 @@ public:
 		dst[3] = gather16_4<12>(ptr);
 	}
 
-	template<class T> __forceinline void gather16_8(const T* ptr, GSVector4i* dst) const
+	template<class T> __forceinline void gather16_8(const T* RESTRICT ptr, GSVector4i* RESTRICT dst) const
 	{
 		dst[0] = gather16_8<0>(ptr);
 		dst[1] = gather16_8<8>(ptr);
 	}
 
-	template<class T> __forceinline void gather16_16(const T* ptr, GSVector4i* dst) const
+	template<class T> __forceinline void gather16_16(const T* RESTRICT ptr, GSVector4i* RESTRICT dst) const
 	{
 		dst[0] = gather16_16<>(ptr);
 	}
 
-	template<class T> __forceinline void gather32_4(const T* ptr, GSVector4i* dst) const
+	template<class T> __forceinline void gather32_4(const T* RESTRICT ptr, GSVector4i* RESTRICT dst) const
 	{
 		dst[0] = gather32_4<0>(ptr);
 		dst[1] = gather32_4<2>(ptr);
@@ -833,7 +871,7 @@ public:
 		dst[7] = gather32_4<14>(ptr);
 	}
 
-	template<class T> __forceinline void gather32_8(const T* ptr, GSVector4i* dst) const
+	template<class T> __forceinline void gather32_8(const T* RESTRICT ptr, GSVector4i* RESTRICT dst) const
 	{
 		dst[0] = gather32_8<0>(ptr);
 		dst[1] = gather32_8<4>(ptr);
@@ -841,18 +879,18 @@ public:
 		dst[3] = gather32_8<12>(ptr);
 	}
 
-	template<class T> __forceinline void gather32_16(const T* ptr, GSVector4i* dst) const
+	template<class T> __forceinline void gather32_16(const T* RESTRICT ptr, GSVector4i* RESTRICT dst) const
 	{
 		dst[0] = gather32_16<0>(ptr);
 		dst[1] = gather32_16<4>(ptr);
 	}
 
-	template<class T> __forceinline void gather32_32(const T* ptr, GSVector4i* dst) const
+	template<class T> __forceinline void gather32_32(const T* RESTRICT ptr, GSVector4i* RESTRICT dst) const
 	{
 		dst[0] = gather32_32<>(ptr);
 	}
 
-	template<class T> __forceinline void gather64_4(const T* ptr, GSVector4i* dst) const
+	template<class T> __forceinline void gather64_4(const T* RESTRICT ptr, GSVector4i* RESTRICT dst) const
 	{
 		dst[0] = gather64_4<0>(ptr);
 		dst[1] = gather64_4<1>(ptr);
@@ -872,7 +910,7 @@ public:
 		dst[15] = gather64_4<15>(ptr);
 	}
 
-	template<class T> __forceinline void gather64_8(const T* ptr, GSVector4i* dst) const
+	template<class T> __forceinline void gather64_8(const T* RESTRICT ptr, GSVector4i* RESTRICT dst) const
 	{
 		dst[0] = gather64_8<0>(ptr);
 		dst[1] = gather64_8<2>(ptr);
@@ -884,7 +922,7 @@ public:
 		dst[7] = gather64_8<14>(ptr);
 	}
 
-	template<class T> __forceinline void gather64_16(const T* ptr, GSVector4i* dst) const
+	template<class T> __forceinline void gather64_16(const T* RESTRICT ptr, GSVector4i* RESTRICT dst) const
 	{
 		dst[0] = gather64_16<0>(ptr);
 		dst[1] = gather64_16<2>(ptr);
@@ -892,7 +930,7 @@ public:
 		dst[3] = gather64_16<8>(ptr);
 	}
 
-	template<class T> __forceinline void gather64_32(const T* ptr, GSVector4i* dst) const
+	template<class T> __forceinline void gather64_32(const T* RESTRICT ptr, GSVector4i* RESTRICT dst) const
 	{
 		dst[0] = gather64_32<0>(ptr);
 		dst[1] = gather64_32<2>(ptr);
@@ -900,7 +938,7 @@ public:
 
 	#ifdef _M_AMD64
 
-	template<class T> __forceinline void gather64_64(const T* ptr, GSVector4i* dst) const
+	template<class T> __forceinline void gather64_64(const T* RESTRICT ptr, GSVector4i* RESTRICT dst) const
 	{
 		dst[0] = gather64_64<>(ptr);
 	}

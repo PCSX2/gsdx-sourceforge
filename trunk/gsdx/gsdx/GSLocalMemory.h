@@ -1062,7 +1062,7 @@ public:
 
 	// FillRect
 
-	bool FillRect(const CRect& r, DWORD c, DWORD psm, DWORD fbp, DWORD fbw);
+	bool FillRect(const CRect& r, DWORD c, DWORD psm, DWORD bp, DWORD bw);
 
 	// CLUT
 
