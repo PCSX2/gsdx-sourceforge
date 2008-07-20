@@ -46,7 +46,7 @@ public:
 			: m_renderer(renderer)
 			, m_age(0)
 		{
-			m_TEX0.TBP0 = (UINT64)~0;
+			m_TEX0.TBP0 = (UINT32)~0;
 		}
 
 		virtual ~GSSurface()

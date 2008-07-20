@@ -128,7 +128,7 @@ protected:
 
 	__forceinline int ScissorTest(const GSVector4& p0, const GSVector4& p1)
 	{
-		GSVector4 scissor = m_context->scissor->sw;
+		GSVector4 scissor = m_context->scissor.sw;
 
 		GSVector4 v0 = p0 < scissor;
 		GSVector4 v1 = p1 > scissor.zwxy();

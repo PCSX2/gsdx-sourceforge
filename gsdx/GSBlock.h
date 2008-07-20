@@ -43,7 +43,7 @@ class GSBlock
 	static const GSVector4i m_uw8hmask3;
 
 public:
-	template<int i, bool aligned, DWORD mask> __forceinline static void WriteColumn32(BYTE* dst, BYTE* src, int srcpitch)
+	template<int i, bool aligned, DWORD mask> __forceinline static void WriteColumn32(BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
 	{
 		#if _M_SSE >= 0x200
 
@@ -116,7 +116,7 @@ public:
 		#endif
 	}
 
-	template<int i, bool aligned> __forceinline static void WriteColumn16(BYTE* dst, BYTE* src, int srcpitch)
+	template<int i, bool aligned> __forceinline static void WriteColumn16(BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
 	{
 		#if _M_SSE >= 0x200
 
@@ -151,7 +151,7 @@ public:
 		#endif
 	}
 
-	template<int i, bool aligned> __forceinline static void WriteColumn8(BYTE* dst, BYTE* src, int srcpitch)
+	template<int i, bool aligned> __forceinline static void WriteColumn8(BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
 	{
 		#if _M_SSE >= 0x200
 
@@ -195,7 +195,7 @@ public:
 		#endif
 	}
 
-	template<int i, bool aligned> __forceinline static void WriteColumn4(BYTE* dst, BYTE* src, int srcpitch)
+	template<int i, bool aligned> __forceinline static void WriteColumn4(BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
 	{
 		// TODO: pshufb
 
@@ -245,7 +245,7 @@ public:
 		#endif
 	}
 
-	template<bool aligned, DWORD mask> static void WriteColumn32(int y, BYTE* dst, BYTE* src, int srcpitch)
+	template<bool aligned, DWORD mask> static void WriteColumn32(int y, BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
 	{
 		switch((y >> 1) & 3)
 		{
@@ -257,7 +257,7 @@ public:
 		}
 	}
 
-	template<bool aligned> static void WriteColumn16(int y, BYTE* dst, BYTE* src, int srcpitch)
+	template<bool aligned> static void WriteColumn16(int y, BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
 	{
 		switch((y >> 1) & 3)
 		{
@@ -269,7 +269,7 @@ public:
 		}
 	}
 
-	template<bool aligned> static void WriteColumn8(int y, BYTE* dst, BYTE* src, int srcpitch)
+	template<bool aligned> static void WriteColumn8(int y, BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
 	{
 		switch((y >> 2) & 3)
 		{
@@ -281,7 +281,7 @@ public:
 		}
 	}
 
-	template<bool aligned> static void WriteColumn4(int y, BYTE* dst, BYTE* src, int srcpitch)
+	template<bool aligned> static void WriteColumn4(int y, BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
 	{
 		switch((y >> 2) & 3)
 		{
@@ -293,7 +293,7 @@ public:
 		}
 	}
 
-	template<bool aligned, DWORD mask> static void WriteBlock32(BYTE* dst, BYTE* src, int srcpitch)
+	template<bool aligned, DWORD mask> static void WriteBlock32(BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
 	{
 		#if _M_SSE >= 0x200
 
@@ -327,7 +327,7 @@ public:
 		#endif
 	}
 
-	template<bool aligned> static void WriteBlock16(BYTE* dst, BYTE* src, int srcpitch)
+	template<bool aligned> static void WriteBlock16(BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
 	{
 		#if _M_SSE >= 0x200
 
@@ -354,7 +354,7 @@ public:
 		#endif
 	}
 
-	template<bool aligned> static void WriteBlock8(BYTE* dst, BYTE* src, int srcpitch)
+	template<bool aligned> static void WriteBlock8(BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
 	{
 		#if _M_SSE >= 0x200
 
@@ -381,7 +381,7 @@ public:
 		#endif
 	}
 
-	template<bool aligned> static void WriteBlock4(BYTE* dst, BYTE* src, int srcpitch)
+	template<bool aligned> static void WriteBlock4(BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
 	{
 		#if _M_SSE >= 0x200
 
@@ -411,7 +411,7 @@ public:
 		#endif
 	}
 
-	template<int i, bool aligned> __forceinline static void ReadColumn32(BYTE* src, BYTE* dst, int dstpitch)
+	template<int i, bool aligned> __forceinline static void ReadColumn32(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		#if _M_SSE >= 0x200
 
@@ -445,7 +445,7 @@ public:
 		#endif
 	}
 
-	template<int i, bool aligned> __forceinline static void ReadColumn16(BYTE* src, BYTE* dst, int dstpitch)
+	template<int i, bool aligned> __forceinline static void ReadColumn16(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		#if _M_SSE >= 0x301
 
@@ -499,7 +499,7 @@ public:
 		#endif
 	}
 
-	template<int i, bool aligned> __forceinline static void ReadColumn8(BYTE* src, BYTE* dst, int dstpitch)
+	template<int i, bool aligned> __forceinline static void ReadColumn8(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		#if _M_SSE >= 0x301
 
@@ -576,7 +576,7 @@ public:
 		#endif
 	}
 	
-	template<int i, bool aligned> __forceinline static void ReadColumn4(BYTE* src, BYTE* dst, int dstpitch)
+	template<int i, bool aligned> __forceinline static void ReadColumn4(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		#if _M_SSE >= 0x301
 
@@ -662,7 +662,7 @@ public:
 		#endif
 	}
 
-	template<bool aligned> static void ReadColumn32(int y, BYTE* src, BYTE* dst, int dstpitch)
+	template<bool aligned> static void ReadColumn32(int y, BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		switch((y >> 1) & 3)
 		{
@@ -674,7 +674,7 @@ public:
 		}
 	}
 
-	template<bool aligned> static void ReadColumn16(int y, BYTE* src, BYTE* dst, int dstpitch)
+	template<bool aligned> static void ReadColumn16(int y, BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		switch((y >> 1) & 3)
 		{
@@ -686,7 +686,7 @@ public:
 		}
 	}
 
-	template<bool aligned> static void ReadColumn8(int y, BYTE* src, BYTE* dst, int dstpitch)
+	template<bool aligned> static void ReadColumn8(int y, BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		switch((y >> 2) & 3)
 		{
@@ -698,7 +698,7 @@ public:
 		}
 	}
 
-	template<bool aligned> static void ReadColumn4(int y, BYTE* src, BYTE* dst, int dstpitch)
+	template<bool aligned> static void ReadColumn4(int y, BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		switch((y >> 2) & 3)
 		{
@@ -710,7 +710,7 @@ public:
 		}
 	}
 
-	template<bool aligned> static void ReadBlock32(BYTE* src, BYTE* dst, int dstpitch)
+	template<bool aligned> static void ReadBlock32(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		#if _M_SSE >= 0x200
 
@@ -737,7 +737,7 @@ public:
 		#endif
 	}
 
-	template<bool aligned> static void ReadBlock16(BYTE* src, BYTE* dst, int dstpitch)
+	template<bool aligned> static void ReadBlock16(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		#if _M_SSE >= 0x200
 
@@ -764,7 +764,7 @@ public:
 		#endif
 	}
 
-	template<bool aligned> static void ReadBlock8(BYTE* src, BYTE* dst, int dstpitch)
+	template<bool aligned> static void ReadBlock8(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		#if _M_SSE >= 0x200
 
@@ -791,7 +791,7 @@ public:
 		#endif
 	}
 
-	template<bool aligned> static void ReadBlock4(BYTE* src, BYTE* dst, int dstpitch)
+	template<bool aligned> static void ReadBlock4(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		#if _M_SSE >= 0x200
 
@@ -821,7 +821,7 @@ public:
 		#endif
 	}
 
-	static void UnpackBlock24(BYTE* src, int srcpitch, DWORD* dst)
+	static void UnpackBlock24(BYTE* RESTRICT src, int srcpitch, DWORD* RESTRICT dst)
 	{
 		#if _M_SSE >= 0x200
 
@@ -861,7 +861,7 @@ public:
 		#endif
 	}
 
-	static void UnpackBlock8H(BYTE* src, int srcpitch, DWORD* dst)
+	static void UnpackBlock8H(BYTE* RESTRICT src, int srcpitch, DWORD* RESTRICT dst)
 	{
 		#if _M_SSE >= 0x200
 
@@ -893,7 +893,7 @@ public:
 		#endif
 	}
 
-	static void UnpackBlock4HL(BYTE* src, int srcpitch, DWORD* dst)
+	static void UnpackBlock4HL(BYTE* RESTRICT src, int srcpitch, DWORD* RESTRICT dst)
 	{
 		#if _M_SSE >= 0x200
 
@@ -943,7 +943,7 @@ public:
 		#endif
 	}
 
-	static void UnpackBlock4HH(BYTE* src, int srcpitch, DWORD* dst)
+	static void UnpackBlock4HH(BYTE* RESTRICT src, int srcpitch, DWORD* RESTRICT dst)
 	{
 		#if _M_SSE >= 0x200
 
@@ -993,7 +993,7 @@ public:
 		#endif
 	}
 
-	template<bool AEM> static void ExpandBlock24(DWORD* src, BYTE* dst, int dstpitch, const GIFRegTEXA& TEXA)
+	template<bool AEM> static void ExpandBlock24(DWORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const GIFRegTEXA& TEXA)
 	{
 		#if _M_SSE >= 0x200
 
@@ -1050,7 +1050,7 @@ public:
 		#endif
 	}
 
-	static void ExpandBlock16(WORD* src, BYTE* dst, int dstpitch, const GIFRegTEXA& TEXA) // do not inline, uses too many xmm regs
+	static void ExpandBlock16(WORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const GIFRegTEXA& TEXA) // do not inline, uses too many xmm regs
 	{
 		#if _M_SSE >= 0x200
 
@@ -1134,7 +1134,7 @@ public:
 		#endif
 	}
 
-	__forceinline static void ExpandBlock8_32(BYTE* src, BYTE* dst, int dstpitch, DWORD* pal)
+	__forceinline static void ExpandBlock8_32(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
 	{
 		for(int j = 0; j < 16; j++, dst += dstpitch)
 		{
@@ -1156,7 +1156,7 @@ public:
 		}
 	}
 
-	__forceinline static void ExpandBlock8_16(BYTE* src, BYTE* dst, int dstpitch, DWORD* pal)
+	__forceinline static void ExpandBlock8_16(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
 	{
 		for(int j = 0; j < 16; j++, dst += dstpitch)
 		{
@@ -1178,7 +1178,7 @@ public:
 		}
 	}
 
-	__forceinline static void ExpandBlock4_32(BYTE* src, BYTE* dst, int dstpitch, UINT64* pal)
+	__forceinline static void ExpandBlock4_32(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, UINT64* RESTRICT pal)
 	{
 		for(int j = 0; j < 16; j++, dst += dstpitch)
 		{
@@ -1200,7 +1200,7 @@ public:
 		}
 	}
 
-	__forceinline static void ExpandBlock4_16(BYTE* src, BYTE* dst, int dstpitch, UINT64* pal)
+	__forceinline static void ExpandBlock4_16(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, UINT64* RESTRICT pal)
 	{
 		for(int j = 0; j < 16; j++, dst += dstpitch)
 		{
@@ -1222,7 +1222,7 @@ public:
 		}
 	}
 
-	__forceinline static void ExpandBlock8H_32(DWORD* src, BYTE* dst, int dstpitch, DWORD* pal)
+	__forceinline static void ExpandBlock8H_32(DWORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
 	{
 		for(int j = 0; j < 8; j++, dst += dstpitch)
 		{
@@ -1245,7 +1245,7 @@ public:
 		}
 	}
 
-	__forceinline static void ExpandBlock8H_16(DWORD* src, BYTE* dst, int dstpitch, DWORD* pal)
+	__forceinline static void ExpandBlock8H_16(DWORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
 	{
 		for(int j = 0; j < 8; j++, dst += dstpitch)
 		{
@@ -1270,7 +1270,7 @@ public:
 		}
 	}
 
-	__forceinline static void ExpandBlock4HL_32(DWORD* src, BYTE* dst, int dstpitch, DWORD* pal)
+	__forceinline static void ExpandBlock4HL_32(DWORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
 	{
 		for(int j = 0; j < 8; j++, dst += dstpitch)
 		{
@@ -1293,7 +1293,7 @@ public:
 		}
 	}
 
-	__forceinline static void ExpandBlock4HL_16(DWORD* src, BYTE* dst, int dstpitch, DWORD* pal)
+	__forceinline static void ExpandBlock4HL_16(DWORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
 	{
 		for(int j = 0; j < 8; j++, dst += dstpitch)
 		{
@@ -1318,7 +1318,7 @@ public:
 		}
 	}
 
-	__forceinline static void ExpandBlock4HH_32(DWORD* src, BYTE* dst, int dstpitch, DWORD* pal)
+	__forceinline static void ExpandBlock4HH_32(DWORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
 	{
 		for(int j = 0; j < 8; j++, dst += dstpitch)
 		{
@@ -1341,7 +1341,7 @@ public:
 		}
 		}
 
-	__forceinline static void ExpandBlock4HH_16(DWORD* src, BYTE* dst, int dstpitch, DWORD* pal)
+	__forceinline static void ExpandBlock4HH_16(DWORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
 	{
 		for(int j = 0; j < 8; j++, dst += dstpitch)
 		{
@@ -1366,7 +1366,7 @@ public:
 		}
 	}
 
-	__forceinline static void UnpackAndWriteBlock24(BYTE* src, int srcpitch, BYTE* dst)
+	__forceinline static void UnpackAndWriteBlock24(BYTE* RESTRICT src, int srcpitch, BYTE* RESTRICT dst)
 	{
 		#if _M_SSE >= 0x200
 
@@ -1428,7 +1428,7 @@ public:
 		#endif
 	}
 
-	__forceinline static void UnpackAndWriteBlock8H(BYTE* src, int srcpitch, BYTE* dst)
+	__forceinline static void UnpackAndWriteBlock8H(BYTE* RESTRICT src, int srcpitch, BYTE* RESTRICT dst)
 	{
 		#if _M_SSE >= 0x301
 
@@ -1493,7 +1493,7 @@ public:
 		#endif
 	}
 
-	__forceinline static void UnpackAndWriteBlock4HL(BYTE* src, int srcpitch, BYTE* dst)
+	__forceinline static void UnpackAndWriteBlock4HL(BYTE* RESTRICT src, int srcpitch, BYTE* RESTRICT dst)
 	{
 		#if _M_SSE >= 0x301
 
@@ -1621,7 +1621,7 @@ public:
 		#endif
 	}
 
-	__forceinline static void UnpackAndWriteBlock4HH(BYTE* src, int srcpitch, BYTE* dst)
+	__forceinline static void UnpackAndWriteBlock4HH(BYTE* RESTRICT src, int srcpitch, BYTE* RESTRICT dst)
 	{
 		#if _M_SSE >= 0x301
 
@@ -1749,7 +1749,7 @@ public:
 		#endif
 	}
 
-	template<bool AEM> __forceinline static void ReadAndExpandBlock24(BYTE* src, BYTE* dst, int dstpitch, const GIFRegTEXA& TEXA)
+	template<bool AEM> __forceinline static void ReadAndExpandBlock24(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const GIFRegTEXA& TEXA)
 	{
 		#if _M_SSE >= 0x200
 
@@ -1810,7 +1810,7 @@ public:
 		#endif
 	}
 
-	__forceinline static void ReadAndExpandBlock8_32(BYTE* src, BYTE* dst, int dstpitch, DWORD* pal)
+	__forceinline static void ReadAndExpandBlock8_32(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
 	{
 		#if _M_SSE >= 0x401
 
@@ -1880,7 +1880,7 @@ public:
 
 	// TODO: ReadAndExpandBlock8_16
 
-	__forceinline static void ReadAndExpandBlock4_32(BYTE* src, BYTE* dst, int dstpitch, UINT64* pal)
+	__forceinline static void ReadAndExpandBlock4_32(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, UINT64* RESTRICT pal)
 	{
 		#if _M_SSE >= 0x401
 
@@ -1972,7 +1972,7 @@ public:
 
 	// TODO: ReadAndExpandBlock4_16
 
-	__forceinline static void ReadAndExpandBlock8H_32(BYTE* src, BYTE* dst, int dstpitch, DWORD* pal)
+	__forceinline static void ReadAndExpandBlock8H_32(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
 	{
 		#if _M_SSE >= 0x401
 
@@ -2023,7 +2023,7 @@ public:
 
 	// TODO: ReadAndExpandBlock8H_16
 
-	__forceinline static void ReadAndExpandBlock4HL_32(BYTE* src, BYTE* dst, int dstpitch, DWORD* pal)
+	__forceinline static void ReadAndExpandBlock4HL_32(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
 	{
 		#if _M_SSE >= 0x401
 
@@ -2074,7 +2074,7 @@ public:
 
 	// TODO: ReadAndExpandBlock4HL_16
 	
-	__forceinline static void ReadAndExpandBlock4HH_32(BYTE* src, BYTE* dst, int dstpitch, DWORD* pal)
+	__forceinline static void ReadAndExpandBlock4HH_32(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
 	{
 		#if _M_SSE >= 0x401
 
@@ -2127,7 +2127,7 @@ public:
 
 	//
 
-	static void WriteCLUT_T32_I8_CSM1(DWORD* src, WORD* clut)
+	static void WriteCLUT_T32_I8_CSM1(DWORD* RESTRICT src, WORD* RESTRICT clut)
 	{
 		#if _M_SSE >= 0x200
 
@@ -2154,7 +2154,7 @@ public:
 		#endif
 	}
 
-	__forceinline static void WriteCLUT_T32_I4_CSM1(DWORD* src, WORD* clut)
+	__forceinline static void WriteCLUT_T32_I4_CSM1(DWORD* RESTRICT src, WORD* RESTRICT clut)
 	{
 		#if _M_SSE >= 0x200
 
@@ -2188,7 +2188,7 @@ public:
 		#endif
 	}
 
-	static void WriteCLUT_T16_I8_CSM1(WORD* src, WORD* clut)
+	static void WriteCLUT_T16_I8_CSM1(WORD* RESTRICT src, WORD* RESTRICT clut)
 	{
 		#if _M_SSE >= 0x200
 
@@ -2225,7 +2225,7 @@ public:
 		#endif
 	}
 
-	__forceinline static void WriteCLUT_T16_I4_CSM1(WORD* src, WORD* clut)
+	__forceinline static void WriteCLUT_T16_I4_CSM1(WORD* RESTRICT src, WORD* RESTRICT clut)
 	{
 		for(int i = 0; i < 16; i++) 
 		{
@@ -2233,7 +2233,7 @@ public:
 		}
 	}
 
-	static void ReadCLUT_T32_I8(WORD* clut, DWORD* dst)
+	static void ReadCLUT_T32_I8(WORD* RESTRICT clut, DWORD* RESTRICT dst)
 	{
 		#if _M_SSE >= 0x200
 
@@ -2252,7 +2252,7 @@ public:
 		#endif
 	}
 
-	__forceinline static void ReadCLUT_T32_I4(WORD* clut, DWORD* dst)
+	__forceinline static void ReadCLUT_T32_I4(WORD* RESTRICT clut, DWORD* RESTRICT dst)
 	{
 		#if _M_SSE >= 0x200
 
@@ -2281,7 +2281,7 @@ public:
 		#endif
 	}
 
-	__forceinline static void ReadCLUT_T32_I4(WORD* clut, DWORD* dst32, UINT64* dst64)
+	__forceinline static void ReadCLUT_T32_I4(WORD* RESTRICT clut, DWORD* RESTRICT dst32, UINT64* RESTRICT dst64)
 	{
 		#if _M_SSE >= 0x200
 
@@ -2329,7 +2329,7 @@ public:
 		#endif
 	}
 
-	static void ReadCLUT_T16_I8(WORD* clut, DWORD* dst)
+	static void ReadCLUT_T16_I8(WORD* RESTRICT clut, DWORD* RESTRICT dst)
 	{
 		#if _M_SSE >= 0x200
 
@@ -2348,7 +2348,7 @@ public:
 		#endif
 	}
 
-	__forceinline static void ReadCLUT_T16_I4(WORD* clut, DWORD* dst)
+	__forceinline static void ReadCLUT_T16_I4(WORD* RESTRICT clut, DWORD* RESTRICT dst)
 	{
 		#if _M_SSE >= 0x200
 
@@ -2373,7 +2373,7 @@ public:
 		#endif
 	}
 
-	__forceinline static void ReadCLUT_T16_I4(WORD* clut, DWORD* dst32, UINT64* dst64)
+	__forceinline static void ReadCLUT_T16_I4(WORD* RESTRICT clut, DWORD* RESTRICT dst32, UINT64* RESTRICT dst64)
 	{
 		#if _M_SSE >= 0x200
 
@@ -2421,7 +2421,7 @@ public:
 		#endif
 	}
 
-	static void ExpandCLUT64_T32_I8(DWORD* src, UINT64* dst)
+	static void ExpandCLUT64_T32_I8(DWORD* RESTRICT src, UINT64* RESTRICT dst)
 	{
 		#if _M_SSE >= 0x200
 
@@ -2482,7 +2482,7 @@ public:
 		dst[1] = lo.uph32(hi);
 	}
 
-	static void ExpandCLUT64_T16_I8(DWORD* src, UINT64* dst)
+	static void ExpandCLUT64_T16_I8(DWORD* RESTRICT src, UINT64* RESTRICT dst)
 	{
 		#if _M_SSE >= 0x200
 

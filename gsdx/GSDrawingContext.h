@@ -26,7 +26,7 @@
 
 #pragma pack(push, 1)
 
-class GSDrawingContext
+__declspec(align(16)) class GSDrawingContext
 {
 public:
 	GIFRegXYOFFSET	XYOFFSET;
@@ -47,29 +47,20 @@ public:
 	GSLocalMemory::psm_t* ztbl;
 	GSLocalMemory::psm_t* ttbl;
 
-	struct scissor_t
+	__declspec(align(16)) struct
 	{
 		GSVector4i dx10;
 		GSVector4 dx9;
 		GSVector4 hw;
 		GSVector4 sw;
-	};
-	
-	scissor_t* scissor;
-	
+	} scissor;
+
 	GSDrawingContext() 
 		: ftbl(NULL)
 		, ztbl(NULL)
 		, ttbl(NULL)
 	{
-		scissor = (scissor_t*)_aligned_malloc(sizeof(scissor_t), 16);
-
 		Reset();
-	}
-
-	~GSDrawingContext()
-	{
-		_aligned_free(scissor);
 	}
 
 	void Reset()
@@ -91,21 +82,21 @@ public:
 
 	void UpdateScissor()
 	{
-		scissor->dx10 = GSVector4i(
+		scissor.dx10 = GSVector4i(
 			(int)((SCISSOR.SCAX0 << 4) + XYOFFSET.OFX),
 			(int)((SCISSOR.SCAY0 << 4) + XYOFFSET.OFY),
 			(int)((SCISSOR.SCAX1 << 4) + XYOFFSET.OFX),
 			(int)((SCISSOR.SCAY1 << 4) + XYOFFSET.OFY));
 
-		scissor->dx9 = GSVector4(scissor->dx10);
+		scissor.dx9 = GSVector4(scissor.dx10);
 
-		scissor->hw = GSVector4(
+		scissor.hw = GSVector4(
 			(int)SCISSOR.SCAX0,
 			(int)SCISSOR.SCAY0,
 			(int)SCISSOR.SCAX1 + 1,
 			(int)SCISSOR.SCAY1 + 1);
 
-		scissor->sw = GSVector4i(
+		scissor.sw = GSVector4i(
 			(int)SCISSOR.SCAX0,
 			(int)SCISSOR.SCAY0,
 			(int)SCISSOR.SCAX1,

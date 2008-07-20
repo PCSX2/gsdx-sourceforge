@@ -121,7 +121,7 @@ void GSRendererHW9::VertexKick(bool skip)
 
 int GSRendererHW9::ScissorTest(const GSVector4& p0, const GSVector4& p1)
 {
-	GSVector4 scissor = m_context->scissor->dx9;
+	GSVector4 scissor = m_context->scissor.dx9;
 
 	GSVector4 v0 = p0 < scissor;
 	GSVector4 v1 = p1 > scissor.zwxy();
@@ -480,7 +480,7 @@ if(s_dump)
 	int w = rt->m_texture.GetWidth();
 	int h = rt->m_texture.GetHeight();
 
-	CRect scissor = (CRect)GSVector4i(GSVector4(rt->m_texture.m_scale).xyxy() * m_context->scissor->hw) & CRect(0, 0, w, h);
+	CRect scissor = (CRect)GSVector4i(GSVector4(rt->m_texture.m_scale).xyxy() * m_context->scissor.hw) & CRect(0, 0, w, h);
 
 	//
 

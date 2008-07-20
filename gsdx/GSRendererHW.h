@@ -197,7 +197,7 @@ protected:
 		switch(wms)
 		{
 		case 0:
-			v = wm[wms];
+			v = wm[0];
 			if(v.x == 0 && v.z != w) v.z = w; // FIXME
 			vr.x = v.x;
 			vr.z = v.z;
@@ -220,7 +220,7 @@ protected:
 		switch(wmt)
 		{
 		case 0:
-			v = wm[wmt];
+			v = wm[0];
 			if(v.y == 0 && v.w != h) v.w = h; // FIXME
 			vr.y = v.y;
 			vr.w = v.w;

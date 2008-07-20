@@ -124,7 +124,7 @@ void GSRendererHW10::DrawingKick(GSVertexHW10* v, int& count)
 {
 	// TODO
 
-	GSVector4i scissor = m_context->scissor->dx10;
+	GSVector4i scissor = m_context->scissor.dx10;
 
 	switch(count)
 	{
@@ -455,7 +455,7 @@ if(s_dump)
 	int w = rt->m_texture.GetWidth();
 	int h = rt->m_texture.GetHeight();
 
-	CRect scissor = (CRect)GSVector4i(GSVector4(rt->m_texture.m_scale).xyxy() * m_context->scissor->hw) & CRect(0, 0, w, h);
+	CRect scissor = (CRect)GSVector4i(GSVector4(rt->m_texture.m_scale).xyxy() * m_context->scissor.hw) & CRect(0, 0, w, h);
 
 	//
 

@@ -50,7 +50,7 @@ bool GSTextureFX9::CreateMskFix(GSTexture9& t, DWORD size, DWORD msk, DWORD fix)
 {
 	DWORD hash = (size << 20) | (msk << 10) | fix;
 
-	if(CRBMapC<DWORD, GSTexture9>::CPair* pair = m_mskfix.Lookup(hash))
+	if(CRBMap<DWORD, GSTexture9>::CPair* pair = m_mskfix.Lookup(hash))
 	{
 		t = pair->m_value;
 	}
@@ -93,7 +93,7 @@ bool GSTextureFX9::SetupVS(VSSelector sel, const VSConstantBuffer* cb)
 {
 	CComPtr<IDirect3DVertexShader9> vs;
 
-	if(CRBMapC<DWORD, CComPtr<IDirect3DVertexShader9> >::CPair* pair = m_vs.Lookup(sel))
+	if(CRBMap<DWORD, CComPtr<IDirect3DVertexShader9> >::CPair* pair = m_vs.Lookup(sel))
 	{
 		vs = pair->m_value;
 	}
@@ -187,7 +187,7 @@ void GSTextureFX9::UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSample
 
 	CComPtr<IDirect3DPixelShader9> ps;
 
-	if(CRBMapC<DWORD, CComPtr<IDirect3DPixelShader9> >::CPair* pair = m_ps.Lookup(sel))
+	if(CRBMap<DWORD, CComPtr<IDirect3DPixelShader9> >::CPair* pair = m_ps.Lookup(sel))
 	{
 		ps = pair->m_value;
 	}
@@ -241,7 +241,7 @@ void GSTextureFX9::UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSample
 			ssel.min = ssel.mag = 0;
 		}
 
-		if(CRBMapC<DWORD, Direct3DSamplerState9*>::CPair* pair = m_ps_ss.Lookup(ssel))
+		if(CRBMap<DWORD, Direct3DSamplerState9*>::CPair* pair = m_ps_ss.Lookup(ssel))
 		{
 			ss = pair->m_value;
 		}
@@ -282,7 +282,7 @@ void GSTextureFX9::UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, 
 {
 	Direct3DDepthStencilState9* dss = NULL;
 
-	if(CRBMapC<DWORD, Direct3DDepthStencilState9*>::CPair* pair = m_om_dss.Lookup(dssel))
+	if(CRBMap<DWORD, Direct3DDepthStencilState9*>::CPair* pair = m_om_dss.Lookup(dssel))
 	{
 		dss = pair->m_value;
 	}
@@ -325,7 +325,7 @@ void GSTextureFX9::UpdateOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, 
 
 	Direct3DBlendState9* bs = NULL;
 	
-	if(CRBMapC<DWORD, Direct3DBlendState9*>::CPair* pair = m_om_bs.Lookup(bsel))
+	if(CRBMap<DWORD, Direct3DBlendState9*>::CPair* pair = m_om_bs.Lookup(bsel))
 	{
 		bs = pair->m_value;
 	}
