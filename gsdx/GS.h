@@ -572,7 +572,7 @@ REG64_(GIFReg, FRAME)
 	UINT32 _PAD3:2;
 	UINT32 FBMSK:32;
 REG_END2
-	UINT32 Block() {return FBP << 5;}
+	UINT32 Block() const {return FBP << 5;}
 REG_END2
 
 REG64_(GIFReg, HWREG)
@@ -844,7 +844,7 @@ REG64_(GIFReg, ZBUF)
 	UINT32 ZMSK:1;
 	UINT32 _PAD3:31;
 REG_END2
-	UINT32 Block() {return ZBP << 5;}
+	UINT32 Block() const {return ZBP << 5;}
 REG_END2
 
 REG64_SET(GIFReg)

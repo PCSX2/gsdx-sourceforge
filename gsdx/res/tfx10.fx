@@ -22,7 +22,8 @@ struct VS_OUTPUT
 	float4 c : COLOR0;
 };
 
-#ifndef VS_BPPZ
+#ifndef VS_BPP
+#define VS_BPP 0
 #define VS_BPPZ 0
 #define VS_TME 1
 #define VS_FST 1
@@ -47,13 +48,17 @@ VS_OUTPUT vs_main(VS_INPUT input)
 
 	VS_OUTPUT output;
 
+	float4 p = float4(input.p, input.z, 0);
+	
 	// FIXME:
 	// A litte accuracy problem in many games where the screen is copied in columns and
 	// the sides have a half pixel gap for some reason, that half pixel coordinate gets multiplied 
 	// by 2 (VertexScale) and occasionally ends on .9999999, which the rasterizer floors to 
 	// 1 less pixel we need, leaving a visible gap after drawing. 
 	
-	output.p = (float4(input.p, input.z, 0) + float4(0.5f, 0.5f, 0, 0)) * VertexScale - VertexOffset;
+	p += float4(0.5f, 0.5f, 0, 0); // add 1/32 pixel
+	
+	output.p = p * VertexScale - VertexOffset;
 	
 	if(VS_TME == 1)
 	{
@@ -156,7 +161,8 @@ void gs_main(line VS_OUTPUT input[2], inout TriangleStream<VS_OUTPUT> stream)
 
 Texture2D Texture;
 Texture2D Palette;
-SamplerState Sampler;
+SamplerState TextureSampler;
+SamplerState PaletteSampler;
 
 cbuffer cb1
 {
@@ -251,10 +257,10 @@ float4 sample(float2 tc)
 		
 		tc01 *= rWrH.xyxy;
 
-		float4 t00 = Texture.Sample(Sampler, tc01.xy);
-		float4 t01 = Texture.Sample(Sampler, tc01.zy);
-		float4 t10 = Texture.Sample(Sampler, tc01.xw);
-		float4 t11 = Texture.Sample(Sampler, tc01.zw);
+		float4 t00 = Texture.Sample(TextureSampler, tc01.xy);
+		float4 t01 = Texture.Sample(TextureSampler, tc01.zy);
+		float4 t10 = Texture.Sample(TextureSampler, tc01.xw);
+		float4 t11 = Texture.Sample(TextureSampler, tc01.zw);
 
 		float2 dd = frac(tc * WH); 
 
@@ -262,7 +268,7 @@ float4 sample(float2 tc)
 	}
 	else
 	{
-		t = Texture.Sample(Sampler, tc);
+		t = Texture.Sample(TextureSampler, tc);
 	}
 	
 	return t;
@@ -294,15 +300,15 @@ float4 sample8hp(float2 tc)
 
 	float4 t;
 	
-	t.x = Texture.Sample(Sampler, tc01.xy).a;
-	t.y = Texture.Sample(Sampler, tc01.zy).a;
-	t.z = Texture.Sample(Sampler, tc01.xw).a;
-	t.w = Texture.Sample(Sampler, tc01.zw).a;
-
-	float4 t00 = Palette.Sample(Sampler, t.x);
-	float4 t01 = Palette.Sample(Sampler, t.y);
-	float4 t10 = Palette.Sample(Sampler, t.z);
-	float4 t11 = Palette.Sample(Sampler, t.w);
+	t.x = Texture.Sample(TextureSampler, tc01.xy).a;
+	t.y = Texture.Sample(TextureSampler, tc01.zy).a;
+	t.z = Texture.Sample(TextureSampler, tc01.xw).a;
+	t.w = Texture.Sample(TextureSampler, tc01.zw).a;
+	
+	float4 t00 = Palette.Sample(PaletteSampler, t.x);
+	float4 t01 = Palette.Sample(PaletteSampler, t.y);
+	float4 t10 = Palette.Sample(PaletteSampler, t.z);
+	float4 t11 = Palette.Sample(PaletteSampler, t.w);
 
 	float2 dd = frac(tc * WH); 
 
@@ -335,10 +341,10 @@ float4 sample16p(float2 tc)
 		tc01.w = tc.y + rWrH.y;
 	}
 
-	t.x = Texture.Sample(Sampler, tc01.xy).r;
-	t.y = Texture.Sample(Sampler, tc01.zy).r;
-	t.z = Texture.Sample(Sampler, tc01.xw).r;
-	t.w = Texture.Sample(Sampler, tc01.zw).r;
+	t.x = Texture.Sample(TextureSampler, tc01.xy).r;
+	t.y = Texture.Sample(TextureSampler, tc01.zy).r;
+	t.z = Texture.Sample(TextureSampler, tc01.xw).r;
+	t.w = Texture.Sample(TextureSampler, tc01.zw).r;
 			
 	uint4 i = t * 65535;
 

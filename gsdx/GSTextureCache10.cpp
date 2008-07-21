@@ -393,6 +393,7 @@ bool GSTextureCache10::GSTextureHW10::Create(GSRenderTarget* rt)
 	case PSM_PSMT8H:
 		m_bpp2 = 3;
 		m_renderer->m_dev.CreateTexture(m_palette, 256, 1, m_TEX0.CPSM == PSM_PSMCT32 ? DXGI_FORMAT_R8G8B8A8_UNORM : DXGI_FORMAT_R16_UNORM); // 
+		m_initpalette = true;
 		break;
 	case PSM_PSMT4HL:
 	case PSM_PSMT4HH:

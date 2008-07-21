@@ -304,7 +304,7 @@ public:
 			return false;
 		}
 
-		if(!m_dev.Create(m_wnd))
+		if(!m_dev.Create(m_wnd, m_vsync))
 		{
 			return false;
 		}

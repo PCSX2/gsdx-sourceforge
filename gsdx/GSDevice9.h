@@ -133,7 +133,7 @@ public:
 	GSDevice9();
 	virtual ~GSDevice9();
 
-	bool Create(HWND hWnd);
+	bool Create(HWND hWnd, bool vsync);
 	bool Reset(int w, int h, bool fs);
 	bool IsLost();
 	void Present(const CRect& r);

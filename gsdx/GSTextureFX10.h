@@ -63,6 +63,7 @@ public:
 	{
 		struct
 		{
+			DWORD bpp:3;
 			DWORD bppz:2;
 			DWORD tme:1;
 			DWORD fst:1;
@@ -71,7 +72,7 @@ public:
 
 		DWORD dw;
 
-		operator DWORD() {return dw & 0x7f;}
+		operator DWORD() {return dw & 0x3ff;}
 	};
 
 	__declspec(align(16)) struct PSConstantBuffer
@@ -218,6 +219,7 @@ private:
 	CRBMapC<DWORD, CComPtr<ID3D10PixelShader> > m_ps;
 	CComPtr<ID3D10Buffer> m_ps_cb;
 	CRBMapC<DWORD, CComPtr<ID3D10SamplerState> > m_ps_ss;
+	CComPtr<ID3D10SamplerState> m_palette_ss;
 	CRBMapC<DWORD, CComPtr<ID3D10DepthStencilState> > m_om_dss;	
 	CRBMapC<DWORD, CComPtr<ID3D10BlendState> > m_om_bs;	
 

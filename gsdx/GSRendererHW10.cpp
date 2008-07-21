@@ -183,23 +183,26 @@ void GSRendererHW10::Draw()
 		return;
 	}
 
+	GSDrawingEnvironment& env = m_env;
+	GSDrawingContext* context = m_context;
+
 	//
 
 	GIFRegTEX0 TEX0;
 
 	// rt
 
-	TEX0.TBP0 = m_context->FRAME.Block();
-	TEX0.TBW = m_context->FRAME.FBW;
-	TEX0.PSM = m_context->FRAME.PSM;
+	TEX0.TBP0 = context->FRAME.Block();
+	TEX0.TBW = context->FRAME.FBW;
+	TEX0.PSM = context->FRAME.PSM;
 
 	GSTextureCache<GSDevice10>::GSRenderTarget* rt = m_tc->GetRenderTarget(TEX0, m_width, m_height);
 
 	// ds
 
-	TEX0.TBP0 = m_context->ZBUF.Block();
-	TEX0.TBW = m_context->FRAME.FBW;
-	TEX0.PSM = m_context->ZBUF.PSM;
+	TEX0.TBP0 = context->ZBUF.Block();
+	TEX0.TBW = context->FRAME.FBW;
+	TEX0.PSM = context->ZBUF.PSM;
 
 	GSTextureCache<GSDevice10>::GSDepthStencil* ds = m_tc->GetDepthStencil(TEX0, m_width, m_height);
 
@@ -218,14 +221,16 @@ if(s_dump)
 {
 	CString str;
 	str.Format(_T("c:\\temp2\\_%05d_f%I64d_tex_%05x_%d_%d%d_%02x_%02x_%02x_%02x.dds"), 
-		s_n++, m_perfmon.GetFrame(), (int)m_context->TEX0.TBP0, (int)m_context->TEX0.PSM,
-		(int)m_context->CLAMP.WMS, (int)m_context->CLAMP.WMT, 
-		(int)m_context->CLAMP.MINU, (int)m_context->CLAMP.MAXU, 
-		(int)m_context->CLAMP.MINV, (int)m_context->CLAMP.MAXV);
+		s_n++, m_perfmon.GetFrame(), (int)context->TEX0.TBP0, (int)context->TEX0.PSM,
+		(int)context->CLAMP.WMS, (int)context->CLAMP.WMT, 
+		(int)context->CLAMP.MINU, (int)context->CLAMP.MAXU, 
+		(int)context->CLAMP.MINV, (int)context->CLAMP.MAXV);
 	if(PRIM->TME) if(s_save) tex->m_texture.Save(str, true);
-	str.Format(_T("c:\\temp2\\_%05d_f%I64d_rt0_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), m_context->FRAME.Block(), m_context->FRAME.PSM);
+	str.Format(_T("c:\\temp2\\_%05d_f%I64d_tpx_%05x_%d.dds"), s_n-1, m_perfmon.GetFrame(), context->TEX0.CBP, context->TEX0.CPSM);
+	if(PRIM->TME && tex->m_palette) if(s_save) tex->m_palette.Save(str, true);
+	str.Format(_T("c:\\temp2\\_%05d_f%I64d_rt0_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), context->FRAME.Block(), context->FRAME.PSM);
 	if(s_save) rt->m_texture.Save(str);
-	str.Format(_T("c:\\temp2\\_%05d_f%I64d_rz0_%05x_%d.bmp"), s_n-1, m_perfmon.GetFrame(), m_context->ZBUF.Block(), m_context->ZBUF.PSM);
+	str.Format(_T("c:\\temp2\\_%05d_f%I64d_rz0_%05x_%d.bmp"), s_n-1, m_perfmon.GetFrame(), context->ZBUF.Block(), context->ZBUF.PSM);
 	if(s_savez) m_dev.SaveToFileD32S8X24(ds->m_texture, str); // TODO
 }
 
@@ -278,37 +283,43 @@ if(s_dump)
 
 	GSTextureFX10::OMDepthStencilSelector om_dssel;
 
-	om_dssel.zte = m_context->TEST.ZTE;
-	om_dssel.ztst = m_context->TEST.ZTST;
-	om_dssel.zwe = !m_context->ZBUF.ZMSK;
-	om_dssel.date = m_context->FRAME.PSM != PSM_PSMCT24 ? m_context->TEST.DATE : 0;
+	om_dssel.zte = context->TEST.ZTE;
+	om_dssel.ztst = context->TEST.ZTST;
+	om_dssel.zwe = !context->ZBUF.ZMSK;
+	om_dssel.date = context->FRAME.PSM != PSM_PSMCT24 ? context->TEST.DATE : 0;
 
 	GSTextureFX10::OMBlendSelector om_bsel;
 
 	om_bsel.abe = PRIM->ABE || (PRIM->PRIM == 1 || PRIM->PRIM == 2) && PRIM->AA1;
-	om_bsel.a = m_context->ALPHA.A;
-	om_bsel.b = m_context->ALPHA.B;
-	om_bsel.c = m_context->ALPHA.C;
-	om_bsel.d = m_context->ALPHA.D;
-	om_bsel.wr = (m_context->FRAME.FBMSK & 0x000000ff) != 0x000000ff;
-	om_bsel.wg = (m_context->FRAME.FBMSK & 0x0000ff00) != 0x0000ff00;
-	om_bsel.wb = (m_context->FRAME.FBMSK & 0x00ff0000) != 0x00ff0000;
-	om_bsel.wa = (m_context->FRAME.FBMSK & 0xff000000) != 0xff000000;
+	om_bsel.a = context->ALPHA.A;
+	om_bsel.b = context->ALPHA.B;
+	om_bsel.c = context->ALPHA.C;
+	om_bsel.d = context->ALPHA.D;
+	om_bsel.wr = (context->FRAME.FBMSK & 0x000000ff) != 0x000000ff;
+	om_bsel.wg = (context->FRAME.FBMSK & 0x0000ff00) != 0x0000ff00;
+	om_bsel.wb = (context->FRAME.FBMSK & 0x00ff0000) != 0x00ff0000;
+	om_bsel.wa = (context->FRAME.FBMSK & 0xff000000) != 0xff000000;
 
-	float bf = (float)(int)m_context->ALPHA.FIX / 0x80;
+	float bf = (float)(int)context->ALPHA.FIX / 0x80;
 
 	// vs
 
 	GSTextureFX10::VSSelector vs_sel;
 
+	vs_sel.bpp = 0;
 	vs_sel.bppz = 0;
 	vs_sel.tme = PRIM->TME;
 	vs_sel.fst = PRIM->FST;
 	vs_sel.prim = prim;
 
+	if(tex)
+	{
+		vs_sel.bpp = tex->m_bpp2;
+	}
+
 	if(om_dssel.zte && om_dssel.ztst > 0 && om_dssel.zwe)
 	{
-		if(m_context->ZBUF.PSM == PSM_PSMZ24)
+		if(context->ZBUF.PSM == PSM_PSMZ24)
 		{
 			if(WrapZ(0xffffff))
 			{
@@ -316,7 +327,7 @@ if(s_dump)
 				om_dssel.ztst = 1;
 			}
 		}
-		else if(m_context->ZBUF.PSM == PSM_PSMZ16 || m_context->ZBUF.PSM == PSM_PSMZ16S)
+		else if(context->ZBUF.PSM == PSM_PSMZ16 || context->ZBUF.PSM == PSM_PSMZ16S)
 		{
 			if(WrapZ(0xffff))
 			{
@@ -330,8 +341,8 @@ if(s_dump)
 
 	float sx = 2.0f * rt->m_texture.m_scale.x / (rt->m_texture.GetWidth() * 16);
 	float sy = 2.0f * rt->m_texture.m_scale.y / (rt->m_texture.GetHeight() * 16);
-	float ox = (float)(int)m_context->XYOFFSET.OFX;
-	float oy = (float)(int)m_context->XYOFFSET.OFY;
+	float ox = (float)(int)context->XYOFFSET.OFX;
+	float oy = (float)(int)context->XYOFFSET.OFY;
 
 	vs_cb.VertexScale = GSVector4(sx, -sy, 1.0f / UINT_MAX, 0.0f);
 	vs_cb.VertexOffset = GSVector4(ox * sx + 1, -(oy * sy + 1), 0.0f, -1.0f);
@@ -339,8 +350,8 @@ if(s_dump)
 
 	if(PRIM->TME && PRIM->FST)
 	{
-		vs_cb.TextureScale.x = 1.0f / (16 << m_context->TEX0.TW);
-		vs_cb.TextureScale.y = 1.0f / (16 << m_context->TEX0.TH);
+		vs_cb.TextureScale.x = 1.0f / (16 << context->TEX0.TW);
+		vs_cb.TextureScale.y = 1.0f / (16 << context->TEX0.TH);
 	}
 
 	// gs
@@ -355,38 +366,38 @@ if(s_dump)
 	GSTextureFX10::PSSelector ps_sel;
 
 	ps_sel.fst = PRIM->FST;
-	ps_sel.wms = m_context->CLAMP.WMS;
-	ps_sel.wmt = m_context->CLAMP.WMT;
+	ps_sel.wms = context->CLAMP.WMS;
+	ps_sel.wmt = context->CLAMP.WMT;
 	ps_sel.bpp = 0;
-	ps_sel.aem = m_env.TEXA.AEM;
-	ps_sel.tfx = m_context->TEX0.TFX;
-	ps_sel.tcc = m_context->TEX0.TCC;
-	ps_sel.ate = m_context->TEST.ATE;
-	ps_sel.atst = m_context->TEST.ATST;
+	ps_sel.aem = env.TEXA.AEM;
+	ps_sel.tfx = context->TEX0.TFX;
+	ps_sel.tcc = context->TEX0.TCC;
+	ps_sel.ate = context->TEST.ATE;
+	ps_sel.atst = context->TEST.ATST;
 	ps_sel.fog = PRIM->FGE;
 	ps_sel.clr1 = om_bsel.abe && om_bsel.a == 1 && om_bsel.b == 2 && om_bsel.d == 1;
-	ps_sel.fba = m_context->FBA.FBA;
-	ps_sel.aout = m_context->FRAME.PSM == PSM_PSMCT16 || m_context->FRAME.PSM == PSM_PSMCT16S || (m_context->FRAME.FBMSK & 0xff000000) == 0x7f000000 ? 1 : 0;
+	ps_sel.fba = context->FBA.FBA;
+	ps_sel.aout = context->FRAME.PSM == PSM_PSMCT16 || context->FRAME.PSM == PSM_PSMCT16S || (context->FRAME.FBMSK & 0xff000000) == 0x7f000000 ? 1 : 0;
 
 	GSTextureFX10::PSSamplerSelector ps_ssel;
 
-	ps_ssel.min = m_filter == 2 ? (m_context->TEX1.MMIN & 1) : m_filter;
-	ps_ssel.mag = m_filter == 2 ? (m_context->TEX1.MMAG & 1) : m_filter;
+	ps_ssel.min = m_filter == 2 ? (context->TEX1.MMIN & 1) : m_filter;
+	ps_ssel.mag = m_filter == 2 ? (context->TEX1.MMAG & 1) : m_filter;
 	ps_ssel.tau = 0;
 	ps_ssel.tav = 0;
 
 	GSTextureFX10::PSConstantBuffer ps_cb;
 
-	ps_cb.FogColor = GSVector4(m_env.FOGCOL.FCR, m_env.FOGCOL.FCG, m_env.FOGCOL.FCB, 0) / 255.0f;
-	ps_cb.TA0 = (float)(int)m_env.TEXA.TA0 / 255;
-	ps_cb.TA1 = (float)(int)m_env.TEXA.TA1 / 255;
-	ps_cb.AREF = (float)(int)m_context->TEST.AREF / 255;
+	ps_cb.FogColor = GSVector4(env.FOGCOL.FCR, env.FOGCOL.FCG, env.FOGCOL.FCB, 0) / 255.0f;
+	ps_cb.TA0 = (float)(int)env.TEXA.TA0 / 255;
+	ps_cb.TA1 = (float)(int)env.TEXA.TA1 / 255;
+	ps_cb.AREF = (float)(int)context->TEST.AREF / 255;
 
-	if(m_context->TEST.ATST == 2 || m_context->TEST.ATST == 5)
+	if(context->TEST.ATST == 2 || context->TEST.ATST == 5)
 	{
 		ps_cb.AREF -= 0.9f/256;
 	}
-	else if(m_context->TEST.ATST == 3 || m_context->TEST.ATST == 6)
+	else if(context->TEST.ATST == 3 || context->TEST.ATST == 6)
 	{
 		ps_cb.AREF += 0.9f/256;
 	}
@@ -395,7 +406,7 @@ if(s_dump)
 	{
 		ps_sel.bpp = tex->m_bpp2;
 
-		switch(m_context->CLAMP.WMS)
+		switch(context->CLAMP.WMS)
 		{
 		case 0: 
 			ps_ssel.tau = 1; 
@@ -404,20 +415,20 @@ if(s_dump)
 			ps_ssel.tau = 0; 
 			break;
 		case 2: 
-			ps_cb.MINU = ((float)(int)m_context->CLAMP.MINU + 0.5f) / (1 << m_context->TEX0.TW);
-			ps_cb.MAXU = ((float)(int)m_context->CLAMP.MAXU) / (1 << m_context->TEX0.TW);
+			ps_cb.MINU = ((float)(int)context->CLAMP.MINU + 0.5f) / (1 << context->TEX0.TW);
+			ps_cb.MAXU = ((float)(int)context->CLAMP.MAXU) / (1 << context->TEX0.TW);
 			ps_ssel.tau = 0; 
 			break;
 		case 3: 
-			ps_cb.UMSK = m_context->CLAMP.MINU;
-			ps_cb.UFIX = m_context->CLAMP.MAXU;
+			ps_cb.UMSK = context->CLAMP.MINU;
+			ps_cb.UFIX = context->CLAMP.MAXU;
 			ps_ssel.tau = 1; 
 			break;
 		default: 
 			__assume(0);
 		}
 
-		switch(m_context->CLAMP.WMT)
+		switch(context->CLAMP.WMT)
 		{
 		case 0: 
 			ps_ssel.tav = 1; 
@@ -426,13 +437,13 @@ if(s_dump)
 			ps_ssel.tav = 0; 
 			break;
 		case 2: 
-			ps_cb.MINV = ((float)(int)m_context->CLAMP.MINV + 0.5f) / (1 << m_context->TEX0.TH);
-			ps_cb.MAXV = ((float)(int)m_context->CLAMP.MAXV) / (1 << m_context->TEX0.TH);
+			ps_cb.MINV = ((float)(int)context->CLAMP.MINV + 0.5f) / (1 << context->TEX0.TH);
+			ps_cb.MAXV = ((float)(int)context->CLAMP.MAXV) / (1 << context->TEX0.TH);
 			ps_ssel.tav = 0; 
 			break;
 		case 3: 
-			ps_cb.VMSK = m_context->CLAMP.MINV;
-			ps_cb.VFIX = m_context->CLAMP.MAXV;
+			ps_cb.VMSK = context->CLAMP.MINV;
+			ps_cb.VFIX = context->CLAMP.MAXV;
 			ps_ssel.tav = 1; 
 			break;
 		default: 
@@ -455,7 +466,7 @@ if(s_dump)
 	int w = rt->m_texture.GetWidth();
 	int h = rt->m_texture.GetHeight();
 
-	CRect scissor = (CRect)GSVector4i(GSVector4(rt->m_texture.m_scale).xyxy() * m_context->scissor.hw) & CRect(0, 0, w, h);
+	CRect scissor = (CRect)GSVector4i(GSVector4(rt->m_texture.m_scale).xyxy() * context->scissor.hw) & CRect(0, 0, w, h);
 
 	//
 
@@ -470,14 +481,14 @@ if(s_dump)
 
 	// draw
 
-	if(m_context->TEST.DoFirstPass())
+	if(context->TEST.DoFirstPass())
 	{
 		m_tfx.Draw();
 	}
 
-	if(m_context->TEST.DoSecondPass())
+	if(context->TEST.DoSecondPass())
 	{
-		ASSERT(!m_env.PABE.PABE);
+		ASSERT(!env.PABE.PABE);
 
 		static const DWORD iatst[] = {1, 0, 5, 6, 7, 2, 3, 4};
 
@@ -491,7 +502,7 @@ if(s_dump)
 		bool b = om_bsel.wb;
 		bool a = om_bsel.wa;
 
-		switch(m_context->TEST.AFAIL)
+		switch(context->TEST.AFAIL)
 		{
 		case 0: z = r = g = b = a = false; break; // none
 		case 1: z = false; break; // rgba
@@ -518,12 +529,14 @@ if(s_dump)
 
 	OverrideOutput();
 
+	m_tc->InvalidateTextures(context->FRAME, context->ZBUF);
+
 if(s_dump)
 {
 	CString str;
-	str.Format(_T("c:\\temp2\\_%05d_f%I64d_rt1_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), m_context->FRAME.Block(), m_context->FRAME.PSM);
+	str.Format(_T("c:\\temp2\\_%05d_f%I64d_rt1_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), context->FRAME.Block(), context->FRAME.PSM);
 	if(s_save) rt->m_texture.Save(str);
-	str.Format(_T("c:\\temp2\\_%05d_f%I64d_rz1_%05x_%d.bmp"), s_n-1, m_perfmon.GetFrame(), m_context->ZBUF.Block(), m_context->ZBUF.PSM);
+	str.Format(_T("c:\\temp2\\_%05d_f%I64d_rz1_%05x_%d.bmp"), s_n-1, m_perfmon.GetFrame(), context->ZBUF.Block(), context->ZBUF.PSM);
 	if(s_savez) m_dev.SaveToFileD32S8X24(ds->m_texture, str); // TODO
 }
 
@@ -623,7 +636,7 @@ void GSRendererHW10::SetupDATE(Texture& rt, Texture& ds)
 
 	m_dev.PSSetShaderResources(rt, NULL);
 	m_dev.PSSetShader(m_dev.m_convert.ps[m_context->TEST.DATM ? 2 : 3], NULL);
-	m_dev.PSSetSamplerState(m_dev.m_convert.pt);
+	m_dev.PSSetSamplerState(m_dev.m_convert.pt, NULL);
 
 	// rs
 

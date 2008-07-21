@@ -1146,20 +1146,41 @@ public:
 		d = f.uph64(d);
 	}
 
-	__forceinline static bool compare(const void* p0, const void* p1, int size)
+	__forceinline static bool compare(const void* dst, const void* src, int size)
 	{
 		ASSERT((size & 15) == 0);
 
 		size >>= 4;
 
-		GSVector4i* v0 = (GSVector4i*)p0;
-		GSVector4i* v1 = (GSVector4i*)p1;
+		GSVector4i* s = (GSVector4i*)src;
+		GSVector4i* d = (GSVector4i*)dst;
 
 		GSVector4i v = GSVector4i::invzero();
 
 		for(int i = 0; i < size; i++)
 		{
-			v &= v0[i] == v1[i];
+			v &= d[i] == s[i];
+		}
+
+		return v.mask() == 0xffff;
+	}
+
+	__forceinline static bool update(const void* dst, const void* src, int size)
+	{
+		ASSERT((size & 15) == 0);
+
+		size >>= 4;
+
+		GSVector4i* s = (GSVector4i*)src;
+		GSVector4i* d = (GSVector4i*)dst;
+
+		GSVector4i v = GSVector4i::invzero();
+
+		for(int i = 0; i < size; i++)
+		{
+			v &= d[i] == s[i];
+
+			d[i] = s[i];
 		}
 
 		return v.mask() == 0xffff;

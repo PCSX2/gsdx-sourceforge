@@ -38,6 +38,7 @@ public:
 	public:
 		Texture m_texture;
 		Texture m_palette;
+		bool m_initpalette;
 		int m_age;
 		GSDirtyRectList m_dirty;
 		GIFRegTEX0 m_TEX0;
@@ -45,6 +46,7 @@ public:
 		explicit GSSurface(GSRenderer<Device>* renderer)
 			: m_renderer(renderer)
 			, m_age(0)
+			, m_initpalette(false)
 		{
 			m_TEX0.TBP0 = (UINT32)~0;
 		}
@@ -253,7 +255,7 @@ public:
 	GSRenderTarget* GetRenderTarget(const GIFRegTEX0& TEX0, int w, int h, bool fb = false)
 	{
 		POSITION pos = m_tex.GetHeadPosition();
-
+/*
 		while(pos)
 		{
 			POSITION cur = pos;
@@ -267,7 +269,7 @@ public:
 				delete t;
 			}
 		}
-
+*/
 		GSRenderTarget* rt = NULL;
 
 		if(rt == NULL)
@@ -355,7 +357,7 @@ public:
 	GSDepthStencil* GetDepthStencil(const GIFRegTEX0& TEX0, int w, int h)
 	{
 		POSITION pos = m_tex.GetHeadPosition();
-
+/*
 		while(pos)
 		{
 			POSITION cur = pos;
@@ -369,7 +371,7 @@ public:
 				delete t;
 			}
 		}
-
+*/
 		GSDepthStencil* ds = NULL;
 
 		if(ds == NULL)
@@ -570,20 +572,18 @@ public:
 
 			if(t->m_palette)
 			{
-				// TODO: sse2
-
-				DWORD sum = 0;
-				
-				for(int i = 0; i < pal; i++)
+				if(t->m_initpalette)
 				{
-					sum |= t->m_clut[i] ^ clut[i];
-
-					t->m_clut[i] = clut[i];
-				}
-
-				if(sum != 0) 
-				{
+					memcpy(t->m_clut, clut, size);
 					t->m_palette.Update(CRect(0, 0, pal, 1), t->m_clut, size);
+					t->m_initpalette = false;
+				}
+				else
+				{
+					if(GSVector4i::update(t->m_clut, clut, size))
+					{
+						t->m_palette.Update(CRect(0, 0, pal, 1), t->m_clut, size);
+					}
 				}
 			}
 			else
@@ -595,6 +595,26 @@ public:
 		t->Update();
 
 		return t;
+	}
+
+	void InvalidateTextures(const GIFRegFRAME& FRAME, const GIFRegZBUF& ZBUF)
+	{
+		POSITION pos = m_tex.GetHeadPosition();
+
+		while(pos)
+		{
+			POSITION cur = pos;
+
+			GSTexture* t = m_tex.GetNext(pos);
+
+			if(GSUtil::HasSharedBits(FRAME.Block(), FRAME.PSM, t->m_TEX0.TBP0, t->m_TEX0.PSM)
+			|| GSUtil::HasSharedBits(ZBUF.Block(), ZBUF.PSM, t->m_TEX0.TBP0, t->m_TEX0.PSM))
+			{
+				m_tex.RemoveAt(cur);
+
+				delete t;
+			}
+		}
 	}
 
 	void InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, const CRect& r)

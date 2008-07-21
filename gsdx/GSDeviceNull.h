@@ -37,7 +37,7 @@ private:
 public:
 	GSDeviceNull() {}
 
-	bool Create(HWND hWnd);
+	bool Create(HWND hWnd, bool vsync);
 	bool Reset(int w, int h, bool fs);
 	bool IsLost() {return false;}
 	void Present(const CRect& r) {}

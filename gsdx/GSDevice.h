@@ -50,6 +50,7 @@ template<class Texture> class GSDevice
 
 protected:
 	HWND m_hWnd;
+	bool m_vsync;
 	Texture m_backbuffer;
 	Texture m_merge;
 	Texture m_weavebob;
@@ -91,9 +92,10 @@ public:
 	{
 	}
 
-	virtual bool Create(HWND hWnd)
+	virtual bool Create(HWND hWnd, bool vsync)
 	{
 		m_hWnd = hWnd;
+		m_vsync = vsync;
 
 		return true;
 	}
