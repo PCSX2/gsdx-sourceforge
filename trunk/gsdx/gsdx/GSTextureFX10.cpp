@@ -73,6 +73,22 @@ bool GSTextureFX10::Create(GSDevice10* dev)
 
 	if(FAILED(hr)) return false;
 
+	D3D10_SAMPLER_DESC sd;
+
+	memset(&sd, 0, sizeof(sd));
+
+	sd.Filter = D3D10_ENCODE_BASIC_FILTER(D3D10_FILTER_TYPE_POINT, D3D10_FILTER_TYPE_POINT, D3D10_FILTER_TYPE_POINT, false);
+	sd.AddressU = D3D10_TEXTURE_ADDRESS_CLAMP;
+	sd.AddressV = D3D10_TEXTURE_ADDRESS_CLAMP;
+	sd.AddressW = D3D10_TEXTURE_ADDRESS_CLAMP;
+	sd.MaxLOD = FLT_MAX;
+	sd.MaxAnisotropy = 16; 
+	sd.ComparisonFunc = D3D10_COMPARISON_NEVER;
+
+	hr = (*m_dev)->CreateSamplerState(&sd, &m_palette_ss);
+
+	if(FAILED(hr)) return false;
+
 	//
 
 	return true;
@@ -153,19 +169,21 @@ bool GSTextureFX10::SetupVS(VSSelector sel, const VSConstantBuffer* cb)
 	}
 	else
 	{
-		CStringA str[4];
+		CStringA str[5];
 
-		str[0].Format("%d", sel.bppz);
-		str[1].Format("%d", sel.tme);
-		str[2].Format("%d", sel.fst);
-		str[3].Format("%d", sel.prim);
+		str[0].Format("%d", sel.bpp);
+		str[1].Format("%d", sel.bppz);
+		str[2].Format("%d", sel.tme);
+		str[3].Format("%d", sel.fst);
+		str[4].Format("%d", sel.prim);
 
 		D3D10_SHADER_MACRO macro[] =
 		{
-			{"VS_BPPZ", str[0]},
-			{"VS_TME", str[1]},
-			{"VS_FST", str[2]},
-			{"VS_PRIM", str[3]},
+			{"VS_BPP", str[0]},
+			{"VS_BPPZ", str[1]},
+			{"VS_TME", str[2]},
+			{"VS_FST", str[3]},
+			{"VS_PRIM", str[4]},
 			{NULL, NULL},
 		};
 
@@ -305,7 +323,7 @@ void GSTextureFX10::UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSampl
 
 	m_dev->PSSetShader(ps, m_ps_cb);
 
-	CComPtr<ID3D10SamplerState> ss;
+	CComPtr<ID3D10SamplerState> ss0, ss1;
 
 	if(sel.tfx != 4)
 	{
@@ -316,7 +334,7 @@ void GSTextureFX10::UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSampl
 
 		if(CRBMap<DWORD, CComPtr<ID3D10SamplerState> >::CPair* pair = m_ps_ss.Lookup(ssel))
 		{
-			ss = pair->m_value;
+			ss0 = pair->m_value;
 		}
 		else
 		{
@@ -338,13 +356,18 @@ void GSTextureFX10::UpdatePS(PSSelector sel, const PSConstantBuffer* cb, PSSampl
 			sd.MaxAnisotropy = 16; 
 			sd.ComparisonFunc = D3D10_COMPARISON_NEVER;
 
-			hr = (*m_dev)->CreateSamplerState(&sd, &ss);
+			hr = (*m_dev)->CreateSamplerState(&sd, &ss0);
 
-			m_ps_ss.SetAt(ssel, ss);
+			m_ps_ss.SetAt(ssel, ss0);
+		}
+
+		if(sel.bpp == 3)
+		{
+			ss1 = m_palette_ss;
 		}
 	}
 
-	m_dev->PSSetSamplerState(ss);
+	m_dev->PSSetSamplerState(ss0, ss1);
 }
 
 void GSTextureFX10::SetupRS(UINT w, UINT h, const RECT& scissor)

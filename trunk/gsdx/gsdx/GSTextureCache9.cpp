@@ -394,6 +394,7 @@ bool GSTextureCache9::GSTexture9::Create(GSRenderTarget* rt)
 	case PSM_PSMT8H:
 		m_bpp2 = 3;
 		m_renderer->m_dev.CreateTexture(m_palette, 256, 1, m_TEX0.CPSM == PSM_PSMCT32 ? D3DFMT_A8R8G8B8 : D3DFMT_A1R5G5B5);
+		m_initpalette = true;
 		break;
 	case PSM_PSMT4HL:
 	case PSM_PSMT4HH:

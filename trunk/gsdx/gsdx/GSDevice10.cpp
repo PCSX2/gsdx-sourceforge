@@ -33,7 +33,6 @@ GSDevice10::GSDevice10()
 	, m_gs(NULL)
 	, m_ps(NULL)
 	, m_ps_cb(NULL)
-	, m_ps_ss(NULL)
 	, m_scissor(0, 0, 0, 0)
 	, m_viewport(0, 0)
 	, m_dss(NULL)
@@ -43,16 +42,17 @@ GSDevice10::GSDevice10()
 	, m_rtv(NULL)
 	, m_dsv(NULL)
 {
-	memset(m_ps_srvs, 0, sizeof(m_ps_srvs));
+	memset(m_ps_srv, 0, sizeof(m_ps_srv));
+	memset(m_ps_ss, 0, sizeof(m_ps_ss));
 }
 
 GSDevice10::~GSDevice10()
 {
 }
 
-bool GSDevice10::Create(HWND hWnd)
+bool GSDevice10::Create(HWND hWnd, bool vsync)
 {
-	if(!__super::Create(hWnd))
+	if(!__super::Create(hWnd, vsync))
 	{
 		return false;
 	}
@@ -282,7 +282,7 @@ void GSDevice10::Present(const CRect& r)
 		StretchRect(m_current, m_backbuffer, GSVector4(r));
 	}
 
-	m_swapchain->Present(0, 0);
+	m_swapchain->Present(m_vsync ? 1 : 0, 0);
 }
 
 void GSDevice10::BeginScene()
@@ -555,14 +555,14 @@ void GSDevice10::GSSetShader(ID3D10GeometryShader* gs)
 
 void GSDevice10::PSSetShaderResources(ID3D10ShaderResourceView* srv0, ID3D10ShaderResourceView* srv1)
 {
-	if(m_ps_srvs[0] != srv0 || m_ps_srvs[1] != srv1)
+	if(m_ps_srv[0] != srv0 || m_ps_srv[1] != srv1)
 	{
 		ID3D10ShaderResourceView* srvs[] = {srv0, srv1};
 	
 		m_dev->PSSetShaderResources(0, 2, srvs);
 
-		m_ps_srvs[0] = srv0;
-		m_ps_srvs[1] = srv1;
+		m_ps_srv[0] = srv0;
+		m_ps_srv[1] = srv1;
 	}
 }
 
@@ -583,13 +583,16 @@ void GSDevice10::PSSetShader(ID3D10PixelShader* ps, ID3D10Buffer* ps_cb)
 	}
 }
 
-void GSDevice10::PSSetSamplerState(ID3D10SamplerState* ss)
+void GSDevice10::PSSetSamplerState(ID3D10SamplerState* ss0, ID3D10SamplerState* ss1)
 {
-	if(m_ps_ss != ss)
+	if(m_ps_ss[0] != ss0 || m_ps_ss[1] != ss1)
 	{
-		m_dev->PSSetSamplers(0, 1, &ss);
+		ID3D10SamplerState* sss[] = {ss0, ss1};
 
-		m_ps_ss = ss;
+		m_dev->PSSetSamplers(0, 2, sss);
+
+		m_ps_ss[0] = ss0;
+		m_ps_ss[1] = ss1;
 	}
 }
 
@@ -722,7 +725,7 @@ void GSDevice10::StretchRect(Texture& st, const GSVector4& sr, Texture& dt, cons
 	// ps
 
 	PSSetShader(ps, ps_cb);
-	PSSetSamplerState(linear ? m_convert.ln : m_convert.pt);
+	PSSetSamplerState(linear ? m_convert.ln : m_convert.pt, NULL);
 	PSSetShaderResources(st, NULL);
 
 	// rs

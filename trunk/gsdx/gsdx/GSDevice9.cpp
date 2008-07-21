@@ -57,9 +57,9 @@ GSDevice9::~GSDevice9()
 	if(m_ps_cb) _aligned_free(m_ps_cb);
 }
 
-bool GSDevice9::Create(HWND hWnd)
+bool GSDevice9::Create(HWND hWnd, bool vsync)
 {
-	if(!__super::Create(hWnd))
+	if(!__super::Create(hWnd, vsync))
 	{
 		return false;
 	}
@@ -261,7 +261,7 @@ bool GSDevice9::Reset(int w, int h, bool fs)
 	m_pp.BackBufferHeight = 1;
 	m_pp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
 
-	if(!!AfxGetApp()->GetProfileInt(_T("Settings"), _T("vsync"), FALSE))
+	if(m_vsync)
 	{
 		m_pp.PresentationInterval = D3DPRESENT_INTERVAL_DEFAULT;
 	}

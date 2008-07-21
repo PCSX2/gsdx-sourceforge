@@ -40,10 +40,10 @@ private:
 	ID3D10VertexShader* m_vs;
 	ID3D10Buffer* m_vs_cb;
 	ID3D10GeometryShader* m_gs;
-	ID3D10ShaderResourceView* m_ps_srvs[2];
+	ID3D10ShaderResourceView* m_ps_srv[2];
 	ID3D10PixelShader* m_ps;
 	ID3D10Buffer* m_ps_cb;
-	ID3D10SamplerState* m_ps_ss;
+	ID3D10SamplerState* m_ps_ss[2];
 	CSize m_viewport;
 	CRect m_scissor;
 	ID3D10DepthStencilState* m_dss;
@@ -97,7 +97,7 @@ public:
 	GSDevice10();
 	virtual ~GSDevice10();
 
-	bool Create(HWND hWnd);
+	bool Create(HWND hWnd, bool vsync);
 	bool Reset(int w, int h, bool fs);
 	bool IsLost() {return false;}
 	void Present(const CRect& r);
@@ -126,7 +126,7 @@ public:
 	void GSSetShader(ID3D10GeometryShader* gs);
 	void PSSetShaderResources(ID3D10ShaderResourceView* srv0, ID3D10ShaderResourceView* srv1);
 	void PSSetShader(ID3D10PixelShader* ps, ID3D10Buffer* ps_cb);
-	void PSSetSamplerState(ID3D10SamplerState* ss);
+	void PSSetSamplerState(ID3D10SamplerState* ss0, ID3D10SamplerState* ss1);
 	void RSSet(int width, int height, const RECT* scissor = NULL);
 	void OMSetDepthStencilState(ID3D10DepthStencilState* dss, UINT sref);
 	void OMSetBlendState(ID3D10BlendState* bs, float bf);
