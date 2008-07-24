@@ -390,7 +390,7 @@ void GSState::GIFPackedRegHandlerRGBA(GIFPackedReg* r)
 #if _M_SSE >= 0x301
 
 	GSVector4i mask(_mm_cvtsi32_si128(0x0c080400));
-	GSVector4i v = GSVector4i::loadu(r).shuffle8(mask);
+	GSVector4i v = GSVector4i::load<false>(r).shuffle8(mask);
 	m_v.RGBAQ.ai32[0] = _mm_cvtsi128_si32(v);
 
 #elif _M_SSE >= 0x200
@@ -437,7 +437,7 @@ void GSState::GIFPackedRegHandlerUV(GIFPackedReg* r)
 #if _M_SSE >= 0x200
 
 	GSVector4i mask(_00003fff);
-	GSVector4i v = GSVector4i::loadu(r) & mask;
+	GSVector4i v = GSVector4i::load<false>(r) & mask;
 	m_v.UV.ai32[0] = _mm_cvtsi128_si32(v.ps32(v));
 
 #else
@@ -1041,6 +1041,21 @@ void GSState::FlushWrite(BYTE* mem, int len)
 {
 	if(len > 0)
 	{
+/*
+CSize bs = GSLocalMemory::m_psm[m_env.BITBLTBUF.DPSM].bs;
+
+if((m_x & (bs.cx - 1)) || (m_env.TRXREG.RRW & (bs.cx - 1))
+|| (m_y & (bs.cy - 1)) || (m_env.TRXREG.RRH & (bs.cy - 1))
+|| m_x != m_env.TRXPOS.DSAX)
+{
+	printf("*** [%d]: %d %d, %d %d %d %d\n", m_env.BITBLTBUF.DPSM, m_env.TRXPOS.DSAX, m_env.TRXPOS.DSAY, m_x, m_y, m_env.TRXREG.RRW, m_env.TRXREG.RRH);
+}
+
+if((len % ((m_env.TRXREG.RRW - m_x) * GSLocalMemory::m_psm[m_env.BITBLTBUF.DPSM].trbpp / 8)) != 0)
+{
+	printf("*** [%d]: %d %d\n", m_env.BITBLTBUF.DPSM, len, ((m_env.TRXREG.RRW - m_x) * GSLocalMemory::m_psm[m_env.BITBLTBUF.DPSM].trbpp / 8));
+}
+*/
 		int y = m_y;
 
 		GSLocalMemory::writeImage wi = GSLocalMemory::m_psm[m_env.BITBLTBUF.DPSM].wi;

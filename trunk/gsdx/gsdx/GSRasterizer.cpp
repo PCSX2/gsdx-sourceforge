@@ -217,9 +217,9 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 	// m_slenv
 
 	m_slenv.steps = 0;
-	m_slenv.rtx = m_state->m_context->ttbl->rtx;
-	m_slenv.fo = m_state->m_context->ftbl->rowOffset[0];
-	m_slenv.zo = m_state->m_context->ztbl->rowOffset[0];
+	m_slenv.rtx = context->ttbl->rtx;
+	m_slenv.fo = context->ftbl->rowOffset[0];
+	m_slenv.zo = context->ztbl->rowOffset[0];
 	m_slenv.fm = GSVector4i(context->FRAME.FBMSK);
 	m_slenv.zm = GSVector4i(context->ZBUF.ZMSK ? 0xffffffff : 0);
 	m_slenv.datm = GSVector4i(context->TEST.DATM ? 0x80000000 : 0);
@@ -533,6 +533,9 @@ void GSRasterizer::DrawTriangleSection(Vertex& l, const Vertex& dl, GSVector4& r
 		for(; top < bottom; top++, l += dl, r += dr)
 		{
 /*
+
+// rarely used (character shadows in ffx-2)
+
 int scanmsk = (int)m_state->m_env.SCANMSK.MSK - 2;
 
 if(scanmsk >= 0)
@@ -542,6 +545,7 @@ if(scanmsk >= 0)
 		continue;
 	}
 }
+
 */
 			if((top % m_threads) == m_id) 
 			{
@@ -875,24 +879,26 @@ else if(steps == 3) g_slp3++;
 
 		int pixels = min(steps, 4);
 
-		GSVector4i fa = fa_base + GSVector4i::loadu(fa_offset);
-		GSVector4i za = za_base + GSVector4i::loadu(za_offset);
+		GSVector4i fa = fa_base + GSVector4i::load<false>(fa_offset);
+		GSVector4i za = za_base + GSVector4i::load<false>(za_offset);
 		
 		GSVector4i fm = m_slenv.fm;
 		GSVector4i zm = m_slenv.zm;
 		GSVector4i test = GSVector4i::zero();
 
-		GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & 1);
+		GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::one());
 		GSVector4i zd;
 
 		if(ztst > 1)
 		{
 			zd = m_state->m_mem.ReadZBufX(zpsm, za);
 
+			GSVector4i offset = GSVector4i::x80000000();
+
 			switch(ztst)
 			{
-			case 2: test = (zs - 0x80000000) < (zd - 0x80000000); break; // ge
-			case 3: test = (zs - 0x80000000) <= (zd - 0x80000000); break; // g
+			case 2: test = (zs - offset) < (zd - offset); break; // ge
+			case 3: test = (zs - offset) <= (zd - offset); break; // g
 			default: __assume(0);
 			}
 
@@ -931,7 +937,7 @@ else if(steps == 3) g_slp3++;
 				GSVector4i uv = GSVector4i(uf).ps32(GSVector4i(vf));
 
 				GSVector4i uv0 = Wrap(uv);
-				GSVector4i uv1 = Wrap(uv + 0x00010001);
+				GSVector4i uv1 = Wrap(uv + GSVector4i::x0001());
 
 				for(int i = 0; i < pixels; i++)
 				{
@@ -1019,7 +1025,7 @@ else if(steps == 3) g_slp3++;
 				fm |= t;
 				break;
 			case 3: 
-				fm |= t & 0xff000000;
+				fm |= t & GSVector4i::xff000000();
 				zm |= t;
 				break;
 			default: 

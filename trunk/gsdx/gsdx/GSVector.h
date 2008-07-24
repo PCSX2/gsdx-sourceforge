@@ -256,10 +256,12 @@ public:
 	}
 
 	#if _M_SSE >= 0x401
+
 	template<int mask> GSVector4i blend16(const GSVector4i& a) const
 	{
 		return GSVector4i(_mm_blend_epi16(m, a, mask));
 	}
+
 	#endif
 
 	GSVector4i blend(const GSVector4i& a, const GSVector4i& mask) const
@@ -268,10 +270,12 @@ public:
 	}
 
 	#if _M_SSE >= 0x301
+
 	GSVector4i shuffle8(const GSVector4i& mask) const
 	{
 		return GSVector4i(_mm_shuffle_epi8(m, mask));
 	}
+
 	#endif
 
 	GSVector4i ps16(const GSVector4i& a) const
@@ -290,10 +294,12 @@ public:
 	}
 	
 	#if _M_SSE >= 0x401
+
 	GSVector4i pu32(const GSVector4i& a) const
 	{
 		return GSVector4i(_mm_packus_epi32(m, a));
 	}
+
 	#endif
 
 	GSVector4i upl8(const GSVector4i& a) const
@@ -492,10 +498,12 @@ public:
 	}
 
 	#if _M_SSE >= 0x301
+
 	GSVector4i mul16hrs(const GSVector4i& v) const
 	{
 		return GSVector4i(_mm_mulhrs_epi16(m, v.m));
 	}
+
 	#endif
 
 	GSVector4i andnot(const GSVector4i& v) const
@@ -804,7 +812,7 @@ public:
 	{
 		GSVector4i v;
 
-		v = loadu(&ptr[extract8<src + 0>()], &ptr[extract8<src + 1>()]);
+		v = load(&ptr[extract8<src + 0>()], &ptr[extract8<src + 1>()]);
 
 		return v;
 	}
@@ -813,7 +821,7 @@ public:
 	{
 		GSVector4i v;
 
-		v = loadu(&ptr[extract16<src + 0>()], &ptr[extract16<src + 1>()]);
+		v = load(&ptr[extract16<src + 0>()], &ptr[extract16<src + 1>()]);
 
 		return v;
 	}
@@ -822,7 +830,7 @@ public:
 	{
 		GSVector4i v;
 
-		v = loadu(&ptr[extract32<src + 0>()], &ptr[extract32<src + 1>()]);
+		v = load(&ptr[extract32<src + 0>()], &ptr[extract32<src + 1>()]);
 
 		return v;
 	}
@@ -954,14 +962,41 @@ public:
 
 	static GSVector4i invzero() 
 	{
-		return GSVector4i(0) == GSVector4i(0);
+		return zero() == zero();
 	}
 
+	static GSVector4i one()
+	{
+		return invzero().srl32(31);
+	}
+
+	static GSVector4i x0001()
+	{
+		return invzero().srl16(15);
+	}
+
+	static GSVector4i x000000ff()
+	{
+		return invzero().srl32(24);
+	}
+
+	static GSVector4i x80000000()
+	{
+		return invzero().sll32(31);
+	}
+
+	static GSVector4i xff000000()
+	{
+		return invzero().sll32(24);
+	}	
+
 	#if _M_SSE >= 0x401
+
 	static GSVector4i loadnt(const void* p)
 	{
 		return GSVector4i(_mm_stream_load_si128((__m128i*)p));
 	}
+
 	#endif
 
 	static GSVector4i loadl(const void* p)
@@ -979,17 +1014,12 @@ public:
 		return GSVector4i(_mm_castps_si128(_mm_loadh_pi(_mm_castsi128_ps(v.m), (__m64*)p)));
 	}
 
-	static GSVector4i loadu(const void* p)
-	{
-		return GSVector4i(_mm_loadu_si128((__m128i*)p));
-	}
-
-	static GSVector4i loadu(const void* pl, const void* ph)
+	static GSVector4i load(const void* pl, const void* ph)
 	{
 		return loadh(ph, loadl(pl));
 	}
 /*
-	static GSVector4i loadu(const void* pl, const void* ph)
+	static GSVector4i load(const void* pl, const void* ph)
 	{
 		__m128i lo = _mm_loadl_epi64((__m128i*)pl);
 		__m128i hi = _mm_loadl_epi64((__m128i*)ph);
@@ -1008,10 +1038,12 @@ public:
 	}
 
 	#ifdef _M_AMD64
+
 	static GSVector4i loadq(__int64 i)
 	{
 		return GSVector4i(_mm_cvtsi64_si128(i));
 	}
+
 	#endif
 
 	static void storent(void* p, const GSVector4i& v)
@@ -1029,12 +1061,7 @@ public:
 		_mm_storeh_pi((__m64*)p, _mm_castsi128_ps(v.m));
 	}
 
-	static void storeu(void* p, const GSVector4i& v)
-	{
-		_mm_storeu_si128((__m128i*)p, v.m);
-	}
-
-	static void storeu(void* pl, void* ph, const GSVector4i& v)
+	static void store(void* pl, void* ph, const GSVector4i& v)
 	{
 		GSVector4i::storel(pl, v);
 		GSVector4i::storeh(ph, v);
@@ -1052,10 +1079,12 @@ public:
 	}
 
 	#ifdef _M_AMD64
+
 	static __int64 storeq(const GSVector4i& v)
 	{
 		return _mm_cvtsi128_si64(v.m);
 	}
+
 	#endif
 
 	__forceinline static void transpose(GSVector4i& a, GSVector4i& b, GSVector4i& c, GSVector4i& d)
@@ -1616,7 +1645,7 @@ public:
 
 	__forceinline static void expand(const GSVector4i& v, GSVector4& a, GSVector4& b, GSVector4& c, GSVector4& d)
 	{
-		GSVector4i mask = GSVector4i(epi32_000000ff);
+		GSVector4i mask = GSVector4i::x000000ff();
 
 		a = v & mask;
 		b = (v >> 8) & mask;
