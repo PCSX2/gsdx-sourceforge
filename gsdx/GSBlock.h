@@ -829,9 +829,9 @@ public:
 
 		for(int i = 0; i < 4; i++, src += srcpitch * 2)
 		{
-			GSVector4i v0 = GSVector4i::loadu(src);
-			GSVector4i v1 = GSVector4i::loadu(src + 16, src + srcpitch);
-			GSVector4i v2 = GSVector4i::loadu(src + srcpitch + 8);
+			GSVector4i v0 = GSVector4i::load<false>(src);
+			GSVector4i v1 = GSVector4i::load(src + 16, src + srcpitch);
+			GSVector4i v2 = GSVector4i::load<false>(src + srcpitch + 8);
 
 			((GSVector4i*)dst)[i * 4 + 0] = v0.upl32(v0.srl<3>()).upl64(v0.srl<6>().upl32(v0.srl<9>())) & rgbx;
 
@@ -869,7 +869,7 @@ public:
 
 		for(int i = 0; i < 4; i++, src += srcpitch * 2)
 		{
-			GSVector4i v = GSVector4i::loadu(src, src + srcpitch);
+			GSVector4i v = GSVector4i::load(src, src + srcpitch);
 
 			GSVector4i v0 = zero.upl8(v);
 			GSVector4i v1 = zero.uph8(v);
@@ -1374,9 +1374,9 @@ public:
 
 		for(int i = 0; i < 4; i++, src += srcpitch * 2)
 		{
-			GSVector4i v4 = GSVector4i::loadu(src);
-			GSVector4i v5 = GSVector4i::loadu(src + 16, src + srcpitch);
-			GSVector4i v6 = GSVector4i::loadu(src + srcpitch + 8);
+			GSVector4i v4 = GSVector4i::load<false>(src);
+			GSVector4i v5 = GSVector4i::load(src + 16, src + srcpitch);
+			GSVector4i v6 = GSVector4i::load<false>(src + srcpitch + 8);
 
 			GSVector4i v0 = v4.upl32(v4.srl<3>()).upl64(v4.srl<6>().upl32(v4.srl<9>()));
 
@@ -1441,7 +1441,7 @@ public:
 
 		for(int i = 0; i < 4; i++, src += srcpitch * 2)
 		{
-			GSVector4i v4 = GSVector4i::loadu(src, src + srcpitch);
+			GSVector4i v4 = GSVector4i::load(src, src + srcpitch);
 
 			GSVector4i v0 = v4.shuffle8(mask0);
 			GSVector4i v1 = v4.shuffle8(mask1);
@@ -1460,7 +1460,7 @@ public:
 
 		for(int i = 0; i < 4; i++, src += srcpitch * 2)
 		{
-			GSVector4i v4 = GSVector4i::loadu(src, src + srcpitch);
+			GSVector4i v4 = GSVector4i::load(src, src + srcpitch);
 
 			GSVector4i v5 = v4.upl8(v4);
 			GSVector4i v6 = v4.uph8(v4);

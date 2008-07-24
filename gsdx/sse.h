@@ -45,14 +45,6 @@
 
 	#endif
 
-	#define epi32_ffffffff _mm_cmpeq_epi32(_mm_setzero_si128(), _mm_setzero_si128())
-	#define epi32_000000ff _mm_srli_epi32(epi32_ffffffff, 24)
-	#define epi32_ff000000 _mm_slli_epi32(epi32_ffffffff, 24)
-	#define epi32_00000001 _mm_srli_epi32(epi32_ffffffff, 31)
-	#define epi32_80000000 _mm_slli_epi32(epi32_ffffffff, 31)
-	#define epi32_00010001 _mm_srli_epi16(epi32_ffffffff, 15)	
-	#define epi32_7fffffff _mm_srli_epi32(epi32_ffffffff,  1)
-
 	const __m128 ps_3f800000 = _mm_castsi128_ps(_mm_set1_epi32(0x3f800000));
 	const __m128 ps_4b000000 = _mm_castsi128_ps(_mm_set1_epi32(0x4b000000));
 	const __m128 ps_7fffffff = _mm_castsi128_ps(_mm_set1_epi32(0x7fffffff));
