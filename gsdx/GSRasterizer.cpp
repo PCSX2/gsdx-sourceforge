@@ -235,7 +235,7 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 	{
 		DWORD hash = context->TEX0.ai32[0]; // TBP0, TBW, PSM
 
-		const DWORD* clut = m_state->m_mem.GetCLUT32();
+		const DWORD* clut = m_state->m_mem.m_clut;
 		const DWORD pal = GSLocalMemory::m_psm[context->TEX0.PSM].pal;
 
 		if(m_tc->hash == hash)

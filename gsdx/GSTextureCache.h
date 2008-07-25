@@ -424,12 +424,12 @@ public:
 		const GIFRegTEX0& TEX0 = m_renderer->m_context->TEX0;
 		const GIFRegCLAMP& CLAMP = m_renderer->m_context->CLAMP;
 
-		const DWORD* clut = m_renderer->m_mem.GetCLUT32();
+		const DWORD* clut = m_renderer->m_mem.m_clut;
 		const int pal = GSLocalMemory::m_psm[TEX0.PSM].pal;
 
 		if(pal > 0)
 		{
-			m_renderer->m_mem.UpdateCLUT(TEX0);
+			m_renderer->m_mem.m_clut.Read(TEX0);
 
 			/*
 			POSITION pos = m_tex.GetHeadPosition();

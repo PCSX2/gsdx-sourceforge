@@ -1092,6 +1092,18 @@
 				>
 			</File>
 			<File
+				RelativePath=".\GSClut.cpp"
+				>
+				<FileConfiguration
+					Name="Release SSE4|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AssemblerOutput="4"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
 				RelativePath=".\GSCrc.cpp"
 				>
 			</File>
@@ -1113,6 +1125,10 @@
 			</File>
 			<File
 				RelativePath=".\GSDirtyRect.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GSDump.cpp"
 				>
 			</File>
 			<File
@@ -1398,6 +1414,14 @@
 			<File
 				RelativePath=".\GSTextureFX10.cpp"
 				>
+				<FileConfiguration
+					Name="Release SSE4|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AssemblerOutput="4"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\GSTextureFX9.cpp"
@@ -1410,6 +1434,14 @@
 			<File
 				RelativePath=".\GSUtil.cpp"
 				>
+				<FileConfiguration
+					Name="Release SSE4|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AssemblerOutput="4"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\GSVector.cpp"
@@ -1582,6 +1614,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\GSClut.h"
+				>
+			</File>
+			<File
 				RelativePath=".\GSCrc.h"
 				>
 			</File>
@@ -1611,6 +1647,10 @@
 			</File>
 			<File
 				RelativePath=".\GSDrawingEnvironment.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSDump.h"
 				>
 			</File>
 			<File

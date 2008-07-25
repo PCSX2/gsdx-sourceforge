@@ -988,7 +988,12 @@ public:
 	static GSVector4i xff000000()
 	{
 		return invzero().sll32(24);
-	}	
+	}
+
+	static GSVector4i x00003fff()
+	{
+		return invzero().srl32(18);
+	}
 
 	#if _M_SSE >= 0x401
 

@@ -33,7 +33,6 @@ GSState::GSState(BYTE* base, bool mt, void (*irq)(), int nloophack)
 	, m_q(1.0f)
 	, m_vprim(1)
 	, m_version(5)
-	, m_dumpfp(NULL)
 	, m_frameskip(0)
 {
 	m_sssize = 0;
@@ -369,7 +368,6 @@ int GSState::GetFPS()
 //
 
 static __m128i _000000ff = _mm_set1_epi32(0x000000ff);
-static __m128i _00003fff = _mm_set1_epi32(0x00003fff);
 
 // GIFPackedRegHandler*
 
@@ -387,65 +385,68 @@ void GSState::GIFPackedRegHandlerPRIM(GIFPackedReg* r)
 
 void GSState::GIFPackedRegHandlerRGBA(GIFPackedReg* r)
 {
-#if _M_SSE >= 0x301
+	#if _M_SSE >= 0x301
 
 	GSVector4i mask(_mm_cvtsi32_si128(0x0c080400));
 	GSVector4i v = GSVector4i::load<false>(r).shuffle8(mask);
 	m_v.RGBAQ.ai32[0] = _mm_cvtsi128_si32(v);
 
-#elif _M_SSE >= 0x200
+	#elif _M_SSE >= 0x200
 
-	GSVector4i mask(_000000ff);
-	GSVector4i v = GSVector4i::loadu(r) & mask;
+	GSVector4i v = GSVector4i::load<false>(r) & GSVector4i::x000000ff();
 	m_v.RGBAQ.ai32[0] = v.rgba32();
 
-#else
+	#else
 
 	m_v.RGBAQ.R = r->RGBA.R;
 	m_v.RGBAQ.G = r->RGBA.G;
 	m_v.RGBAQ.B = r->RGBA.B;
 	m_v.RGBAQ.A = r->RGBA.A;
 
-#endif
+	#endif
 
 	m_v.RGBAQ.Q = m_q;
 }
 
 void GSState::GIFPackedRegHandlerSTQ(GIFPackedReg* r)
 {
-#if defined(_M_AMD64)
+	#if defined(_M_AMD64)
 
 	m_v.ST.i64 = r->ai64[0];
 
-#elif _M_SSE >= 0x200
+	#elif _M_SSE >= 0x200
 
 	GSVector4i v = GSVector4i::loadl(r);
 	GSVector4i::storel(&m_v.ST.i64, v);
 
-#else
+	#else
 
 	m_v.ST.S = r->STQ.S;
 	m_v.ST.T = r->STQ.T;
 
-#endif
+	#endif
 
 	m_q = r->STQ.Q;
 }
 
 void GSState::GIFPackedRegHandlerUV(GIFPackedReg* r)
 {
-#if _M_SSE >= 0x200
+	#if _M_SSE >= 0x401
 
-	GSVector4i mask(_00003fff);
-	GSVector4i v = GSVector4i::load<false>(r) & mask;
+	GSVector4i v = GSVector4i::loadl(r);
+	m_v.UV.ai32[0] = (DWORD)GSVector4i::store(v.pu32(v)) & 0x3fff3fff;
+
+	#elif _M_SSE >= 0x200
+
+	GSVector4i v = GSVector4i::loadl(r) & GSVector4i::x00003fff();
 	m_v.UV.ai32[0] = _mm_cvtsi128_si32(v.ps32(v));
 
-#else
+	#else
 
 	m_v.UV.U = r->UV.U;
 	m_v.UV.V = r->UV.V;
 
-#endif
+	#endif
 }
 
 void GSState::GIFPackedRegHandlerXYZF2(GIFPackedReg* r)
@@ -589,7 +590,7 @@ template<int i> void GSState::GIFRegHandlerTEX0(GIFReg* r)
 {
 	// even if TEX0 did not change, a new palette may have been uploaded and will overwrite the currently queued for drawing
 
-	if(PRIM->CTXT == i && m_env.CTXT[i].TEX0.i64 != r->TEX0.i64 || m_mem.IsCLUTUpdating(r->TEX0, m_env.TEXCLUT))
+	if(PRIM->CTXT == i && m_env.CTXT[i].TEX0.i64 != r->TEX0.i64 || m_mem.m_clut.IsWriting(r->TEX0, m_env.TEXCLUT))
 	{
 		Flush(); 
 	}
@@ -607,7 +608,7 @@ template<int i> void GSState::GIFRegHandlerTEX0(GIFReg* r)
 
 	FlushWrite();
 
-	m_mem.WriteCLUT(r->TEX0, m_env.TEXCLUT);
+	m_mem.m_clut.Write(r->TEX0, m_env.TEXCLUT, &m_mem);
 
 	if((m_env.CTXT[i].TEX0.TBW & 1) && (m_env.CTXT[i].TEX0.PSM == PSM_PSMT8 || m_env.CTXT[i].TEX0.PSM == PSM_PSMT4))
 	{
@@ -1141,7 +1142,7 @@ void GSState::Write(BYTE* mem, int len)
 		FlushWrite(mem, len);
 	}
 
-	m_mem.InvalidateCLUT();
+	m_mem.m_clut.Invalidate();
 }
 
 void GSState::Read(BYTE* mem, int len)
@@ -1218,10 +1219,9 @@ void GSState::ReadFIFO(BYTE* mem, int size)
 
 	Read(mem, size);
 
-	if(m_dumpfp && size > 0)
+	if(m_dump)
 	{
-		fputc(2, m_dumpfp);
-		fwrite(&size, 4, 1, m_dumpfp);
+		m_dump.ReadFIFO(size);
 	}
 }
 
@@ -1416,14 +1416,9 @@ template<int index> void GSState::Transfer(BYTE* mem, UINT32 size)
 		}
 	}
 
-	size = mem - start;
-
-	if(m_dumpfp && size > 0)
+	if(m_dump && mem > start)
 	{
-		fputc(0, m_dumpfp);
-		fputc(index, m_dumpfp);
-		fwrite(&size, 4, 1, m_dumpfp);
-		fwrite(start, size, 1, m_dumpfp);
+		m_dump.Transfer(index, start, mem - start);
 	}
 }
 

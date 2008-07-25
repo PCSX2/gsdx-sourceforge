@@ -326,7 +326,10 @@ public:
 
 		ProcessWindowMessages();
 
-		Dump();
+		if(m_dump)
+		{
+			m_dump.VSync(m_field, !(::GetAsyncKeyState(VK_CONTROL) & 0x8000), PMODE);
+		}
 
 		if(!Merge()) return;
 
@@ -432,55 +435,24 @@ public:
 		DoCapture();
 	}
 
-	void Dump()
-	{
-		if(m_dumpfp == NULL)
-		{
-			if(m_field == 0 && !m_dumpfn.IsEmpty())
-			{
-				m_dumpfp = _tfopen(m_dumpfn, _T("wb"));
-
-				freezeData fd;
-				fd.size = 0;
-				fd.data = NULL;
-				Freeze(&fd, true);
-				fd.data = new BYTE[fd.size];
-				Freeze(&fd, false);
-
-				fwrite(&m_crc, 4, 1, m_dumpfp);
-				fwrite(&fd.size, 4, 1, m_dumpfp);
-				fwrite(fd.data, fd.size, 1, m_dumpfp);
-				fwrite(PMODE, 0x2000, 1, m_dumpfp);
-
-				delete [] fd.data;
-			}
-		}
-		else
-		{
-			fputc(3, m_dumpfp);
-			fwrite(PMODE, 0x2000, 1, m_dumpfp);
-
-			fputc(1, m_dumpfp);
-			fputc(m_field, m_dumpfp);
-
-			if(m_field == 0 && !(::GetAsyncKeyState(VK_CONTROL) & 0x8000))
-			{
-				fclose(m_dumpfp);
-				m_dumpfp = NULL;
-				m_dumpfn.Empty();
-			}
-		}
-	}
-
 	bool MakeSnapshot(LPCTSTR path)
 	{
 		CString fn;
 
 		fn.Format(_T("%s_%s"), path, CTime::GetCurrentTime().Format(_T("%Y%m%d%H%M%S")));
 
-		if((::GetAsyncKeyState(VK_SHIFT) & 0x8000) && m_dumpfn.IsEmpty())
+		if((::GetAsyncKeyState(VK_SHIFT) & 0x8000) && !m_dump && m_field == 0)
 		{
-			m_dumpfn = fn + _T(".gs");
+			freezeData fd;
+			fd.size = 0;
+			fd.data = NULL;
+			Freeze(&fd, true);
+			fd.data = new BYTE[fd.size];
+			Freeze(&fd, false);
+
+			m_dump.Open(fn + _T(".gs"), m_crc, fd, PMODE);
+
+			delete [] fd.data;
 		}
 
 		return m_dev.SaveCurrent(fn + _T(".bmp"));
