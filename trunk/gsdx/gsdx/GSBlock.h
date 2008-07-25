@@ -43,12 +43,12 @@ class GSBlock
 	static const GSVector4i m_uw8hmask3;
 
 public:
-	template<int i, bool aligned, DWORD mask> __forceinline static void WriteColumn32(BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
+	template<int i, bool aligned, DWORD mask> __forceinline static void WriteColumn32(BYTE* RESTRICT dst, const BYTE* RESTRICT src, int srcpitch)
 	{
 		#if _M_SSE >= 0x200
 
-		GSVector4i* s0 = (GSVector4i*)&src[srcpitch * 0];
-		GSVector4i* s1 = (GSVector4i*)&src[srcpitch * 1];
+		const GSVector4i* s0 = (const GSVector4i*)&src[srcpitch * 0];
+		const GSVector4i* s1 = (const GSVector4i*)&src[srcpitch * 1];
 
 		GSVector4i v0 = GSVector4i::load<aligned>(&s0[0]);
 		GSVector4i v1 = GSVector4i::load<aligned>(&s0[1]);
@@ -116,12 +116,12 @@ public:
 		#endif
 	}
 
-	template<int i, bool aligned> __forceinline static void WriteColumn16(BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
+	template<int i, bool aligned> __forceinline static void WriteColumn16(BYTE* RESTRICT dst, const BYTE* RESTRICT src, int srcpitch)
 	{
 		#if _M_SSE >= 0x200
 
-		GSVector4i* s0 = (GSVector4i*)&src[srcpitch * 0];
-		GSVector4i* s1 = (GSVector4i*)&src[srcpitch * 1];
+		const GSVector4i* s0 = (const GSVector4i*)&src[srcpitch * 0];
+		const GSVector4i* s1 = (const GSVector4i*)&src[srcpitch * 1];
 
 		GSVector4i v0 = GSVector4i::load<aligned>(&s0[0]);
 		GSVector4i v1 = GSVector4i::load<aligned>(&s0[1]);
@@ -151,7 +151,7 @@ public:
 		#endif
 	}
 
-	template<int i, bool aligned> __forceinline static void WriteColumn8(BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
+	template<int i, bool aligned> __forceinline static void WriteColumn8(BYTE* RESTRICT dst, const BYTE* RESTRICT src, int srcpitch)
 	{
 		#if _M_SSE >= 0x200
 
@@ -195,7 +195,7 @@ public:
 		#endif
 	}
 
-	template<int i, bool aligned> __forceinline static void WriteColumn4(BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
+	template<int i, bool aligned> __forceinline static void WriteColumn4(BYTE* RESTRICT dst, const BYTE* RESTRICT src, int srcpitch)
 	{
 		// TODO: pshufb
 
@@ -245,7 +245,7 @@ public:
 		#endif
 	}
 
-	template<bool aligned, DWORD mask> static void WriteColumn32(int y, BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
+	template<bool aligned, DWORD mask> static void WriteColumn32(int y, BYTE* RESTRICT dst, const BYTE* RESTRICT src, int srcpitch)
 	{
 		switch((y >> 1) & 3)
 		{
@@ -257,7 +257,7 @@ public:
 		}
 	}
 
-	template<bool aligned> static void WriteColumn16(int y, BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
+	template<bool aligned> static void WriteColumn16(int y, BYTE* RESTRICT dst, const BYTE* RESTRICT src, int srcpitch)
 	{
 		switch((y >> 1) & 3)
 		{
@@ -269,7 +269,7 @@ public:
 		}
 	}
 
-	template<bool aligned> static void WriteColumn8(int y, BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
+	template<bool aligned> static void WriteColumn8(int y, BYTE* RESTRICT dst, const BYTE* RESTRICT src, int srcpitch)
 	{
 		switch((y >> 2) & 3)
 		{
@@ -281,7 +281,7 @@ public:
 		}
 	}
 
-	template<bool aligned> static void WriteColumn4(int y, BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
+	template<bool aligned> static void WriteColumn4(int y, BYTE* RESTRICT dst, const BYTE* RESTRICT src, int srcpitch)
 	{
 		switch((y >> 2) & 3)
 		{
@@ -293,7 +293,7 @@ public:
 		}
 	}
 
-	template<bool aligned, DWORD mask> static void WriteBlock32(BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
+	template<bool aligned, DWORD mask> static void WriteBlock32(BYTE* RESTRICT dst, const BYTE* RESTRICT src, int srcpitch)
 	{
 		#if _M_SSE >= 0x200
 
@@ -327,7 +327,7 @@ public:
 		#endif
 	}
 
-	template<bool aligned> static void WriteBlock16(BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
+	template<bool aligned> static void WriteBlock16(BYTE* RESTRICT dst, const BYTE* RESTRICT src, int srcpitch)
 	{
 		#if _M_SSE >= 0x200
 
@@ -354,7 +354,7 @@ public:
 		#endif
 	}
 
-	template<bool aligned> static void WriteBlock8(BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
+	template<bool aligned> static void WriteBlock8(BYTE* RESTRICT dst, const BYTE* RESTRICT src, int srcpitch)
 	{
 		#if _M_SSE >= 0x200
 
@@ -381,7 +381,7 @@ public:
 		#endif
 	}
 
-	template<bool aligned> static void WriteBlock4(BYTE* RESTRICT dst, BYTE* RESTRICT src, int srcpitch)
+	template<bool aligned> static void WriteBlock4(BYTE* RESTRICT dst, const BYTE* RESTRICT src, int srcpitch)
 	{
 		#if _M_SSE >= 0x200
 
@@ -411,14 +411,16 @@ public:
 		#endif
 	}
 
-	template<int i, bool aligned> __forceinline static void ReadColumn32(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
+	template<int i, bool aligned> __forceinline static void ReadColumn32(const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		#if _M_SSE >= 0x200
 
-		GSVector4i v0 = ((GSVector4i*)src)[i * 4 + 0]; 
-		GSVector4i v1 = ((GSVector4i*)src)[i * 4 + 1]; 
-		GSVector4i v2 = ((GSVector4i*)src)[i * 4 + 2]; 
-		GSVector4i v3 = ((GSVector4i*)src)[i * 4 + 3];
+		const GSVector4i* s = (const GSVector4i*)src;
+
+		GSVector4i v0 = s[i * 4 + 0]; 
+		GSVector4i v1 = s[i * 4 + 1]; 
+		GSVector4i v2 = s[i * 4 + 2]; 
+		GSVector4i v3 = s[i * 4 + 3];
 
 		GSVector4i::sw64(v0, v1, v2, v3);
 
@@ -445,14 +447,16 @@ public:
 		#endif
 	}
 
-	template<int i, bool aligned> __forceinline static void ReadColumn16(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
+	template<int i, bool aligned> __forceinline static void ReadColumn16(const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		#if _M_SSE >= 0x301
 
-		GSVector4i v0 = ((GSVector4i*)src)[i * 4 + 0].shuffle8(m_r16mask);
-		GSVector4i v1 = ((GSVector4i*)src)[i * 4 + 1].shuffle8(m_r16mask);
-		GSVector4i v2 = ((GSVector4i*)src)[i * 4 + 2].shuffle8(m_r16mask);
-		GSVector4i v3 = ((GSVector4i*)src)[i * 4 + 3].shuffle8(m_r16mask);
+		const GSVector4i* s = (const GSVector4i*)src;
+
+		GSVector4i v0 = s[i * 4 + 0].shuffle8(m_r16mask);
+		GSVector4i v1 = s[i * 4 + 1].shuffle8(m_r16mask);
+		GSVector4i v2 = s[i * 4 + 2].shuffle8(m_r16mask);
+		GSVector4i v3 = s[i * 4 + 3].shuffle8(m_r16mask);
 
 		GSVector4i::sw32(v0, v1, v2, v3);
 		GSVector4i::sw64(v0, v1, v2, v3);
@@ -467,10 +471,12 @@ public:
 
 		#elif _M_SSE >= 0x200
 
-		GSVector4i v0 = ((GSVector4i*)src)[i * 4 + 0]; 
-		GSVector4i v1 = ((GSVector4i*)src)[i * 4 + 1]; 
-		GSVector4i v2 = ((GSVector4i*)src)[i * 4 + 2]; 
-		GSVector4i v3 = ((GSVector4i*)src)[i * 4 + 3];
+		const GSVector4i* s = (const GSVector4i*)src;
+
+		GSVector4i v0 = s[i * 4 + 0]; 
+		GSVector4i v1 = s[i * 4 + 1]; 
+		GSVector4i v2 = s[i * 4 + 2]; 
+		GSVector4i v3 = s[i * 4 + 3];
 
 		GSVector4i::sw16(v0, v1, v2, v3);
 		GSVector4i::sw32(v0, v1, v2, v3);
@@ -499,25 +505,27 @@ public:
 		#endif
 	}
 
-	template<int i, bool aligned> __forceinline static void ReadColumn8(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
+	template<int i, bool aligned> __forceinline static void ReadColumn8(const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		#if _M_SSE >= 0x301
+
+		const GSVector4i* s = (const GSVector4i*)src;
 
 		GSVector4i v0, v1, v2, v3;
 
 		if((i & 1) == 0)
 		{
-			v0 = ((GSVector4i*)src)[i * 4 + 0]; 
-			v1 = ((GSVector4i*)src)[i * 4 + 1]; 
-			v2 = ((GSVector4i*)src)[i * 4 + 2]; 
-			v3 = ((GSVector4i*)src)[i * 4 + 3];
+			v0 = s[i * 4 + 0]; 
+			v1 = s[i * 4 + 1]; 
+			v2 = s[i * 4 + 2]; 
+			v3 = s[i * 4 + 3];
 		}
 		else
 		{
-			v2 = ((GSVector4i*)src)[i * 4 + 0]; 
-			v3 = ((GSVector4i*)src)[i * 4 + 1]; 
-			v0 = ((GSVector4i*)src)[i * 4 + 2]; 
-			v1 = ((GSVector4i*)src)[i * 4 + 3];
+			v2 = s[i * 4 + 0]; 
+			v3 = s[i * 4 + 1]; 
+			v0 = s[i * 4 + 2]; 
+			v1 = s[i * 4 + 3];
 		}
 
 		v0 = v0.shuffle8(m_r8mask);
@@ -535,10 +543,12 @@ public:
 
 		#elif _M_SSE >= 0x200
 
-		GSVector4i v0 = ((GSVector4i*)src)[i * 4 + 0]; 
-		GSVector4i v1 = ((GSVector4i*)src)[i * 4 + 1]; 
-		GSVector4i v2 = ((GSVector4i*)src)[i * 4 + 2]; 
-		GSVector4i v3 = ((GSVector4i*)src)[i * 4 + 3];
+		const GSVector4i* s = (const GSVector4i*)src;
+
+		GSVector4i v0 = s[i * 4 + 0]; 
+		GSVector4i v1 = s[i * 4 + 1]; 
+		GSVector4i v2 = s[i * 4 + 2]; 
+		GSVector4i v3 = s[i * 4 + 3];
 
 		GSVector4i::sw8(v0, v1, v2, v3);
 		GSVector4i::sw16(v0, v1, v2, v3);
@@ -576,14 +586,16 @@ public:
 		#endif
 	}
 	
-	template<int i, bool aligned> __forceinline static void ReadColumn4(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
+	template<int i, bool aligned> __forceinline static void ReadColumn4(const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		#if _M_SSE >= 0x301
 
-		GSVector4i v0 = ((GSVector4i*)src)[i * 4 + 0].xzyw(); 
-		GSVector4i v1 = ((GSVector4i*)src)[i * 4 + 1].xzyw(); 
-		GSVector4i v2 = ((GSVector4i*)src)[i * 4 + 2].xzyw(); 
-		GSVector4i v3 = ((GSVector4i*)src)[i * 4 + 3].xzyw();
+		const GSVector4i* s = (const GSVector4i*)src;
+
+		GSVector4i v0 = s[i * 4 + 0].xzyw(); 
+		GSVector4i v1 = s[i * 4 + 1].xzyw(); 
+		GSVector4i v2 = s[i * 4 + 2].xzyw(); 
+		GSVector4i v3 = s[i * 4 + 3].xzyw();
 
 		GSVector4i::sw64(v0, v1, v2, v3);
 		GSVector4i::sw4(v0, v2, v1, v3);
@@ -610,10 +622,12 @@ public:
 
 		#elif _M_SSE >= 0x200
 
-		GSVector4i v0 = ((GSVector4i*)src)[i * 4 + 0]; 
-		GSVector4i v1 = ((GSVector4i*)src)[i * 4 + 1]; 
-		GSVector4i v2 = ((GSVector4i*)src)[i * 4 + 2]; 
-		GSVector4i v3 = ((GSVector4i*)src)[i * 4 + 3];
+		const GSVector4i* s = (const GSVector4i*)src;
+
+		GSVector4i v0 = s[i * 4 + 0]; 
+		GSVector4i v1 = s[i * 4 + 1]; 
+		GSVector4i v2 = s[i * 4 + 2]; 
+		GSVector4i v3 = s[i * 4 + 3];
 
 		GSVector4i::sw32(v0, v1, v2, v3);
 		GSVector4i::sw32(v0, v1, v2, v3);
@@ -662,7 +676,7 @@ public:
 		#endif
 	}
 
-	template<bool aligned> static void ReadColumn32(int y, BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
+	template<bool aligned> static void ReadColumn32(int y, const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		switch((y >> 1) & 3)
 		{
@@ -674,7 +688,7 @@ public:
 		}
 	}
 
-	template<bool aligned> static void ReadColumn16(int y, BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
+	template<bool aligned> static void ReadColumn16(int y, const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		switch((y >> 1) & 3)
 		{
@@ -686,7 +700,7 @@ public:
 		}
 	}
 
-	template<bool aligned> static void ReadColumn8(int y, BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
+	template<bool aligned> static void ReadColumn8(int y, const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		switch((y >> 2) & 3)
 		{
@@ -698,7 +712,7 @@ public:
 		}
 	}
 
-	template<bool aligned> static void ReadColumn4(int y, BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
+	template<bool aligned> static void ReadColumn4(int y, const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		switch((y >> 2) & 3)
 		{
@@ -710,7 +724,7 @@ public:
 		}
 	}
 
-	template<bool aligned> static void ReadBlock32(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
+	template<bool aligned> static void ReadBlock32(const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		#if _M_SSE >= 0x200
 
@@ -737,7 +751,7 @@ public:
 		#endif
 	}
 
-	template<bool aligned> static void ReadBlock16(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
+	template<bool aligned> static void ReadBlock16(const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		#if _M_SSE >= 0x200
 
@@ -764,7 +778,7 @@ public:
 		#endif
 	}
 
-	template<bool aligned> static void ReadBlock8(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
+	template<bool aligned> static void ReadBlock8(const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		#if _M_SSE >= 0x200
 
@@ -791,7 +805,7 @@ public:
 		#endif
 	}
 
-	template<bool aligned> static void ReadBlock4(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
+	template<bool aligned> static void ReadBlock4(const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
 	{
 		#if _M_SSE >= 0x200
 
@@ -821,7 +835,7 @@ public:
 		#endif
 	}
 
-	static void UnpackBlock24(BYTE* RESTRICT src, int srcpitch, DWORD* RESTRICT dst)
+	static void UnpackBlock24(const BYTE* RESTRICT src, int srcpitch, DWORD* RESTRICT dst)
 	{
 		#if _M_SSE >= 0x200
 
@@ -861,7 +875,7 @@ public:
 		#endif
 	}
 
-	static void UnpackBlock8H(BYTE* RESTRICT src, int srcpitch, DWORD* RESTRICT dst)
+	static void UnpackBlock8H(const BYTE* RESTRICT src, int srcpitch, DWORD* RESTRICT dst)
 	{
 		#if _M_SSE >= 0x200
 
@@ -893,7 +907,7 @@ public:
 		#endif
 	}
 
-	static void UnpackBlock4HL(BYTE* RESTRICT src, int srcpitch, DWORD* RESTRICT dst)
+	static void UnpackBlock4HL(const BYTE* RESTRICT src, int srcpitch, DWORD* RESTRICT dst)
 	{
 		#if _M_SSE >= 0x200
 
@@ -943,7 +957,7 @@ public:
 		#endif
 	}
 
-	static void UnpackBlock4HH(BYTE* RESTRICT src, int srcpitch, DWORD* RESTRICT dst)
+	static void UnpackBlock4HH(const BYTE* RESTRICT src, int srcpitch, DWORD* RESTRICT dst)
 	{
 		#if _M_SSE >= 0x200
 
@@ -993,19 +1007,21 @@ public:
 		#endif
 	}
 
-	template<bool AEM> static void ExpandBlock24(DWORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const GIFRegTEXA& TEXA)
+	template<bool AEM> static void ExpandBlock24(const DWORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const GIFRegTEXA& TEXA)
 	{
 		#if _M_SSE >= 0x200
+
+		const GSVector4i* s = (const GSVector4i*)src;
 
 		GSVector4i TA0(TEXA.TA0 << 24);
 		GSVector4i mask = m_rgbx;
 
 		for(int i = 0; i < 4; i++, dst += dstpitch * 2)
 		{
-			GSVector4i v0 = ((GSVector4i*)src)[i * 4 + 0] & mask;
-			GSVector4i v1 = ((GSVector4i*)src)[i * 4 + 1] & mask;
-			GSVector4i v2 = ((GSVector4i*)src)[i * 4 + 2] & mask;
-			GSVector4i v3 = ((GSVector4i*)src)[i * 4 + 3] & mask;
+			GSVector4i v0 = s[i * 4 + 0] & mask;
+			GSVector4i v1 = s[i * 4 + 1] & mask;
+			GSVector4i v2 = s[i * 4 + 2] & mask;
+			GSVector4i v3 = s[i * 4 + 3] & mask;
 
 			GSVector4i* d0 = (GSVector4i*)&dst[dstpitch * 0];
 			GSVector4i* d1 = (GSVector4i*)&dst[dstpitch * 1];
@@ -1050,9 +1066,11 @@ public:
 		#endif
 	}
 
-	static void ExpandBlock16(WORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const GIFRegTEXA& TEXA) // do not inline, uses too many xmm regs
+	static void ExpandBlock16(const WORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const GIFRegTEXA& TEXA) // do not inline, uses too many xmm regs
 	{
 		#if _M_SSE >= 0x200
+
+		const GSVector4i* s = (const GSVector4i*)src;
 
 		GSVector4i TA0(TEXA.TA0 << 24);
 		GSVector4i TA1(TEXA.TA1 << 24);
@@ -1066,7 +1084,7 @@ public:
 		{
 			for(int i = 0; i < 8; i++, dst += dstpitch)
 			{
-				GSVector4i v0 = ((GSVector4i*)src)[i * 2 + 0];
+				GSVector4i v0 = s[i * 2 + 0];
 
 				l = v0.upl16();
 				h = v0.uph16();
@@ -1074,7 +1092,7 @@ public:
 				((GSVector4i*)dst)[0] = ((l & rm) << 3) | ((l & gm) << 6) | ((l & bm) << 9) | TA1.blend(TA0, l < am).andnot(l == GSVector4i::zero());
 				((GSVector4i*)dst)[1] = ((h & rm) << 3) | ((h & gm) << 6) | ((h & bm) << 9) | TA1.blend(TA0, h < am).andnot(h == GSVector4i::zero());
 
-				GSVector4i v1 = ((GSVector4i*)src)[i * 2 + 1];
+				GSVector4i v1 = s[i * 2 + 1];
 
 				l = v1.upl16();
 				h = v1.uph16();
@@ -1087,7 +1105,7 @@ public:
 		{
 			for(int i = 0; i < 8; i++, dst += dstpitch)
 			{
-				GSVector4i v0 = ((GSVector4i*)src)[i * 2 + 0];
+				GSVector4i v0 = s[i * 2 + 0];
 
 				l = v0.upl16();
 				h = v0.uph16();
@@ -1095,7 +1113,7 @@ public:
 				((GSVector4i*)dst)[0] = ((l & rm) << 3) | ((l & gm) << 6) | ((l & bm) << 9) | TA1.blend(TA0, l < am);
 				((GSVector4i*)dst)[1] = ((h & rm) << 3) | ((h & gm) << 6) | ((h & bm) << 9) | TA1.blend(TA0, h < am);
 
-				GSVector4i v1 = ((GSVector4i*)src)[i * 2 + 1];
+				GSVector4i v1 = s[i * 2 + 1];
 
 				l = v1.upl16();
 				h = v1.uph16();
@@ -1134,16 +1152,15 @@ public:
 		#endif
 	}
 
-	__forceinline static void ExpandBlock8_32(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
+	__forceinline static void ExpandBlock8_32(const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const DWORD* RESTRICT pal)
 	{
 		for(int j = 0; j < 16; j++, dst += dstpitch)
 		{
 			#if _M_SSE >= 0x401
 
-			GSVector4i* s = (GSVector4i*)src;
-			GSVector4i* d = (GSVector4i*)dst;
+			const GSVector4i* s = (const GSVector4i*)src;
 
-			s[j].gather32_8(pal, d);
+			s[j].gather32_8(pal, (GSVector4i*)dst);
 
 			#else
 
@@ -1156,16 +1173,15 @@ public:
 		}
 	}
 
-	__forceinline static void ExpandBlock8_16(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
+	__forceinline static void ExpandBlock8_16(const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const DWORD* RESTRICT pal)
 	{
 		for(int j = 0; j < 16; j++, dst += dstpitch)
 		{
 			#if _M_SSE >= 0x401
 
-			GSVector4i* s = (GSVector4i*)src;
-			GSVector4i* d = (GSVector4i*)dst;
+			const GSVector4i* s = (const GSVector4i*)src;
 
-			s[j].gather16_8(pal, d);
+			s[j].gather16_8(pal, (GSVector4i*)dst);
 
 			#else
 
@@ -1178,16 +1194,15 @@ public:
 		}
 	}
 
-	__forceinline static void ExpandBlock4_32(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, UINT64* RESTRICT pal)
+	__forceinline static void ExpandBlock4_32(const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const UINT64* RESTRICT pal)
 	{
 		for(int j = 0; j < 16; j++, dst += dstpitch)
 		{
 			#if _M_SSE >= 0x401
 
-			GSVector4i* s = (GSVector4i*)src;
-			GSVector4i* d = (GSVector4i*)dst;
+			const GSVector4i* s = (const GSVector4i*)src;
 
-			s[j].gather64_8(pal, d);
+			s[j].gather64_8(pal, (GSVector4i*)dst);
 
 			#else
 
@@ -1200,16 +1215,15 @@ public:
 		}
 	}
 
-	__forceinline static void ExpandBlock4_16(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, UINT64* RESTRICT pal)
+	__forceinline static void ExpandBlock4_16(const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const UINT64* RESTRICT pal)
 	{
 		for(int j = 0; j < 16; j++, dst += dstpitch)
 		{
 			#if _M_SSE >= 0x401
 
-			GSVector4i* s = (GSVector4i*)src;
-			GSVector4i* d = (GSVector4i*)dst;
+			const GSVector4i* s = (const GSVector4i*)src;
 
-			s[j].gather32_8(pal, d);
+			s[j].gather32_8(pal, (GSVector4i*)dst);
 
 			#else
 
@@ -1222,17 +1236,16 @@ public:
 		}
 	}
 
-	__forceinline static void ExpandBlock8H_32(DWORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
+	__forceinline static void ExpandBlock8H_32(DWORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const DWORD* RESTRICT pal)
 	{
 		for(int j = 0; j < 8; j++, dst += dstpitch)
 		{
 			#if _M_SSE >= 0x401
 
-			GSVector4i* s = (GSVector4i*)src;
-			GSVector4i* d = (GSVector4i*)dst;
+			const GSVector4i* s = (const GSVector4i*)src;
 
-			d[0] = (s[j * 2 + 0] >> 24).gather32_32<>(pal);
-			d[1] = (s[j * 2 + 1] >> 24).gather32_32<>(pal);
+			((GSVector4i*)dst)[0] = (s[j * 2 + 0] >> 24).gather32_32<>(pal);
+			((GSVector4i*)dst)[1] = (s[j * 2 + 1] >> 24).gather32_32<>(pal);
 
 			#else
 
@@ -1245,19 +1258,18 @@ public:
 		}
 	}
 
-	__forceinline static void ExpandBlock8H_16(DWORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
+	__forceinline static void ExpandBlock8H_16(DWORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const DWORD* RESTRICT pal)
 	{
 		for(int j = 0; j < 8; j++, dst += dstpitch)
 		{
 			#if _M_SSE >= 0x401
 
-			GSVector4i* s = (GSVector4i*)src;
-			GSVector4i* d = (GSVector4i*)dst;
+			const GSVector4i* s = (const GSVector4i*)src;
 
 			GSVector4i v0 = (s[j * 2 + 0] >> 24).gather32_32<>(pal);
 			GSVector4i v1 = (s[j * 2 + 1] >> 24).gather32_32<>(pal);
 
-			d[0] = v0.pu32(v1);
+			((GSVector4i*)dst)[0] = v0.pu32(v1);
 
 			#else
 
@@ -1270,17 +1282,16 @@ public:
 		}
 	}
 
-	__forceinline static void ExpandBlock4HL_32(DWORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
+	__forceinline static void ExpandBlock4HL_32(DWORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const DWORD* RESTRICT pal)
 	{
 		for(int j = 0; j < 8; j++, dst += dstpitch)
 		{
 			#if _M_SSE >= 0x401
 
-			GSVector4i* s = (GSVector4i*)src;
-			GSVector4i* d = (GSVector4i*)dst;
+			const GSVector4i* s = (const GSVector4i*)src;
 
-			d[0] = ((s[j * 2 + 0] >> 24) & 0xf).gather32_32<>(pal);
-			d[1] = ((s[j * 2 + 1] >> 24) & 0xf).gather32_32<>(pal);
+			((GSVector4i*)dst)[0] = ((s[j * 2 + 0] >> 24) & 0xf).gather32_32<>(pal);
+			((GSVector4i*)dst)[1] = ((s[j * 2 + 1] >> 24) & 0xf).gather32_32<>(pal);
 
 			#else
 
@@ -1293,19 +1304,18 @@ public:
 		}
 	}
 
-	__forceinline static void ExpandBlock4HL_16(DWORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
+	__forceinline static void ExpandBlock4HL_16(DWORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const DWORD* RESTRICT pal)
 	{
 		for(int j = 0; j < 8; j++, dst += dstpitch)
 		{
 			#if _M_SSE >= 0x401
 
-			GSVector4i* s = (GSVector4i*)src;
-			GSVector4i* d = (GSVector4i*)dst;
+			const GSVector4i* s = (const GSVector4i*)src;
 
 			GSVector4i v0 = ((s[j * 2 + 0] >> 24) & 0xf).gather32_32<>(pal);
 			GSVector4i v1 = ((s[j * 2 + 1] >> 24) & 0xf).gather32_32<>(pal);
 
-			d[0] = v0.pu32(v1);
+			((GSVector4i*)dst)[0] = v0.pu32(v1);
 
 			#else
 
@@ -1318,17 +1328,16 @@ public:
 		}
 	}
 
-	__forceinline static void ExpandBlock4HH_32(DWORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
+	__forceinline static void ExpandBlock4HH_32(DWORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const DWORD* RESTRICT pal)
 	{
 		for(int j = 0; j < 8; j++, dst += dstpitch)
 		{
 			#if _M_SSE >= 0x401
 
-			GSVector4i* s = (GSVector4i*)src;
-			GSVector4i* d = (GSVector4i*)dst;
+			const GSVector4i* s = (const GSVector4i*)src;
 
-			d[0] = (s[j * 2 + 0] >> 28).gather32_32<>(pal);
-			d[1] = (s[j * 2 + 1] >> 28).gather32_32<>(pal);
+			((GSVector4i*)dst)[0] = (s[j * 2 + 0] >> 28).gather32_32<>(pal);
+			((GSVector4i*)dst)[1] = (s[j * 2 + 1] >> 28).gather32_32<>(pal);
 
 			#else
 
@@ -1341,19 +1350,18 @@ public:
 		}
 		}
 
-	__forceinline static void ExpandBlock4HH_16(DWORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
+	__forceinline static void ExpandBlock4HH_16(DWORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const DWORD* RESTRICT pal)
 	{
 		for(int j = 0; j < 8; j++, dst += dstpitch)
 		{
 			#if _M_SSE >= 0x401
 
-			GSVector4i* s = (GSVector4i*)src;
-			GSVector4i* d = (GSVector4i*)dst;
+			const GSVector4i* s = (const GSVector4i*)src;
 
 			GSVector4i v0 = (s[j * 2 + 0] >> 28).gather32_32<>(pal);
 			GSVector4i v1 = (s[j * 2 + 1] >> 28).gather32_32<>(pal);
 
-			d[0] = v0.pu32(v1);
+			((GSVector4i*)dst)[0] = v0.pu32(v1);
 
 			#else
 
@@ -1366,7 +1374,7 @@ public:
 		}
 	}
 
-	__forceinline static void UnpackAndWriteBlock24(BYTE* RESTRICT src, int srcpitch, BYTE* RESTRICT dst)
+	__forceinline static void UnpackAndWriteBlock24(const BYTE* RESTRICT src, int srcpitch, BYTE* RESTRICT dst)
 	{
 		#if _M_SSE >= 0x200
 
@@ -1428,7 +1436,7 @@ public:
 		#endif
 	}
 
-	__forceinline static void UnpackAndWriteBlock8H(BYTE* RESTRICT src, int srcpitch, BYTE* RESTRICT dst)
+	__forceinline static void UnpackAndWriteBlock8H(const BYTE* RESTRICT src, int srcpitch, BYTE* RESTRICT dst)
 	{
 		#if _M_SSE >= 0x301
 
@@ -1493,7 +1501,7 @@ public:
 		#endif
 	}
 
-	__forceinline static void UnpackAndWriteBlock4HL(BYTE* RESTRICT src, int srcpitch, BYTE* RESTRICT dst)
+	__forceinline static void UnpackAndWriteBlock4HL(const BYTE* RESTRICT src, int srcpitch, BYTE* RESTRICT dst)
 	{
 		#if _M_SSE >= 0x301
 
@@ -1621,7 +1629,7 @@ public:
 		#endif
 	}
 
-	__forceinline static void UnpackAndWriteBlock4HH(BYTE* RESTRICT src, int srcpitch, BYTE* RESTRICT dst)
+	__forceinline static void UnpackAndWriteBlock4HH(const BYTE* RESTRICT src, int srcpitch, BYTE* RESTRICT dst)
 	{
 		#if _M_SSE >= 0x301
 
@@ -1749,19 +1757,21 @@ public:
 		#endif
 	}
 
-	template<bool AEM> __forceinline static void ReadAndExpandBlock24(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const GIFRegTEXA& TEXA)
+	template<bool AEM> __forceinline static void ReadAndExpandBlock24(const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const GIFRegTEXA& TEXA)
 	{
 		#if _M_SSE >= 0x200
+
+		const GSVector4i* s = (const GSVector4i*)src;
 
 		GSVector4i TA0(TEXA.TA0 << 24);
 		GSVector4i mask = m_rgbx;
 
 		for(int i = 0; i < 4; i++, dst += dstpitch * 2)
 		{
-			GSVector4i v0 = ((GSVector4i*)src)[i * 4 + 0];
-			GSVector4i v1 = ((GSVector4i*)src)[i * 4 + 1];
-			GSVector4i v2 = ((GSVector4i*)src)[i * 4 + 2];
-			GSVector4i v3 = ((GSVector4i*)src)[i * 4 + 3];
+			GSVector4i v0 = s[i * 4 + 0];
+			GSVector4i v1 = s[i * 4 + 1];
+			GSVector4i v2 = s[i * 4 + 2];
+			GSVector4i v3 = s[i * 4 + 3];
 
 			GSVector4i::sw64(v0, v1, v2, v3);
 
@@ -1810,20 +1820,21 @@ public:
 		#endif
 	}
 
-	__forceinline static void ReadAndExpandBlock8_32(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
+	__forceinline static void ReadAndExpandBlock8_32(const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const DWORD* RESTRICT pal)
 	{
 		#if _M_SSE >= 0x401
 
-		GSVector4i v0, v1, v2, v3;
+		const GSVector4i* s = (const GSVector4i*)src;
 
+		GSVector4i v0, v1, v2, v3;
 		GSVector4i mask = m_r8mask;
 
 		for(int i = 0; i < 2; i++)
 		{
-			v0 = ((GSVector4i*)src)[i * 8 + 0].shuffle8(mask); 
-			v1 = ((GSVector4i*)src)[i * 8 + 1].shuffle8(mask); 
-			v2 = ((GSVector4i*)src)[i * 8 + 2].shuffle8(mask); 
-			v3 = ((GSVector4i*)src)[i * 8 + 3].shuffle8(mask);
+			v0 = s[i * 8 + 0].shuffle8(mask); 
+			v1 = s[i * 8 + 1].shuffle8(mask); 
+			v2 = s[i * 8 + 2].shuffle8(mask); 
+			v3 = s[i * 8 + 3].shuffle8(mask);
 
 			GSVector4i::sw16(v0, v1, v2, v3);
 			GSVector4i::sw32(v0, v1, v3, v2);
@@ -1837,10 +1848,10 @@ public:
 			v2.gather32_8<>(pal, (GSVector4i*)dst);
 			dst += dstpitch;
 
-			v2 = ((GSVector4i*)src)[i * 8 + 4].shuffle8(mask); 
-			v3 = ((GSVector4i*)src)[i * 8 + 5].shuffle8(mask); 
-			v0 = ((GSVector4i*)src)[i * 8 + 6].shuffle8(mask); 
-			v1 = ((GSVector4i*)src)[i * 8 + 7].shuffle8(mask);
+			v2 = s[i * 8 + 4].shuffle8(mask); 
+			v3 = s[i * 8 + 5].shuffle8(mask); 
+			v0 = s[i * 8 + 6].shuffle8(mask); 
+			v1 = s[i * 8 + 7].shuffle8(mask);
 
 			GSVector4i::sw16(v0, v1, v2, v3);
 			GSVector4i::sw32(v0, v1, v3, v2);
@@ -1880,20 +1891,21 @@ public:
 
 	// TODO: ReadAndExpandBlock8_16
 
-	__forceinline static void ReadAndExpandBlock4_32(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, UINT64* RESTRICT pal)
+	__forceinline static void ReadAndExpandBlock4_32(const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const UINT64* RESTRICT pal)
 	{
 		#if _M_SSE >= 0x401
 
-		GSVector4i v0, v1, v2, v3;
+		const GSVector4i* s = (const GSVector4i*)src;
 
+		GSVector4i v0, v1, v2, v3;
 		GSVector4i mask = m_r4mask;
 
 		for(int i = 0; i < 2; i++)
 		{
-			v0 = ((GSVector4i*)src)[i * 8 + 0].xzyw(); 
-			v1 = ((GSVector4i*)src)[i * 8 + 1].xzyw(); 
-			v2 = ((GSVector4i*)src)[i * 8 + 2].xzyw(); 
-			v3 = ((GSVector4i*)src)[i * 8 + 3].xzyw();
+			v0 = s[i * 8 + 0].xzyw(); 
+			v1 = s[i * 8 + 1].xzyw(); 
+			v2 = s[i * 8 + 2].xzyw(); 
+			v3 = s[i * 8 + 3].xzyw();
 
 			GSVector4i::sw64(v0, v1, v2, v3);
 			GSVector4i::sw4(v0, v2, v1, v3);
@@ -1915,10 +1927,10 @@ public:
 			v3.gather64_8<>(pal, (GSVector4i*)dst);
 			dst += dstpitch;
 
-			v0 = ((GSVector4i*)src)[i * 8 + 4].xzyw(); 
-			v1 = ((GSVector4i*)src)[i * 8 + 5].xzyw(); 
-			v2 = ((GSVector4i*)src)[i * 8 + 6].xzyw(); 
-			v3 = ((GSVector4i*)src)[i * 8 + 7].xzyw();
+			v0 = s[i * 8 + 4].xzyw(); 
+			v1 = s[i * 8 + 5].xzyw(); 
+			v2 = s[i * 8 + 6].xzyw(); 
+			v3 = s[i * 8 + 7].xzyw();
 
 			GSVector4i::sw64(v0, v1, v2, v3);
 			GSVector4i::sw4(v0, v2, v1, v3);
@@ -1972,18 +1984,20 @@ public:
 
 	// TODO: ReadAndExpandBlock4_16
 
-	__forceinline static void ReadAndExpandBlock8H_32(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
+	__forceinline static void ReadAndExpandBlock8H_32(const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const DWORD* RESTRICT pal)
 	{
 		#if _M_SSE >= 0x401
+
+		const GSVector4i* s = (const GSVector4i*)src;
 
 		GSVector4i v0, v1, v2, v3;
 
 		for(int i = 0; i < 4; i++)
 		{
-			v0 = ((GSVector4i*)src)[i * 4 + 0]; 
-			v1 = ((GSVector4i*)src)[i * 4 + 1]; 
-			v2 = ((GSVector4i*)src)[i * 4 + 2]; 
-			v3 = ((GSVector4i*)src)[i * 4 + 3];
+			v0 = s[i * 4 + 0]; 
+			v1 = s[i * 4 + 1]; 
+			v2 = s[i * 4 + 2]; 
+			v3 = s[i * 4 + 3];
 
 			GSVector4i::sw64(v0, v1, v2, v3);
 
@@ -2023,18 +2037,20 @@ public:
 
 	// TODO: ReadAndExpandBlock8H_16
 
-	__forceinline static void ReadAndExpandBlock4HL_32(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
+	__forceinline static void ReadAndExpandBlock4HL_32(const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const DWORD* RESTRICT pal)
 	{
 		#if _M_SSE >= 0x401
+
+		const GSVector4i* s = (const GSVector4i*)src;
 
 		GSVector4i v0, v1, v2, v3;
 
 		for(int i = 0; i < 4; i++)
 		{
-			v0 = ((GSVector4i*)src)[i * 4 + 0]; 
-			v1 = ((GSVector4i*)src)[i * 4 + 1]; 
-			v2 = ((GSVector4i*)src)[i * 4 + 2]; 
-			v3 = ((GSVector4i*)src)[i * 4 + 3];
+			v0 = s[i * 4 + 0]; 
+			v1 = s[i * 4 + 1]; 
+			v2 = s[i * 4 + 2]; 
+			v3 = s[i * 4 + 3];
 
 			GSVector4i::sw64(v0, v1, v2, v3);
 
@@ -2074,18 +2090,20 @@ public:
 
 	// TODO: ReadAndExpandBlock4HL_16
 	
-	__forceinline static void ReadAndExpandBlock4HH_32(BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, DWORD* RESTRICT pal)
+	__forceinline static void ReadAndExpandBlock4HH_32(const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const DWORD* RESTRICT pal)
 	{
 		#if _M_SSE >= 0x401
+
+		const GSVector4i* s = (const GSVector4i*)src;
 
 		GSVector4i v0, v1, v2, v3;
 
 		for(int i = 0; i < 4; i++)
 		{
-			v0 = ((GSVector4i*)src)[i * 4 + 0]; 
-			v1 = ((GSVector4i*)src)[i * 4 + 1]; 
-			v2 = ((GSVector4i*)src)[i * 4 + 2]; 
-			v3 = ((GSVector4i*)src)[i * 4 + 3];
+			v0 = s[i * 4 + 0]; 
+			v1 = s[i * 4 + 1]; 
+			v2 = s[i * 4 + 2]; 
+			v3 = s[i * 4 + 3];
 
 			GSVector4i::sw64(v0, v1, v2, v3);
 
@@ -2124,421 +2142,4 @@ public:
 	}
 
 	// TODO: ReadAndExpandBlock4HH_16
-
-	//
-
-	static void WriteCLUT_T32_I8_CSM1(DWORD* RESTRICT src, WORD* RESTRICT clut)
-	{
-		#if _M_SSE >= 0x200
-
-		for(int i = 0; i < 64; i += 16)
-		{
-			WriteCLUT_T32_I4_CSM1(&src[i +   0], &clut[i * 2 +   0]);
-			WriteCLUT_T32_I4_CSM1(&src[i +  64], &clut[i * 2 +  16]);
-			WriteCLUT_T32_I4_CSM1(&src[i + 128], &clut[i * 2 + 128]);
-			WriteCLUT_T32_I4_CSM1(&src[i + 192], &clut[i * 2 + 144]);
-		}
-
-		#else
-
-		for(int j = 0; j < 2; j++, src += 128, clut += 128)
-		{
-			for(int i = 0; i < 128; i++) 
-			{
-				DWORD c = src[clutTableT32I8[i]];
-				clut[i] = (WORD)(c & 0xffff);
-				clut[i + 256] = (WORD)(c >> 16);
-			}
-		}
-
-		#endif
-	}
-
-	__forceinline static void WriteCLUT_T32_I4_CSM1(DWORD* RESTRICT src, WORD* RESTRICT clut)
-	{
-		#if _M_SSE >= 0x200
-
-		GSVector4i* s = (GSVector4i*)src;
-		GSVector4i* d = (GSVector4i*)clut;
-
-		GSVector4i v0 = s[0];
-		GSVector4i v1 = s[1];
-		GSVector4i v2 = s[2];
-		GSVector4i v3 = s[3];
-
-		GSVector4i::sw64(v0, v1, v2, v3);
-		GSVector4i::sw16(v0, v1, v2, v3);
-		GSVector4i::sw16(v0, v2, v1, v3);
-		GSVector4i::sw16(v0, v1, v2, v3);
-
-		d[0] = v0;
-		d[1] = v1;
-		d[32] = v2;
-		d[33] = v3;
-
-		#else
-
-		for(int i = 0; i < 16; i++) 
-		{
-			DWORD c = src[clutTableT32I4[i]];
-			clut[i] = (WORD)(c & 0xffff);
-			clut[i + 256] = (WORD)(c >> 16);
-		}
-
-		#endif
-	}
-
-	static void WriteCLUT_T16_I8_CSM1(WORD* RESTRICT src, WORD* RESTRICT clut)
-	{
-		#if _M_SSE >= 0x200
-
-		GSVector4i* s = (GSVector4i*)src;
-		GSVector4i* d = (GSVector4i*)clut;
-
-		for(int i = 0; i < 32; i += 4)
-		{
-			GSVector4i v0 = s[i + 0];
-			GSVector4i v1 = s[i + 1];
-			GSVector4i v2 = s[i + 2];
-			GSVector4i v3 = s[i + 3];
-
-			GSVector4i::sw16(v0, v1, v2, v3);
-			GSVector4i::sw32(v0, v1, v2, v3);
-			GSVector4i::sw16(v0, v2, v1, v3);
-
-			d[i + 0] = v0;
-			d[i + 1] = v2;
-			d[i + 2] = v1;
-			d[i + 3] = v3;
-		}
-
-		#else
-
-		for(int j = 0; j < 8; j++, src += 32, clut += 32) 
-		{
-			for(int i = 0; i < 32; i++)
-			{
-				clut[i] = src[clutTableT16I8[i]];
-			}
-		}
-
-		#endif
-	}
-
-	__forceinline static void WriteCLUT_T16_I4_CSM1(WORD* RESTRICT src, WORD* RESTRICT clut)
-	{
-		for(int i = 0; i < 16; i++) 
-		{
-			clut[i] = src[clutTableT16I4[i]];
-		}
-	}
-
-	static void ReadCLUT_T32_I8(WORD* RESTRICT clut, DWORD* RESTRICT dst)
-	{
-		#if _M_SSE >= 0x200
-
-		for(int i = 0; i < 256; i += 16)
-		{
-			ReadCLUT_T32_I4(&clut[i], &dst[i]);
-		}
-
-		#else 
-
-		for(int i = 0; i < 256; i++)
-		{
-			dst[i] = ((DWORD)clut[i + 256] << 16) | clut[i];
-		}
-
-		#endif
-	}
-
-	__forceinline static void ReadCLUT_T32_I4(WORD* RESTRICT clut, DWORD* RESTRICT dst)
-	{
-		#if _M_SSE >= 0x200
-
-		GSVector4i* s = (GSVector4i*)clut;
-		GSVector4i* d = (GSVector4i*)dst;
-
-		GSVector4i v0 = s[0];
-		GSVector4i v1 = s[1];
-		GSVector4i v2 = s[32];
-		GSVector4i v3 = s[33];
-
-		GSVector4i::sw16(v0, v2, v1, v3);
-
-		d[0] = v0;
-		d[1] = v1;
-		d[2] = v2;
-		d[3] = v3;
-
-		#else 
-
-		for(int i = 0; i < 16; i++)
-		{
-			dst[i] = ((DWORD)clut[i + 256] << 16) | clut[i];
-		}
-
-		#endif
-	}
-
-	__forceinline static void ReadCLUT_T32_I4(WORD* RESTRICT clut, DWORD* RESTRICT dst32, UINT64* RESTRICT dst64)
-	{
-		#if _M_SSE >= 0x200
-
-		GSVector4i* s = (GSVector4i*)clut;
-		GSVector4i* d32 = (GSVector4i*)dst32;
-		GSVector4i* d64 = (GSVector4i*)dst64;
-
-		GSVector4i s0 = s[0];
-		GSVector4i s1 = s[1];
-		GSVector4i s2 = s[32];
-		GSVector4i s3 = s[33];
-
-		GSVector4i::sw16(s0, s2, s1, s3);
-
-		d32[0] = s0;
-		d32[1] = s1;
-		d32[2] = s2;
-		d32[3] = s3;
-
-		ExpandCLUT64_T32(s0, s0, s1, s2, s3, &d64[0]);
-		ExpandCLUT64_T32(s1, s0, s1, s2, s3, &d64[32]);
-		ExpandCLUT64_T32(s2, s0, s1, s2, s3, &d64[64]);
-		ExpandCLUT64_T32(s3, s0, s1, s2, s3, &d64[96]);
-
-		#else 
-
-		for(int i = 0; i < 16; i++)
-		{
-			dst[i] = ((DWORD)clut[i + 256] << 16) | clut[i];
-		}
-
-		DWORD* d = (DWORD*)dst64;
-
-		for(int j = 0; j < 16; j++, d += 32)
-		{
-			DWORD hi = dst32[j];
-
-			for(int i = 0; i < 16; i++)
-			{
-				d[i * 2 + 0] = dst32[i];
-				d[i * 2 + 1] = hi;
-			}
-		}
-
-		#endif
-	}
-
-	static void ReadCLUT_T16_I8(WORD* RESTRICT clut, DWORD* RESTRICT dst)
-	{
-		#if _M_SSE >= 0x200
-
-		for(int i = 0; i < 256; i += 16)
-		{
-			ReadCLUT_T16_I4(&clut[i], &dst[i]);
-		}
-
-		#else 
-
-		for(int i = 0; i < 256; i++)
-		{
-			dst[i] = (DWORD)clut[i];
-		}
-
-		#endif
-	}
-
-	__forceinline static void ReadCLUT_T16_I4(WORD* RESTRICT clut, DWORD* RESTRICT dst)
-	{
-		#if _M_SSE >= 0x200
-
-		GSVector4i* s = (GSVector4i*)clut;
-		GSVector4i* d = (GSVector4i*)dst;
-
-		GSVector4i v0 = s[0];
-		GSVector4i v1 = s[1];
-
-		d[0] = v0.upl16();
-		d[1] = v0.uph16();
-		d[2] = v1.upl16();
-		d[3] = v1.uph16();
-
-		#else 
-
-		for(int i = 0; i < 16; i++)
-		{
-			dst[i] = (DWORD)clut[i];
-		}
-
-		#endif
-	}
-
-	__forceinline static void ReadCLUT_T16_I4(WORD* RESTRICT clut, DWORD* RESTRICT dst32, UINT64* RESTRICT dst64)
-	{
-		#if _M_SSE >= 0x200
-
-		GSVector4i* s = (GSVector4i*)clut;
-		GSVector4i* d32 = (GSVector4i*)dst32;
-		GSVector4i* d64 = (GSVector4i*)dst64;
-
-		GSVector4i v0 = s[0];
-		GSVector4i v1 = s[1];
-
-		GSVector4i s0 = v0.upl16();
-		GSVector4i s1 = v0.uph16();
-		GSVector4i s2 = v1.upl16();
-		GSVector4i s3 = v1.uph16();
-
-		d32[0] = s0;
-		d32[1] = s1;
-		d32[2] = s2;
-		d32[3] = s3;
-
-		ExpandCLUT64_T16(s0, s0, s1, s2, s3, &d64[0]);
-		ExpandCLUT64_T16(s1, s0, s1, s2, s3, &d64[32]);
-		ExpandCLUT64_T16(s2, s0, s1, s2, s3, &d64[64]);
-		ExpandCLUT64_T16(s3, s0, s1, s2, s3, &d64[96]);
-
-		#else 
-
-		for(int i = 0; i < 16; i++)
-		{
-			dst32[i] = (DWORD)clut[i];
-		}
-
-		DWORD* d = (DWORD*)dst64;
-
-		for(int j = 0; j < 16; j++, d += 32)
-		{
-			DWORD hi = dst32[j] << 16;
-
-			for(int i = 0; i < 16; i++)
-			{
-				d[i * 2 + 0] = hi | (dst32[i] & 0xffff);
-			}
-		}
-
-		#endif
-	}
-
-	static void ExpandCLUT64_T32_I8(DWORD* RESTRICT src, UINT64* RESTRICT dst)
-	{
-		#if _M_SSE >= 0x200
-
-		GSVector4i* s = (GSVector4i*)src;
-		GSVector4i* d = (GSVector4i*)dst;
-
-		GSVector4i s0 = s[0];
-		GSVector4i s1 = s[1];
-		GSVector4i s2 = s[2];
-		GSVector4i s3 = s[3];
-
-		ExpandCLUT64_T32(s0, s0, s1, s2, s3, &d[0]);
-		ExpandCLUT64_T32(s1, s0, s1, s2, s3, &d[32]);
-		ExpandCLUT64_T32(s2, s0, s1, s2, s3, &d[64]);
-		ExpandCLUT64_T32(s3, s0, s1, s2, s3, &d[96]);
-
-		#else 
-
-		DWORD* d = (DWORD*)dst;
-
-		for(int j = 0; j < 16; j++, d += 32)
-		{
-			DWORD hi = src[j];
-
-			for(int i = 0; i < 16; i++)
-			{
-				d[i * 2 + 0] = src[i];
-				d[i * 2 + 1] = hi;
-			}
-		}
-
-		#endif
-	}
-
-	__forceinline static void ExpandCLUT64_T32(const GSVector4i& hi, const GSVector4i& lo0, const GSVector4i& lo1, const GSVector4i& lo2, const GSVector4i& lo3, GSVector4i* dst)
-	{
-		ExpandCLUT64_T32(hi.xxxx(), lo0, &dst[0]);
-		ExpandCLUT64_T32(hi.xxxx(), lo1, &dst[2]);
-		ExpandCLUT64_T32(hi.xxxx(), lo2, &dst[4]);
-		ExpandCLUT64_T32(hi.xxxx(), lo3, &dst[6]);
-		ExpandCLUT64_T32(hi.yyyy(), lo0, &dst[8]);
-		ExpandCLUT64_T32(hi.yyyy(), lo1, &dst[10]);
-		ExpandCLUT64_T32(hi.yyyy(), lo2, &dst[12]);
-		ExpandCLUT64_T32(hi.yyyy(), lo3, &dst[14]);
-		ExpandCLUT64_T32(hi.zzzz(), lo0, &dst[16]);
-		ExpandCLUT64_T32(hi.zzzz(), lo1, &dst[18]);
-		ExpandCLUT64_T32(hi.zzzz(), lo2, &dst[20]);
-		ExpandCLUT64_T32(hi.zzzz(), lo3, &dst[22]);
-		ExpandCLUT64_T32(hi.wwww(), lo0, &dst[24]);
-		ExpandCLUT64_T32(hi.wwww(), lo1, &dst[26]);
-		ExpandCLUT64_T32(hi.wwww(), lo2, &dst[28]);
-		ExpandCLUT64_T32(hi.wwww(), lo3, &dst[30]);
-	}
-
-	__forceinline static void ExpandCLUT64_T32(const GSVector4i& hi, const GSVector4i& lo, GSVector4i* dst)
-	{
-		dst[0] = lo.upl32(hi);
-		dst[1] = lo.uph32(hi);
-	}
-
-	static void ExpandCLUT64_T16_I8(DWORD* RESTRICT src, UINT64* RESTRICT dst)
-	{
-		#if _M_SSE >= 0x200
-
-		GSVector4i* s = (GSVector4i*)src;
-		GSVector4i* d = (GSVector4i*)dst;
-
-		GSVector4i s0 = s[0];
-		GSVector4i s1 = s[1];
-		GSVector4i s2 = s[2];
-		GSVector4i s3 = s[3];
-
-		ExpandCLUT64_T16(s0, s0, s1, s2, s3, &d[0]);
-		ExpandCLUT64_T16(s1, s0, s1, s2, s3, &d[32]);
-		ExpandCLUT64_T16(s2, s0, s1, s2, s3, &d[64]);
-		ExpandCLUT64_T16(s3, s0, s1, s2, s3, &d[96]);
-
-		#else
-
-		DWORD* d = (DWORD*)dst;
-
-		for(int j = 0; j < 16; j++, d += 32)
-		{
-			DWORD hi = src[j] << 16;
-
-			for(int i = 0; i < 16; i++)
-			{
-				d[i * 2 + 0] = hi | (src[i] & 0xffff);
-			}
-		}
-
-		#endif
-	}
-
-	__forceinline static void ExpandCLUT64_T16(const GSVector4i& hi, const GSVector4i& lo0, const GSVector4i& lo1, const GSVector4i& lo2, const GSVector4i& lo3, GSVector4i* dst)
-	{
-		ExpandCLUT64_T16(hi.xxxx(), lo0, &dst[0]);
-		ExpandCLUT64_T16(hi.xxxx(), lo1, &dst[2]);
-		ExpandCLUT64_T16(hi.xxxx(), lo2, &dst[4]);
-		ExpandCLUT64_T16(hi.xxxx(), lo3, &dst[6]);
-		ExpandCLUT64_T16(hi.yyyy(), lo0, &dst[8]);
-		ExpandCLUT64_T16(hi.yyyy(), lo1, &dst[10]);
-		ExpandCLUT64_T16(hi.yyyy(), lo2, &dst[12]);
-		ExpandCLUT64_T16(hi.yyyy(), lo3, &dst[14]);
-		ExpandCLUT64_T16(hi.zzzz(), lo0, &dst[16]);
-		ExpandCLUT64_T16(hi.zzzz(), lo1, &dst[18]);
-		ExpandCLUT64_T16(hi.zzzz(), lo2, &dst[20]);
-		ExpandCLUT64_T16(hi.zzzz(), lo3, &dst[22]);
-		ExpandCLUT64_T16(hi.wwww(), lo0, &dst[24]);
-		ExpandCLUT64_T16(hi.wwww(), lo1, &dst[26]);
-		ExpandCLUT64_T16(hi.wwww(), lo2, &dst[28]);
-		ExpandCLUT64_T16(hi.wwww(), lo3, &dst[30]);
-	}
-
-	__forceinline static void ExpandCLUT64_T16(const GSVector4i& hi, const GSVector4i& lo, GSVector4i* dst)
-	{
-		dst[0] = lo.upl16(hi);
-		dst[1] = lo.uph16(hi);
-	}
 };

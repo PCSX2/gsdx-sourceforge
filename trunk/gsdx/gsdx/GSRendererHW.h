@@ -430,7 +430,7 @@ protected:
 							m_mem.WritePixel32(i & 7, i >> 3, m_vertices[i].c0, bp, bw);
 						}
 
-						m_mem.InvalidateCLUT();
+						m_mem.m_clut.Invalidate();
 
 						return false;
 					}
@@ -443,7 +443,7 @@ protected:
 							m_mem.WritePixel32(i & 15, i >> 4, m_vertices[i].c0, bp, bw);
 						}
 
-						m_mem.InvalidateCLUT();
+						m_mem.m_clut.Invalidate();
 
 						return false;
 					}
