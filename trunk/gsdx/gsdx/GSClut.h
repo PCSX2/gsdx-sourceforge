@@ -50,7 +50,7 @@ class GSClut
 
 	typedef void (GSClut::*writeCLUT)(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem);
 
-	writeCLUT m_wc[2][64][64];
+	writeCLUT m_wc[2][16][64];
 
 	void WriteCLUT32_I8_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem);
 	void WriteCLUT32_I4_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem);

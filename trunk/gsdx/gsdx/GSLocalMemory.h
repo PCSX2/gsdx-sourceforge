@@ -870,16 +870,13 @@ public:
 		}
 	}
 
-	__forceinline GSVector4i ReadFrameX(int PSM, const GSVector4i& addr) const
+	__forceinline GSVector4i ReadFrameX(int psm, const GSVector4i& addr) const
 	{
 		GSVector4i c, r, g, b, a;
 
-		// TODO
-
-		switch(PSM)
+		switch(psm)
 		{
-		case PSM_PSMCT32: 
-		case PSM_PSMZ32: 
+		case 0:
 			#if _M_SSE >= 0x401
 			c = addr.gather32_32(m_vm32);
 			#else
@@ -890,8 +887,7 @@ public:
 				(int)ReadPixel32(addr.u32[3]));
 			#endif
 			break;
-		case PSM_PSMCT24: 
-		case PSM_PSMZ24: 
+		case 1:
 			#if _M_SSE >= 0x401
 			c = addr.gather32_32(m_vm32);
 			#else
@@ -903,10 +899,7 @@ public:
 			#endif
 			c = (c & 0x00ffffff) | 0x80000000;
 			break;
-		case PSM_PSMCT16: 
-		case PSM_PSMCT16S: 
-		case PSM_PSMZ16: 
-		case PSM_PSMZ16S: 
+		case 2:
 			#if _M_SSE >= 0x401
 			c = addr.gather32_32(m_vm16);
 			#else
@@ -926,13 +919,13 @@ public:
 		return c;
 	}
 
-	__forceinline GSVector4i ReadZBufX(int PSM, const GSVector4i& addr) const
+	__forceinline GSVector4i ReadZBufX(int psm, const GSVector4i& addr) const
 	{
 		GSVector4i z;
 
-		switch(PSM)
+		switch(psm)
 		{
-		case PSM_PSMZ32: 
+		case 0: 
 			#if _M_SSE >= 0x401
 			z = addr.gather32_32(m_vm32);
 			#else
@@ -943,7 +936,7 @@ public:
 				(int)ReadPixel32(addr.u32[3]));
 			#endif
 			break;
-		case PSM_PSMZ24: 
+		case 1: 
 			#if _M_SSE >= 0x401
 			z = addr.gather32_32(m_vm32) & 0x00ffffff;
 			#else
@@ -955,8 +948,7 @@ public:
 			z = z & 0x00ffffff;
 			#endif
 			break;
-		case PSM_PSMZ16: 
-		case PSM_PSMZ16S: 
+		case 2: 
 			#if _M_SSE >= 0x401
 			z = addr.gather32_32(m_vm16);
 			#else
@@ -975,28 +967,23 @@ public:
 		return z;
 	}
 
-	__forceinline void WriteFrameX(int PSM, const GSVector4i& addr, const GSVector4i& c, const GSVector4i& mask, int pixels)
+	__forceinline void WriteFrameX(int psm, const GSVector4i& addr, const GSVector4i& c, const GSVector4i& mask, int pixels)
 	{
 		GSVector4i rb, ga, tmp;
 
-		switch(PSM)
+		switch(psm)
 		{
-		case PSM_PSMCT32: 
-		case PSM_PSMZ32: 
+		case 0:
 			for(int i = 0; i < pixels; i++)
 				if(mask.u32[i] != 0xffffffff)
 					WritePixel32(addr.u32[i], c.u32[i]); 
 			break; 
-		case PSM_PSMCT24: 
-		case PSM_PSMZ24: 
+		case 1:
 			for(int i = 0; i < pixels; i++)
 				if(mask.u32[i] != 0xffffffff)
 					WritePixel24(addr.u32[i], c.u32[i]); 
 			break; 
-		case PSM_PSMCT16: 
-		case PSM_PSMCT16S: 
-		case PSM_PSMZ16: 
-		case PSM_PSMZ16S: 
+		case 2:
 			rb = c & 0x00f800f8;
 			ga = c & 0x8000f800;
 			tmp = (ga >> 16) | (rb >> 9) | (ga >> 6) | (rb >> 3);
@@ -1010,22 +997,21 @@ public:
 		}
 	}
 
-	__forceinline void WriteZBufX(int PSM, const GSVector4i& addr, const GSVector4i& z, const GSVector4i& mask, int pixels)
+	__forceinline void WriteZBufX(int psm, const GSVector4i& addr, const GSVector4i& z, const GSVector4i& mask, int pixels)
 	{
-		switch(PSM)
+		switch(psm)
 		{
-		case PSM_PSMZ32: 
+		case 0:
 			for(int i = 0; i < pixels; i++)
 				if(mask.u32[i] != 0xffffffff)
 					WritePixel32(addr.u32[i], z.u32[i]); 
 			break; 
-		case PSM_PSMZ24: 
+		case 1:
 			for(int i = 0; i < pixels; i++)
 				if(mask.u32[i] != 0xffffffff)
 					WritePixel24(addr.u32[i], z.u32[i]); 
 			break; 
-		case PSM_PSMZ16: 
-		case PSM_PSMZ16S: 
+		case 2:
 			for(int i = 0; i < pixels; i++)
 				if(mask.u32[i] != 0xffffffff)
 					WritePixel16(addr.u32[i], z.u32[i]); 

@@ -57,7 +57,7 @@ __declspec(align(16)) union GSVertexHW10
 
 		union
 		{
-			struct {WORD x, y; DWORD z;} p;
+			struct {union {struct {WORD x, y;}; DWORD xy;}; DWORD z;} p;
 			GIFRegXYZ XYZ;
 		};
 		

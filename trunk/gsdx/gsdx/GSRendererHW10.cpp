@@ -34,6 +34,19 @@ GSRendererHW10::GSRendererHW10(BYTE* base, bool mt, void (*irq)(), int nloophack
 	{
 		m_fpDrawingKickHandlers[i] = (DrawingKickHandler)&GSRendererHW10::DrawingKick;
 	}
+
+	m_fpDrawingKickHandlers[GS_POINTLIST] = (DrawingKickHandler)&GSRendererHW10::DrawingKickPoint;
+
+	#if _M_SSE >= 0x401
+
+	m_fpDrawingKickHandlers[GS_LINELIST] = (DrawingKickHandler)&GSRendererHW10::DrawingKickLine;
+	m_fpDrawingKickHandlers[GS_LINESTRIP] = (DrawingKickHandler)&GSRendererHW10::DrawingKickLine;
+	m_fpDrawingKickHandlers[GS_TRIANGLELIST] = (DrawingKickHandler)&GSRendererHW10::DrawingKickTriangle;
+	m_fpDrawingKickHandlers[GS_TRIANGLESTRIP] = (DrawingKickHandler)&GSRendererHW10::DrawingKickTriangle;
+	m_fpDrawingKickHandlers[GS_TRIANGLEFAN] = (DrawingKickHandler)&GSRendererHW10::DrawingKickTriangle;
+	m_fpDrawingKickHandlers[GS_SPRITE] = (DrawingKickHandler)&GSRendererHW10::DrawingKickSprite;
+
+	#endif
 }
 
 bool GSRendererHW10::Create(LPCTSTR title)
@@ -120,10 +133,82 @@ void GSRendererHW10::VertexKick(bool skip)
 	__super::VertexKick(skip);
 }
 
+int GSRendererHW10::ScissorTest(const GSVector4i& p0, const GSVector4i& p1)
+{
+	GSVector4i scissor = m_context->scissor.dx10;
+
+	GSVector4i v0 = p0 < scissor;
+	GSVector4i v1 = p1 > scissor.zwxy();
+
+	return (v0 | v1).mask() & 0xff;
+}
+
+void GSRendererHW10::DrawingKickPoint(GSVertexHW10* v, int& count)
+{
+	GSVector4i v0 = GSVector4i::load((int)v[0].p.xy).upl16();
+
+	GSVector4i p0 = v0;
+	GSVector4i p1 = v0;
+
+	if(ScissorTest(p0, p1))
+	{
+		count = 0;
+		return;
+	}
+}
+
+#if _M_SSE >= 0x401
+
+void GSRendererHW10::DrawingKickLine(GSVertexHW10* v, int& count)
+{
+	GSVector4i v0 = GSVector4i::load((int)v[0].p.xy);
+	GSVector4i v1 = GSVector4i::load((int)v[1].p.xy);
+
+	GSVector4i p0 = v0.max_u16(v1).upl16();
+	GSVector4i p1 = v0.min_u16(v1).upl16();
+
+	if(ScissorTest(p0, p1))
+	{
+		count = 0;
+		return;
+	}
+}
+
+void GSRendererHW10::DrawingKickTriangle(GSVertexHW10* v, int& count)
+{
+	GSVector4i v0 = GSVector4i::load((int)v[0].p.xy);
+	GSVector4i v1 = GSVector4i::load((int)v[1].p.xy);
+	GSVector4i v2 = GSVector4i::load((int)v[2].p.xy);
+
+	GSVector4i p0 = v0.max_u16(v1).max_u16(v2).upl16();
+	GSVector4i p1 = v0.min_u16(v1).min_u16(v2).upl16();
+
+	if(ScissorTest(p0, p1))
+	{
+		count = 0;
+		return;
+	}
+}
+
+void GSRendererHW10::DrawingKickSprite(GSVertexHW10* v, int& count)
+{
+	GSVector4i v0 = GSVector4i::load((int)v[0].p.xy);
+	GSVector4i v1 = GSVector4i::load((int)v[1].p.xy);
+
+	GSVector4i p0 = v0.max_u16(v1).upl16();
+	GSVector4i p1 = v0.min_u16(v1).upl16();
+
+	if(ScissorTest(p0, p1))
+	{
+		count = 0;
+		return;
+	}
+}
+
+#endif
+
 void GSRendererHW10::DrawingKick(GSVertexHW10* v, int& count)
 {
-	// TODO
-
 	GSVector4i scissor = m_context->scissor.dx10;
 
 	switch(count)

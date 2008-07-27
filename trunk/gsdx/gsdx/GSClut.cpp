@@ -25,15 +25,15 @@
 
 GSClut::GSClut()
 {
-	BYTE* p = (BYTE*)_aligned_malloc(256 * 2 * sizeof(WORD) * 2 + 256 * sizeof(DWORD) + 256 * sizeof(UINT64), 16);
+	BYTE* p = (BYTE*)_aligned_malloc(8192, 16);
 
-	m_clut = (WORD*)&p[0];
-	m_buff32 = (DWORD*)&p[1024];
-	m_buff64 = (UINT64*)&p[2048 + 1024];
+	m_clut = (WORD*)&p[0]; // 1k + 1k for buffer overruns (sfex: PSM == PSM_PSMT8, CPSM == PSM_PSMCT32, CSA != 0)
+	m_buff32 = (DWORD*)&p[2048]; // 1k
+	m_buff64 = (UINT64*)&p[4096]; // 2k
 	m_write.dirty = true;
 	m_read.dirty = true;
 
-	for(int i = 0; i < 64; i++)
+	for(int i = 0; i < 16; i++)
 	{
 		for(int j = 0; j < 64; j++)
 		{
@@ -110,8 +110,8 @@ bool GSClut::IsWriting(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)
 	case 3: break;
 	case 4: if(m_CBP[0] == TEX0.CBP) return false; break;
 	case 5: if(m_CBP[1] == TEX0.CBP) return false; break;
-	case 6: return false;
-	case 7: return false;
+	case 6: ASSERT(0); return false;
+	case 7: ASSERT(0); return false;
 	default: __assume(0);
 	}
 
@@ -126,10 +126,10 @@ bool GSClut::Write(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const G
 	case 1: break;
 	case 2: m_CBP[0] = TEX0.CBP; break;
 	case 3: m_CBP[1] = TEX0.CBP; break;
-	case 4: if(m_CBP[0] == TEX0.CBP) return false;
-	case 5: if(m_CBP[1] == TEX0.CBP) return false;
-	case 6: return false;
-	case 7: return false;
+	case 4: if(m_CBP[0] == TEX0.CBP) return false; break;
+	case 5: if(m_CBP[1] == TEX0.CBP) return false; break;
+	case 6: ASSERT(0); return false;
+	case 7: ASSERT(0); return false;
 	default: __assume(0);
 	}
 
@@ -150,21 +150,29 @@ bool GSClut::Write(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const G
 
 void GSClut::WriteCLUT32_I8_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem)
 {
+	ASSERT(TEX0.CSA == 0);
+
 	WriteCLUT_T32_I8_CSM1(&mem->m_vm32[mem->BlockAddress32(0, 0, TEX0.CBP, 1)], m_clut + (TEX0.CSA << 4));
 }
 
 void GSClut::WriteCLUT32_I4_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem)
 {
+	ASSERT(TEX0.CSA < 16);
+
 	WriteCLUT_T32_I4_CSM1(&mem->m_vm32[mem->BlockAddress32(0, 0, TEX0.CBP, 1)], m_clut + (TEX0.CSA << 4));
 }
 
 void GSClut::WriteCLUT16_I8_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem)
 {
+	ASSERT(TEX0.CSA < 16);
+
 	WriteCLUT_T16_I8_CSM1(&mem->m_vm16[mem->BlockAddress16(0, 0, TEX0.CBP, 1)], m_clut + (TEX0.CSA << 4));
 }
 
 void GSClut::WriteCLUT16_I4_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem)
 {
+	ASSERT(TEX0.CSA < 32);
+
 	WriteCLUT_T16_I4_CSM1(&mem->m_vm16[mem->BlockAddress16(0, 0, TEX0.CBP, 1)], m_clut + (TEX0.CSA << 4));
 }
 

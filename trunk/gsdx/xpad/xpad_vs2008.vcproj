@@ -1203,6 +1203,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\svnrev.h"
+				>
+			</File>
+			<File
 				RelativePath=".\xpad.h"
 				>
 			</File>

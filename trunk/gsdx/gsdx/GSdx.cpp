@@ -26,6 +26,7 @@
 #include "GSRendererSW.h"
 #include "GSRendererNull.h"
 #include "GSSettingsDlg.h"
+#include "svnrev.h"
 
 //
 //	Note!
@@ -139,7 +140,11 @@ EXPORT_C_(UINT32) PS2EgetLibType()
 
 EXPORT_C_(char*) PS2EgetLibName()
 {
-	CString str = _T("GSdx");
+	CString str;
+
+	str.Format(_T("GSdx %d"), SVN_REV);
+
+	if(SVN_MODS) str += _T("m");
 
 #if _M_AMD64
 	str += _T(" 64-bit");

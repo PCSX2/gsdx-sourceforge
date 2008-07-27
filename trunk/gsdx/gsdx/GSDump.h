@@ -45,6 +45,7 @@ Regs data (id == 3)
 class GSDump
 {
 	FILE* m_fp;
+	int m_vsyncs;
 
 public:
 	GSDump();

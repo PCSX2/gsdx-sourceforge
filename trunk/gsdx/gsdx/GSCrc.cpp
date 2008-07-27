@@ -59,6 +59,7 @@ CRC::Game CRC::m_games[] =
 	{0x086273D2, MetalGearSolid3, FR, false},
 	{0x26A6E286, MetalGearSolid3, EU, false},
 	{0xAA31B5BF, MetalGearSolid3, Unknown, false},
+	{0x9F185CE1, MetalGearSolid3, Unknown, false},
 	{0x278722BF, DBZBT2, US, false},
 	{0xFE961D28, DBZBT2, US, false},
 	{0X0393B6BE, DBZBT2, EU, false},
@@ -97,6 +98,7 @@ CRC::Game CRC::m_games[] =
 	{0xf0a6d880, HarvestMoon, US, true},
 	{0x75c01a04, NamcoXCapcom, US, false},
 	{0xBF6F101F, GiTS, US, false},
+	{0x6BF11378, Onimusha3, US, false},	
 };
 
 CAtlMap<DWORD, CRC::Game*> CRC::m_map;

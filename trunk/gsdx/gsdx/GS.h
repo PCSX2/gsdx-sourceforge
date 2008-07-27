@@ -989,7 +989,7 @@ REG128_SET(GIFPackedReg)
 	GIFPackedNOP	NOP;
 REG_SET_END
 
-struct GIFPath
+__declspec(align(16)) struct GIFPath
 {
 	GIFTag tag; 
 	UINT32 nreg;

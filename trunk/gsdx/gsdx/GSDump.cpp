@@ -38,6 +38,7 @@ GSDump::~GSDump()
 void GSDump::Open(LPCTSTR fn, DWORD crc, const freezeData& fd, const void* regs)
 {
 	m_fp = _tfopen(fn, _T("wb"));
+	m_vsyncs = 0;
 
 	if(m_fp)
 	{
@@ -78,7 +79,7 @@ void GSDump::VSync(int field, bool last, const void* regs)
 		fputc(1, m_fp);
 		fputc(field, m_fp);
 
-		if(!field && last)
+		if((++m_vsyncs & 1) == 0 && last)
 		{
 			fclose(m_fp);
 			m_fp = NULL;
