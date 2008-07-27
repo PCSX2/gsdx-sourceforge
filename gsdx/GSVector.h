@@ -250,6 +250,78 @@ public:
 
 	#endif
 
+	#if _M_SSE >= 0x401
+
+	GSVector4i min_i8(const GSVector4i& a) const
+	{
+		return GSVector4i(_mm_min_epi8(m, a));
+	}
+
+	GSVector4i max_i8(const GSVector4i& a) const
+	{
+		return GSVector4i(_mm_max_epi8(m, a));
+	}
+
+	#endif
+
+	GSVector4i min_i16(const GSVector4i& a) const
+	{
+		return GSVector4i(_mm_min_epi16(m, a));
+	}
+
+	GSVector4i max_i16(const GSVector4i& a) const
+	{
+		return GSVector4i(_mm_max_epi16(m, a));
+	}
+
+	#if _M_SSE >= 0x401
+
+	GSVector4i min_i32(const GSVector4i& a) const
+	{
+		return GSVector4i(_mm_min_epi32(m, a));
+	}
+
+	GSVector4i max_i32(const GSVector4i& a) const
+	{
+		return GSVector4i(_mm_max_epi32(m, a));
+	}
+
+	#endif
+
+	GSVector4i min_u8(const GSVector4i& a) const
+	{
+		return GSVector4i(_mm_min_epu8(m, a));
+	}
+
+	GSVector4i max_u8(const GSVector4i& a) const
+	{
+		return GSVector4i(_mm_max_epu8(m, a));
+	}
+
+	#if _M_SSE >= 0x401
+
+	GSVector4i min_u16(const GSVector4i& a) const
+	{
+		return GSVector4i(_mm_min_epu16(m, a));
+	}
+
+	GSVector4i max_u16(const GSVector4i& a) const
+	{
+		return GSVector4i(_mm_max_epu16(m, a));
+	}
+
+	GSVector4i min_u32(const GSVector4i& a) const
+	{
+		return GSVector4i(_mm_min_epu32(m, a));
+	}
+
+	GSVector4i max_u32(const GSVector4i& a) const
+	{
+		return GSVector4i(_mm_max_epu32(m, a));
+	}
+
+	#endif
+
 	GSVector4i blend8(const GSVector4i& a, const GSVector4i& mask) const
 	{
 		return GSVector4i(_mm_blendv_epi8(m, a, mask));

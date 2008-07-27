@@ -441,7 +441,7 @@ public:
 
 		fn.Format(_T("%s_%s"), path, CTime::GetCurrentTime().Format(_T("%Y%m%d%H%M%S")));
 
-		if((::GetAsyncKeyState(VK_SHIFT) & 0x8000) && !m_dump && m_field == 0)
+		if((::GetAsyncKeyState(VK_SHIFT) & 0x8000) && !m_dump)
 		{
 			freezeData fd;
 			fd.size = 0;

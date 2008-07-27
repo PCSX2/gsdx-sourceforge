@@ -1781,6 +1781,10 @@
 				RelativePath=".\stdafx.h"
 				>
 			</File>
+			<File
+				RelativePath=".\svnrev.h"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Resource Files"

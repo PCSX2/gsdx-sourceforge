@@ -115,8 +115,6 @@ GSState::GSState(BYTE* base, bool mt, void (*irq)(), int nloophack)
 	m_maxbytes = 1024 * 1024 * 4;
 	m_buff = (BYTE*)_aligned_malloc(m_maxbytes, 16);
 
-	m_path = (GIFPath*)_aligned_malloc(sizeof(m_path[0]) * 3, 16);
-
 	Reset();
 
 	ResetHandlers();
@@ -125,7 +123,6 @@ GSState::GSState(BYTE* base, bool mt, void (*irq)(), int nloophack)
 GSState::~GSState()
 {
 	_aligned_free(m_buff);
-	_aligned_free(m_path);
 }
 
 void GSState::Reset()
@@ -597,23 +594,19 @@ template<int i> void GSState::GIFRegHandlerTEX0(GIFReg* r)
 
 	m_env.CTXT[i].TEX0 = r->TEX0;
 
-	// ASSERT(m_env.CTXT[i].TEX0.TW <= 10 && m_env.CTXT[i].TEX0.TH <= 10 && (m_env.CTXT[i].TEX0.CPSM & ~0xa) == 0);
-
 	if(m_env.CTXT[i].TEX0.TW > 10) m_env.CTXT[i].TEX0.TW = 10;
 	if(m_env.CTXT[i].TEX0.TH > 10) m_env.CTXT[i].TEX0.TH = 10;
 
 	m_env.CTXT[i].TEX0.CPSM &= 0xa; // 1010b
 
-	m_env.CTXT[i].ttbl = &GSLocalMemory::m_psm[m_env.CTXT[i].TEX0.PSM];
-
-	FlushWrite();
-
-	m_mem.m_clut.Write(r->TEX0, m_env.TEXCLUT, &m_mem);
-
 	if((m_env.CTXT[i].TEX0.TBW & 1) && (m_env.CTXT[i].TEX0.PSM == PSM_PSMT8 || m_env.CTXT[i].TEX0.PSM == PSM_PSMT4))
 	{
-		m_env.CTXT[i].TEX0.TBW &= ~1;
+		m_env.CTXT[i].TEX0.TBW &= ~1; // GS User 2.6
 	}
+
+	m_env.CTXT[i].ttbl = &GSLocalMemory::m_psm[m_env.CTXT[i].TEX0.PSM];
+
+	m_mem.m_clut.Write(m_env.CTXT[i].TEX0, m_env.TEXCLUT, &m_mem);
 }
 
 template<int i> void GSState::GIFRegHandlerCLAMP(GIFReg* r)
@@ -1257,7 +1250,7 @@ template<int index> void GSState::Transfer(BYTE* mem, UINT32 size)
 
 			if(path.tag.PRE)
 			{
-				ASSERT(path.tag.FLG != GIF_FLG_IMAGE); // kingdom hearts
+				ASSERT(path.tag.FLG != GIF_FLG_IMAGE); // kingdom hearts, ffxii
 
 				if((path.tag.FLG & 2) == 0)
 				{
@@ -2092,6 +2085,24 @@ bool GSC_GiTS(const GSFrameInfo& fi, int& skip)
 	return true;
 }
 
+bool GSC_Onimusha3(const GSFrameInfo& fi, int& skip)
+{
+	if(skip == 0)
+	{
+		if(fi.TME && (fi.FBP == 0x00e00 && fi.TBP0 == 0x00700 /*|| fi.FBP == 0x01000 && fi.TBP0 == 0x00e00*/))
+		{
+//			skip = 1000;
+		}
+	}
+
+	if(fi.TME && (fi.FBP == 0x00700 && fi.TBP0 == 0x00e00 /*|| fi.FBP == 0x00e00 && fi.TBP0 == 0x01000*/))
+	{
+//		skip = 1;
+	}
+
+	return true;
+}
+
 bool GSState::IsBadFrame(int& skip)
 {
 	GSFrameInfo fi;
@@ -2102,10 +2113,15 @@ bool GSState::IsBadFrame(int& skip)
 	fi.TBP0 = m_context->TEX0.TBP0;
 	fi.TPSM = m_context->TEX0.PSM;
 
-	static CAtlMap<CRC::Title, GetSkipCount> map;
+	static GetSkipCount map[CRC::TitleCount];
+	static bool inited = false;
 
-	if(map.IsEmpty())
+	if(!inited)
 	{
+		inited = true;
+
+		memset(map, 0, sizeof(map));
+		
 		map[CRC::Okami] = GSC_Okami;
 		map[CRC::MetalGearSolid3] = GSC_MetalGearSolid3;
 		map[CRC::DBZBT2] = GSC_DBZBT2;
@@ -2129,14 +2145,14 @@ bool GSState::IsBadFrame(int& skip)
 		map[CRC::GodOfWar] = GSC_GodOfWar;
 		map[CRC::GodOfWar2] = GSC_GodOfWar;
 		map[CRC::GiTS] = GSC_GiTS;
+		map[CRC::Onimusha3] = GSC_Onimusha3;
 	}
 
-	if(CAtlMap<CRC::Title, GetSkipCount>::CPair* pair = map.Lookup(m_game.title))
+	GetSkipCount gsc = map[m_game.title];
+
+	if(gsc && !gsc(fi, skip))
 	{
-		if(!pair->m_value(fi, skip))
-		{
-			return false;
-		}
+		return false;
 	}
 
 	if(skip == 0)

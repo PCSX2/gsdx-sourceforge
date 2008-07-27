@@ -67,65 +67,24 @@ public:
 	static bool IsRectInRectH(const CRect& inner, const CRect& outer);
 	static bool IsRectInRectV(const CRect& inner, const CRect& outer);
 	
-	static int EncodeFPSM(int psm)
+	static int EncodePSM(int psm)
 	{
 		switch(psm)
 		{
-		case PSM_PSMCT32: return 0;
-		case PSM_PSMCT24: return 1;
-		case PSM_PSMCT16: return 2;
-		case PSM_PSMCT16S: return 3;
-		case PSM_PSMZ32: return 4;
-		case PSM_PSMZ24: return 5;
-		case PSM_PSMZ16: return 6;
-		case PSM_PSMZ16S: return 7;
+		case PSM_PSMCT32: 
+		case PSM_PSMZ32: 
+			return 0;
+		case PSM_PSMCT24: 
+		case PSM_PSMZ24:
+			return 1;
+		case PSM_PSMCT16: 
+		case PSM_PSMCT16S: 
+		case PSM_PSMZ16:
+		case PSM_PSMZ16S:
+			return 2;
+		default:
+			return 3;
 		}
-
-		return -1;
 	}
-
-	static int DecodeFPSM(int index)
-	{
-		switch(index)
-		{
-		case 0: return PSM_PSMCT32;
-		case 1: return PSM_PSMCT24;
-		case 2: return PSM_PSMCT16;
-		case 3: return PSM_PSMCT16S;
-		case 4: return PSM_PSMZ32;
-		case 5: return PSM_PSMZ24;
-		case 6: return PSM_PSMZ16;
-		case 7: return PSM_PSMZ16S;
-		}
-
-		return -1;
-	}
-
-	static int EncodeZPSM(int psm)
-	{
-		switch(psm)
-		{
-		case PSM_PSMZ32: return 0;
-		case PSM_PSMZ24: return 1;
-		case PSM_PSMZ16: return 2;
-		case PSM_PSMZ16S: return 3;
-		}
-
-		return -1;
-	}
-
-	static int DecodeZPSM(int index)
-	{
-		switch(index)
-		{
-		case 0: return PSM_PSMZ32;
-		case 1: return PSM_PSMZ24;
-		case 2: return PSM_PSMZ16;
-		case 3: return PSM_PSMZ16S;
-		}
-
-		return -1;
-	}
-
 };
 

@@ -25,4 +25,8 @@
 		SubSystem="2"
 		RandomizedBaseAddress="1"
 	/>
+	<Tool
+		Name="VCPreBuildEventTool"
+		CommandLine="SubWCRev.exe $(ProjectDir) $(SolutionDir)svnrev_template.h $(ProjectDir)svnrev.h"
+	/>
 </VisualStudioPropertySheet>

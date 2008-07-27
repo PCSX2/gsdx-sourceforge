@@ -86,29 +86,29 @@ private:
 	{
 		struct
 		{
-			DWORD fpsm:3; // 0
-			DWORD zpsm:2; // 3
-			DWORD ztst:2; // 5 (0: off, 1: write, 2: write + test (ge), 3: write + test (g))
-			DWORD iip:1; // 7
-			DWORD tfx:3; // 8
-			DWORD tcc:1; // 11
-			DWORD fst:1; // 12
-			DWORD ltf:1; // 13
-			DWORD atst:3; // 14
-			DWORD afail:2; // 17
-			DWORD fge:1; // 19
-			DWORD rfb:1; // 20
-			DWORD date:1; // 21
-			DWORD abe:2; // 22
-			DWORD abea:2; // 24
-			DWORD abeb:2; // 26
-			DWORD abec:2; // 28
-			DWORD abed:2; // 30
+			DWORD fpsm:2; // 0
+			DWORD zpsm:2; // 2
+			DWORD ztst:2; // 4 (0: off, 1: write, 2: write + test (ge), 3: write + test (g))
+			DWORD iip:1; // 6
+			DWORD tfx:3; // 7
+			DWORD tcc:1; // 10
+			DWORD fst:1; // 11
+			DWORD ltf:1; // 12
+			DWORD atst:3; // 13
+			DWORD afail:2; // 16
+			DWORD fge:1; // 18
+			DWORD date:1; // 19
+			DWORD abe:2; // 20
+			DWORD abea:2; // 22
+			DWORD abeb:2; // 24
+			DWORD abec:2; // 26
+			DWORD abed:2; // 28
+			DWORD rfb:1; // 30
 		};
 
 		DWORD dw;
 
-		operator DWORD() {return dw & 0xffffffff;}
+		operator DWORD() {return dw & 0x7fffffff;}
 	};
 
 	CRect m_scissor;
@@ -137,10 +137,10 @@ private:
 
 	typedef void (GSRasterizer::*DrawScanlinePtr)(int top, int left, int right, const Vertex& v);
 
-	DrawScanlinePtr m_ds[8][4][4][2], m_dsf;
-	CAtlMap<DWORD, DrawScanlinePtr> m_dsmap, m_dsmap2;
+	DrawScanlinePtr m_ds[4][4][4][2], m_dsf;
+	CRBMap<DWORD, DrawScanlinePtr> m_dsmap, m_dsmap2;
 
-	template<int iFPSM, int iZPSM, int iZTST, int iIIP>
+	template<DWORD fpsm, DWORD zpsm, DWORD ztst, DWORD iip>
 	void DrawScanline(int top, int left, int right, const Vertex& v);
 
 	void InitEx();

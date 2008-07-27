@@ -35,6 +35,18 @@ protected:
 	void Draw();
 	bool WrapZ(DWORD maxz);
 
+	__forceinline int ScissorTest(const GSVector4i& p0, const GSVector4i& p1);
+
+	void DrawingKickPoint(GSVertexHW10* v, int& count);
+
+	#if _M_SSE >= 0x401
+
+	void DrawingKickLine(GSVertexHW10* v, int& count);
+	void DrawingKickTriangle(GSVertexHW10* v, int& count);
+	void DrawingKickSprite(GSVertexHW10* v, int& count);
+
+	#endif
+
 	struct
 	{
 		CComPtr<ID3D10DepthStencilState> dss;

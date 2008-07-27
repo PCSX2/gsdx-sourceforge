@@ -107,12 +107,12 @@ public:
 	class GSTexture : public GSSurface
 	{
 	protected:
-		bool GetDirtyRect(CRect& r)
+		bool GetDirtyRect(CRect& rr)
 		{
 			int w = 1 << m_TEX0.TW;
 			int h = 1 << m_TEX0.TH;
 
-			r = CRect(0, 0, w, h);
+			CRect r(0, 0, w, h);
 
 			POSITION pos = m_dirty.GetHeadPosition();
 
@@ -172,7 +172,14 @@ public:
 				r |= m_valid;
 			}
 
-			return !r.IsRectEmpty();
+			if(r.IsRectEmpty())
+			{
+				return false;
+			}
+
+			rr = r;
+
+			return true;
 		}
 
 	public:

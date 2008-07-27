@@ -60,17 +60,11 @@ GSRasterizer::GSRasterizer(GSState* state, int id, int threads)
 		InitDS_ZPSM(iFPSM, 0) \
 		InitDS_ZPSM(iFPSM, 1) \
 		InitDS_ZPSM(iFPSM, 2) \
-		InitDS_ZPSM(iFPSM, 3) \
 
 	#define InitDS() \
 		InitDS_FPSM(0) \
 		InitDS_FPSM(1) \
 		InitDS_FPSM(2) \
-		InitDS_FPSM(3) \
-		InitDS_FPSM(4) \
-		InitDS_FPSM(5) \
-		InitDS_FPSM(6) \
-		InitDS_FPSM(7) \
 
 	InitDS();
 
@@ -125,8 +119,8 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 
 	m_sel.dw = 0;
 
-	m_sel.fpsm = GSUtil::EncodeFPSM(context->FRAME.PSM);
-	m_sel.zpsm = GSUtil::EncodeZPSM(context->ZBUF.PSM);
+	m_sel.fpsm = GSUtil::EncodePSM(context->FRAME.PSM);
+	m_sel.zpsm = GSUtil::EncodePSM(context->ZBUF.PSM);
 	m_sel.ztst = context->TEST.ZTE && context->TEST.ZTST > 1 ? context->TEST.ZTST : context->ZBUF.ZMSK ? 0 : 1;
 	m_sel.iip = PRIM->PRIM == GS_POINTLIST || PRIM->PRIM == GS_SPRITE ? 0 : PRIM->IIP;
 	m_sel.tfx = PRIM->TME ? context->TEX0.TFX : 4;
@@ -154,22 +148,19 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 	}
 
 	m_sel.atst = context->TEST.ATE ? context->TEST.ATST : 1;
-	m_sel.afail = context->TEST.AFAIL;
+	m_sel.afail = context->TEST.ATE ? context->TEST.AFAIL : 0;
 	m_sel.fge = PRIM->FGE;
-	m_sel.rfb = 
-		PRIM->ABE || env.PABE.PABE || context->TEST.DATE ||
-		context->FRAME.FBMSK != 0 && context->FRAME.FBMSK != 0xffffffff || 
-		context->TEST.ATE && context->TEST.ATST != 1 && context->TEST.AFAIL == 3;
 	m_sel.date = context->FRAME.PSM != PSM_PSMCT24 ? context->TEST.DATE : 0;
 	m_sel.abe = env.PABE.PABE ? 2 : PRIM->ABE ? 1 : 0;
 	m_sel.abea = m_sel.abe ? context->ALPHA.A : 0;
 	m_sel.abeb = m_sel.abe ? context->ALPHA.B : 0;
 	m_sel.abec = m_sel.abe ? context->ALPHA.C : 0;
 	m_sel.abed = m_sel.abe ? context->ALPHA.D : 0;
+	m_sel.rfb = m_sel.date || m_sel.abe || m_sel.atst != 1 && m_sel.afail == 3 || context->FRAME.FBMSK != 0 && context->FRAME.FBMSK != 0xffffffff;
 
 	m_dsf = m_ds[m_sel.fpsm][m_sel.zpsm][m_sel.ztst][m_sel.iip];
 
-	CAtlMap<DWORD, DrawScanlinePtr>::CPair* pair = m_dsmap2.Lookup(m_sel);
+	CRBMap<DWORD, DrawScanlinePtr>::CPair* pair = m_dsmap2.Lookup(m_sel);
 
 	if(pair)
 	{
@@ -183,7 +174,7 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 		{
 			m_dsf = pair->m_value;
 
-			m_dsmap2[pair->m_key] = pair->m_value;
+			m_dsmap2.SetAt(pair->m_key, pair->m_value);
 		}
 		else if(!pair)
 		{
@@ -193,11 +184,11 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 				m_sel.tfx, m_sel.tcc, m_sel.fst, m_sel.ltf, 
 				m_sel.atst, m_sel.afail, m_sel.fge, m_sel.rfb, m_sel.date, m_sel.abe);
 
-			m_dsmap[m_sel] = NULL;
+			m_dsmap.SetAt(m_sel, NULL);
 
 			if(FILE* fp = _tfopen(_T("c:\\1.txt"), _T("w")))
 			{
-				POSITION pos = m_dsmap.GetStartPosition();
+				POSITION pos = m_dsmap.GetHeadPosition();
 
 				while(pos) 
 				{
@@ -205,7 +196,7 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 
 					if(!pair->m_value)
 					{
-						_ftprintf(fp, _T("m_dsmap[0x%08x] = &GSRasterizer::DrawScanlineEx<0x%08x>;\n"), pair->m_key, pair->m_key);
+						_ftprintf(fp, _T("m_dsmap.SetAt(0x%08x, &GSRasterizer::DrawScanlineEx<0x%08x>);\n"), pair->m_key, pair->m_key);
 					}
 				}
 
@@ -828,25 +819,9 @@ void GSRasterizer::SetupScanline(const Vertex& dv)
 	}
 }
 
-template<int iFPSM, int iZPSM, int ztst, int iip>
+template<DWORD fpsm, DWORD zpsm, DWORD ztst, DWORD iip>
 void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)	
 {
-/*
-extern UINT64 g_slp1;
-extern UINT64 g_slp2;
-extern UINT64 g_slp3;
-extern UINT64 g_slp4;
-{
-int steps = right - left;
-for(; steps >= 4; steps -= 4) g_slp4++;
-if(steps == 1) g_slp1++;
-else if(steps == 2) g_slp2++;
-else if(steps == 3) g_slp3++;
-}
-*/
-	int fpsm = GSUtil::DecodeFPSM(iFPSM);
-	int zpsm = GSUtil::DecodeZPSM(iZPSM);
-
 	GSVector4i fa_base = m_slenv.fbco[top];
 	GSVector4i* fa_offset = (GSVector4i*)&m_slenv.fo[left];
 
@@ -887,18 +862,24 @@ else if(steps == 3) g_slp3++;
 		GSVector4i test = GSVector4i::zero();
 
 		GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::one());
-		GSVector4i zd;
 
 		if(ztst > 1)
 		{
-			zd = m_state->m_mem.ReadZBufX(zpsm, za);
+			GSVector4i zd = m_state->m_mem.ReadZBufX(zpsm, za);
 
-			GSVector4i offset = GSVector4i::x80000000();
+			GSVector4i zso = zs;
+			GSVector4i zdo = zd;
+
+			if(zpsm == 0)
+			{
+				zso = zs - GSVector4i::x80000000();
+				zdo = zd - GSVector4i::x80000000();
+			}
 
 			switch(ztst)
 			{
-			case 2: test = (zs - offset) < (zd - offset); break; // ge
-			case 3: test = (zs - offset) <= (zd - offset); break; // g
+			case 2: test = zso < zdo; break; // ge
+			case 3: test = zso <= zdo; break; // g
 			default: __assume(0);
 			}
 
@@ -1099,10 +1080,10 @@ else if(steps == 3) g_slp3++;
 			c[10] = GSVector4::zero();
 			c[11] = m_slenv.afix;
 
-			int abea = m_sel.abea;
-			int abeb = m_sel.abeb;
-			int abec = m_sel.abec;
-			int abed = m_sel.abed;
+			DWORD abea = m_sel.abea;
+			DWORD abeb = m_sel.abeb;
+			DWORD abec = m_sel.abec;
+			DWORD abed = m_sel.abed;
 
 			GSVector4 r = (c[abea*4 + 0] - c[abeb*4 + 0]).mod2x(c[abec*4 + 3]) + c[abed*4 + 0];
 			GSVector4 g = (c[abea*4 + 1] - c[abeb*4 + 1]).mod2x(c[abec*4 + 3]) + c[abed*4 + 1];
