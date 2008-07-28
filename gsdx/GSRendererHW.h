@@ -484,6 +484,26 @@ protected:
 		}
 
 		#pragma endregion
+
+		#pragma region MajokkoALaMode2 palette readback
+
+		if(m_game.title == CRC::MajokkoALaMode2)
+		{
+			DWORD FBP = m_context->FRAME.Block();
+
+			if(!PRIM->TME && FBP == 0x03f40)
+			{
+				GIFRegBITBLTBUF BITBLTBUF;
+
+				BITBLTBUF.SBP = FBP;
+				BITBLTBUF.SBW = 1;
+				BITBLTBUF.SPSM = PSM_PSMCT32;
+
+				InvalidateLocalMem(BITBLTBUF, CRect(0, 0, 16, 16));
+			}
+		}
+
+		#pragma endregion
 	}
 
 	bool CanUpscale()
@@ -495,6 +515,20 @@ protected:
 			DWORD FBP = m_context->FRAME.Block();
 
 			if(FBP == 0x03c00 || FBP == 0x03ac0)
+			{
+				return false;
+			}
+		}
+
+		#pragma endregion
+
+		#pragma region MajokkoALaMode2 palette should stay 16 x 16
+
+		if(m_game.title == CRC::MajokkoALaMode2)
+		{
+			DWORD FBP = m_context->FRAME.Block();
+
+			if(FBP == 0x03f40)
 			{
 				return false;
 			}

@@ -61,6 +61,7 @@ public:
 		NamcoXCapcom,
 		GiTS,
 		Onimusha3,
+		MajokkoALaMode2,
 		TitleCount
 	};
 

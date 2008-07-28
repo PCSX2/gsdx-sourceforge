@@ -99,6 +99,7 @@ CRC::Game CRC::m_games[] =
 	{0x75c01a04, NamcoXCapcom, US, false},
 	{0xBF6F101F, GiTS, US, false},
 	{0x6BF11378, Onimusha3, US, false},	
+	{0xF442260C, MajokkoALaMode2, JP, false},
 };
 
 CAtlMap<DWORD, CRC::Game*> CRC::m_map;
