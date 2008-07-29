@@ -172,7 +172,7 @@ template<int n> void GSClut::WriteCLUT32_CSM2(const GIFRegTEX0& TEX0, const GIFR
 
 	for(int i = 0; i < n; i++)
 	{
-		DWORD c = (WORD)m_mem->ReadPixel32(base + offset[i]);
+		DWORD c = m_mem->ReadPixel32(base + offset[i]);
 
 		clut[i] = (WORD)(c & 0xffff);
 		clut[i + 256] = (WORD)(c >> 16);
