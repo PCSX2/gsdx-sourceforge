@@ -73,6 +73,7 @@ GSLocalMemory::psm_t GSLocalMemory::m_psm[64];
 //
 
 GSLocalMemory::GSLocalMemory()
+	: m_clut(this)
 {
 	// TODO: MEM_WRITE_WATCH
 

@@ -261,22 +261,6 @@ public:
 
 	GSRenderTarget* GetRenderTarget(const GIFRegTEX0& TEX0, int w, int h, bool fb = false)
 	{
-		POSITION pos = m_tex.GetHeadPosition();
-/*
-		while(pos)
-		{
-			POSITION cur = pos;
-
-			GSTexture* t = m_tex.GetNext(pos);
-
-			if(GSUtil::HasSharedBits(TEX0.TBP0, TEX0.PSM, t->m_TEX0.TBP0, t->m_TEX0.PSM))
-			{
-				m_tex.RemoveAt(cur);
-
-				delete t;
-			}
-		}
-*/
 		GSRenderTarget* rt = NULL;
 
 		if(rt == NULL)
@@ -363,22 +347,6 @@ public:
 
 	GSDepthStencil* GetDepthStencil(const GIFRegTEX0& TEX0, int w, int h)
 	{
-		POSITION pos = m_tex.GetHeadPosition();
-/*
-		while(pos)
-		{
-			POSITION cur = pos;
-
-			GSTexture* t = m_tex.GetNext(pos);
-
-			if(GSUtil::HasSharedBits(TEX0.TBP0, TEX0.PSM, t->m_TEX0.TBP0, t->m_TEX0.PSM))
-			{
-				m_tex.RemoveAt(cur);
-
-				delete t;
-			}
-		}
-*/
 		GSDepthStencil* ds = NULL;
 
 		if(ds == NULL)

@@ -43,10 +43,6 @@ public:
 	GIFRegFRAME		FRAME;
 	GIFRegZBUF		ZBUF;
 
-	GSLocalMemory::psm_t* ftbl;
-	GSLocalMemory::psm_t* ztbl;
-	GSLocalMemory::psm_t* ttbl;
-
 	__declspec(align(16)) struct
 	{
 		GSVector4i dx10;
@@ -55,10 +51,7 @@ public:
 		GSVector4 sw;
 	} scissor;
 
-	GSDrawingContext() 
-		: ftbl(NULL)
-		, ztbl(NULL)
-		, ttbl(NULL)
+	GSDrawingContext()
 	{
 		Reset();
 	}

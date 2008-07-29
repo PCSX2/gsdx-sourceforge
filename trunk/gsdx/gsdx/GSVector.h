@@ -588,6 +588,11 @@ public:
 		return _mm_movemask_epi8(m);
 	}
 
+	bool alltrue() const
+	{
+		return _mm_movemask_epi8(m) == 0xffff;
+	}
+
 	template<int i> GSVector4i insert16(int a) const
 	{
 		return GSVector4i(_mm_insert_epi16(m, a, i));
@@ -1268,7 +1273,7 @@ public:
 			v &= d[i] == s[i];
 		}
 
-		return v.mask() == 0xffff;
+		return v.alltrue();
 	}
 
 	__forceinline static bool update(const void* dst, const void* src, int size)
@@ -1289,7 +1294,7 @@ public:
 			d[i] = s[i];
 		}
 
-		return v.mask() == 0xffff;
+		return v.alltrue();
 	}
 
 	void operator += (const GSVector4i& v) 
@@ -1713,6 +1718,11 @@ public:
 	int mask() const
 	{
 		return _mm_movemask_ps(m);
+	}
+
+	bool alltrue() const
+	{
+		return _mm_movemask_ps(m) == 0xf;
 	}
 
 	static GSVector4 zero() 

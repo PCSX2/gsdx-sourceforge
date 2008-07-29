@@ -279,6 +279,7 @@ bool GSTextureCache10::GSTextureHW10::Create(GSRenderTarget* rt)
 		int dw = (int)m_TEX0.TBW << 6;
 		int dh = 1 << m_TEX0.TH;
 
+		if(sw != 0)
 		for(int dy = 0; dy < dh; dy += bh)
 		{
 			for(int dx = 0; dx < dw; dx += bw)
