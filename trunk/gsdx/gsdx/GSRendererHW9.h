@@ -23,24 +23,30 @@
 
 #include "GSRendererHW.h"
 #include "GSVertexHW.h"
+#include "GSTextureCache9.h"
 #include "GSTextureFX9.h"
 
-class GSRendererHW9 : public GSRendererHW<GSDevice9, GSVertexHW9>
+class GSRendererHW9 : public GSRendererHW<GSDevice9, GSVertexHW9, GSTextureCache9>
 {
+	typedef GSDevice9 Device;
+	typedef GSVertexHW9 Vertex;
+	typedef GSTextureCache9 TextureCache;
+
 protected:
 	GSTextureFX9 m_tfx;
 	bool m_logz;
 
 	void VertexKick(bool skip);
-	void Draw();
 	bool WrapZ(float maxz);
 
 	__forceinline int ScissorTest(const GSVector4& p0, const GSVector4& p1);
 
-	void DrawingKickPoint(GSVertexHW9* v, int& count);
-	void DrawingKickLine(GSVertexHW9* v, int& count);
-	void DrawingKickTriangle(GSVertexHW9* v, int& count);
-	void DrawingKickSprite(GSVertexHW9* v, int& count);
+	void DrawingKickPoint(Vertex* v, int& count);
+	void DrawingKickLine(Vertex* v, int& count);
+	void DrawingKickTriangle(Vertex* v, int& count);
+	void DrawingKickSprite(Vertex* v, int& count);
+
+	void Draw(int prim, Texture& rt, Texture& ds, GSTextureCache<Device>::GSTexture* tex);
 
 	struct
 	{

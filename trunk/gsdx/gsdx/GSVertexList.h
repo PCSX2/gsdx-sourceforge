@@ -51,8 +51,6 @@ public:
 
 	__forceinline Vertex& AddTail()
 	{
-		_mm_prefetch((char*)m_base, _MM_HINT_NTA);
-
 		ASSERT(m_count < 3);
 
 		return *m_v[m_count++];

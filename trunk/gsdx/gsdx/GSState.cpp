@@ -2089,15 +2089,21 @@ bool GSC_Onimusha3(const GSFrameInfo& fi, int& skip)
 {
 	if(skip == 0)
 	{
-		if(fi.TME && (fi.FBP == 0x00e00 && fi.TBP0 == 0x00700 /*|| fi.FBP == 0x01000 && fi.TBP0 == 0x00e00*/))
+		if(fi.TME && fi.FBP == 0x00e00 && (fi.TBP0 == 0x00700 || fi.TBP0 == 0x00000) && fi.TPSM == PSM_PSMT8H)
 		{
-//			skip = 1000;
+			skip = 1000;
+		}
+		else if(fi.TME && fi.FBP == 0x01000 && fi.TBP0 == 0x00e00 && fi.FPSM == PSM_PSMCT16 && fi.TPSM == PSM_PSMCT16)
+		{
+			skip = 116;
 		}
 	}
-
-	if(fi.TME && (fi.FBP == 0x00700 && fi.TBP0 == 0x00e00 /*|| fi.FBP == 0x00e00 && fi.TBP0 == 0x01000*/))
+	else
 	{
-//		skip = 1;
+		if(fi.TME && (fi.FBP == 0x00000 && fi.TBP0 == 0x00700 || fi.FBP == 0x00700 && fi.TBP0 == 0x00000) && fi.FPSM == fi.TPSM && fi.FPSM == PSM_PSMCT32)
+		{
+			skip = 0;
+		}
 	}
 
 	return true;

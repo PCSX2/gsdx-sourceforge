@@ -47,6 +47,8 @@ __declspec(align(16)) struct GSVertex
 	GIFRegUV UV;
 
 	GSVertex() {memset(this, 0, sizeof(*this));}
+
+	GSVector4 GetUV() {return GSVector4(GSVector4i::load(UV.ai32[0]).upl16());}
 };
 
 struct GSVertexOld

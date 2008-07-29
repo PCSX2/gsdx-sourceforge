@@ -25,16 +25,16 @@
 #include "GSTextureCache.h"
 #include "GSCrc.h"
 
-template<class Device, class Vertex> 
+template<class Device, class Vertex, class TextureCache> 
 class GSRendererHW : public GSRendererT<Device, Vertex>
 {
-protected:
-	GSTextureCache<Device>* m_tc; // derived class creates this
+	TextureCache* m_tc;
 	int m_width;
 	int m_height;
 	int m_skip;
 	bool m_reset;
 
+protected:
 	void Reset() 
 	{
 		// TODO: GSreset can come from the main thread too => crash
@@ -43,121 +43,6 @@ protected:
 		m_reset = true;
 
 		__super::Reset();
-	}
-
-	GSVector4 MinMaxUV2()
-	{
-		Vertex* v = m_vertices;
-
-		GSVector4 mm;
-
-		#if _M_SSE >= 0x200
-
-		GSVector4 minv(+1e10f);
-		GSVector4 maxv(-1e10f);
-
-		int i = 0;
-
-		#endif
-
-		if(PRIM->FST)
-		{
-			#if _M_SSE >= 0x200
-
-			for(int count = m_count - 3; i < count; i += 4)
-			{
-				GSVector4 v0 = GSVector4(v[i + 0].m128[0]);
-				GSVector4 v1 = GSVector4(v[i + 1].m128[0]);
-				GSVector4 v2 = GSVector4(v[i + 2].m128[0]);
-				GSVector4 v3 = GSVector4(v[i + 3].m128[0]);
-
-				minv = minv.minv((v0.minv(v1)).minv(v2.minv(v3)));
-				maxv = maxv.maxv((v0.maxv(v1)).maxv(v2.maxv(v3)));
-			}
-
-			for(; i < m_count; i++)
-			{
-				GSVector4 v0 = GSVector4(v[i + 0].m128[0]);
-
-				minv = minv.minv(v0);
-				maxv = maxv.maxv(v0);
-			}
-
-			mm = minv.xyxy(maxv) * GSVector4(16 << m_context->TEX0.TW, 16 << m_context->TEX0.TH, 16 << m_context->TEX0.TW, 16 << m_context->TEX0.TH).rcpnr();
-
-			#else
-
-			for(int i = 0, j = m_count; i < j; i++)
-			{
-				float x = v[i].t.x;
-
-				if(x < mm.x) mm.x = x;
-				if(x > mm.z) mm.z = x;
-				
-				float y = v[i].t.y;
-
-				if(y < mm.y) mm.y = y;
-				if(y > mm.w) mm.w = y;
-			}
-
-			mm.x *= 1.0f / (16 << m_context->TEX0.TW);
-			mm.y *= 1.0f / (16 << m_context->TEX0.TH);
-			mm.z *= 1.0f / (16 << m_context->TEX0.TW);
-			mm.w *= 1.0f / (16 << m_context->TEX0.TH);
-
-			#endif
-		}
-		else
-		{
-			#if 0//_M_SSE >= 0x200
-
-			for(int count = m_count - 3; i < count; i += 4)
-			{
-				GSVector4 v0 = GSVector4(v[i + 0].m128[0]) / GSVector4(v[i + 0].GetQ());
-				GSVector4 v1 = GSVector4(v[i + 1].m128[0]) / GSVector4(v[i + 1].GetQ());
-				GSVector4 v2 = GSVector4(v[i + 2].m128[0]) / GSVector4(v[i + 2].GetQ());
-				GSVector4 v3 = GSVector4(v[i + 3].m128[0]) / GSVector4(v[i + 3].GetQ());
-
-				minv = minv.minv((v0.minv(v1)).minv(v2.minv(v3)));
-				maxv = maxv.maxv((v0.maxv(v1)).maxv(v2.maxv(v3)));
-			}
-
-			for(; i < m_count; i++)
-			{
-				GSVector4 v0 = GSVector4(v[i + 0].m128[0]) / GSVector4(v[i + 0].GetQ());;
-
-				minv = minv.minv(v0);
-				maxv = maxv.maxv(v0);
-			}
-
-			mm = minv.xyxy(maxv);
-
-			#else
-
-			// just can't beat the compiler generated scalar sse code with packed div or rcp
-
-			mm.x = mm.y = +1e10;
-			mm.z = mm.w = -1e10;
-
-			for(int i = 0, j = m_count; i < j; i++)
-			{
-				float w = 1.0f / v[i].GetQ();
-
-				float x = v[i].t.x * w;
-
-				if(x < mm.x) mm.x = x;
-				if(x > mm.z) mm.z = x;
-				
-				float y = v[i].t.y * w;
-
-				if(y < mm.y) mm.y = y;
-				if(y > mm.w) mm.w = y;
-			}
-
-			#endif
-		}
-
-		return mm;
 	}
 
 	void MinMaxUV(int w, int h, CRect& r)
@@ -176,7 +61,90 @@ protected:
 
 		if(wms + wmt < 6)
 		{
-			GSVector4 mm = m_count < 100 ? MinMaxUV2() : GSVector4(0.0f, 0.0f, 1.0f, 1.0f);
+			GSVector4 mm;
+
+			if(m_count < 100)
+			{
+				Vertex* v = m_vertices;
+
+				GSVector4 minv(+1e10f);
+				GSVector4 maxv(-1e10f);
+
+				int i = 0;
+
+				if(PRIM->FST)
+				{
+					for(int j = m_count - 3; i < j; i += 4)
+					{
+						GSVector4 v0 = GSVector4(v[i + 0].m128[0]);
+						GSVector4 v1 = GSVector4(v[i + 1].m128[0]);
+						GSVector4 v2 = GSVector4(v[i + 2].m128[0]);
+						GSVector4 v3 = GSVector4(v[i + 3].m128[0]);
+
+						minv = minv.minv((v0.minv(v1)).minv(v2.minv(v3)));
+						maxv = maxv.maxv((v0.maxv(v1)).maxv(v2.maxv(v3)));
+					}
+
+					for(int j = m_count; i < j; i++)
+					{
+						GSVector4 v0 = GSVector4(v[i + 0].m128[0]);
+
+						minv = minv.minv(v0);
+						maxv = maxv.maxv(v0);
+					}
+
+					mm = minv.xyxy(maxv) * GSVector4(16 << m_context->TEX0.TW, 16 << m_context->TEX0.TH, 16 << m_context->TEX0.TW, 16 << m_context->TEX0.TH).rcpnr();
+				}
+				else
+				{
+					/*
+					for(int j = m_count - 3; i < j; i += 4)
+					{
+						GSVector4 v0 = GSVector4(v[i + 0].m128[0]) / GSVector4(v[i + 0].GetQ());
+						GSVector4 v1 = GSVector4(v[i + 1].m128[0]) / GSVector4(v[i + 1].GetQ());
+						GSVector4 v2 = GSVector4(v[i + 2].m128[0]) / GSVector4(v[i + 2].GetQ());
+						GSVector4 v3 = GSVector4(v[i + 3].m128[0]) / GSVector4(v[i + 3].GetQ());
+
+						minv = minv.minv((v0.minv(v1)).minv(v2.minv(v3)));
+						maxv = maxv.maxv((v0.maxv(v1)).maxv(v2.maxv(v3)));
+					}
+
+					for(int j = m_count; i < j; i++)
+					{
+						GSVector4 v0 = GSVector4(v[i + 0].m128[0]) / GSVector4(v[i + 0].GetQ());;
+
+						minv = minv.minv(v0);
+						maxv = maxv.maxv(v0);
+					}
+
+					mm = minv.xyxy(maxv);
+					*/
+
+					// just can't beat the compiler generated scalar sse code with packed div or rcp
+
+					mm.x = mm.y = +1e10;
+					mm.z = mm.w = -1e10;
+
+					for(int j = m_count; i < j; i++)
+					{
+						float w = 1.0f / v[i].GetQ();
+
+						float x = v[i].t.x * w;
+
+						if(x < mm.x) mm.x = x;
+						if(x > mm.z) mm.z = x;
+						
+						float y = v[i].t.y * w;
+
+						if(y < mm.y) mm.y = y;
+						if(y > mm.w) mm.w = y;
+					}
+				}
+			}
+			else
+			{
+				mm = GSVector4(0.0f, 0.0f, 1.0f, 1.0f);
+			}
 
 			GSVector4 v0 = GSVector4(vr);
 			GSVector4 v1 = v0.zwzw();
@@ -315,6 +283,82 @@ protected:
 
 		m_tc->InvalidateLocalMem(BITBLTBUF, r);
 	}
+
+	void Draw()
+	{
+		if(IsBadFrame(m_skip))
+		{
+			return;
+		}
+
+		GSDrawingEnvironment& env = m_env;
+		GSDrawingContext* context = m_context;
+
+		GIFRegTEX0 TEX0;
+
+		TEX0.TBP0 = context->FRAME.Block();
+		TEX0.TBW = context->FRAME.FBW;
+		TEX0.PSM = context->FRAME.PSM;
+
+		GSTextureCache<Device>::GSRenderTarget* rt = m_tc->GetRenderTarget(TEX0, m_width, m_height);
+
+		TEX0.TBP0 = context->ZBUF.Block();
+		TEX0.TBW = context->FRAME.FBW;
+		TEX0.PSM = context->ZBUF.PSM;
+
+		GSTextureCache<Device>::GSDepthStencil* ds = m_tc->GetDepthStencil(TEX0, m_width, m_height);
+
+		GSTextureCache<Device>::GSTexture* tex = NULL;
+
+		if(PRIM->TME)
+		{
+			tex = m_tc->GetTexture();
+
+			if(!tex) return;
+		}
+
+		if(s_dump)
+		{
+			CString str;
+			str.Format(_T("c:\\temp2\\_%05d_f%I64d_tex_%05x_%d_%d%d_%02x_%02x_%02x_%02x.dds"), 
+				s_n++, m_perfmon.GetFrame(), (int)context->TEX0.TBP0, (int)context->TEX0.PSM,
+				(int)context->CLAMP.WMS, (int)context->CLAMP.WMT, 
+				(int)context->CLAMP.MINU, (int)context->CLAMP.MAXU, 
+				(int)context->CLAMP.MINV, (int)context->CLAMP.MAXV);
+			if(PRIM->TME) if(s_save) tex->m_texture.Save(str, true);
+			str.Format(_T("c:\\temp2\\_%05d_f%I64d_tpx_%05x_%d.dds"), s_n-1, m_perfmon.GetFrame(), context->TEX0.CBP, context->TEX0.CPSM);
+			if(PRIM->TME && tex->m_palette) if(s_save) tex->m_palette.Save(str, true);
+			str.Format(_T("c:\\temp2\\_%05d_f%I64d_rt0_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), context->FRAME.Block(), context->FRAME.PSM);
+			if(s_save) rt->m_texture.Save(str);
+			// str.Format(_T("c:\\temp2\\_%05d_f%I64d_rz0_%05x_%d.bmp"), s_n-1, m_perfmon.GetFrame(), context->ZBUF.Block(), context->ZBUF.PSM);
+			// if(s_savez) m_dev.SaveToFileD32S8X24(ds->m_texture, str); // TODO
+			// if(s_savez) m_dev.SaveToFileD24S8(ds->m_texture, str); // TODO
+		}
+
+		int prim = PRIM->PRIM;
+
+		if(!OverrideInput(prim, rt->m_texture, ds->m_texture, tex ? &tex->m_texture : NULL))
+		{
+			return;
+		}
+
+		Draw(prim, rt->m_texture, ds->m_texture, tex);
+
+		OverrideOutput();
+
+		m_tc->InvalidateTextures(context->FRAME, context->ZBUF);
+
+		if(s_dump)
+		{
+			CString str;
+			str.Format(_T("c:\\temp2\\_%05d_f%I64d_rt1_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), context->FRAME.Block(), context->FRAME.PSM);
+			if(s_save) rt->m_texture.Save(str);
+			// str.Format(_T("c:\\temp2\\_%05d_f%I64d_rz1_%05x_%d.bmp"), s_n-1, m_perfmon.GetFrame(), context->ZBUF.Block(), context->ZBUF.PSM);
+			// if(s_savez) m_dev.SaveToFileD32S8X24(ds->m_texture, str); // TODO
+		}
+	}
+
+	virtual void Draw(int prim, Texture& rt, Texture& ds, typename GSTextureCache<Device>::GSTexture* tex) = 0;
 
 	virtual bool OverrideInput(int& prim, Texture& rt, Texture& ds, Texture* t)
 	{
@@ -542,7 +586,6 @@ protected:
 public:
 	GSRendererHW(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs, bool psrr)
 		: GSRendererT<Device, Vertex>(base, mt, irq, nloophack, rs, psrr)
-		, m_tc(NULL)
 		, m_width(1024)
 		, m_height(1024)
 		, m_skip(0)
@@ -553,6 +596,8 @@ public:
 			m_width = AfxGetApp()->GetProfileInt(_T("Settings"), _T("resx"), m_width);
 			m_height = AfxGetApp()->GetProfileInt(_T("Settings"), _T("resy"), m_height);
 		}
+
+		m_tc = new TextureCache(this);
 	}
 
 	virtual ~GSRendererHW()

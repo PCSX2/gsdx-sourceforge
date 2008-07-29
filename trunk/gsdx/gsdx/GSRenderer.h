@@ -316,6 +316,8 @@ public:
 
 	void VSync(int field)
 	{
+		// printf("VSYNC\n");
+
 		GSPerfMonAutoTimer pmat(m_perfmon);
 
 		m_field = !!field;
@@ -591,6 +593,24 @@ protected:
 				  PRIM->TME ? (int)m_context->TEX0.TBP0 : 0xfffff, 
 				  PRIM->TME && m_context->TEX0.PSM > PSM_PSMCT16S ? (int)m_context->TEX0.CBP : 0xfffff, 
 				  PRIM->TME ? (int)m_context->TEX0.PSM : 0xff);
+			*/
+
+			/*
+			static bool first = true;
+			static GIFRegPRIM s_PRIM;
+			static GIFRegFRAME s_FRAME;
+			static GIFRegTEX0 s_TEX0;
+
+			if(first || PRIM->TME != s_PRIM.TME || m_context->FRAME.i64 != s_FRAME.i64 || m_context->TEX0.i64 != s_TEX0.i64)
+			{
+				first = false;
+				s_PRIM = *PRIM;
+				s_FRAME = m_context->FRAME;
+				s_TEX0 = m_context->TEX0;
+				printf("%05x %2d", s_FRAME.Block(), s_FRAME.PSM);
+				if(s_PRIM.TME) printf(" %05x %2d %05x %2d", s_TEX0.TBP0, s_TEX0.PSM, s_TEX0.CBP, s_TEX0.CPSM);
+				printf("\n");
+			}
 			*/
 
 			Draw();

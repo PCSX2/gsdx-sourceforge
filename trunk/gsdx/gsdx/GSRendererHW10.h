@@ -23,29 +23,35 @@
 
 #include "GSRendererHW.h"
 #include "GSVertexHW.h"
+#include "GSTextureCache10.h"
 #include "GSTextureFX10.h"
 
-class GSRendererHW10 : public GSRendererHW<GSDevice10, GSVertexHW10>
+class GSRendererHW10 : public GSRendererHW<GSDevice10, GSVertexHW10, GSTextureCache10>
 {
+	typedef GSDevice10 Device;
+	typedef GSVertexHW10 Vertex;
+	typedef GSTextureCache10 TextureCache;
+
 protected:
 	GSTextureFX10 m_tfx;
 
 	void VertexKick(bool skip);
-	void DrawingKick(GSVertexHW10* v, int& count); // TODO
-	void Draw();
+	void DrawingKick(Vertex* v, int& count); // TODO
 	bool WrapZ(DWORD maxz);
 
 	__forceinline int ScissorTest(const GSVector4i& p0, const GSVector4i& p1);
 
-	void DrawingKickPoint(GSVertexHW10* v, int& count);
+	void DrawingKickPoint(Vertex* v, int& count);
 
 	#if _M_SSE >= 0x401
 
-	void DrawingKickLine(GSVertexHW10* v, int& count);
-	void DrawingKickTriangle(GSVertexHW10* v, int& count);
-	void DrawingKickSprite(GSVertexHW10* v, int& count);
+	void DrawingKickLine(Vertex* v, int& count);
+	void DrawingKickTriangle(Vertex* v, int& count);
+	void DrawingKickSprite(Vertex* v, int& count);
 
 	#endif
+
+	void Draw(int prim, Texture& rt, Texture& ds, GSTextureCache<Device>::GSTexture* tex);
 
 	struct
 	{
