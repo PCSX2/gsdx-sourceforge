@@ -165,7 +165,7 @@ void GSClut::WriteCLUT16S_I4_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& T
 
 template<int n> void GSClut::WriteCLUT32_CSM2(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)
 {
-	WORD* clut = m_clut + (TEX0.CSA << 4);
+	WORD* RESTRICT clut = m_clut + (TEX0.CSA << 4);
 
 	DWORD base = m_mem->PixelAddress32(0, TEXCLUT.COV, TEX0.CBP, TEXCLUT.CBW);
 	int* offset = &m_mem->rowOffset32[TEXCLUT.COU << 4];
@@ -181,7 +181,7 @@ template<int n> void GSClut::WriteCLUT32_CSM2(const GIFRegTEX0& TEX0, const GIFR
 
 template<int n> void GSClut::WriteCLUT16_CSM2(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)
 {
-	WORD* clut = m_clut + (TEX0.CSA << 4);
+	WORD* RESTRICT clut = m_clut + (TEX0.CSA << 4);
 
 	DWORD base = m_mem->PixelAddress16(0, TEXCLUT.COV, TEX0.CBP, TEXCLUT.CBW);
 	int* offset = &m_mem->rowOffset16[TEXCLUT.COU << 4];
@@ -194,7 +194,7 @@ template<int n> void GSClut::WriteCLUT16_CSM2(const GIFRegTEX0& TEX0, const GIFR
 
 template<int n> void GSClut::WriteCLUT16S_CSM2(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)
 {
-	WORD* clut = m_clut + (TEX0.CSA << 4);
+	WORD* RESTRICT clut = m_clut + (TEX0.CSA << 4);
 
 	DWORD base = m_mem->PixelAddress16S(0, TEXCLUT.COV, TEX0.CBP, TEXCLUT.CBW);
 	int* offset = &m_mem->rowOffset16S[TEXCLUT.COU << 4];
