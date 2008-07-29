@@ -354,10 +354,6 @@ int GSState::GetFPS()
 	return ((SMODE1->CMOD & 1) ? 50 : 60) / (SMODE2->INT ? 1 : 2);
 }
 
-//
-
-static __m128i _000000ff = _mm_set1_epi32(0x000000ff);
-
 // GIFPackedRegHandler*
 
 void GSState::GIFPackedRegHandlerNull(GIFPackedReg* r)
@@ -519,19 +515,13 @@ void GSState::GIFRegHandlerPRIM(GIFReg* r)
 	}
 	else
 	{
-		if(m_env.PRIM.i64 != r->PRIM.i64)
-		{
-			Flush();
-		}
+		Flush();
 	}
 
-	m_env.PRIM = r->PRIM;
+	m_env.PRIM = (GSVector4i)r->PRIM;
 	m_env.PRMODE._PRIM = r->PRIM.PRIM;
 
-	if(m_env.PRMODECONT.AC)
-	{
-		m_context = &m_env.CTXT[m_env.PRIM.CTXT];
-	}
+	m_context = &m_env.CTXT[PRIM->CTXT];
 
 	m_vprim = GSUtil::GetPrimVertexCount(PRIM->PRIM);
 
@@ -540,12 +530,12 @@ void GSState::GIFRegHandlerPRIM(GIFReg* r)
 
 void GSState::GIFRegHandlerRGBAQ(GIFReg* r)
 {
-	m_v.RGBAQ = r->RGBAQ;
+	m_v.RGBAQ = (GSVector4i)r->RGBAQ;
 }
 
 void GSState::GIFRegHandlerST(GIFReg* r)
 {
-	m_v.ST = r->ST;
+	m_v.ST = (GSVector4i)r->ST;
 }
 
 void GSState::GIFRegHandlerUV(GIFReg* r)
@@ -570,7 +560,7 @@ void GSState::GIFRegHandlerXYZF2(GIFReg* r)
 
 void GSState::GIFRegHandlerXYZ2(GIFReg* r)
 {
-	m_v.XYZ = r->XYZ;
+	m_v.XYZ = (GSVector4i)r->XYZ;
 
 	VertexKick(false);
 }
@@ -581,12 +571,12 @@ template<int i> void GSState::GIFRegHandlerTEX0(GIFReg* r)
 
 	bool wt = m_mem.m_clut.WriteTest(r->TEX0, m_env.TEXCLUT);
 
-	if(wt || PRIM->CTXT == i && !(GSVector4i::loadl(&m_env.CTXT[i].TEX0) == GSVector4i::loadl(r)).alltrue())
+	if(wt || PRIM->CTXT == i && !(m_env.CTXT[i].TEX0 == (GSVector4i)r->TEX0).alltrue())
 	{
 		Flush(); 
 	}
 
-	m_env.CTXT[i].TEX0 = r->TEX0;
+	m_env.CTXT[i].TEX0 = (GSVector4i)r->TEX0;
 
 	if(m_env.CTXT[i].TEX0.TW > 10) m_env.CTXT[i].TEX0.TW = 10;
 	if(m_env.CTXT[i].TEX0.TH > 10) m_env.CTXT[i].TEX0.TH = 10;
@@ -606,17 +596,17 @@ template<int i> void GSState::GIFRegHandlerTEX0(GIFReg* r)
 
 template<int i> void GSState::GIFRegHandlerCLAMP(GIFReg* r)
 {
-	if(PRIM->CTXT == i && !(GSVector4i::loadl(&m_env.CTXT[i].CLAMP) == GSVector4i::loadl(r)).alltrue())
+	if(PRIM->CTXT == i && !(m_env.CTXT[i].CLAMP == (GSVector4i)r->CLAMP).alltrue())
 	{
 		Flush();
 	}
 
-	m_env.CTXT[i].CLAMP = r->CLAMP;
+	m_env.CTXT[i].CLAMP = (GSVector4i)r->CLAMP;
 }
 
 void GSState::GIFRegHandlerFOG(GIFReg* r)
 {
-	m_v.FOG = r->FOG;
+	m_v.FOG = (GSVector4i)r->FOG;
 }
 
 void GSState::GIFRegHandlerXYZF3(GIFReg* r)
@@ -636,7 +626,7 @@ void GSState::GIFRegHandlerXYZF3(GIFReg* r)
 
 void GSState::GIFRegHandlerXYZ3(GIFReg* r)
 {
-	m_v.XYZ = r->XYZ;
+	m_v.XYZ = (GSVector4i)r->XYZ;
 
 	VertexKick(true);
 }
@@ -647,12 +637,12 @@ void GSState::GIFRegHandlerNOP(GIFReg* r)
 
 template<int i> void GSState::GIFRegHandlerTEX1(GIFReg* r)
 {
-	if(PRIM->CTXT == i && !(GSVector4i::loadl(&m_env.CTXT[i].TEX1) == GSVector4i::loadl(r)).alltrue())
+	if(PRIM->CTXT == i && !(m_env.CTXT[i].TEX1 == (GSVector4i)r->TEX1).alltrue())
 	{
 		Flush();
 	}
 
-	m_env.CTXT[i].TEX1 = r->TEX1;
+	m_env.CTXT[i].TEX1 = (GSVector4i)r->TEX1;
 }
 
 template<int i> void GSState::GIFRegHandlerTEX2(GIFReg* r)
@@ -668,24 +658,24 @@ template<int i> void GSState::GIFRegHandlerTEX2(GIFReg* r)
 
 template<int i> void GSState::GIFRegHandlerXYOFFSET(GIFReg* r)
 {
-	if(!(GSVector4i::loadl(&m_env.CTXT[i].XYOFFSET) == GSVector4i::loadl(r)).alltrue())
+	if(!(m_env.CTXT[i].XYOFFSET == (GSVector4i)r->XYOFFSET).alltrue())
 	{
 		Flush();
 	}
 
-	m_env.CTXT[i].XYOFFSET = r->XYOFFSET;
+	m_env.CTXT[i].XYOFFSET = (GSVector4i)r->XYOFFSET;
 
 	m_env.CTXT[i].UpdateScissor();
 }
 
 void GSState::GIFRegHandlerPRMODECONT(GIFReg* r)
 {
-	if(!(GSVector4i::loadl(&m_env.PRMODECONT) == GSVector4i::loadl(r)).alltrue())
+	if(!(m_env.PRMODECONT == (GSVector4i)r->PRMODECONT).alltrue())
 	{
 		Flush();
 	}
 
-	m_env.PRMODECONT = r->PRMODECONT;
+	m_env.PRMODECONT = (GSVector4i)r->PRMODECONT;
 
 	PRIM = !m_env.PRMODECONT.AC ? (GIFRegPRIM*)&m_env.PRMODE : &m_env.PRIM;
 
@@ -704,7 +694,7 @@ void GSState::GIFRegHandlerPRMODE(GIFReg* r)
 	}
 
 	UINT32 _PRIM = m_env.PRMODE._PRIM;
-	m_env.PRMODE = r->PRMODE;
+	m_env.PRMODE = (GSVector4i)r->PRMODE;
 	m_env.PRMODE._PRIM = _PRIM;
 
 	m_context = &m_env.CTXT[PRIM->CTXT];
@@ -712,62 +702,62 @@ void GSState::GIFRegHandlerPRMODE(GIFReg* r)
 
 void GSState::GIFRegHandlerTEXCLUT(GIFReg* r)
 {
-	if(!(GSVector4i::loadl(&m_env.TEXCLUT) == GSVector4i::loadl(r)).alltrue())
+	if(!(m_env.TEXCLUT == (GSVector4i)r->TEXCLUT).alltrue())
 	{
 		Flush();
 	}
 
-	m_env.TEXCLUT = r->TEXCLUT;
+	m_env.TEXCLUT = (GSVector4i)r->TEXCLUT;
 }
 
 void GSState::GIFRegHandlerSCANMSK(GIFReg* r)
 {
-	if(!(GSVector4i::loadl(&m_env.SCANMSK) == GSVector4i::loadl(r)).alltrue())
+	if(!(m_env.SCANMSK == (GSVector4i)r->SCANMSK).alltrue())
 	{
 		Flush();
 	}
 
-	m_env.SCANMSK = r->SCANMSK;
+	m_env.SCANMSK = (GSVector4i)r->SCANMSK;
 }
 
 template<int i> void GSState::GIFRegHandlerMIPTBP1(GIFReg* r)
 {
-	if(PRIM->CTXT == i && !(GSVector4i::loadl(&m_env.CTXT[i].MIPTBP1) == GSVector4i::loadl(r)).alltrue())
+	if(PRIM->CTXT == i && !(m_env.CTXT[i].MIPTBP1 == (GSVector4i)r->MIPTBP1).alltrue())
 	{
 		Flush();
 	}
 
-	m_env.CTXT[i].MIPTBP1 = r->MIPTBP1;
+	m_env.CTXT[i].MIPTBP1 = (GSVector4i)r->MIPTBP1;
 }
 
 template<int i> void GSState::GIFRegHandlerMIPTBP2(GIFReg* r)
 {
-	if(PRIM->CTXT == i && !(GSVector4i::loadl(&m_env.CTXT[i].MIPTBP2) == GSVector4i::loadl(r)).alltrue())
+	if(PRIM->CTXT == i && !(m_env.CTXT[i].MIPTBP2 == (GSVector4i)r->MIPTBP2).alltrue())
 	{
 		Flush();
 	}
 
-	m_env.CTXT[i].MIPTBP2 = r->MIPTBP2;
+	m_env.CTXT[i].MIPTBP2 = (GSVector4i)r->MIPTBP2;
 }
 
 void GSState::GIFRegHandlerTEXA(GIFReg* r)
 {
-	if(!(GSVector4i::loadl(&m_env.TEXA) == GSVector4i::loadl(r)).alltrue())
+	if(!(m_env.TEXA == (GSVector4i)r->TEXA).alltrue())
 	{
 		Flush();
 	}
 
-	m_env.TEXA = r->TEXA;
+	m_env.TEXA = (GSVector4i)r->TEXA;
 }
 
 void GSState::GIFRegHandlerFOGCOL(GIFReg* r)
 {
-	if(!(GSVector4i::loadl(&m_env.FOGCOL) == GSVector4i::loadl(r)).alltrue())
+	if(!(m_env.FOGCOL == (GSVector4i)r->FOGCOL).alltrue())
 	{
 		Flush();
 	}
 
-	m_env.FOGCOL = r->FOGCOL;
+	m_env.FOGCOL = (GSVector4i)r->FOGCOL;
 }
 
 void GSState::GIFRegHandlerTEXFLUSH(GIFReg* r)
@@ -779,29 +769,29 @@ void GSState::GIFRegHandlerTEXFLUSH(GIFReg* r)
 
 template<int i> void GSState::GIFRegHandlerSCISSOR(GIFReg* r)
 {
-	if(PRIM->CTXT == i && !(GSVector4i::loadl(&m_env.CTXT[i].SCISSOR) == GSVector4i::loadl(r)).alltrue())
+	if(PRIM->CTXT == i && !(m_env.CTXT[i].SCISSOR == (GSVector4i)r->SCISSOR).alltrue())
 	{
 		Flush();
 	}
 
-	m_env.CTXT[i].SCISSOR = r->SCISSOR;
+	m_env.CTXT[i].SCISSOR = (GSVector4i)r->SCISSOR;
 
 	m_env.CTXT[i].UpdateScissor();
 }
 
 template<int i> void GSState::GIFRegHandlerALPHA(GIFReg* r)
 {
-	if(PRIM->CTXT == i && !(GSVector4i::loadl(&m_env.CTXT[i].ALPHA) == GSVector4i::loadl(r)).alltrue())
-	{
-		Flush();
-	}
-
 	ASSERT(r->ALPHA.A != 3);
 	ASSERT(r->ALPHA.B != 3);
 	ASSERT(r->ALPHA.C != 3);
 	ASSERT(r->ALPHA.D != 3);
 
-	m_env.CTXT[i].ALPHA = r->ALPHA;
+	if(PRIM->CTXT == i && !(m_env.CTXT[i].ALPHA == (GSVector4i)r->ALPHA).alltrue())
+	{
+		Flush();
+	}
+
+	m_env.CTXT[i].ALPHA = (GSVector4i)r->ALPHA;
 
 	// A/B/C/D == 3? => 2
 
@@ -810,72 +800,72 @@ template<int i> void GSState::GIFRegHandlerALPHA(GIFReg* r)
 
 void GSState::GIFRegHandlerDIMX(GIFReg* r)
 {
-	if(!(GSVector4i::loadl(&m_env.DIMX) == GSVector4i::loadl(r)).alltrue())
+	if(!(m_env.DIMX == (GSVector4i)r->DIMX).alltrue())
 	{
 		Flush();
 	}
 
-	m_env.DIMX = r->DIMX;
+	m_env.DIMX = (GSVector4i)r->DIMX;
 }
 
 void GSState::GIFRegHandlerDTHE(GIFReg* r)
 {
-	if((GSVector4i::loadl(&m_env.DTHE) == GSVector4i::loadl(r)).alltrue())
+	if(!(m_env.DTHE == (GSVector4i)r->DTHE).alltrue())
 	{
 		Flush();
 	}
 
-	m_env.DTHE = r->DTHE;
+	m_env.DTHE = (GSVector4i)r->DTHE;
 }
 
 void GSState::GIFRegHandlerCOLCLAMP(GIFReg* r)
 {
-	if(!(GSVector4i::loadl(&m_env.COLCLAMP) == GSVector4i::loadl(r)).alltrue())
+	if(!(m_env.COLCLAMP == (GSVector4i)r->COLCLAMP).alltrue())
 	{
 		Flush();
 	}
 
-	m_env.COLCLAMP = r->COLCLAMP;
+	m_env.COLCLAMP = (GSVector4i)r->COLCLAMP;
 }
 
 template<int i> void GSState::GIFRegHandlerTEST(GIFReg* r)
 {
-	if(PRIM->CTXT == i && !(GSVector4i::loadl(&m_env.CTXT[i].TEST) == GSVector4i::loadl(r)).alltrue())
+	if(PRIM->CTXT == i && !(m_env.CTXT[i].TEST == (GSVector4i)r->TEST).alltrue())
 	{
 		Flush();
 	}
 
-	m_env.CTXT[i].TEST = r->TEST;
+	m_env.CTXT[i].TEST = (GSVector4i)r->TEST;
 }
 
 void GSState::GIFRegHandlerPABE(GIFReg* r)
 {
-	if(!(GSVector4i::loadl(&m_env.PABE) == GSVector4i::loadl(r)).alltrue())
+	if(!(m_env.PABE == (GSVector4i)r->PABE).alltrue())
 	{
 		Flush();
 	}
 
-	m_env.PABE = r->PABE;
+	m_env.PABE = (GSVector4i)r->PABE;
 }
 
 template<int i> void GSState::GIFRegHandlerFBA(GIFReg* r)
 {
-	if(PRIM->CTXT == i && !(GSVector4i::loadl(&m_env.CTXT[i].FBA) == GSVector4i::loadl(r)).alltrue())
+	if(PRIM->CTXT == i && !(m_env.CTXT[i].FBA == (GSVector4i)r->FBA).alltrue())
 	{
 		Flush();
 	}
 
-	m_env.CTXT[i].FBA = r->FBA;
+	m_env.CTXT[i].FBA = (GSVector4i)r->FBA;
 }
 
 template<int i> void GSState::GIFRegHandlerFRAME(GIFReg* r)
 {
-	if(PRIM->CTXT == i && !(GSVector4i::loadl(&m_env.CTXT[i].FRAME) == GSVector4i::loadl(r)).alltrue())
+	if(PRIM->CTXT == i && !(m_env.CTXT[i].FRAME == (GSVector4i)r->FRAME).alltrue())
 	{
 		Flush();
 	}
 
-	m_env.CTXT[i].FRAME = r->FRAME;
+	m_env.CTXT[i].FRAME = (GSVector4i)r->FRAME;
 }
 
 template<int i> void GSState::GIFRegHandlerZBUF(GIFReg* r)
@@ -889,12 +879,12 @@ template<int i> void GSState::GIFRegHandlerZBUF(GIFReg* r)
 
 	r->ZBUF.PSM |= 0x30;
 
-	if(PRIM->CTXT == i && !(GSVector4i::loadl(&m_env.CTXT[i].ZBUF) == GSVector4i::loadl(r)).alltrue())
+	if(PRIM->CTXT == i && !(m_env.CTXT[i].ZBUF == (GSVector4i)r->ZBUF).alltrue())
 	{
 		Flush();
 	}
 
-	m_env.CTXT[i].ZBUF = r->ZBUF;
+	m_env.CTXT[i].ZBUF = (GSVector4i)r->ZBUF;
 
 	if(m_env.CTXT[i].ZBUF.PSM != PSM_PSMZ32
 	&& m_env.CTXT[i].ZBUF.PSM != PSM_PSMZ24
@@ -907,12 +897,12 @@ template<int i> void GSState::GIFRegHandlerZBUF(GIFReg* r)
 
 void GSState::GIFRegHandlerBITBLTBUF(GIFReg* r)
 {
-	if(!(GSVector4i::loadl(&m_env.BITBLTBUF) == GSVector4i::loadl(r)).alltrue())
+	if(!(m_env.BITBLTBUF == (GSVector4i)r->BITBLTBUF).alltrue())
 	{
 		FlushWrite();
 	}
 
-	m_env.BITBLTBUF = r->BITBLTBUF;
+	m_env.BITBLTBUF = (GSVector4i)r->BITBLTBUF;
 
 	if((m_env.BITBLTBUF.SBW & 1) && (m_env.BITBLTBUF.SPSM == PSM_PSMT8 || m_env.BITBLTBUF.SPSM == PSM_PSMT4))
 	{
@@ -927,30 +917,30 @@ void GSState::GIFRegHandlerBITBLTBUF(GIFReg* r)
 
 void GSState::GIFRegHandlerTRXPOS(GIFReg* r)
 {
-	if(!(GSVector4i::loadl(&m_env.TRXPOS) == GSVector4i::loadl(r)).alltrue())
+	if(!(m_env.TRXPOS == (GSVector4i)r->TRXPOS).alltrue())
 	{
 		FlushWrite();
 	}
 
-	m_env.TRXPOS = r->TRXPOS;
+	m_env.TRXPOS = (GSVector4i)r->TRXPOS;
 }
 
 void GSState::GIFRegHandlerTRXREG(GIFReg* r)
 {
-	if(!(GSVector4i::loadl(&m_env.TRXREG) == GSVector4i::loadl(r)).alltrue()
-	|| !(GSVector4i::loadl(&m_env.TRXREG2) == GSVector4i::loadl(r)).alltrue())
+	if(!(m_env.TRXREG == (GSVector4i)r->TRXREG).alltrue() || !(m_env.TRXREG2 == (GSVector4i)r->TRXREG).alltrue())
 	{
 		FlushWrite();
 	}
 
-	m_env.TRXREG = m_env.TRXREG2 = r->TRXREG;
+	m_env.TRXREG = (GSVector4i)r->TRXREG;
+	m_env.TRXREG2 = (GSVector4i)r->TRXREG;
 }
 
 void GSState::GIFRegHandlerTRXDIR(GIFReg* r)
 {
 	Flush();
 
-	m_env.TRXDIR = r->TRXDIR;
+	m_env.TRXDIR = (GSVector4i)r->TRXDIR;
 
 	switch(m_env.TRXDIR.XDIR)
 	{
