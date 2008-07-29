@@ -1720,6 +1720,27 @@ public:
 		return GSVector4(_mm_setzero_ps());
 	}
 
+	static GSVector4 loadl(const void* p)
+	{
+		return GSVector4(_mm_castpd_ps(_mm_load_sd((double*)p)));
+	}
+
+	template<bool aligned> static GSVector4 load(const void* p)
+	{
+		return GSVector4i(aligned ? _mm_load_ps((__m128*)p) : _mm_loadu_ps((__m128*)p));
+	}
+
+	static void storel(void* p, const GSVector4& v)
+	{
+		_mm_store_sd((double*)p, _mm_castps_pd(v.m));
+	}
+
+	template<bool aligned> static void store(void* p, const GSVector4& v)
+	{
+		if(aligned) _mm_store_ps((__m128*)p, v.m);
+		else _mm_storeu_ps((__m128*)p, v.m);
+	}
+
 	__forceinline static void expand(const GSVector4i& v, GSVector4& a, GSVector4& b, GSVector4& c, GSVector4& d)
 	{
 		GSVector4i mask = GSVector4i::x000000ff();

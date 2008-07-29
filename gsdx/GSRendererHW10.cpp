@@ -21,15 +21,12 @@
 
 #include "stdafx.h"
 #include "GSRendererHW10.h"
-#include "GSTextureCache10.h"
 #include "GSCrc.h"
 #include "resource.h"
 
 GSRendererHW10::GSRendererHW10(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs)
-	: GSRendererHW<GSDevice10, GSVertexHW10>(base, mt, irq, nloophack, rs, true)
+	: GSRendererHW<Device, Vertex, TextureCache>(base, mt, irq, nloophack, rs, true)
 {
-	m_tc = new GSTextureCache10(this);
-
 	for(int i = 0; i < countof(m_fpDrawingKickHandlers); i++)
 	{
 		m_fpDrawingKickHandlers[i] = (DrawingKickHandler)&GSRendererHW10::DrawingKick;
@@ -91,44 +88,15 @@ bool GSRendererHW10::Create(LPCTSTR title)
 
 void GSRendererHW10::VertexKick(bool skip)
 {
-	GSVertexHW10& v = m_vl.AddTail();
-
-	#if _M_SSE >= 0x200
+	Vertex& v = m_vl.AddTail();
 
 	v.m128i[0] = m_v.m128i[0];
 	v.m128i[1] = m_v.m128i[1];
 
-	if(PRIM->TME)
+	if(PRIM->TME_FST())
 	{
-		if(PRIM->FST)
-		{
-			v.ST.S = (float)(int)m_v.UV.U;
-			v.ST.T = (float)(int)m_v.UV.V;
-			v.RGBAQ.Q = 1.0;
-		}
+		GSVector4::storel(&v.ST, m_v.GetUV());
 	}
-
-	#else
-
-	v.RGBAQ = m_v.RGBAQ;
-	v.FOG = m_v.FOG;
-	v.XYZ = m_v.XYZ;
-
-	if(PRIM->TME)
-	{
-		if(PRIM->FST)
-		{
-			v.ST.S = (float)(int)m_v.UV.U;
-			v.ST.T = (float)(int)m_v.UV.V;
-			v.RGBAQ.Q = 1.0;
-		}
-		else
-		{
-			v.ST = m_v.ST;
-		}
-	}
-
-	#endif
 
 	__super::VertexKick(skip);
 }
@@ -143,7 +111,7 @@ int GSRendererHW10::ScissorTest(const GSVector4i& p0, const GSVector4i& p1)
 	return (v0 | v1).mask() & 0xff;
 }
 
-void GSRendererHW10::DrawingKickPoint(GSVertexHW10* v, int& count)
+void GSRendererHW10::DrawingKickPoint(Vertex* v, int& count)
 {
 	GSVector4i v0 = GSVector4i::load((int)v[0].p.xy).upl16();
 
@@ -159,7 +127,7 @@ void GSRendererHW10::DrawingKickPoint(GSVertexHW10* v, int& count)
 
 #if _M_SSE >= 0x401
 
-void GSRendererHW10::DrawingKickLine(GSVertexHW10* v, int& count)
+void GSRendererHW10::DrawingKickLine(Vertex* v, int& count)
 {
 	GSVector4i v0 = GSVector4i::load((int)v[0].p.xy);
 	GSVector4i v1 = GSVector4i::load((int)v[1].p.xy);
@@ -174,7 +142,7 @@ void GSRendererHW10::DrawingKickLine(GSVertexHW10* v, int& count)
 	}
 }
 
-void GSRendererHW10::DrawingKickTriangle(GSVertexHW10* v, int& count)
+void GSRendererHW10::DrawingKickTriangle(Vertex* v, int& count)
 {
 	GSVector4i v0 = GSVector4i::load((int)v[0].p.xy);
 	GSVector4i v1 = GSVector4i::load((int)v[1].p.xy);
@@ -190,7 +158,7 @@ void GSRendererHW10::DrawingKickTriangle(GSVertexHW10* v, int& count)
 	}
 }
 
-void GSRendererHW10::DrawingKickSprite(GSVertexHW10* v, int& count)
+void GSRendererHW10::DrawingKickSprite(Vertex* v, int& count)
 {
 	GSVector4i v0 = GSVector4i::load((int)v[0].p.xy);
 	GSVector4i v1 = GSVector4i::load((int)v[1].p.xy);
@@ -207,7 +175,7 @@ void GSRendererHW10::DrawingKickSprite(GSVertexHW10* v, int& count)
 
 #endif
 
-void GSRendererHW10::DrawingKick(GSVertexHW10* v, int& count)
+void GSRendererHW10::DrawingKick(Vertex* v, int& count)
 {
 	GSVector4i scissor = m_context->scissor.dx10;
 
@@ -261,75 +229,13 @@ void GSRendererHW10::DrawingKick(GSVertexHW10* v, int& count)
 */
 }
 
-void GSRendererHW10::Draw()
+void GSRendererHW10::Draw(int prim, Texture& rt, Texture& ds, GSTextureCache<Device>::GSTexture* tex)
 {
-	if(IsBadFrame(m_skip))
-	{
-		return;
-	}
-
 	GSDrawingEnvironment& env = m_env;
 	GSDrawingContext* context = m_context;
 
-	//
-
-	GIFRegTEX0 TEX0;
-
-	// rt
-
-	TEX0.TBP0 = context->FRAME.Block();
-	TEX0.TBW = context->FRAME.FBW;
-	TEX0.PSM = context->FRAME.PSM;
-
-	GSTextureCache<GSDevice10>::GSRenderTarget* rt = m_tc->GetRenderTarget(TEX0, m_width, m_height);
-
-	// ds
-
-	TEX0.TBP0 = context->ZBUF.Block();
-	TEX0.TBW = context->FRAME.FBW;
-	TEX0.PSM = context->ZBUF.PSM;
-
-	GSTextureCache<GSDevice10>::GSDepthStencil* ds = m_tc->GetDepthStencil(TEX0, m_width, m_height);
-
-	// tex
-
-	GSTextureCache<GSDevice10>::GSTexture* tex = NULL;
-
-	if(PRIM->TME)
-	{
-		tex = m_tc->GetTexture();
-
-		if(!tex) return;
-	}
-
-if(s_dump)
-{
-	CString str;
-	str.Format(_T("c:\\temp2\\_%05d_f%I64d_tex_%05x_%d_%d%d_%02x_%02x_%02x_%02x.dds"), 
-		s_n++, m_perfmon.GetFrame(), (int)context->TEX0.TBP0, (int)context->TEX0.PSM,
-		(int)context->CLAMP.WMS, (int)context->CLAMP.WMT, 
-		(int)context->CLAMP.MINU, (int)context->CLAMP.MAXU, 
-		(int)context->CLAMP.MINV, (int)context->CLAMP.MAXV);
-	if(PRIM->TME) if(s_save) tex->m_texture.Save(str, true);
-	str.Format(_T("c:\\temp2\\_%05d_f%I64d_tpx_%05x_%d.dds"), s_n-1, m_perfmon.GetFrame(), context->TEX0.CBP, context->TEX0.CPSM);
-	if(PRIM->TME && tex->m_palette) if(s_save) tex->m_palette.Save(str, true);
-	str.Format(_T("c:\\temp2\\_%05d_f%I64d_rt0_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), context->FRAME.Block(), context->FRAME.PSM);
-	if(s_save) rt->m_texture.Save(str);
-	str.Format(_T("c:\\temp2\\_%05d_f%I64d_rz0_%05x_%d.bmp"), s_n-1, m_perfmon.GetFrame(), context->ZBUF.Block(), context->ZBUF.PSM);
-	if(s_savez) m_dev.SaveToFileD32S8X24(ds->m_texture, str); // TODO
-}
-
-	//
-
-	int prim = PRIM->PRIM;
-	int prims = 0;
-
-	if(!OverrideInput(prim, rt->m_texture, ds->m_texture, tex ? &tex->m_texture : NULL))
-	{
-		return;
-	}
-
 	D3D10_PRIMITIVE_TOPOLOGY topology;
+	int prims = 0;
 
 	switch(prim)
 	{
@@ -358,7 +264,7 @@ if(s_dump)
 
 	// date
 
-	SetupDATE(rt->m_texture, ds->m_texture);
+	SetupDATE(rt, ds);
 
 	//
 
@@ -375,7 +281,7 @@ if(s_dump)
 
 	GSTextureFX10::OMBlendSelector om_bsel;
 
-	om_bsel.abe = PRIM->ABE || (PRIM->PRIM == 1 || PRIM->PRIM == 2) && PRIM->AA1;
+	om_bsel.abe = PRIM->ABE || (prim == 1 || prim == 2) && PRIM->AA1;
 	om_bsel.a = context->ALPHA.A;
 	om_bsel.b = context->ALPHA.B;
 	om_bsel.c = context->ALPHA.C;
@@ -424,8 +330,8 @@ if(s_dump)
 
 	GSTextureFX10::VSConstantBuffer vs_cb;
 
-	float sx = 2.0f * rt->m_texture.m_scale.x / (rt->m_texture.GetWidth() * 16);
-	float sy = 2.0f * rt->m_texture.m_scale.y / (rt->m_texture.GetHeight() * 16);
+	float sx = 2.0f * rt.m_scale.x / (rt.GetWidth() * 16);
+	float sy = 2.0f * rt.m_scale.y / (rt.GetHeight() * 16);
 	float ox = (float)(int)context->XYOFFSET.OFX;
 	float oy = (float)(int)context->XYOFFSET.OFY;
 
@@ -548,14 +454,14 @@ if(s_dump)
 
 	// rs
 
-	int w = rt->m_texture.GetWidth();
-	int h = rt->m_texture.GetHeight();
+	int w = rt.GetWidth();
+	int h = rt.GetHeight();
 
-	CRect scissor = (CRect)GSVector4i(GSVector4(rt->m_texture.m_scale).xyxy() * context->scissor.hw) & CRect(0, 0, w, h);
+	CRect scissor = (CRect)GSVector4i(GSVector4(rt.m_scale).xyxy() * context->scissor.hw) & CRect(0, 0, w, h);
 
 	//
 
-	m_tfx.SetupOM(om_dssel, om_bsel, bf, rt->m_texture, ds->m_texture);
+	m_tfx.SetupOM(om_dssel, om_bsel, bf, rt, ds);
 	m_tfx.SetupIA(m_vertices, m_count, topology);
 	m_tfx.SetupVS(vs_sel, &vs_cb);
 	m_tfx.SetupGS(gs_sel);
@@ -611,20 +517,6 @@ if(s_dump)
 	}
 
 	m_dev.EndScene();
-
-	OverrideOutput();
-
-	m_tc->InvalidateTextures(context->FRAME, context->ZBUF);
-
-if(s_dump)
-{
-	CString str;
-	str.Format(_T("c:\\temp2\\_%05d_f%I64d_rt1_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), context->FRAME.Block(), context->FRAME.PSM);
-	if(s_save) rt->m_texture.Save(str);
-	str.Format(_T("c:\\temp2\\_%05d_f%I64d_rz1_%05x_%d.bmp"), s_n-1, m_perfmon.GetFrame(), context->ZBUF.Block(), context->ZBUF.PSM);
-	if(s_savez) m_dev.SaveToFileD32S8X24(ds->m_texture, str); // TODO
-}
-
 }
 
 bool GSRendererHW10::WrapZ(DWORD maxz)

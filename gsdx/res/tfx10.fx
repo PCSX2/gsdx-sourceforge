@@ -51,10 +51,9 @@ VS_OUTPUT vs_main(VS_INPUT input)
 	float4 p = float4(input.p, input.z, 0);
 	
 	// FIXME:
-	// A litte accuracy problem in many games where the screen is copied in columns and
-	// the sides have a half pixel gap for some reason, that half pixel coordinate gets multiplied 
-	// by 2 (VertexScale) and occasionally ends on .9999999, which the rasterizer floors to 
-	// 1 less pixel we need, leaving a visible gap after drawing. 
+	// A litte accuracy problem in many games where the screen is copied in columns and the sides have a half pixel gap for some reason 
+	// (probably to avoid page breaks with linear filtering). That half pixel coordinate gets multiplied by 2 (VertexScale) and occasionally 
+	// ends on .9999999, which the rasterizer floors to 1 less pixel we need, leaving a visible gap after drawing. 
 	
 	p += float4(0.5f, 0.5f, 0, 0); // add 1/32 pixel
 	
