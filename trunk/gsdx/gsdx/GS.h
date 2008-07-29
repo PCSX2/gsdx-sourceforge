@@ -182,6 +182,8 @@ union name			\
 {					\
 	UINT64 i64;		\
 	UINT32 ai32[2];	\
+	void operator = (const GSVector4i& v) {GSVector4i::storel(this, v);} \
+	operator GSVector4i() {return GSVector4i::loadl(this);} \
 	struct {		\
 
 #define REG128(name)\
