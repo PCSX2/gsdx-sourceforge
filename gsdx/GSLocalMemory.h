@@ -104,6 +104,10 @@ protected:
 		return (((c & 0x8000) ? TEXA.TA1 : (!TEXA.AEM | c) ? TEXA.TA0 : 0) << 24) | ((c & 0x7c00) << 9) | ((c & 0x03e0) << 6) | ((c & 0x001f) << 3);
 	}
 
+	// TODO
+
+	friend class GSClut;
+
 public:
 	GSLocalMemory();
 	virtual ~GSLocalMemory();

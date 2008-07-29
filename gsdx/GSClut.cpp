@@ -23,9 +23,10 @@
 #include "GSClut.h"
 #include "GSLocalMemory.h"
 
-GSClut::GSClut()
+GSClut::GSClut(const GSLocalMemory* mem)
+	: m_mem(mem)
 {
-	BYTE* p = (BYTE*)_aligned_malloc(8192, 16);
+	BYTE* p = (BYTE*)VirtualAlloc(NULL, 8192, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
 	m_clut = (WORD*)&p[0]; // 1k + 1k for buffer overruns (sfex: PSM == PSM_PSMT8, CPSM == PSM_PSMCT32, CSA != 0)
 	m_buff32 = (DWORD*)&p[2048]; // 1k
@@ -63,31 +64,31 @@ GSClut::GSClut()
 	m_wc[0][PSM_PSMCT16S][PSM_PSMT4HL] = &GSClut::WriteCLUT16S_I4_CSM1;
 	m_wc[0][PSM_PSMCT16S][PSM_PSMT4HH] = &GSClut::WriteCLUT16S_I4_CSM1;
 
-	m_wc[1][PSM_PSMCT32][PSM_PSMT8] = &GSClut::WriteCLUT32_I8_CSM2;
-	m_wc[1][PSM_PSMCT32][PSM_PSMT8H] = &GSClut::WriteCLUT32_I8_CSM2;
-	m_wc[1][PSM_PSMCT32][PSM_PSMT4] = &GSClut::WriteCLUT32_I4_CSM2;
-	m_wc[1][PSM_PSMCT32][PSM_PSMT4HL] = &GSClut::WriteCLUT32_I4_CSM2;
-	m_wc[1][PSM_PSMCT32][PSM_PSMT4HH] = &GSClut::WriteCLUT32_I4_CSM2;
-	m_wc[1][PSM_PSMCT24][PSM_PSMT8] = &GSClut::WriteCLUT32_I8_CSM2;
-	m_wc[1][PSM_PSMCT24][PSM_PSMT8H] = &GSClut::WriteCLUT32_I8_CSM2;
-	m_wc[1][PSM_PSMCT24][PSM_PSMT4] = &GSClut::WriteCLUT32_I4_CSM2;
-	m_wc[1][PSM_PSMCT24][PSM_PSMT4HL] = &GSClut::WriteCLUT32_I4_CSM2;
-	m_wc[1][PSM_PSMCT24][PSM_PSMT4HH] = &GSClut::WriteCLUT32_I4_CSM2;
-	m_wc[1][PSM_PSMCT16][PSM_PSMT8] = &GSClut::WriteCLUT16_I8_CSM2;
-	m_wc[1][PSM_PSMCT16][PSM_PSMT8H] = &GSClut::WriteCLUT16_I8_CSM2;
-	m_wc[1][PSM_PSMCT16][PSM_PSMT4] = &GSClut::WriteCLUT16_I4_CSM2;
-	m_wc[1][PSM_PSMCT16][PSM_PSMT4HL] = &GSClut::WriteCLUT16_I4_CSM2;
-	m_wc[1][PSM_PSMCT16][PSM_PSMT4HH] = &GSClut::WriteCLUT16_I4_CSM2;
-	m_wc[1][PSM_PSMCT16S][PSM_PSMT8] = &GSClut::WriteCLUT16S_I8_CSM2;
-	m_wc[1][PSM_PSMCT16S][PSM_PSMT8H] = &GSClut::WriteCLUT16S_I8_CSM2;
-	m_wc[1][PSM_PSMCT16S][PSM_PSMT4] = &GSClut::WriteCLUT16S_I4_CSM2;
-	m_wc[1][PSM_PSMCT16S][PSM_PSMT4HL] = &GSClut::WriteCLUT16S_I4_CSM2;
-	m_wc[1][PSM_PSMCT16S][PSM_PSMT4HH] = &GSClut::WriteCLUT16S_I4_CSM2;
+	m_wc[1][PSM_PSMCT32][PSM_PSMT8] = &GSClut::WriteCLUT32_CSM2<256>;
+	m_wc[1][PSM_PSMCT32][PSM_PSMT8H] = &GSClut::WriteCLUT32_CSM2<256>;
+	m_wc[1][PSM_PSMCT32][PSM_PSMT4] = &GSClut::WriteCLUT32_CSM2<16>;
+	m_wc[1][PSM_PSMCT32][PSM_PSMT4HL] = &GSClut::WriteCLUT32_CSM2<16>;
+	m_wc[1][PSM_PSMCT32][PSM_PSMT4HH] = &GSClut::WriteCLUT32_CSM2<16>;
+	m_wc[1][PSM_PSMCT24][PSM_PSMT8] = &GSClut::WriteCLUT32_CSM2<256>;
+	m_wc[1][PSM_PSMCT24][PSM_PSMT8H] = &GSClut::WriteCLUT32_CSM2<256>;
+	m_wc[1][PSM_PSMCT24][PSM_PSMT4] = &GSClut::WriteCLUT32_CSM2<16>;
+	m_wc[1][PSM_PSMCT24][PSM_PSMT4HL] = &GSClut::WriteCLUT32_CSM2<16>;
+	m_wc[1][PSM_PSMCT24][PSM_PSMT4HH] = &GSClut::WriteCLUT32_CSM2<16>;
+	m_wc[1][PSM_PSMCT16][PSM_PSMT8] = &GSClut::WriteCLUT16_CSM2<256>;
+	m_wc[1][PSM_PSMCT16][PSM_PSMT8H] = &GSClut::WriteCLUT16_CSM2<256>;
+	m_wc[1][PSM_PSMCT16][PSM_PSMT4] = &GSClut::WriteCLUT16_CSM2<16>;
+	m_wc[1][PSM_PSMCT16][PSM_PSMT4HL] = &GSClut::WriteCLUT16_CSM2<16>;
+	m_wc[1][PSM_PSMCT16][PSM_PSMT4HH] = &GSClut::WriteCLUT16_CSM2<16>;
+	m_wc[1][PSM_PSMCT16S][PSM_PSMT8] = &GSClut::WriteCLUT16S_CSM2<256>;
+	m_wc[1][PSM_PSMCT16S][PSM_PSMT8H] = &GSClut::WriteCLUT16S_CSM2<256>;
+	m_wc[1][PSM_PSMCT16S][PSM_PSMT4] = &GSClut::WriteCLUT16S_CSM2<16>;
+	m_wc[1][PSM_PSMCT16S][PSM_PSMT4HL] = &GSClut::WriteCLUT16S_CSM2<16>;
+	m_wc[1][PSM_PSMCT16S][PSM_PSMT4HH] = &GSClut::WriteCLUT16S_CSM2<16>;
 }
 
 GSClut::~GSClut()
 {
-	_aligned_free(m_clut);	
+	VirtualFree(m_clut, 0, MEM_RELEASE);
 }
 
 void GSClut::Invalidate() 
@@ -95,30 +96,7 @@ void GSClut::Invalidate()
 	m_write.dirty = true;
 }
 
-bool GSClut::IsDirty(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)
-{
-	return m_write.dirty || m_write.TEX0.i64 != TEX0.i64 || m_write.TEXCLUT.i64 != TEXCLUT.i64;
-}
-
-bool GSClut::IsWriting(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)
-{
-	switch(TEX0.CLD)
-	{
-	case 0: return false;
-	case 1: break;
-	case 2: break;
-	case 3: break;
-	case 4: if(m_CBP[0] == TEX0.CBP) return false; break;
-	case 5: if(m_CBP[1] == TEX0.CBP) return false; break;
-	case 6: ASSERT(0); return false;
-	case 7: ASSERT(0); return false;
-	default: __assume(0);
-	}
-
-	return IsDirty(TEX0, TEXCLUT);
-}
-
-bool GSClut::Write(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem)
+bool GSClut::WriteTest(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)
 {
 	switch(TEX0.CLD)
 	{
@@ -133,146 +111,103 @@ bool GSClut::Write(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const G
 	default: __assume(0);
 	}
 
-	if(!IsDirty(TEX0, TEXCLUT))
-	{
-		return false;
-	}
+	// FIXME: return m_write.IsDirty(TEX0, TEXCLUT);
+	return m_write.dirty || !(GSVector4i::load<true>(&m_write) == GSVector4i::load(&TEX0, &TEXCLUT)).alltrue();
+}
 
+void GSClut::Write(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)
+{
 	m_write.TEX0 = TEX0;
 	m_write.TEXCLUT = TEXCLUT;
 	m_write.dirty = false;
 	m_read.dirty = true;
 
-	(this->*m_wc[TEX0.CSM][TEX0.CPSM][TEX0.PSM])(TEX0, TEXCLUT, mem);
-
-	return true;
+	(this->*m_wc[TEX0.CSM][TEX0.CPSM][TEX0.PSM])(TEX0, TEXCLUT);
 }
 
-void GSClut::WriteCLUT32_I8_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem)
+void GSClut::WriteCLUT32_I8_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)
 {
 	ASSERT(TEX0.CSA == 0);
 
-	WriteCLUT_T32_I8_CSM1(&mem->m_vm32[mem->BlockAddress32(0, 0, TEX0.CBP, 1)], m_clut + (TEX0.CSA << 4));
+	WriteCLUT_T32_I8_CSM1(&m_mem->m_vm32[m_mem->BlockAddress32(0, 0, TEX0.CBP, 1)], m_clut + (TEX0.CSA << 4));
 }
 
-void GSClut::WriteCLUT32_I4_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem)
+void GSClut::WriteCLUT32_I4_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)
 {
 	ASSERT(TEX0.CSA < 16);
 
-	WriteCLUT_T32_I4_CSM1(&mem->m_vm32[mem->BlockAddress32(0, 0, TEX0.CBP, 1)], m_clut + (TEX0.CSA << 4));
+	WriteCLUT_T32_I4_CSM1(&m_mem->m_vm32[m_mem->BlockAddress32(0, 0, TEX0.CBP, 1)], m_clut + (TEX0.CSA << 4));
 }
 
-void GSClut::WriteCLUT16_I8_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem)
+void GSClut::WriteCLUT16_I8_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)
 {
 	ASSERT(TEX0.CSA < 16);
 
-	WriteCLUT_T16_I8_CSM1(&mem->m_vm16[mem->BlockAddress16(0, 0, TEX0.CBP, 1)], m_clut + (TEX0.CSA << 4));
+	WriteCLUT_T16_I8_CSM1(&m_mem->m_vm16[m_mem->BlockAddress16(0, 0, TEX0.CBP, 1)], m_clut + (TEX0.CSA << 4));
 }
 
-void GSClut::WriteCLUT16_I4_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem)
+void GSClut::WriteCLUT16_I4_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)
 {
 	ASSERT(TEX0.CSA < 32);
 
-	WriteCLUT_T16_I4_CSM1(&mem->m_vm16[mem->BlockAddress16(0, 0, TEX0.CBP, 1)], m_clut + (TEX0.CSA << 4));
+	WriteCLUT_T16_I4_CSM1(&m_mem->m_vm16[m_mem->BlockAddress16(0, 0, TEX0.CBP, 1)], m_clut + (TEX0.CSA << 4));
 }
 
-void GSClut::WriteCLUT16S_I8_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem)
+void GSClut::WriteCLUT16S_I8_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)
 {
-	WriteCLUT_T16_I8_CSM1(&mem->m_vm16[mem->BlockAddress16S(0, 0, TEX0.CBP, 1)], m_clut + (TEX0.CSA << 4));
+	WriteCLUT_T16_I8_CSM1(&m_mem->m_vm16[m_mem->BlockAddress16S(0, 0, TEX0.CBP, 1)], m_clut + (TEX0.CSA << 4));
 }
 
-void GSClut::WriteCLUT16S_I4_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem)
+void GSClut::WriteCLUT16S_I4_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)
 {
-	WriteCLUT_T16_I4_CSM1(&mem->m_vm16[mem->BlockAddress16S(0, 0, TEX0.CBP, 1)], m_clut + (TEX0.CSA << 4));
+	WriteCLUT_T16_I4_CSM1(&m_mem->m_vm16[m_mem->BlockAddress16S(0, 0, TEX0.CBP, 1)], m_clut + (TEX0.CSA << 4));
 }
 
-void GSClut::WriteCLUT32_I8_CSM2(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem)
+template<int n> void GSClut::WriteCLUT32_CSM2(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)
 {
-	DWORD bp = TEX0.CBP;
-	DWORD bw = TEXCLUT.CBW;
-
 	WORD* clut = m_clut + (TEX0.CSA << 4);
 
-	for(int i = 0, x = TEXCLUT.COU << 4, y = TEXCLUT.COV; i < 256; i++, x++)
-	{
-		DWORD dw = mem->ReadPixel32(x, y, bp, bw);
+	DWORD base = m_mem->PixelAddress32(0, TEXCLUT.COV, TEX0.CBP, TEXCLUT.CBW);
+	int* offset = &m_mem->rowOffset32[TEXCLUT.COU << 4];
 
-		clut[i] = (WORD)(dw & 0xffff);
-		clut[i + 256] = (WORD)(dw >> 16);
+	for(int i = 0; i < n; i++)
+	{
+		DWORD c = (WORD)m_mem->ReadPixel32(base + offset[i]);
+
+		clut[i] = (WORD)(c & 0xffff);
+		clut[i + 256] = (WORD)(c >> 16);
 	}
 }
 
-void GSClut::WriteCLUT32_I4_CSM2(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem)
+template<int n> void GSClut::WriteCLUT16_CSM2(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)
 {
-	DWORD bp = TEX0.CBP;
-	DWORD bw = TEXCLUT.CBW;
-
 	WORD* clut = m_clut + (TEX0.CSA << 4);
 
-	for(int i = 0, x = TEXCLUT.COU << 4, y = TEXCLUT.COV; i < 16; i++, x++)
-	{
-		DWORD dw = mem->ReadPixel32(x, y, bp, bw);
+	DWORD base = m_mem->PixelAddress16(0, TEXCLUT.COV, TEX0.CBP, TEXCLUT.CBW);
+	int* offset = &m_mem->rowOffset16[TEXCLUT.COU << 4];
 
-		clut[i] = (WORD)(dw & 0xffff);
-		clut[i + 256] = (WORD)(dw >> 16);
+	for(int i = 0; i < n; i++)
+	{
+		clut[i] = (WORD)m_mem->ReadPixel16(base + offset[i]);
 	}
 }
 
-void GSClut::WriteCLUT16_I8_CSM2(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem)
+template<int n> void GSClut::WriteCLUT16S_CSM2(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)
 {
-	DWORD bp = TEX0.CBP;
-	DWORD bw = TEXCLUT.CBW;
-
 	WORD* clut = m_clut + (TEX0.CSA << 4);
 
-	for(int i = 0, x = TEXCLUT.COU << 4, y = TEXCLUT.COV; i < 256; i++, x++)
+	DWORD base = m_mem->PixelAddress16S(0, TEXCLUT.COV, TEX0.CBP, TEXCLUT.CBW);
+	int* offset = &m_mem->rowOffset16S[TEXCLUT.COU << 4];
+
+	for(int i = 0; i < n; i++)
 	{
-		clut[i] = (WORD)mem->ReadPixel16(x, y, bp, bw);
-	}
-}
-
-void GSClut::WriteCLUT16_I4_CSM2(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem)
-{
-	DWORD bp = TEX0.CBP;
-	DWORD bw = TEXCLUT.CBW;
-
-	WORD* clut = m_clut + (TEX0.CSA << 4);
-
-	for(int i = 0, x = TEXCLUT.COU << 4, y = TEXCLUT.COV; i < 16; i++, x++)
-	{
-		clut[i] = (WORD)mem->ReadPixel16(x, y, bp, bw);
-	}
-}
-
-void GSClut::WriteCLUT16S_I8_CSM2(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem)
-{
-	DWORD bp = TEX0.CBP;
-	DWORD bw = TEXCLUT.CBW;
-
-	WORD* clut = m_clut + (TEX0.CSA << 4);
-
-	for(int i = 0, x = TEXCLUT.COU << 4, y = TEXCLUT.COV; i < 256; i++, x++)
-	{
-		clut[i] = (WORD)mem->ReadPixel16S(x, y, bp, bw);
-	}
-}
-
-void GSClut::WriteCLUT16S_I4_CSM2(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem)
-{
-	DWORD bp = TEX0.CBP;
-	DWORD bw = TEXCLUT.CBW;
-
-	WORD* clut = m_clut + (TEX0.CSA << 4);
-
-	for(int i = 0, x = TEXCLUT.COU << 4, y = TEXCLUT.COV; i < 16; i++, x++)
-	{
-		clut[i] = (WORD)mem->ReadPixel16S(x, y, bp, bw);
+		clut[i] = (WORD)m_mem->ReadPixel16(base + offset[i]);
 	}
 }
 
 void GSClut::Read(const GIFRegTEX0& TEX0)
 {
-	if(m_read.dirty || m_read.TEX0.i64 != TEX0.i64)
+	if(m_read.IsDirty(TEX0))
 	{
 		m_read.TEX0 = TEX0;
 		m_read.dirty = false;
@@ -314,7 +249,7 @@ void GSClut::Read(const GIFRegTEX0& TEX0)
 
 void GSClut::Read32(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA)
 {
-	if(m_read.dirty || m_read.TEX0.i64 != TEX0.i64 || m_read.TEXA.i64 != TEXA.i64)
+	if(m_read.IsDirty(TEX0, TEXA))
 	{
 		m_read.TEX0 = TEX0;
 		m_read.TEXA = TEXA;
@@ -846,4 +781,21 @@ void GSClut::Expand16(const WORD* RESTRICT src, DWORD* RESTRICT dst, int w, cons
 	}
 
 	#endif
+}
+
+//
+
+bool GSClut::WriteState::IsDirty(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)
+{
+	return dirty || !(GSVector4i::load<true>(this) == GSVector4i::load(&TEX0, &TEXCLUT)).alltrue();
+}
+
+bool GSClut::ReadState::IsDirty(const GIFRegTEX0& TEX0)
+{
+	return dirty || !(GSVector4i::load<true>(this) == GSVector4i::load(&TEX0, &this->TEXA)).alltrue();
+}
+
+bool GSClut::ReadState::IsDirty(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA)
+{
+	return dirty || !(GSVector4i::load<true>(this) == GSVector4i::load(&TEX0, &TEXA)).alltrue();
 }

@@ -774,7 +774,7 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 			default: __assume(0);
 			}
 
-			if(test.mask() == 0xffff)
+			if(test.alltrue())
 			{
 				continue;
 			}
@@ -888,7 +888,7 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 				fm |= t;
 				zm |= t;
 				test |= t;
-				if(test.mask() == 0xffff) continue;
+				if(test.alltrue()) continue;
 				break;
 			case 1:
 				zm |= t;
@@ -952,7 +952,7 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 			{
 				test |= (d ^ m_slenv.datm).sra32(31);
 
-				if(test.mask() == 0xffff)
+				if(test.alltrue())
 				{
 					continue;
 				}

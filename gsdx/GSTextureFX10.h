@@ -46,7 +46,7 @@ public:
 			GSVector4i b1 = b[1];
 			GSVector4i b2 = b[2];
 
-			if(((a[0] == b0) & (a[1] == b1) & (a[2] == b2)).mask() != 0xffff)
+			if(!((a[0] == b0) & (a[1] == b1) & (a[2] == b2)).alltrue())
 			{
 				a[0] = b0;
 				a[1] = b1;
@@ -106,7 +106,7 @@ public:
 			GSVector4i b3 = b[3];
 			GSVector4i b4 = b[4];
 
-			if(((a[0] == b0) & (a[1] == b1) & (a[2] == b2) & (a[3] == b3) & (a[4] == b4)).mask() != 0xffff)
+			if(!((a[0] == b0) & (a[1] == b1) & (a[2] == b2) & (a[3] == b3) & (a[4] == b4)).alltrue())
 			{
 				a[0] = b0;
 				a[1] = b1;

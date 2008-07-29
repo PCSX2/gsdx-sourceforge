@@ -24,49 +24,52 @@
 #include "GS.h"
 #include "GSVector.h"
 #include "GSTables.h"
+#include "GSAlignedClass.h"
 
 class GSLocalMemory;
 
-class GSClut
+__declspec(align(16)) class GSClut : public GSAlignedClass<16>
 {
+	const GSLocalMemory* m_mem;
+
 	DWORD m_CBP[2];
 	WORD* m_clut;
 	DWORD* m_buff32;
 	UINT64* m_buff64;
 
-	struct
+	__declspec(align(16)) struct WriteState
 	{
 		GIFRegTEX0 TEX0;
 		GIFRegTEXCLUT TEXCLUT;
 		bool dirty;
+		bool IsDirty(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT);
 	} m_write;
 
-	struct
+	__declspec(align(16)) struct ReadState
 	{
 		GIFRegTEX0 TEX0;
 		GIFRegTEXA TEXA;
 		bool dirty;
+		bool IsDirty(const GIFRegTEX0& TEX0);
+		bool IsDirty(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA);
 	} m_read;
 
-	typedef void (GSClut::*writeCLUT)(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem);
+	typedef void (GSClut::*writeCLUT)(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT);
 
 	writeCLUT m_wc[2][16][64];
 
-	void WriteCLUT32_I8_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem);
-	void WriteCLUT32_I4_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem);
-	void WriteCLUT16_I8_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem);
-	void WriteCLUT16_I4_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem);
-	void WriteCLUT16S_I8_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem);
-	void WriteCLUT16S_I4_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem);
+	void WriteCLUT32_I8_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT);
+	void WriteCLUT32_I4_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT);
+	void WriteCLUT16_I8_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT);
+	void WriteCLUT16_I4_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT);
+	void WriteCLUT16S_I8_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT);
+	void WriteCLUT16S_I4_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT);
 
-	void WriteCLUT32_I8_CSM2(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem);
-	void WriteCLUT32_I4_CSM2(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem);
-	void WriteCLUT16_I8_CSM2(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem);
-	void WriteCLUT16_I4_CSM2(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem);
-	void WriteCLUT16S_I8_CSM2(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem);
-	void WriteCLUT16S_I4_CSM2(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem);
+	template<int n> void WriteCLUT32_CSM2(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT);
+	template<int n> void WriteCLUT16_CSM2(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT);
+	template<int n> void WriteCLUT16S_CSM2(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT);
 
-	void WriteCLUT_NULL(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem) {}
+	void WriteCLUT_NULL(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT) {}
 
 	static void WriteCLUT_T32_I8_CSM1(const DWORD* RESTRICT src, WORD* RESTRICT clut);
 	static void WriteCLUT_T32_I4_CSM1(const DWORD* RESTRICT src, WORD* RESTRICT clut);
@@ -88,13 +91,12 @@ class GSClut
 	static void Expand16(const WORD* RESTRICT src, DWORD* RESTRICT dst, int w, const GIFRegTEXA& TEXA);
 
 public:
-	GSClut();
+	GSClut(const GSLocalMemory* mem);
 	virtual ~GSClut();
 
 	void Invalidate();
-	bool IsDirty(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT);
-	bool IsWriting(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT);
-	bool Write(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT, const GSLocalMemory* mem);
+	bool WriteTest(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT);
+	void Write(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT);
 	void Read(const GIFRegTEX0& TEX0);
 	void Read32(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA);
 

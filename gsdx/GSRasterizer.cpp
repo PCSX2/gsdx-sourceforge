@@ -208,9 +208,9 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 	// m_slenv
 
 	m_slenv.steps = 0;
-	m_slenv.rtx = context->ttbl->rtx;
-	m_slenv.fo = context->ftbl->rowOffset[0];
-	m_slenv.zo = context->ztbl->rowOffset[0];
+	m_slenv.rtx = GSLocalMemory::m_psm[context->TEX0.PSM].rtx;
+	m_slenv.fo = GSLocalMemory::m_psm[context->FRAME.PSM].rowOffset[0];
+	m_slenv.zo = GSLocalMemory::m_psm[context->ZBUF.PSM].rowOffset[0];
 	m_slenv.fm = GSVector4i(context->FRAME.FBMSK);
 	m_slenv.zm = GSVector4i(context->ZBUF.ZMSK ? 0xffffffff : 0);
 	m_slenv.datm = GSVector4i(context->TEST.DATM ? 0x80000000 : 0);
@@ -733,9 +733,11 @@ void GSRasterizer::SetupColumnOffset()
 
 			m_fbco->hash = hash;
 
+			GSLocalMemory::pixelAddress pa = GSLocalMemory::m_psm[context->FRAME.PSM].pa;
+
 			for(int i = 0, j = 1024; i < j; i++)
 			{
-				m_fbco->addr[i] = GSVector4i((int)context->ftbl->pa(0, i, context->FRAME.Block(), context->FRAME.FBW));
+				m_fbco->addr[i] = GSVector4i((int)pa(0, i, context->FRAME.Block(), context->FRAME.FBW));
 			}
 
 			m_comap.SetAt(hash, m_fbco);
@@ -760,9 +762,11 @@ void GSRasterizer::SetupColumnOffset()
 
 			m_zbco->hash = hash;
 
+			GSLocalMemory::pixelAddress pa = GSLocalMemory::m_psm[context->ZBUF.PSM].pa;
+
 			for(int i = 0, j = 1024; i < j; i++)
 			{
-				m_zbco->addr[i] = GSVector4i((int)context->ztbl->pa(0, i, context->ZBUF.Block(), context->FRAME.FBW));
+				m_zbco->addr[i] = GSVector4i((int)pa(0, i, context->ZBUF.Block(), context->FRAME.FBW));
 			}
 
 			m_comap.SetAt(hash, m_zbco);
@@ -883,7 +887,7 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 			default: __assume(0);
 			}
 
-			if(test.mask() == 0xffff)
+			if(test.alltrue())
 			{
 				continue;
 			}
@@ -997,7 +1001,7 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 				fm |= t;
 				zm |= t;
 				test |= t;
-				if(test.mask() == 0xffff) continue;
+				if(test.alltrue()) continue;
 				break;
 			case 1:
 				zm |= t;
@@ -1061,7 +1065,7 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 			{
 				test |= (d ^ m_slenv.datm).sra32(31);
 
-				if(test.mask() == 0xffff)
+				if(test.alltrue())
 				{
 					continue;
 				}
