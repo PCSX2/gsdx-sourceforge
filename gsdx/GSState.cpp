@@ -2062,23 +2062,9 @@ bool GSC_GiTS(const GSFrameInfo& fi, int& skip)
 
 bool GSC_Onimusha3(const GSFrameInfo& fi, int& skip)
 {
-	if(skip == 0)
+	if(fi.TME /*&& (fi.FBP == 0x00000 || fi.FBP == 0x00700)*/ && (fi.TBP0 == 0x01180 || fi.TBP0 == 0x00e00 || fi.TBP0 == 0x01000 || fi.TBP0 == 0x01200) && (fi.TPSM == PSM_PSMCT32 || fi.TPSM == PSM_PSMCT24))
 	{
-		if(fi.TME && fi.FBP == 0x00e00 && (fi.TBP0 == 0x00700 || fi.TBP0 == 0x00000) && fi.TPSM == PSM_PSMT8H)
-		{
-			skip = 1000;
-		}
-		else if(fi.TME && fi.FBP == 0x01000 && fi.TBP0 == 0x00e00 && fi.FPSM == PSM_PSMCT16 && fi.TPSM == PSM_PSMCT16)
-		{
-			skip = 116;
-		}
-	}
-	else
-	{
-		if(fi.TME && (fi.FBP == 0x00000 && fi.TBP0 == 0x00700 || fi.FBP == 0x00700 && fi.TBP0 == 0x00000) && fi.FPSM == fi.TPSM && fi.FPSM == PSM_PSMCT32)
-		{
-			skip = 0;
-		}
+		skip = 1;
 	}
 
 	return true;
