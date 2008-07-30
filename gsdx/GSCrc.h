@@ -62,6 +62,7 @@ public:
 		GiTS,
 		Onimusha3,
 		MajokkoALaMode2,
+		TalesOfAbyss,
 		TitleCount
 	};
 

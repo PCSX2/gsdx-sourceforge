@@ -580,6 +580,20 @@ protected:
 
 		#pragma endregion
 
+		#pragma region TalesOfAbyss full image blur and brightening
+
+		if(m_game.title == CRC::TalesOfAbyss)
+		{
+			DWORD FBP = m_context->FRAME.Block();
+
+			if(FBP == 0x036e0 || FBP == 0x03560 || FBP == 0x038e0)
+			{
+				return false;
+			}
+		}
+
+		#pragma endregion
+
 		return __super::CanUpscale();
 	}
 
