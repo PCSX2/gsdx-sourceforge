@@ -1232,7 +1232,7 @@ template<int index> void GSState::Transfer(BYTE* mem, UINT32 size)
 
 			if(path.tag.PRE)
 			{
-				ASSERT(path.tag.FLG != GIF_FLG_IMAGE); // kingdom hearts, ffxii
+				ASSERT(path.tag.FLG != GIF_FLG_IMAGE); // kingdom hearts, ffxii, tales of abyss
 
 				if((path.tag.FLG & 2) == 0)
 				{
@@ -2084,6 +2084,22 @@ bool GSC_Onimusha3(const GSFrameInfo& fi, int& skip)
 	return true;
 }
 
+bool GSC_TalesOfAbyss(const GSFrameInfo& fi, int& skip)
+{
+	if(skip == 0)
+	{
+		if(fi.TME && /*fi.FBP == 0x00000 (0x0e000 too?) &&*/ fi.TBP0 == 0x01c00 && fi.TPSM == PSM_PSMT8) // copies the z buffer to the alpha channel of the fb
+		{
+			skip = 345;
+		}
+	}
+	else
+	{
+	}
+
+	return true;
+}
+
 bool GSState::IsBadFrame(int& skip)
 {
 	GSFrameInfo fi;
@@ -2127,6 +2143,7 @@ bool GSState::IsBadFrame(int& skip)
 		map[CRC::GodOfWar2] = GSC_GodOfWar;
 		map[CRC::GiTS] = GSC_GiTS;
 		map[CRC::Onimusha3] = GSC_Onimusha3;
+		map[CRC::TalesOfAbyss] = GSC_TalesOfAbyss;
 	}
 
 	GetSkipCount gsc = map[m_game.title];
