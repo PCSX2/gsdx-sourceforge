@@ -2074,7 +2074,7 @@ bool GSC_TalesOfAbyss(const GSFrameInfo& fi, int& skip)
 {
 	if(skip == 0)
 	{
-		if(fi.TME && /*fi.FBP == 0x00000 (0x0e000 too?) &&*/ fi.TBP0 == 0x01c00 && fi.TPSM == PSM_PSMT8) // copies the z buffer to the alpha channel of the fb
+		if(fi.TME && fi.FBP == 0x00000 && fi.TBP0 == 0x01c00 && fi.TPSM == PSM_PSMT8) // copies the z buffer to the alpha channel of the fb
 		{
 			skip = 345;
 		}
