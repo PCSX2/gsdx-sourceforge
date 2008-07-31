@@ -1939,14 +1939,18 @@ void GSLocalMemory::ReadTexture(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TE
 
 		if(wms == 2)
 		{
+			int left = r.left;
 			r.left = min(r.right, max(r.left, (int)minu));
-			r.right = max(r.left, min(r.right, (int)maxu));
+			r.right = max(r.left, min(r.right, (int)maxu + 1));
+			dst += (r.left - left) * sizeof(T);
 		}
 
 		if(wmt == 2)
 		{
+			int top = r.top;
 			r.top = min(r.bottom, max(r.top, (int)minv));
-			r.bottom = max(r.top, min(r.bottom, (int)maxv));
+			r.bottom = max(r.top, min(r.bottom, (int)maxv + 1));
+			dst += (r.top - top) * dstpitch;
 		}
 
 		if(wms == 3 && wmt != 3)
