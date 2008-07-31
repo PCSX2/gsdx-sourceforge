@@ -183,6 +183,9 @@ public:
 		, m_now(0)
 	{
 		m_output.Attach(new GSSourceOutputPin(m_size, m_atpf, this, this, hr));
+
+		// FIXME
+		if(fps == 60) m_atpf = 166834; // = 10000000i64 / 59.94
 	}
 
 	DECLARE_IUNKNOWN;

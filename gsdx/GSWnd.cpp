@@ -43,6 +43,12 @@ bool GSWnd::Create(LPCTSTR title)
 
 	CSize s(r.Width() / 3, r.Width() / 4);
 
+	if(!GetSystemMetrics(SM_REMOTESESSION))
+	{
+		s.cx *= 2;
+		s.cy *= 2;
+	}
+
 	r = CRect(r.CenterPoint() - CSize(s.cx / 2, s.cy / 2), s);
 
 	LPCTSTR wc = AfxRegisterWndClass(CS_VREDRAW|CS_HREDRAW|CS_DBLCLKS, AfxGetApp()->LoadStandardCursor(IDC_ARROW), 0, 0);

@@ -372,9 +372,9 @@ void GSState::GIFPackedRegHandlerRGBA(GIFPackedReg* r)
 {
 	#if _M_SSE >= 0x301
 
-	GSVector4i mask(_mm_cvtsi32_si128(0x0c080400));
+	GSVector4i mask = GSVector4i::load(0x0c080400);
 	GSVector4i v = GSVector4i::load<false>(r).shuffle8(mask);
-	m_v.RGBAQ.ai32[0] = _mm_cvtsi128_si32(v);
+	m_v.RGBAQ.ai32[0] = (UINT32)GSVector4i::store(v);
 
 	#elif _M_SSE >= 0x200
 
@@ -419,12 +419,12 @@ void GSState::GIFPackedRegHandlerUV(GIFPackedReg* r)
 	#if _M_SSE >= 0x401
 
 	GSVector4i v = GSVector4i::loadl(r);
-	m_v.UV.ai32[0] = (DWORD)GSVector4i::store(v.pu32(v)) & 0x3fff3fff;
+	m_v.UV.ai32[0] = (UINT32)GSVector4i::store(v.pu32(v)) & 0x3fff3fff;
 
 	#elif _M_SSE >= 0x200
 
 	GSVector4i v = GSVector4i::loadl(r) & GSVector4i::x00003fff();
-	m_v.UV.ai32[0] = _mm_cvtsi128_si32(v.ps32(v));
+	m_v.UV.ai32[0] = (UINT32)GSVector4i::store(v.ps32(v));
 
 	#else
 
@@ -1166,7 +1166,7 @@ void GSState::Move()
 	InvalidateLocalMem(m_env.BITBLTBUF, CRect(CPoint(sx, sy), CSize(w, h)));
 	InvalidateVideoMem(m_env.BITBLTBUF, CRect(CPoint(dx, dy), CSize(w, h)));
 
-	// TODO: use rowOffset like SwizzleTextureX
+	// TODO: use rowOffset
 
 	for(int y = 0; y < h; y++, sy += yinc, dy += yinc, sx -= xinc*w, dx -= xinc*w)
 		for(int x = 0; x < w; x++, sx += xinc, dx += xinc)
