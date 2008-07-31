@@ -489,7 +489,9 @@ PS_OUTPUT ps_main(PS_INPUT input)
 
 	if(AOUT == 1) // 16 bit output
 	{
-		c.a = FBA == 1 ? 0.5 : step(0.5, c.a) * 0.5;
+		float a = 128.0f / 255; // alpha output will be 0x80
+		
+		c.a = FBA == 1 ? a : step(0.5, c.a) * a;
 	}
 	else if(FBA == 1)
 	{
