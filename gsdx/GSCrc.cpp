@@ -101,6 +101,7 @@ CRC::Game CRC::m_games[] =
 	{0x6BF11378, Onimusha3, US, false},	
 	{0xF442260C, MajokkoALaMode2, JP, false},
 	{0x14FE77F7, TalesOfAbyss, US, false},
+	{0x045D77E9, TalesOfAbyss, US, false}, // undub
 };
 
 CAtlMap<DWORD, CRC::Game*> CRC::m_map;
