@@ -525,6 +525,21 @@ public:
 		WritePixel16(addr, (ga >> 16) | (rb >> 9) | (ga >> 6) | (rb >> 3));
 	}
 
+	__forceinline void WritePixel32(DWORD* dst, DWORD addr, DWORD c) 
+	{
+		dst[addr] = c;
+	}
+
+	__forceinline void WritePixel24(DWORD* dst, DWORD addr, DWORD c) 
+	{
+		dst[addr] = (dst[addr] & 0xff000000) | (c & 0x00ffffff);
+	}
+
+	__forceinline void WritePixel16(WORD* dst, DWORD addr, DWORD c) 
+	{
+		dst[addr] = (WORD)c;
+	}
+
 	__forceinline void WritePixel32(int x, int y, DWORD c, DWORD bp, DWORD bw)
 	{
 		WritePixel32(PixelAddress32(x, y, bp, bw), c);
@@ -971,59 +986,186 @@ public:
 		return z;
 	}
 
-	__forceinline void WriteFrameX(int psm, const GSVector4i& addr, const GSVector4i& c, const GSVector4i& mask, int pixels)
+	template<int fpsm, int zpsm> __forceinline void WriteFrameAndZBufX(
+		const GSVector4i& fa, const GSVector4i& fm, const GSVector4i& f, 
+		const GSVector4i& za, const GSVector4i& zm, const GSVector4i& z, 
+		int pixels)
 	{
-		GSVector4i rb, ga, tmp;
+		// FIXME: compiler problem or not enough xmm regs in x86 mode to store the address regs (fa, za)
 
-		switch(psm)
+		DWORD* RESTRICT vm32 = m_vm32;
+		WORD* RESTRICT vm16 = m_vm16;
+
+		GSVector4i c = f;
+
+		if(fpsm == 2)
 		{
-		case 0:
-			for(int i = 0; i < pixels; i++)
-				if(mask.u32[i] != 0xffffffff)
-					WritePixel32(addr.u32[i], c.u32[i]); 
-			break; 
-		case 1:
-			for(int i = 0; i < pixels; i++)
-				if(mask.u32[i] != 0xffffffff)
-					WritePixel24(addr.u32[i], c.u32[i]); 
-			break; 
-		case 2:
-			rb = c & 0x00f800f8;
-			ga = c & 0x8000f800;
-			tmp = (ga >> 16) | (rb >> 9) | (ga >> 6) | (rb >> 3);
-			for(int i = 0; i < pixels; i++)
-				if(mask.u32[i] != 0xffffffff)
-					WritePixel16(addr.u32[i], tmp.u16[i * 2]); 
-			break;
-		default: 
-			ASSERT(0); 
-			break;
+			GSVector4i rb = c & 0x00f800f8;
+			GSVector4i ga = c & 0x8000f800;
+			c = (ga >> 16) | (rb >> 9) | (ga >> 6) | (rb >> 3);
 		}
+
+		#if _M_SSE >= 0x401
+	
+		if(fm.extract32<0>() != 0xffffffff) 
+		{
+			switch(fpsm)
+			{
+			case 0: WritePixel32(vm32, fa.u32[0], c.extract32<0>()); break;
+			case 1: WritePixel24(vm32, fa.u32[0], c.extract32<0>()); break;
+			case 2: WritePixel16(vm16, fa.u32[0], c.extract16<0 * 2>()); break;
+			}
+		}
+
+		if(zm.extract32<0>() != 0xffffffff) 
+		{
+			switch(zpsm)
+			{
+			case 0: WritePixel32(vm32, za.u32[0], z.extract32<0>()); break;
+			case 1: WritePixel24(vm32, za.u32[0], z.extract32<0>()); break;
+			case 2: WritePixel16(vm16, za.u32[0], z.extract16<0 * 2>()); break;
+			}
+		}
+
+		if(pixels <= 1) return;
+
+		if(fm.extract32<1>() != 0xffffffff) 
+		{
+			switch(fpsm)
+			{
+			case 0: WritePixel32(vm32, fa.u32[1], c.extract32<1>()); break;
+			case 1: WritePixel24(vm32, fa.u32[1], c.extract32<1>()); break;
+			case 2: WritePixel16(vm16, fa.u32[1], c.extract16<1 * 2>()); break;
+			}
+		}
+
+		if(zm.extract32<1>() != 0xffffffff) 
+		{
+			switch(zpsm)
+			{
+			case 0: WritePixel32(vm32, za.u32[1], z.extract32<1>()); break;
+			case 1: WritePixel24(vm32, za.u32[1], z.extract32<1>()); break;
+			case 2: WritePixel16(vm16, za.u32[1], z.extract16<1 * 2>()); break;
+			}
+		}
+
+		if(pixels <= 2) return;
+
+		if(fm.extract32<2>() != 0xffffffff) 
+		{
+			switch(fpsm)
+			{
+			case 0: WritePixel32(vm32, fa.u32[2], c.extract32<2>()); break;
+			case 1: WritePixel24(vm32, fa.u32[2], c.extract32<2>()); break;
+			case 2: WritePixel16(vm16, fa.u32[2], c.extract16<2 * 2>()); break;
+			}
+		}
+
+		if(zm.extract32<2>() != 0xffffffff) 
+		{
+			switch(zpsm)
+			{
+			case 0: WritePixel32(vm32, za.u32[2], z.extract32<2>()); break;
+			case 1: WritePixel24(vm32, za.u32[2], z.extract32<2>()); break;
+			case 2: WritePixel16(vm16, za.u32[2], z.extract16<2 * 2>()); break;
+			}
+		}
+
+		if(pixels <= 3) return;
+
+		if(fm.extract32<3>() != 0xffffffff) 
+		{
+			switch(fpsm)
+			{
+			case 0: WritePixel32(vm32, fa.u32[3], c.extract32<3>()); break;
+			case 1: WritePixel24(vm32, fa.u32[3], c.extract32<3>()); break;
+			case 2: WritePixel16(vm16, fa.u32[3], c.extract16<3 * 2>()); break;
+			}
+		}
+
+		if(zm.extract32<3>() != 0xffffffff) 
+		{
+			switch(zpsm)
+			{
+			case 0: WritePixel32(vm32, za.u32[3], z.extract32<3>()); break;
+			case 1: WritePixel24(vm32, za.u32[3], z.extract32<3>()); break;
+			case 2: WritePixel16(vm16, za.u32[3], z.extract16<3 * 2>()); break;
+			}
+		}
+
+		#else
+
+		int i = 0;
+
+		do
+		{
+			if(fm.u32[i] != 0xffffffff)
+			{
+				switch(fpsm)
+				{
+				case 0: WritePixel32(vm32, fa.u32[i], c.u32[i]);  break;
+				case 1: WritePixel24(vm32, fa.u32[i], c.u32[i]);  break;
+				case 2: WritePixel16(vm16, fa.u32[i], c.u16[i * 2]);  break;
+				}
+			}
+
+			if(zm.u32[i] != 0xffffffff) 
+			{
+				switch(zpsm)
+				{
+				case 0: WritePixel32(vm32, za.u32[i], z.u32[i]);  break;
+				case 1: WritePixel24(vm32, za.u32[i], z.u32[i]);  break;
+				case 2: WritePixel16(vm16, za.u32[i], z.u16[i * 2]);  break;
+				}
+			}
+		}
+		while(++i < pixels);
+
+		#endif
 	}
 
-	__forceinline void WriteZBufX(int psm, const GSVector4i& addr, const GSVector4i& z, const GSVector4i& mask, int pixels)
+	template<int fpsm, int zpsm> __forceinline void WriteFrameAndZBufX_NOSSE4(
+		const GSVector4i& fa, const GSVector4i& fm, const GSVector4i& f, 
+		const GSVector4i& za, const GSVector4i& zm, const GSVector4i& z, 
+		int pixels)
 	{
-		switch(psm)
+		DWORD* RESTRICT vm32 = m_vm32;
+		WORD* RESTRICT vm16 = m_vm16;
+
+		GSVector4i c = f;
+
+		if(fpsm == 2)
 		{
-		case 0:
-			for(int i = 0; i < pixels; i++)
-				if(mask.u32[i] != 0xffffffff)
-					WritePixel32(addr.u32[i], z.u32[i]); 
-			break; 
-		case 1:
-			for(int i = 0; i < pixels; i++)
-				if(mask.u32[i] != 0xffffffff)
-					WritePixel24(addr.u32[i], z.u32[i]); 
-			break; 
-		case 2:
-			for(int i = 0; i < pixels; i++)
-				if(mask.u32[i] != 0xffffffff)
-					WritePixel16(addr.u32[i], z.u32[i]); 
-			break; 
-		default: 
-			ASSERT(0); 
-			break;
+			GSVector4i rb = c & 0x00f800f8;
+			GSVector4i ga = c & 0x8000f800;
+			c = (ga >> 16) | (rb >> 9) | (ga >> 6) | (rb >> 3);
 		}
+
+		int i = 0;
+
+		do
+		{
+			if(fm.u32[i] != 0xffffffff)
+			{
+				switch(fpsm)
+				{
+				case 0: WritePixel32(vm32, fa.u32[i], c.u32[i]);  break;
+				case 1: WritePixel24(vm32, fa.u32[i], c.u32[i]);  break;
+				case 2: WritePixel16(vm16, fa.u32[i], c.u16[i * 2]);  break;
+				}
+			}
+
+			if(zm.u32[i] != 0xffffffff) 
+			{
+				switch(zpsm)
+				{
+				case 0: WritePixel32(vm32, za.u32[i], z.u32[i]);  break;
+				case 1: WritePixel24(vm32, za.u32[i], z.u32[i]);  break;
+				case 2: WritePixel16(vm16, za.u32[i], z.u16[i * 2]);  break;
+				}
+			}
+		}
+		while(++i < pixels);
 	}
 
 	// FillRect

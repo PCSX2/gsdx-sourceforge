@@ -1122,11 +1122,15 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 			s = s.blend(d, fm);
 		}
 
-		m_state->m_mem.WriteFrameX(fpsm, fa, s, fm, pixels);
-
 		if(ztst > 0)
 		{
-			m_state->m_mem.WriteZBufX(zpsm, za, zs, zm, pixels);
+			// FIXME: sse4 crashes the linker
+
+			m_state->m_mem.WriteFrameAndZBufX_NOSSE4<fpsm, zpsm>(fa, fm, s, za, zm, zs, pixels);
+		}
+		else
+		{
+			m_state->m_mem.WriteFrameAndZBufX<fpsm, 3>(fa, fm, s, za, zm, zs, pixels);
 		}
 
 		}
