@@ -593,6 +593,24 @@ public:
 		return _mm_movemask_epi8(m) == 0xffff;
 	}
 
+	#if _M_SSE >= 0x401
+
+	template<int i> GSVector4i insert8(int a) const
+	{
+		return GSVector4i(_mm_insert_epi8(m, a, i));
+	}
+
+	#endif
+
+	template<int i> int extract8() const
+	{
+		#if _M_SSE >= 0x401
+		return _mm_extract_epi8(m, i);
+		#else
+		return (int)i8[i];
+		#endif
+	}
+
 	template<int i> GSVector4i insert16(int a) const
 	{
 		return GSVector4i(_mm_insert_epi16(m, a, i));
@@ -605,39 +623,45 @@ public:
 
 	#if _M_SSE >= 0x401
 
-	template<int i> GSVector4i insert8(int a) const
-	{
-		return GSVector4i(_mm_insert_epi8(m, a, i));
-	}
-
-	template<int i> int extract8() const
-	{
-		return _mm_extract_epi8(m, i);
-	}
-
 	template<int i> GSVector4i insert32(int a) const
 	{
 		return GSVector4i(_mm_insert_epi32(m, a, i));
 	}
 
+	#endif
+
 	template<int i> int extract32() const
 	{
+		#if _M_SSE >= 0x401
 		return _mm_extract_epi32(m, i);
+		#else
+		return i32[i];
+		#endif
 	}
 
 	#ifdef _M_AMD64
+
+	#if _M_SSE >= 0x401
 
 	template<int i> GSVector4i insert64(__int64 a) const
 	{
 		return GSVector4i(_mm_insert_epi64(m, a, i));
 	}
 
+	#endif
+
 	template<int i> __int64 extract64() const
 	{
+		#if _M_SSE >= 0x401
 		return _mm_extract_epi64(m, i);
+		#else
+		return i64[i];
+		#endif
 	}
 
 	#endif
+
+	#if _M_SSE >= 0x401
 
 	template<int src, class T> __forceinline GSVector4i gather8_4(const T* ptr) const
 	{
