@@ -916,7 +916,7 @@ public:
 				(int)ReadPixel32(addr.u32[2]), 
 				(int)ReadPixel32(addr.u32[3]));
 			#endif
-			c = (c & 0x00ffffff) | 0x80000000;
+			c = (c & GSVector4i::x00ffffff()) | GSVector4i::x80000000();
 			break;
 		case 2:
 			#if _M_SSE >= 0x401
@@ -957,15 +957,15 @@ public:
 			break;
 		case 1: 
 			#if _M_SSE >= 0x401
-			z = addr.gather32_32(m_vm32) & 0x00ffffff;
+			z = addr.gather32_32(m_vm32);
 			#else
 			z = GSVector4i(
 				(int)ReadPixel32(addr.u32[0]), 
 				(int)ReadPixel32(addr.u32[1]), 
 				(int)ReadPixel32(addr.u32[2]), 
 				(int)ReadPixel32(addr.u32[3]));
-			z = z & 0x00ffffff;
 			#endif
+			z = z & GSVector4i::x00ffffff();
 			break;
 		case 2: 
 			#if _M_SSE >= 0x401

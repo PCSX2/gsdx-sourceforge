@@ -1091,6 +1091,11 @@ public:
 		return invzero().sll32(24);
 	}
 
+	static GSVector4i x00ffffff()
+	{
+		return invzero().srl32(8);
+	}
+
 	static GSVector4i x00003fff()
 	{
 		return invzero().srl32(18);
