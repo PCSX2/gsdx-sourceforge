@@ -1066,39 +1066,47 @@ public:
 		return zero() == zero();
 	}
 
-	static GSVector4i one()
+	static GSVector4i invzero(const GSVector4i& v) 
 	{
-		return invzero().srl32(31);
+		// - vc can't generate a simple pxor xmm0, xmm0 / pcmpeqd xmm0, xmm0 
+		// - it is better if we just use whatever register there is at the moment, instead of loading the result of _mm_setzero_si128 from memory stored somewhere into a temp earlier (we could also load the final value then...)
+
+		return v == v; 
 	}
 
-	static GSVector4i x0001()
+	static GSVector4i one(const GSVector4i& v)
 	{
-		return invzero().srl16(15);
+		return invzero(v).srl32(31);
 	}
 
-	static GSVector4i x000000ff()
+	static GSVector4i x0001(const GSVector4i& v)
 	{
-		return invzero().srl32(24);
+		return invzero(v).srl16(15);
 	}
 
-	static GSVector4i x80000000()
+	static GSVector4i x000000ff(const GSVector4i& v)
 	{
-		return invzero().sll32(31);
+		return invzero(v).srl32(24);
 	}
 
-	static GSVector4i xff000000()
+	static GSVector4i x80000000(const GSVector4i& v)
 	{
-		return invzero().sll32(24);
+		return invzero(v).sll32(31);
 	}
 
-	static GSVector4i x00ffffff()
+	static GSVector4i xff000000(const GSVector4i& v)
 	{
-		return invzero().srl32(8);
+		return invzero(v).sll32(24);
 	}
 
-	static GSVector4i x00003fff()
+	static GSVector4i x00ffffff(const GSVector4i& v)
 	{
-		return invzero().srl32(18);
+		return invzero(v).srl32(8);
+	}
+
+	static GSVector4i x00003fff(const GSVector4i& v)
+	{
+		return invzero(v).srl32(18);
 	}
 
 	#if _M_SSE >= 0x401
@@ -1782,7 +1790,7 @@ public:
 
 	__forceinline static void expand(const GSVector4i& v, GSVector4& a, GSVector4& b, GSVector4& c, GSVector4& d)
 	{
-		GSVector4i mask = GSVector4i::x000000ff();
+		GSVector4i mask = GSVector4i::x000000ff(v);
 
 		a = v & mask;
 		b = (v >> 8) & mask;

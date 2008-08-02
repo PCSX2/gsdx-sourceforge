@@ -739,6 +739,16 @@ void GSRasterizer::InitEx()
 	m_dsmap.SetAt(0x5215b468, &GSRasterizer::DrawScanlineEx<0x5215b468>);
 	m_dsmap.SetAt(0x55103c88, &GSRasterizer::DrawScanlineEx<0x55103c88>);
 	m_dsmap.SetAt(0x6a103c08, &GSRasterizer::DrawScanlineEx<0x6a103c08>);
+	m_dsmap.SetAt(0x5115b458, &GSRasterizer::DrawScanlineEx<0x5115b458>);
+	m_dsmap.SetAt(0x5194f468, &GSRasterizer::DrawScanlineEx<0x5194f468>);
+	m_dsmap.SetAt(0x5211b468, &GSRasterizer::DrawScanlineEx<0x5211b468>);
+	m_dsmap.SetAt(0x5214f468, &GSRasterizer::DrawScanlineEx<0x5214f468>);
+	m_dsmap.SetAt(0x59103c08, &GSRasterizer::DrawScanlineEx<0x59103c08>);
+	m_dsmap.SetAt(0x5a10d448, &GSRasterizer::DrawScanlineEx<0x5a10d448>);
+	m_dsmap.SetAt(0x6a103048, &GSRasterizer::DrawScanlineEx<0x6a103048>);
+	m_dsmap.SetAt(0x6a103448, &GSRasterizer::DrawScanlineEx<0x6a103448>);
+	m_dsmap.SetAt(0x6a10d448, &GSRasterizer::DrawScanlineEx<0x6a10d448>);
+	m_dsmap.SetAt(0x6a11b468, &GSRasterizer::DrawScanlineEx<0x6a11b468>);
 
 	// svr2k8
 
@@ -851,7 +861,7 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 		GSVector4i zm = m_slenv.zm;
 		GSVector4i test = GSVector4i::zero();
 
-		GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::one());
+		GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::one(test));
 
 		if(ztst > 1)
 		{
@@ -862,8 +872,8 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 
 			if(zpsm == 0)
 			{
-				zso = zs - GSVector4i::x80000000();
-				zdo = zd - GSVector4i::x80000000();
+				zso = zs - GSVector4i::x80000000(test);
+				zdo = zd - GSVector4i::x80000000(test);
 			}
 
 			switch(ztst)
@@ -908,9 +918,11 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 				GSVector4i uv = GSVector4i(uf).ps32(GSVector4i(vf));
 
 				GSVector4i uv0 = Wrap(uv);
-				GSVector4i uv1 = Wrap(uv + GSVector4i::x0001());
+				GSVector4i uv1 = Wrap(uv + GSVector4i::x0001(uv));
 
-				for(int i = 0; i < pixels; i++)
+				int i = 0;
+
+				do
 				{
 					if(ztst > 1 && test.u32[i])
 					{
@@ -933,6 +945,7 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 
 					c[i] = c00;
 				}
+				while(++i < pixels);
 
 				GSVector4::transpose(c[0], c[1], c[2], c[3]);
 			}
@@ -942,7 +955,9 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 
 				GSVector4i c00;
 
-				for(int i = 0; i < pixels; i++)
+				int i = 0;
+
+				do
 				{
 					if(ztst > 1 && test.u32[i])
 					{
@@ -951,6 +966,7 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 
 					c00.u32[i] = ReadTexel(uv.u16[i], uv.u16[i + 4]);
 				}
+				while(++i < pixels);
 
 				GSVector4::expand(c00, c[0], c[1], c[2], c[3]);
 			}
@@ -996,7 +1012,7 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 				fm |= t;
 				break;
 			case 3: 
-				fm |= t & GSVector4i::xff000000();
+				fm |= t & GSVector4i::xff000000(t);
 				zm |= t;
 				break;
 			default: 
@@ -1045,9 +1061,9 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 
 		if(rfb)
 		{
-			d = m_state->m_mem.ReadFrameX(fpsm, fa);
+			d = m_state->m_mem.ReadFrameX(fpsm == 1 ? 0 : fpsm, fa);
 
-			if(date)
+			if(fpsm != 1 && date)
 			{
 				test |= (d ^ m_slenv.datm).sra32(31);
 
@@ -1064,6 +1080,11 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 		if(abe)
 		{
 			GSVector4::expand(d, c[4], c[5], c[6], c[7]);
+
+			if(fpsm == 1)
+			{
+				c[7] = GSVector4(128.0f);
+			}
 
 			c[8] = GSVector4::zero();
 			c[9] = GSVector4::zero();
@@ -1103,14 +1124,7 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 			s = s.blend(d, fm);
 		}
 
-		if(ztst > 0 && !(atst == 0 && afail != 2))
-		{
-			m_state->m_mem.WriteFrameAndZBufX<fpsm, zpsm>(fa, fm, s, za, zm, zs, pixels);
-		}
-		else
-		{
-			m_state->m_mem.WriteFrameAndZBufX<fpsm, 3>(fa, fm, s, za, zm, zs, pixels);
-		}
+		m_state->m_mem.WriteFrameAndZBufX(fpsm, fa, fm, s, ztst > 0 && !(atst == 0 && afail != 2) ? zpsm : 3, za, zm, zs, pixels);
 
 		}
 		while(0);

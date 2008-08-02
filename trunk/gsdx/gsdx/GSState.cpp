@@ -2078,7 +2078,7 @@ bool GSC_TalesOfAbyss(const GSFrameInfo& fi, int& skip)
 		{
 			skip = 1000;
 		}
-		else if(fi.TME && (fi.FBP == 0x00000 || fi.FBP == 0x00e00) && fi.TBP0 == 0x03560 && fi.TPSM == PSM_PSMCT32)
+		else if(fi.TME && (fi.FBP == 0x00000 || fi.FBP == 0x00e00) && (fi.TBP0 == 0x03560 || fi.TBP0 == 0x038e0) && fi.TPSM == PSM_PSMCT32)
 		{
 			skip = 1;
 		}
