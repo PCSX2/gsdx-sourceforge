@@ -2076,11 +2076,19 @@ bool GSC_TalesOfAbyss(const GSFrameInfo& fi, int& skip)
 	{
 		if(fi.TME && (fi.FBP == 0x00000 || fi.FBP == 0x00e00) && fi.TBP0 == 0x01c00 && fi.TPSM == PSM_PSMT8) // copies the z buffer to the alpha channel of the fb
 		{
-			skip = 340;
+			skip = 1000;
+		}
+		else if(fi.TME && (fi.FBP == 0x00000 || fi.FBP == 0x00e00) && fi.TBP0 == 0x03560 && fi.TPSM == PSM_PSMCT32)
+		{
+			skip = 1;
 		}
 	}
 	else
 	{
+		if(fi.TME && fi.TPSM != PSM_PSMT8)
+		{
+			skip = 0;
+		}
 	}
 
 	return true;
@@ -2131,6 +2139,8 @@ bool GSState::IsBadFrame(int& skip)
 		map[CRC::Onimusha3] = GSC_Onimusha3;
 		map[CRC::TalesOfAbyss] = GSC_TalesOfAbyss;
 	}
+
+	// TODO: just set gsc in SetGameCRC once
 
 	GetSkipCount gsc = map[m_game.title];
 
