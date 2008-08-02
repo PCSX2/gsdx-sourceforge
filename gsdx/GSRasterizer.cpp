@@ -865,7 +865,7 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 		GSVector4i zm = m_slenv.zm;
 		GSVector4i test = GSVector4i::zero();
 
-		GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::one());
+		GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::one(test));
 
 		if(ztst > 1)
 		{
@@ -876,8 +876,8 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 
 			if(zpsm == 0)
 			{
-				zso = zs - GSVector4i::x80000000();
-				zdo = zd - GSVector4i::x80000000();
+				zso = zs - GSVector4i::x80000000(test);
+				zdo = zd - GSVector4i::x80000000(test);
 			}
 
 			switch(ztst)
@@ -922,9 +922,11 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 				GSVector4i uv = GSVector4i(uf).ps32(GSVector4i(vf));
 
 				GSVector4i uv0 = Wrap(uv);
-				GSVector4i uv1 = Wrap(uv + GSVector4i::x0001());
+				GSVector4i uv1 = Wrap(uv + GSVector4i::x0001(uv));
 
-				for(int i = 0; i < pixels; i++)
+				int i = 0;
+
+				do
 				{
 					if(ztst > 1 && test.u32[i])
 					{
@@ -947,6 +949,7 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 
 					c[i] = c00;
 				}
+				while(++i < pixels);
 
 				GSVector4::transpose(c[0], c[1], c[2], c[3]);
 			}
@@ -956,7 +959,9 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 
 				GSVector4i c00;
 
-				for(int i = 0; i < pixels; i++)
+				int i = 0;
+
+				do
 				{
 					if(ztst > 1 && test.u32[i])
 					{
@@ -965,6 +970,7 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 
 					c00.u32[i] = ReadTexel(uv.u16[i], uv.u16[i + 4]);
 				}
+				while(++i < pixels);
 
 				GSVector4::expand(c00, c[0], c[1], c[2], c[3]);
 			}
@@ -1010,7 +1016,7 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 				fm |= t;
 				break;
 			case 3: 
-				fm |= t & GSVector4i::xff000000();
+				fm |= t & GSVector4i::xff000000(t);
 				zm |= t;
 				break;
 			default: 
@@ -1059,9 +1065,9 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 
 		if(m_sel.rfb)
 		{
-			d = m_state->m_mem.ReadFrameX(fpsm, fa);
+			d = m_state->m_mem.ReadFrameX(fpsm == 1 ? 0 : fpsm, fa);
 
-			if(m_sel.date)
+			if(fpsm != 1 && m_sel.date)
 			{
 				test |= (d ^ m_slenv.datm).sra32(31);
 
@@ -1078,6 +1084,11 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 		if(m_sel.abe)
 		{
 			GSVector4::expand(d, c[4], c[5], c[6], c[7]);
+
+			if(fpsm == 1)
+			{
+				c[7] = GSVector4(128.0f);
+			}
 
 			c[8] = GSVector4::zero();
 			c[9] = GSVector4::zero();
@@ -1122,16 +1133,7 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 			s = s.blend(d, fm);
 		}
 
-		if(ztst > 0)
-		{
-			// FIXME: sse4 crashes the linker
-
-			m_state->m_mem.WriteFrameAndZBufX_NOSSE4<fpsm, zpsm>(fa, fm, s, za, zm, zs, pixels);
-		}
-		else
-		{
-			m_state->m_mem.WriteFrameAndZBufX<fpsm, 3>(fa, fm, s, za, zm, zs, pixels);
-		}
+		m_state->m_mem.WriteFrameAndZBufX_NOSSE4(fpsm, fa, fm, s, ztst > 0 ? zpsm : 3, za, zm, zs, pixels);
 
 		}
 		while(0);

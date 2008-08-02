@@ -916,7 +916,7 @@ public:
 				(int)ReadPixel32(addr.u32[2]), 
 				(int)ReadPixel32(addr.u32[3]));
 			#endif
-			c = (c & GSVector4i::x00ffffff()) | GSVector4i::x80000000();
+			c = (c & GSVector4i::x00ffffff(addr)) | GSVector4i::x80000000(addr);
 			break;
 		case 2:
 			#if _M_SSE >= 0x401
@@ -965,7 +965,7 @@ public:
 				(int)ReadPixel32(addr.u32[2]), 
 				(int)ReadPixel32(addr.u32[3]));
 			#endif
-			z = z & GSVector4i::x00ffffff();
+			z = z & GSVector4i::x00ffffff(addr);
 			break;
 		case 2: 
 			#if _M_SSE >= 0x401
@@ -986,9 +986,9 @@ public:
 		return z;
 	}
 
-	template<int fpsm, int zpsm> __forceinline void WriteFrameAndZBufX(
-		const GSVector4i& fa, const GSVector4i& fm, const GSVector4i& f, 
-		const GSVector4i& za, const GSVector4i& zm, const GSVector4i& z, 
+	__forceinline void WriteFrameAndZBufX(
+		int fpsm, const GSVector4i& fa, const GSVector4i& fm, const GSVector4i& f, 
+		int zpsm, const GSVector4i& za, const GSVector4i& zm, const GSVector4i& z, 
 		int pixels)
 	{
 		// FIXME: compiler problem or not enough xmm regs in x86 mode to store the address regs (fa, za)
@@ -1124,9 +1124,9 @@ public:
 		#endif
 	}
 
-	template<int fpsm, int zpsm> __forceinline void WriteFrameAndZBufX_NOSSE4(
-		const GSVector4i& fa, const GSVector4i& fm, const GSVector4i& f, 
-		const GSVector4i& za, const GSVector4i& zm, const GSVector4i& z, 
+	__forceinline void WriteFrameAndZBufX_NOSSE4(
+		int fpsm, const GSVector4i& fa, const GSVector4i& fm, const GSVector4i& f, 
+		int zpsm, const GSVector4i& za, const GSVector4i& zm, const GSVector4i& z, 
 		int pixels)
 	{
 		DWORD* RESTRICT vm32 = m_vm32;
