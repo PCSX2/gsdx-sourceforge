@@ -1066,6 +1066,41 @@ public:
 		return zero() == zero();
 	}
 
+	static GSVector4i one()
+	{
+		return invzero().srl32(31);
+	}
+
+	static GSVector4i x0001()
+	{
+		return invzero().srl16(15);
+	}
+
+	static GSVector4i x000000ff()
+	{
+		return invzero().srl32(24);
+	}
+
+	static GSVector4i x80000000()
+	{
+		return invzero().sll32(31);
+	}
+
+	static GSVector4i xff000000()
+	{
+		return invzero().sll32(24);
+	}
+
+	static GSVector4i x00ffffff()
+	{
+		return invzero().srl32(8);
+	}
+
+	static GSVector4i x00003fff()
+	{
+		return invzero().srl32(18);
+	}
+
 	static GSVector4i invzero(const GSVector4i& v) 
 	{
 		// - vc can't generate a simple pxor xmm0, xmm0 / pcmpeqd xmm0, xmm0 

@@ -233,6 +233,11 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 	m_slenv.f.g = GSVector4((float)(int)env.FOGCOL.FCG);
 	m_slenv.f.b = GSVector4((float)(int)env.FOGCOL.FCB);
 
+	if(m_sel.fpsm == 1)
+	{
+		m_slenv.fm |= GSVector4i::xff000000();
+	}
+
 	if(PRIM->TME)
 	{
 		DWORD hash = context->TEX0.ai32[0]; // TBP0, TBW, PSM
@@ -887,7 +892,7 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 		GSVector4i zm = m_slenv.zm;
 		GSVector4i test = GSVector4i::zero();
 
-		GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::one(test));
+		GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::one(fa));
 
 		if(ztst > 1)
 		{
