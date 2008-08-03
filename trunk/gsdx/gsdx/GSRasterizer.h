@@ -46,7 +46,8 @@ protected:
 private:
 	struct ColumnOffset
 	{
-		GSVector4i addr[1024]; 
+		GSVector4i row[1024];
+		int* col[4];
 		DWORD hash;
 	};
 
@@ -56,11 +57,10 @@ private:
 
 		GSLocalMemory::readTexture rtx;
 
-		GSVector4i* fbco;
-		GSVector4i* zbco;
-
-		int* fo;
-		int* zo;
+		GSVector4i* fbr;
+		GSVector4i* zbr;
+		int** fbc;
+		int** zbc;
 
 		GSVector4i fm, zm;
 		struct {GSVector4i min, max, mask;} t; // [u] x 4 [v] x 4

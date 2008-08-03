@@ -822,11 +822,11 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 	const DWORD abed = (sel >> 28) & 3;
 	const DWORD rfb = (sel >> 30) & 1;
 
-	GSVector4i fa_base = m_slenv.fbco[top];
-	GSVector4i* fa_offset = (GSVector4i*)&m_slenv.fo[left];
+	GSVector4i fa_base = m_slenv.fbr[top];
+	GSVector4i* fa_offset = (GSVector4i*)&m_slenv.fbc[left & 3][left];
 
-	GSVector4i za_base = m_slenv.zbco[top];
-	GSVector4i* za_offset = (GSVector4i*)&m_slenv.zo[left];
+	GSVector4i za_base = m_slenv.zbr[top];
+	GSVector4i* za_offset = (GSVector4i*)&m_slenv.zbc[left & 3][left];
 
 	GSVector4 vp = v.p;
 	GSVector4 z = vp.zzzz(); z += m_slenv.dz0123;
@@ -854,8 +854,8 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 
 		int pixels = min(steps, 4);
 
-		GSVector4i fa = fa_base + GSVector4i::load<false>(fa_offset);
-		GSVector4i za = za_base + GSVector4i::load<false>(za_offset);
+		GSVector4i fa = fa_base + GSVector4i::load<true>(fa_offset);
+		GSVector4i za = za_base + GSVector4i::load<true>(za_offset);
 		
 		GSVector4i fm = m_slenv.fm;
 		GSVector4i zm = m_slenv.zm;

@@ -79,7 +79,14 @@ GSRasterizer::~GSRasterizer()
 
 	while(pos)
 	{
-		_aligned_free(m_comap.GetNextValue(pos));
+		ColumnOffset* co = m_comap.GetNextValue(pos);
+
+		for(int i = 0; i < countof(co->col); i++)
+		{
+			_aligned_free(co->col);
+		}
+
+		_aligned_free(co);
 	}
 
 	m_comap.RemoveAll();
@@ -207,10 +214,14 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 
 	// m_slenv
 
+	SetupColumnOffset();
+
 	m_slenv.steps = 0;
 	m_slenv.rtx = GSLocalMemory::m_psm[context->TEX0.PSM].rtx;
-	m_slenv.fo = GSLocalMemory::m_psm[context->FRAME.PSM].rowOffset[0];
-	m_slenv.zo = GSLocalMemory::m_psm[context->ZBUF.PSM].rowOffset[0];
+	m_slenv.fbr = m_fbco->row;
+	m_slenv.zbr = m_zbco->row;
+	m_slenv.fbc = m_fbco->col;
+	m_slenv.zbc = m_zbco->col;
 	m_slenv.fm = GSVector4i(context->FRAME.FBMSK);
 	m_slenv.zm = GSVector4i(context->ZBUF.ZMSK ? 0xffffffff : 0);
 	m_slenv.datm = GSVector4i(context->TEST.DATM ? 0x80000000 : 0);
@@ -313,13 +324,6 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 
 		m_tw = (int)max(context->TEX0.TW, TEXTURE_CACHE_WIDTH);
 	}
-
-	//
-
-	SetupColumnOffset();
-
-	m_slenv.fbco = m_fbco->addr;
-	m_slenv.zbco = m_zbco->addr;
 
 	//
 
@@ -737,7 +741,16 @@ void GSRasterizer::SetupColumnOffset()
 
 			for(int i = 0, j = 1024; i < j; i++)
 			{
-				m_fbco->addr[i] = GSVector4i((int)pa(0, i, context->FRAME.Block(), context->FRAME.FBW));
+				m_fbco->row[i] = GSVector4i((int)pa(0, i, context->FRAME.Block(), context->FRAME.FBW));
+			}
+
+			int* p = (int*)_aligned_malloc(sizeof(int) * (2048 + 3) * 4, 16);
+
+			for(int i = 0; i < 4; i++)
+			{
+				m_fbco->col[i] = &p[2048 * i + ((4 - (i & 3)) & 3)];
+
+				memcpy(m_fbco->col[i], GSLocalMemory::m_psm[context->FRAME.PSM].rowOffset[0], sizeof(int) * 2048);
 			}
 
 			m_comap.SetAt(hash, m_fbco);
@@ -766,7 +779,16 @@ void GSRasterizer::SetupColumnOffset()
 
 			for(int i = 0, j = 1024; i < j; i++)
 			{
-				m_zbco->addr[i] = GSVector4i((int)pa(0, i, context->ZBUF.Block(), context->FRAME.FBW));
+				m_zbco->row[i] = GSVector4i((int)pa(0, i, context->ZBUF.Block(), context->FRAME.FBW));
+			}
+
+			int* p = (int*)_aligned_malloc(sizeof(int) * (2048 + 3) * 4, 16);
+
+			for(int i = 0; i < 4; i++)
+			{
+				m_zbco->col[i] = &p[2048 * i + ((4 - (i & 3)) & 3)];
+
+				memcpy(m_zbco->col[i], GSLocalMemory::m_psm[context->ZBUF.PSM].rowOffset[0], sizeof(int) * 2048);
 			}
 
 			m_comap.SetAt(hash, m_zbco);
@@ -826,11 +848,11 @@ void GSRasterizer::SetupScanline(const Vertex& dv)
 template<DWORD fpsm, DWORD zpsm, DWORD ztst, DWORD iip>
 void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)	
 {
-	GSVector4i fa_base = m_slenv.fbco[top];
-	GSVector4i* fa_offset = (GSVector4i*)&m_slenv.fo[left];
+	GSVector4i fa_base = m_slenv.fbr[top];
+	GSVector4i* fa_offset = (GSVector4i*)&m_slenv.fbc[left & 3][left];
 
-	GSVector4i za_base = m_slenv.zbco[top];
-	GSVector4i* za_offset = (GSVector4i*)&m_slenv.zo[left];
+	GSVector4i za_base = m_slenv.zbr[top];
+	GSVector4i* za_offset = (GSVector4i*)&m_slenv.zbc[left & 3][left];
 
 	GSVector4 vp = v.p;
 	GSVector4 z = vp.zzzz(); z += m_slenv.dz0123;
@@ -858,8 +880,8 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 
 		int pixels = min(steps, 4);
 
-		GSVector4i fa = fa_base + GSVector4i::load<false>(fa_offset);
-		GSVector4i za = za_base + GSVector4i::load<false>(za_offset);
+		GSVector4i fa = fa_base + GSVector4i::load<true>(fa_offset);
+		GSVector4i za = za_base + GSVector4i::load<true>(za_offset);
 		
 		GSVector4i fm = m_slenv.fm;
 		GSVector4i zm = m_slenv.zm;
