@@ -861,7 +861,7 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 		GSVector4i zm = m_slenv.zm;
 		GSVector4i test = GSVector4i::zero();
 
-		GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::one(test));
+		GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::one(fa));
 
 		if(ztst > 1)
 		{
@@ -1124,7 +1124,7 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 			s = s.blend(d, fm);
 		}
 
-		m_state->m_mem.WriteFrameAndZBufX(fpsm, fa, fm, s, ztst > 0 && !(atst == 0 && afail != 2) ? zpsm : 3, za, zm, zs, pixels);
+		m_state->m_mem.WriteFrameAndZBufX(fpsm == 1 && rfb ? 0 : fpsm, fa, fm, s, ztst > 0 && !(atst == 0 && afail != 2) ? zpsm : 3, za, zm, zs, pixels);
 
 		}
 		while(0);
