@@ -969,9 +969,9 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 
 		switch(tfx)
 		{
-		case 0: c[3] = tcc ? c[3].mod2x(a).sat() : a; break;
+		case 0: c[3] = tcc ? c[3].mod2x(a).clamp() : a; break;
 		case 1: break;
-		case 2: c[3] = tcc ? (c[3] + a).sat() : a; break;
+		case 2: c[3] = tcc ? (c[3] + a).clamp() : a; break;
 		case 3: if(!tcc) c[3] = a; break;
 		case 4: c[3] = a; break; 
 		default: __assume(0);
@@ -1021,9 +1021,9 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 			c[0] = c[0].mod2x(r);
 			c[1] = c[1].mod2x(g);
 			c[2] = c[2].mod2x(b);
-			c[0] = c[0].sat();
-			c[1] = c[1].sat();
-			c[2] = c[2].sat();
+			c[0] = c[0].clamp();
+			c[1] = c[1].clamp();
+			c[2] = c[2].clamp();
 			break;
 		case 1:
 			break;
@@ -1032,9 +1032,9 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 			c[0] = c[0].mod2x(r) + a;
 			c[1] = c[1].mod2x(g) + a;
 			c[2] = c[2].mod2x(b) + a;
-			c[0] = c[0].sat();
-			c[1] = c[1].sat();
-			c[2] = c[2].sat();
+			c[0] = c[0].clamp();
+			c[1] = c[1].clamp();
+			c[2] = c[2].clamp();
 			break;
 		case 4:
 			c[0] = r;
