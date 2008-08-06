@@ -929,15 +929,10 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 						continue;
 					}
 
-					FetchTexel(uv0.u16[i], uv0.u16[i + 4]);
-					FetchTexel(uv1.u16[i], uv0.u16[i + 4]);
-					FetchTexel(uv0.u16[i], uv1.u16[i + 4]);
-					FetchTexel(uv1.u16[i], uv1.u16[i + 4]);
-
-					GSVector4 c00(ReadTexelNoFetch(uv0.u16[i], uv0.u16[i + 4]));
-					GSVector4 c01(ReadTexelNoFetch(uv1.u16[i], uv0.u16[i + 4]));
-					GSVector4 c10(ReadTexelNoFetch(uv0.u16[i], uv1.u16[i + 4]));
-					GSVector4 c11(ReadTexelNoFetch(uv1.u16[i], uv1.u16[i + 4]));
+					GSVector4 c00(ReadTexel(uv0.u16[i], uv0.u16[i + 4]));
+					GSVector4 c01(ReadTexel(uv1.u16[i], uv0.u16[i + 4]));
+					GSVector4 c10(ReadTexel(uv0.u16[i], uv1.u16[i + 4]));
+					GSVector4 c11(ReadTexel(uv1.u16[i], uv1.u16[i + 4]));
 
 					c00 = c00.lerp(c01, uff.v[i]);
 					c10 = c10.lerp(c11, uff.v[i]);

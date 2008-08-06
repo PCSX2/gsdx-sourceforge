@@ -24,6 +24,7 @@
 #include "GSRenderer.h"
 #include "GSVertexSW.h"
 #include "GSRasterizer.h"
+#include "GSTextureCacheSW.h"
 
 extern const GSVector4 g_pos_scale;
 
@@ -35,9 +36,35 @@ class GSRendererSW : public GSRendererT<Device, GSVertexSW>
 protected:
 	long* m_sync;
 	long m_threads;
+	GSTextureCacheSW* m_tc;
 	GSRasterizer* m_rst;
 	CAtlList<GSRasterizerMT*> m_rmt;
 	Texture m_texture[2];
+	bool m_reset;
+
+	void Reset() 
+	{
+		// TODO: GSreset can come from the main thread too => crash
+		// m_tc->RemoveAll();
+
+		m_reset = true;
+
+		__super::Reset();
+	}
+
+	void VSync(int field)
+	{
+		__super::VSync(field);
+
+		m_tc->IncAge();
+
+		if(m_reset)
+		{
+			m_tc->RemoveAll();
+
+			m_reset = false;
+		}
+	}
 
 	void ResetDevice() 
 	{
@@ -197,9 +224,66 @@ protected:
 
 	void Draw()
 	{
+		// TODO: lot to optimize here
+
+		DWORD* texture = NULL;
+
 		if(PRIM->TME)
 		{
-			m_mem.m_clut.Read32(m_context->TEX0, m_env.TEXA);
+			int w = 1 << m_context->TEX0.TW;
+			int h = 1 << m_context->TEX0.TH;
+
+			int wms = m_context->CLAMP.WMS;
+			int wmt = m_context->CLAMP.WMT;
+
+			int minu = (int)m_context->CLAMP.MINU;
+			int minv = (int)m_context->CLAMP.MINV;
+			int maxu = (int)m_context->CLAMP.MAXU;
+			int maxv = (int)m_context->CLAMP.MAXV;
+
+			CRect r = CRect(0, 0, w, h);
+
+			switch(wms)
+			{
+			case 0: // TODO
+				break;
+			case 1: // TODO
+				break;
+			case 2:
+				if(r.left < minu) r.left = minu;
+				if(r.right > maxu + 1) r.right = maxu + 1;
+				break;
+			case 3:
+				r.left = maxu; 
+				r.right = r.left + (minu + 1);
+				break;
+			default: 
+				__assume(0);
+			}
+
+			switch(wmt)
+			{
+			case 0: // TODO
+				break;
+			case 1: // TODO
+				break;
+			case 2:
+				if(r.top < minv) r.top = minv;
+				if(r.bottom > maxv + 1) r.bottom = maxv + 1;
+				break;
+			case 3:
+				r.top = maxv; 
+				r.bottom = r.top + (minv + 1);
+				break;
+			default:
+				__assume(0);
+			}
+
+			r &= CRect(0, 0, w, h);
+
+			texture = m_tc->Lookup(m_context->TEX0, m_env.TEXA, &r);
+
+			if(!texture) {ASSERT(0); return;}
 		}
 
 		if(s_dump)
@@ -221,18 +305,62 @@ protected:
 		{
 			GSRasterizerMT* r = m_rmt.GetNext(pos);
 
-			r->BeginDraw(m_vertices, m_count);
+			r->BeginDraw(m_vertices, m_count, texture);
 		}
 
 		// 1st thread is this thread
 
-		int prims = m_rst->Draw(m_vertices, m_count);
+		int prims = m_rst->Draw(m_vertices, m_count, texture);
 
 		// wait for the other threads to finish
 
 		while(*m_sync)
 		{
 			_mm_pause();
+		}
+		
+		// TODO
+		{
+			CRect r;
+
+			r.left = max(m_context->SCISSOR.SCAX0, 0);
+			r.top = max(m_context->SCISSOR.SCAY0, 0);
+			r.right = min(m_context->SCISSOR.SCAX1 + 1, m_context->FRAME.FBW * 64);
+			r.bottom = min(m_context->SCISSOR.SCAY1 + 1, 4096);
+
+			GSVector4 minv(+1e10f);
+			GSVector4 maxv(-1e10f);
+
+			for(int i = 0, j = m_count; i < j; i++)
+			{
+				GSVector4 p = m_vertices[i].p;
+
+				minv = minv.minv(p);
+				maxv = maxv.maxv(p);
+			}
+
+			GSVector4i v(minv.xyxy(maxv));
+
+			r.left = max(r.left, min(r.right, v.x));
+			r.top = max(r.top, min(r.bottom, v.y));
+			r.right = min(r.right, max(r.left, v.z));
+			r.bottom = min(r.bottom, max(r.top, v.w));
+
+			GIFRegBITBLTBUF BITBLTBUF;
+			
+			BITBLTBUF.DBP = m_context->FRAME.Block();
+			BITBLTBUF.DBW = m_context->FRAME.FBW;
+			BITBLTBUF.DPSM = m_context->FRAME.PSM;
+
+			m_tc->InvalidateVideoMem(BITBLTBUF, r);
+
+			if(m_context->DepthWrite())
+			{
+				BITBLTBUF.DBP = m_context->ZBUF.Block();
+				BITBLTBUF.DPSM = m_context->ZBUF.PSM;
+
+				m_tc->InvalidateVideoMem(BITBLTBUF, r);
+			}
 		}
 
 		m_perfmon.Put(GSPerfMon::Prim, prims);
@@ -250,21 +378,7 @@ protected:
 
 	void InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r)
 	{
-		InvalidateTextureCache();
-	}
-
-	void InvalidateTextureCache()
-	{
-		m_rst->InvalidateTextureCache();
-
-		POSITION pos = m_rmt.GetHeadPosition();
-
-		while(pos)
-		{
-			GSRasterizerMT* r = m_rmt.GetNext(pos);
-
-			r->InvalidateTextureCache();
-		}
+		m_tc->InvalidateVideoMem(BITBLTBUF, r);
 	}
 
 public:
@@ -273,6 +387,8 @@ public:
 	{
 		m_sync = (long*)_aligned_malloc(sizeof(*m_sync), 128); // get a whole cache line
 		m_threads = AfxGetApp()->GetProfileInt(_T("Settings"), _T("swthreads"), 1);
+
+		m_tc = new GSTextureCacheSW(this);
 
 		m_rst = new GSRasterizer(this, 0, m_threads);
 
@@ -294,6 +410,8 @@ public:
 
 	virtual ~GSRendererSW()
 	{
+		delete m_tc;
+
 		delete m_rst;
 
 		while(!m_rmt.IsEmpty()) 

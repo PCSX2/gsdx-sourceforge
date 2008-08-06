@@ -36,11 +36,6 @@ GSRasterizer::GSRasterizer(GSState* state, int id, int threads)
 	, m_fbco(NULL)
 	, m_zbco(NULL)
 {
-	m_tc = (TextureCache*)VirtualAlloc(NULL, sizeof(TextureCache), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-	m_tc->dirty = true;
-
-	InvalidateTextureCache();
-
 	// w00t :P
 
 	#define InitDS_IIP(iFPSM, iZPSM, iZTST, iIIP) \
@@ -73,8 +68,6 @@ GSRasterizer::GSRasterizer(GSState* state, int id, int threads)
 
 GSRasterizer::~GSRasterizer()
 {
-	VirtualFree(m_tc, 0, MEM_RELEASE);
-
 	POSITION pos = m_comap.GetHeadPosition();
 
 	while(pos)
@@ -92,17 +85,7 @@ GSRasterizer::~GSRasterizer()
 	m_comap.RemoveAll();
 }
 
-void GSRasterizer::InvalidateTextureCache() 
-{
-	if(m_tc->dirty)
-	{
-		m_tc->hash = 0;
-		m_tc->dirty = false;
-		memset(m_tc->page, 0, sizeof(m_tc->page));
-	}
-}
-
-int GSRasterizer::Draw(Vertex* vertices, int count)
+int GSRasterizer::Draw(Vertex* vertices, int count, DWORD* texture)
 {
 	GSDrawingEnvironment& env = m_state->m_env;
 	GSDrawingContext* context = m_state->m_context;
@@ -240,33 +223,8 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 
 	if(PRIM->TME)
 	{
-		DWORD hash = context->TEX0.ai32[0]; // TBP0, TBW, PSM
-
-		const DWORD* clut = m_state->m_mem.m_clut;
-		const DWORD pal = GSLocalMemory::m_psm[context->TEX0.PSM].pal;
-
-		if(m_tc->hash == hash)
-		{
-			if(pal > 0)
-			{
-				if(!GSVector4i::compare(m_tc->clut, clut, pal * sizeof(clut[0])))
-				{
-					m_tc->hash = 0;
-				}
-			}
-		}
-
-		if(m_tc->hash != hash)
-		{
-			InvalidateTextureCache();
-
-			m_tc->hash = hash;
-
-			if(pal > 0)
-			{
-				memcpy(m_tc->clut, clut, pal * sizeof(clut[0]));
-			}
-		}
+		m_texture = texture;
+		m_tw = max(3, context->TEX0.TW);
 
 		short tw = (short)(1 << context->TEX0.TW);
 		short th = (short)(1 << context->TEX0.TH);
@@ -327,7 +285,7 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 		m_slenv.t.max = m_slenv.t.max.xxxxl().xxxxh();
 		m_slenv.t.mask = m_slenv.t.mask.xxzz();
 
-		m_tw = (int)max(context->TEX0.TW, TEXTURE_CACHE_WIDTH);
+		// m_tw = (int)max(context->TEX0.TW, TEXTURE_CACHE_WIDTH);
 	}
 
 	//
@@ -371,11 +329,6 @@ int GSRasterizer::Draw(Vertex* vertices, int count)
 		break;
 	default:
 		__assume(0);
-	}
-
-	if(context->FRAME.Block() == context->TEX0.TBP0)
-	{
-		InvalidateTextureCache();
 	}
 
 	m_state->m_perfmon.Put(GSPerfMon::Fillrate, m_slenv.steps); // TODO: move this to the renderer, not thread safe here
@@ -701,23 +654,6 @@ bool GSRasterizer::DrawSolidRect(int left, int top, int right, int bottom, const
 	return true;
 }
 
-void GSRasterizer::FetchTexture(int x, int y)
-{
-	const int xs = 1 << TEXTURE_CACHE_WIDTH;
-	const int ys = 1 << TEXTURE_CACHE_HEIGHT;
-
-	x &= ~(xs - 1);
-	y &= ~(ys - 1);
-
-	CRect r(x, y, x + xs, y + ys);
-
-	DWORD* dst = &m_tc->texture[(y << m_tw) + x];
-
-	(m_state->m_mem.*m_slenv.rtx)(r, (BYTE*)dst, (1 << m_tw) * 4, m_state->m_context->TEX0, m_state->m_env.TEXA);
-
-	m_state->m_perfmon.Put(GSPerfMon::Unswizzle, r.Width() * r.Height() * 4);
-}
-
 void GSRasterizer::SetupColumnOffset()
 {
 	GSDrawingContext* context = m_state->m_context;
@@ -960,15 +896,10 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 						continue;
 					}
 
-					FetchTexel(uv0.u16[i], uv0.u16[i + 4]);
-					FetchTexel(uv1.u16[i], uv0.u16[i + 4]);
-					FetchTexel(uv0.u16[i], uv1.u16[i + 4]);
-					FetchTexel(uv1.u16[i], uv1.u16[i + 4]);
-
-					GSVector4 c00(ReadTexelNoFetch(uv0.u16[i], uv0.u16[i + 4]));
-					GSVector4 c01(ReadTexelNoFetch(uv1.u16[i], uv0.u16[i + 4]));
-					GSVector4 c10(ReadTexelNoFetch(uv0.u16[i], uv1.u16[i + 4]));
-					GSVector4 c11(ReadTexelNoFetch(uv1.u16[i], uv1.u16[i + 4]));
+					GSVector4 c00(ReadTexel(uv0.u16[i], uv0.u16[i + 4]));
+					GSVector4 c01(ReadTexel(uv1.u16[i], uv0.u16[i + 4]));
+					GSVector4 c10(ReadTexel(uv0.u16[i], uv1.u16[i + 4]));
+					GSVector4 c11(ReadTexel(uv1.u16[i], uv1.u16[i + 4]));
 
 					c00 = c00.lerp(c01, uff.v[i]);
 					c10 = c10.lerp(c11, uff.v[i]);
@@ -1160,7 +1091,7 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 			s = s.blend(d, fm);
 		}
 
-		m_state->m_mem.WriteFrameAndZBufX_NOSSE4(fpsm, fa, fm, s, ztst > 0 ? zpsm : 3, za, zm, zs, pixels);
+		m_state->m_mem.WriteFrameAndZBufX(fpsm, fa, fm, s, ztst > 0 ? zpsm : 3, za, zm, zs, pixels);
 
 		}
 		while(0);
@@ -1212,10 +1143,11 @@ GSRasterizerMT::~GSRasterizerMT()
 	}
 }
 
-void GSRasterizerMT::BeginDraw(Vertex* vertices, int count)
+void GSRasterizerMT::BeginDraw(Vertex* vertices, int count, DWORD* texture)
 {
 	m_vertices = vertices;
 	m_count = count;
+	m_texture = texture;
 
 	InterlockedBitTestAndSet(m_sync, m_id);
 }
@@ -1233,7 +1165,7 @@ DWORD GSRasterizerMT::ThreadProc()
 	{
 		if(*m_sync & (1 << m_id))
 		{
-			Draw(m_vertices, m_count);
+			Draw(m_vertices, m_count, m_texture);
 
 			InterlockedBitTestAndReset(m_sync, m_id);
 		}
