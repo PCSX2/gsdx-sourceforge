@@ -1747,6 +1747,11 @@ public:
 		return sat(zero(), GSVector4(scale));
 	}
 
+	GSVector4 clamp(const float scale = 255) const 
+	{
+		return minv(GSVector4(scale));
+	}
+
 	GSVector4 minv(const GSVector4& a) const
 	{
 		return GSVector4(_mm_min_ps(m, a));
