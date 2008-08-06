@@ -36,20 +36,20 @@ public:
 	typedef void (GSLocalMemory::*writePixel)(int x, int y, DWORD c, DWORD bp, DWORD bw);
 	typedef void (GSLocalMemory::*writeFrame)(int x, int y, DWORD c, DWORD bp, DWORD bw);
 	typedef DWORD (GSLocalMemory::*readPixel)(int x, int y, DWORD bp, DWORD bw) const;
-	typedef DWORD (GSLocalMemory::*readTexel)(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
+	typedef DWORD (GSLocalMemory::*readTexel)(int x, int y, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
 	typedef void (GSLocalMemory::*writePixelAddr)(DWORD addr, DWORD c);
 	typedef void (GSLocalMemory::*writeFrameAddr)(DWORD addr, DWORD c);
 	typedef DWORD (GSLocalMemory::*readPixelAddr)(DWORD addr) const;
-	typedef DWORD (GSLocalMemory::*readTexelAddr)(DWORD addr, GIFRegTEXA& TEXA) const;
+	typedef DWORD (GSLocalMemory::*readTexelAddr)(DWORD addr, const GIFRegTEXA& TEXA) const;
 	typedef void (GSLocalMemory::*writeImage)(int& tx, int& ty, BYTE* src, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG);
 	typedef void (GSLocalMemory::*readImage)(int& tx, int& ty, BYTE* dst, int len, GIFRegBITBLTBUF& BITBLTBUF, GIFRegTRXPOS& TRXPOS, GIFRegTRXREG& TRXREG) const;
-	typedef void (GSLocalMemory::*readTexture)(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
+	typedef void (GSLocalMemory::*readTexture)(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
 
 	typedef union 
 	{
 		struct
 		{
-			pixelAddress pa, ba, pga;
+			pixelAddress pa, ba, pga, pgn;
 			readPixel rp;
 			readPixelAddr rpa;
 			writePixel wp;
@@ -114,26 +114,48 @@ public:
 
 	// address
 
+	static DWORD PageNumber32(int x, int y, DWORD bp, DWORD bw)
+	{
+		return (bp >> 5) + (y >> 5) * bw + (x >> 6); 
+	}
+
+	static DWORD PageNumber16(int x, int y, DWORD bp, DWORD bw)
+	{
+		return (bp >> 5) + (y >> 6) * bw + (x >> 6);
+	}
+
+	static DWORD PageNumber8(int x, int y, DWORD bp, DWORD bw)
+	{
+		ASSERT((bw & 1) == 0);
+
+		return (bp >> 5) + (y >> 6) * (bw >> 1) + (x >> 7); 
+	}
+
+	static DWORD PageNumber4(int x, int y, DWORD bp, DWORD bw)
+	{
+		ASSERT((bw & 1) == 0);
+
+		return (bp >> 5) + (y >> 7) * (bw >> 1) + (x >> 7);
+	}
+
 	static DWORD PageAddress32(int x, int y, DWORD bp, DWORD bw)
 	{
-		return ((bp >> 5) + (y >> 5) * bw + (x >> 6)) << 11; 
+		return PageNumber32(x, y, bp, bw) << 11; 
 	}
 
 	static DWORD PageAddress16(int x, int y, DWORD bp, DWORD bw)
 	{
-		return ((bp >> 5) + (y >> 6) * bw + (x >> 6)) << 12;
+		return PageNumber16(x, y, bp, bw) << 12;
 	}
 
 	static DWORD PageAddress8(int x, int y, DWORD bp, DWORD bw)
 	{
-		ASSERT((bw & 1) == 0);
-		return ((bp >> 5) + (y >> 6) * (bw >> 1) + (x >> 7)) << 13; 
+		return PageNumber8(x, y, bp, bw) << 13; 
 	}
 
 	static DWORD PageAddress4(int x, int y, DWORD bp, DWORD bw)
 	{
-		ASSERT((bw & 1) == 0);
-		return ((bp >> 5) + (y >> 7) * (bw >> 1) + (x >> 7)) << 14;
+		return PageNumber4(x, y, bp, bw) << 14;
 	}
 
 	static DWORD BlockAddress32(int x, int y, DWORD bp, DWORD bw)
@@ -625,127 +647,127 @@ public:
 		WriteFrame16(PixelAddress16SZ(x, y, bp, bw), c);
 	}
 
-	__forceinline DWORD ReadTexel32(DWORD addr, GIFRegTEXA& TEXA) const 
+	__forceinline DWORD ReadTexel32(DWORD addr, const GIFRegTEXA& TEXA) const 
 	{
 		return m_vm32[addr];
 	}
 
-	__forceinline DWORD ReadTexel24(DWORD addr, GIFRegTEXA& TEXA) const 
+	__forceinline DWORD ReadTexel24(DWORD addr, const GIFRegTEXA& TEXA) const 
 	{
 		return Expand24To32(m_vm32[addr], TEXA);
 	}
 
-	__forceinline DWORD ReadTexel16(DWORD addr, GIFRegTEXA& TEXA) const 
+	__forceinline DWORD ReadTexel16(DWORD addr, const GIFRegTEXA& TEXA) const 
 	{
 		return Expand16To32(m_vm16[addr], TEXA);
 	}
 
-	__forceinline DWORD ReadTexel8(DWORD addr, GIFRegTEXA& TEXA) const 
+	__forceinline DWORD ReadTexel8(DWORD addr, const GIFRegTEXA& TEXA) const 
 	{
 		return m_clut[ReadPixel8(addr)];
 	}
 
-	__forceinline DWORD ReadTexel4(DWORD addr, GIFRegTEXA& TEXA) const 
+	__forceinline DWORD ReadTexel4(DWORD addr, const GIFRegTEXA& TEXA) const 
 	{
 		return m_clut[ReadPixel4(addr)];
 	}
 
-	__forceinline DWORD ReadTexel8H(DWORD addr, GIFRegTEXA& TEXA) const 
+	__forceinline DWORD ReadTexel8H(DWORD addr, const GIFRegTEXA& TEXA) const 
 	{
 		return m_clut[ReadPixel8H(addr)];
 	}
 
-	__forceinline DWORD ReadTexel4HL(DWORD addr, GIFRegTEXA& TEXA) const
+	__forceinline DWORD ReadTexel4HL(DWORD addr, const GIFRegTEXA& TEXA) const
 	{
 		return m_clut[ReadPixel4HL(addr)];
 	}
 
-	__forceinline DWORD ReadTexel4HH(DWORD addr, GIFRegTEXA& TEXA) const 
+	__forceinline DWORD ReadTexel4HH(DWORD addr, const GIFRegTEXA& TEXA) const 
 	{
 		return m_clut[ReadPixel4HH(addr)];
 	}
 
-	__forceinline DWORD ReadTexel32(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+	__forceinline DWORD ReadTexel32(int x, int y, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 	{
 		return ReadTexel32(PixelAddress32(x, y, TEX0.TBP0, TEX0.TBW), TEXA);
 	}
 
-	__forceinline DWORD ReadTexel24(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+	__forceinline DWORD ReadTexel24(int x, int y, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 	{
 		return ReadTexel24(PixelAddress32(x, y, TEX0.TBP0, TEX0.TBW), TEXA);
 	}
 
-	__forceinline DWORD ReadTexel16(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+	__forceinline DWORD ReadTexel16(int x, int y, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 	{
 		return ReadTexel16(PixelAddress16(x, y, TEX0.TBP0, TEX0.TBW), TEXA);
 	}
 
-	__forceinline DWORD ReadTexel16S(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+	__forceinline DWORD ReadTexel16S(int x, int y, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 	{
 		return ReadTexel16(PixelAddress16S(x, y, TEX0.TBP0, TEX0.TBW), TEXA);
 	}
 
-	__forceinline DWORD ReadTexel8(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+	__forceinline DWORD ReadTexel8(int x, int y, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 	{
 		return ReadTexel8(PixelAddress8(x, y, TEX0.TBP0, TEX0.TBW), TEXA);
 	}
 
-	__forceinline DWORD ReadTexel4(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+	__forceinline DWORD ReadTexel4(int x, int y, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 	{
 		return ReadTexel4(PixelAddress4(x, y, TEX0.TBP0, TEX0.TBW), TEXA);
 	}
 
-	__forceinline DWORD ReadTexel8H(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+	__forceinline DWORD ReadTexel8H(int x, int y, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 	{
 		return ReadTexel8H(PixelAddress32(x, y, TEX0.TBP0, TEX0.TBW), TEXA);
 	}
 
-	__forceinline DWORD ReadTexel4HL(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+	__forceinline DWORD ReadTexel4HL(int x, int y, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 	{
 		return ReadTexel4HL(PixelAddress32(x, y, TEX0.TBP0, TEX0.TBW), TEXA);
 	}
 
-	__forceinline DWORD ReadTexel4HH(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+	__forceinline DWORD ReadTexel4HH(int x, int y, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 	{
 		return ReadTexel4HH(PixelAddress32(x, y, TEX0.TBP0, TEX0.TBW), TEXA);
 	}
 
-	__forceinline DWORD ReadTexel32Z(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+	__forceinline DWORD ReadTexel32Z(int x, int y, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 	{
 		return ReadTexel32(PixelAddress32Z(x, y, TEX0.TBP0, TEX0.TBW), TEXA);
 	}
 
-	__forceinline DWORD ReadTexel24Z(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+	__forceinline DWORD ReadTexel24Z(int x, int y, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 	{
 		return ReadTexel24(PixelAddress32Z(x, y, TEX0.TBP0, TEX0.TBW), TEXA);
 	}
 
-	__forceinline DWORD ReadTexel16Z(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+	__forceinline DWORD ReadTexel16Z(int x, int y, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 	{
 		return ReadTexel16(PixelAddress16Z(x, y, TEX0.TBP0, TEX0.TBW), TEXA);
 	}
 
-	__forceinline DWORD ReadTexel16SZ(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+	__forceinline DWORD ReadTexel16SZ(int x, int y, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 	{
 		return ReadTexel16(PixelAddress16SZ(x, y, TEX0.TBP0, TEX0.TBW), TEXA);
 	}
 
-	__forceinline DWORD ReadTexel16NP(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+	__forceinline DWORD ReadTexel16NP(int x, int y, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 	{
 		return ReadPixel16(x, y, TEX0.TBP0, TEX0.TBW);
 	}
 
-	__forceinline DWORD ReadTexel16SNP(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+	__forceinline DWORD ReadTexel16SNP(int x, int y, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 	{
 		return ReadPixel16S(x, y, TEX0.TBP0, TEX0.TBW);
 	}
 
-	__forceinline DWORD ReadTexel16ZNP(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+	__forceinline DWORD ReadTexel16ZNP(int x, int y, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 	{
 		return ReadPixel16Z(x, y, TEX0.TBP0, TEX0.TBW);
 	}
 
-	__forceinline DWORD ReadTexel16SZNP(int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+	__forceinline DWORD ReadTexel16SZNP(int x, int y, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 	{
 		return ReadPixel16SZ(x, y, TEX0.TBP0, TEX0.TBW);
 	}
@@ -810,7 +832,7 @@ public:
 		}
 	}
 
-	__forceinline DWORD ReadTexelX(int PSM, DWORD addr, GIFRegTEXA& TEXA) const
+	__forceinline DWORD ReadTexelX(int PSM, DWORD addr, const GIFRegTEXA& TEXA) const
 	{
 		switch(PSM)
 		{
@@ -831,7 +853,7 @@ public:
 		}
 	}
 
-	__forceinline DWORD ReadTexelX(int PSM, int x, int y, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+	__forceinline DWORD ReadTexelX(int PSM, int x, int y, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 	{
 		switch(PSM)
 		{
@@ -1006,7 +1028,7 @@ public:
 		}
 
 		#if _M_SSE >= 0x401
-	
+
 		if(fm.extract32<0>() != 0xffffffff) 
 		{
 			switch(fpsm)
@@ -1202,44 +1224,44 @@ public:
 
 	//
 
-	void ReadTexture32(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
-	void ReadTexture24(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
-	void ReadTexture16(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
-	void ReadTexture16S(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
-	void ReadTexture8(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
-	void ReadTexture4(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
-	void ReadTexture8H(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
-	void ReadTexture4HL(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
-	void ReadTexture4HH(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
-	void ReadTexture32Z(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
-	void ReadTexture24Z(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
-	void ReadTexture16Z(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
-	void ReadTexture16SZ(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
+	void ReadTexture32(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture24(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture16(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture16S(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture8(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture4(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture8H(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture4HL(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture4HH(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture32Z(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture24Z(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture16Z(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture16SZ(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
 
-	void ReadTexture(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA, GIFRegCLAMP& CLAMP);
-	void ReadTextureNC(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA, GIFRegCLAMP& CLAMP);
+	void ReadTexture(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, const GIFRegCLAMP& CLAMP);
+	void ReadTextureNC(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, const GIFRegCLAMP& CLAMP);
 
 	// 32/16
 
-	void ReadTexture16NP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
-	void ReadTexture16SNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
-	void ReadTexture8NP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
-	void ReadTexture4NP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
-	void ReadTexture8HNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
-	void ReadTexture4HLNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
-	void ReadTexture4HHNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
-	void ReadTexture16ZNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
-	void ReadTexture16SZNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const;
+	void ReadTexture16NP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture16SNP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture8NP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture4NP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture8HNP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture4HLNP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture4HHNP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture16ZNP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture16SZNP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
 
-	void ReadTextureNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA, GIFRegCLAMP& CLAMP);
-	void ReadTextureNPNC(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA, GIFRegCLAMP& CLAMP);
+	void ReadTextureNP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, const GIFRegCLAMP& CLAMP);
+	void ReadTextureNPNC(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, const GIFRegCLAMP& CLAMP);
 
 	//
 
 	static DWORD m_xtbl[1024], m_ytbl[1024]; 
 
-	template<typename T> void ReadTexture(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA, GIFRegCLAMP& CLAMP, readTexel rt, readTexture rtx);
-	template<typename T> void ReadTextureNC(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA, readTexel rt, readTexture rtx);
+	template<typename T> void ReadTexture(CRect r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, const GIFRegCLAMP& CLAMP, readTexel rt, readTexture rtx);
+	template<typename T> void ReadTextureNC(CRect r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, readTexel rt, readTexture rtx);
 
 	//
 

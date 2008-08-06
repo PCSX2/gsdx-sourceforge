@@ -792,7 +792,7 @@ EXPORT_C GSBenchmark(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow
 		s_gs->PRIM->PRIM = GS_SPRITE;
 
 		ras->Draw(vertices, count);
-*/
+
 		// triangle
 
 		vertices[0].p = GSVector4(0, 0, 0, 0);
@@ -813,7 +813,7 @@ EXPORT_C GSBenchmark(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow
 		s_gs->PRIM->PRIM = GS_TRIANGLELIST;
 
 		ras->Draw(vertices, 999);
-
+*/
 		//
 
 		_aligned_free(vertices);

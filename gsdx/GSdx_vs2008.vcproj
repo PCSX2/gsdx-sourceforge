@@ -1412,6 +1412,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\GSTextureCacheSW.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\GSTextureFX10.cpp"
 				>
 				<FileConfiguration
@@ -1731,6 +1735,10 @@
 			</File>
 			<File
 				RelativePath=".\GSTextureCache9.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSTextureCacheSW.h"
 				>
 			</File>
 			<File

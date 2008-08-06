@@ -43,6 +43,9 @@ protected:
 	int m_id;
 	int m_threads;
 
+	DWORD* m_texture;
+	DWORD m_tw;
+
 private:
 	struct ColumnOffset
 	{
@@ -119,17 +122,6 @@ private:
 	ScanlineEnvironment m_slenv;
 	bool m_solidrect;
 
-	struct TextureCache
-	{
-		DWORD texture[1024 * 1024];
-		DWORD clut[256];
-		DWORD page[1 << (10 - TEXTURE_CACHE_HEIGHT)];
-		DWORD hash;
-		bool dirty;
-	};
-	
-	TextureCache* m_tc;
-
 	void SetupColumnOffset();
 
 	template<bool pos, bool tex, bool col> 
@@ -148,34 +140,9 @@ private:
 	template<DWORD sel> 
 	void DrawScanlineEx(int top, int left, int right, const Vertex& v);
 
-	int m_tw;
-
-	void FetchTexture(int x, int y);
-
-	__forceinline void FetchTexel(int x, int y)
-	{
-		DWORD i = 1 << (x >> (10 - TEXTURE_CACHE_WIDTH));
-		DWORD j = y >> TEXTURE_CACHE_HEIGHT;
-
-		if((m_tc->page[j] & i) == 0)
-		{
-			m_tc->page[j] |= i;
-			m_tc->dirty = true;
-
-			FetchTexture(x, y);
-		}
-	}
-
-	__forceinline DWORD ReadTexelNoFetch(int x, int y)
-	{
-		return m_tc->texture[(y << m_tw) + x];
-	}
-
 	__forceinline DWORD ReadTexel(int x, int y)
 	{
-		FetchTexel(x, y);
-
-		return ReadTexelNoFetch(x, y);
+		return m_texture[(y << m_tw) + x];
 	}
 
 	__forceinline GSVector4i Wrap(const GSVector4i& t)
@@ -198,8 +165,7 @@ public:
 	GSRasterizer(GSState* state, int id = 0, int threads = 0);
 	virtual ~GSRasterizer();
 
-	int Draw(Vertex* v, int count);
-	void InvalidateTextureCache();
+	int Draw(Vertex* v, int count, DWORD* texture);
 };
 
 class GSRasterizerMT : public GSRasterizer
@@ -219,5 +185,5 @@ public:
 	GSRasterizerMT(GSState* state, int id, int threads, long* sync);
 	virtual ~GSRasterizerMT();
 
-	void BeginDraw(Vertex* vertices, int count);
+	void BeginDraw(Vertex* vertices, int count, DWORD* texture);
 };

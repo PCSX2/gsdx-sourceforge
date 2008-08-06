@@ -75,8 +75,6 @@ GSLocalMemory::psm_t GSLocalMemory::m_psm[64];
 GSLocalMemory::GSLocalMemory()
 	: m_clut(this)
 {
-	// TODO: MEM_WRITE_WATCH
-
 	m_vm8 = (BYTE*)VirtualAlloc(NULL, m_vmsize * 2, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
 	memset(m_vm8, 0, m_vmsize);
@@ -155,6 +153,7 @@ GSLocalMemory::GSLocalMemory()
 		m_psm[i].pa = &GSLocalMemory::PixelAddress32;
 		m_psm[i].ba = &GSLocalMemory::BlockAddress32;
 		m_psm[i].pga = &GSLocalMemory::PageAddress32;
+		m_psm[i].pgn = &GSLocalMemory::PageNumber32;
 		m_psm[i].rp = &GSLocalMemory::ReadPixel32;
 		m_psm[i].rpa = &GSLocalMemory::ReadPixel32;
 		m_psm[i].wp = &GSLocalMemory::WritePixel32;
@@ -198,6 +197,13 @@ GSLocalMemory::GSLocalMemory()
 	m_psm[PSM_PSMZ16S].pga = &GSLocalMemory::PageAddress16;
 	m_psm[PSM_PSMT8].pga = &GSLocalMemory::PageAddress8;
 	m_psm[PSM_PSMT4].pga = &GSLocalMemory::PageAddress4;
+
+	m_psm[PSM_PSMCT16].pgn = &GSLocalMemory::PageNumber16;
+	m_psm[PSM_PSMCT16S].pgn = &GSLocalMemory::PageNumber16;
+	m_psm[PSM_PSMZ16].pgn = &GSLocalMemory::PageNumber16;
+	m_psm[PSM_PSMZ16S].pgn = &GSLocalMemory::PageNumber16;
+	m_psm[PSM_PSMT8].pgn = &GSLocalMemory::PageNumber8;
+	m_psm[PSM_PSMT4].pgn = &GSLocalMemory::PageNumber4;
 
 	m_psm[PSM_PSMCT24].rp = &GSLocalMemory::ReadPixel24;
 	m_psm[PSM_PSMCT16].rp = &GSLocalMemory::ReadPixel16;
@@ -1401,7 +1407,7 @@ void GSLocalMemory::ReadImageX(int& tx, int& ty, BYTE* dst, int len, GIFRegBITBL
 
 ///////////////////
 
-void GSLocalMemory::ReadTexture32(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+void GSLocalMemory::ReadTexture32(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 {
 	FOREACH_BLOCK_START(8, 8, 32)
 	{
@@ -1411,7 +1417,7 @@ void GSLocalMemory::ReadTexture32(const CRect& r, BYTE* dst, int dstpitch, GIFRe
 
 }
 
-void GSLocalMemory::ReadTexture24(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+void GSLocalMemory::ReadTexture24(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 {
 	if(TEXA.AEM)
 	{
@@ -1431,7 +1437,7 @@ void GSLocalMemory::ReadTexture24(const CRect& r, BYTE* dst, int dstpitch, GIFRe
 	}
 }
 
-void GSLocalMemory::ReadTexture16(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+void GSLocalMemory::ReadTexture16(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 {
 	__declspec(align(16)) WORD block[16 * 8];
 
@@ -1444,7 +1450,7 @@ void GSLocalMemory::ReadTexture16(const CRect& r, BYTE* dst, int dstpitch, GIFRe
 	FOREACH_BLOCK_END
 }
 
-void GSLocalMemory::ReadTexture16S(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+void GSLocalMemory::ReadTexture16S(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 {
 	__declspec(align(16)) WORD block[16 * 8];
 
@@ -1457,7 +1463,7 @@ void GSLocalMemory::ReadTexture16S(const CRect& r, BYTE* dst, int dstpitch, GIFR
 	FOREACH_BLOCK_END
 }
 
-void GSLocalMemory::ReadTexture8(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+void GSLocalMemory::ReadTexture8(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 {
 	const DWORD* pal = m_clut;
 
@@ -1468,7 +1474,7 @@ void GSLocalMemory::ReadTexture8(const CRect& r, BYTE* dst, int dstpitch, GIFReg
 	FOREACH_BLOCK_END
 }
 
-void GSLocalMemory::ReadTexture4(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+void GSLocalMemory::ReadTexture4(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 {
 	const UINT64* pal = m_clut;
 
@@ -1479,7 +1485,7 @@ void GSLocalMemory::ReadTexture4(const CRect& r, BYTE* dst, int dstpitch, GIFReg
 	FOREACH_BLOCK_END
 }
 
-void GSLocalMemory::ReadTexture8H(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+void GSLocalMemory::ReadTexture8H(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 {
 	const DWORD* pal = m_clut;
 
@@ -1490,7 +1496,7 @@ void GSLocalMemory::ReadTexture8H(const CRect& r, BYTE* dst, int dstpitch, GIFRe
 	FOREACH_BLOCK_END
 }
 
-void GSLocalMemory::ReadTexture4HL(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+void GSLocalMemory::ReadTexture4HL(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 {
 	const DWORD* pal = m_clut;
 
@@ -1501,7 +1507,7 @@ void GSLocalMemory::ReadTexture4HL(const CRect& r, BYTE* dst, int dstpitch, GIFR
 	FOREACH_BLOCK_END
 }
 
-void GSLocalMemory::ReadTexture4HH(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+void GSLocalMemory::ReadTexture4HH(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 {
 	const DWORD* pal = m_clut;
 
@@ -1512,7 +1518,7 @@ void GSLocalMemory::ReadTexture4HH(const CRect& r, BYTE* dst, int dstpitch, GIFR
 	FOREACH_BLOCK_END
 }
 
-void GSLocalMemory::ReadTexture32Z(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+void GSLocalMemory::ReadTexture32Z(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 {
 	FOREACH_BLOCK_START(8, 8, 32)
 	{
@@ -1521,7 +1527,7 @@ void GSLocalMemory::ReadTexture32Z(const CRect& r, BYTE* dst, int dstpitch, GIFR
 	FOREACH_BLOCK_END
 }
 
-void GSLocalMemory::ReadTexture24Z(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+void GSLocalMemory::ReadTexture24Z(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 {
 	if(TEXA.AEM)
 	{
@@ -1541,7 +1547,7 @@ void GSLocalMemory::ReadTexture24Z(const CRect& r, BYTE* dst, int dstpitch, GIFR
 	}
 }
 
-void GSLocalMemory::ReadTexture16Z(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+void GSLocalMemory::ReadTexture16Z(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 {
 	__declspec(align(16)) WORD block[16 * 8];
 
@@ -1554,7 +1560,7 @@ void GSLocalMemory::ReadTexture16Z(const CRect& r, BYTE* dst, int dstpitch, GIFR
 	FOREACH_BLOCK_END
 }
 
-void GSLocalMemory::ReadTexture16SZ(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+void GSLocalMemory::ReadTexture16SZ(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 {
 	__declspec(align(16)) WORD block[16 * 8];
 
@@ -1569,7 +1575,7 @@ void GSLocalMemory::ReadTexture16SZ(const CRect& r, BYTE* dst, int dstpitch, GIF
 
 ///////////////////
 
-void GSLocalMemory::ReadTexture(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA, GIFRegCLAMP& CLAMP)
+void GSLocalMemory::ReadTexture(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, const GIFRegCLAMP& CLAMP)
 {
 	readTexture rtx = m_psm[TEX0.PSM].rtx;
 	readTexel rt = m_psm[TEX0.PSM].rt;
@@ -1588,7 +1594,7 @@ void GSLocalMemory::ReadTexture(const CRect& r, BYTE* dst, int dstpitch, GIFRegT
 	}
 }
 
-void GSLocalMemory::ReadTextureNC(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA, GIFRegCLAMP& CLAMP)
+void GSLocalMemory::ReadTextureNC(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, const GIFRegCLAMP& CLAMP)
 {
 	readTexture rtx = m_psm[TEX0.PSM].rtx;
 	readTexel rt = m_psm[TEX0.PSM].rt;
@@ -1607,7 +1613,7 @@ void GSLocalMemory::ReadTextureNC(const CRect& r, BYTE* dst, int dstpitch, GIFRe
 }
 ///////////////////
 
-void GSLocalMemory::ReadTexture16NP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+void GSLocalMemory::ReadTexture16NP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 {
 	FOREACH_BLOCK_START(16, 8, 16)
 	{
@@ -1616,7 +1622,7 @@ void GSLocalMemory::ReadTexture16NP(const CRect& r, BYTE* dst, int dstpitch, GIF
 	FOREACH_BLOCK_END
 }
 
-void GSLocalMemory::ReadTexture16SNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+void GSLocalMemory::ReadTexture16SNP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 {
 	FOREACH_BLOCK_START(16, 8, 16)
 	{
@@ -1625,7 +1631,7 @@ void GSLocalMemory::ReadTexture16SNP(const CRect& r, BYTE* dst, int dstpitch, GI
 	FOREACH_BLOCK_END
 }
 
-void GSLocalMemory::ReadTexture8NP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+void GSLocalMemory::ReadTexture8NP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 {
 	const DWORD* pal = m_clut;
 
@@ -1653,7 +1659,7 @@ void GSLocalMemory::ReadTexture8NP(const CRect& r, BYTE* dst, int dstpitch, GIFR
 	}
 }
 
-void GSLocalMemory::ReadTexture4NP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+void GSLocalMemory::ReadTexture4NP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 {
 	const UINT64* pal = m_clut;
 
@@ -1681,7 +1687,7 @@ void GSLocalMemory::ReadTexture4NP(const CRect& r, BYTE* dst, int dstpitch, GIFR
 	}
 }
 
-void GSLocalMemory::ReadTexture8HNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+void GSLocalMemory::ReadTexture8HNP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 {
 	const DWORD* pal = m_clut;
 
@@ -1709,7 +1715,7 @@ void GSLocalMemory::ReadTexture8HNP(const CRect& r, BYTE* dst, int dstpitch, GIF
 	}
 }
 
-void GSLocalMemory::ReadTexture4HLNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+void GSLocalMemory::ReadTexture4HLNP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 {
 	const DWORD* pal = m_clut;
 
@@ -1737,7 +1743,7 @@ void GSLocalMemory::ReadTexture4HLNP(const CRect& r, BYTE* dst, int dstpitch, GI
 	}
 }
 
-void GSLocalMemory::ReadTexture4HHNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+void GSLocalMemory::ReadTexture4HHNP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 {
 	const DWORD* pal = m_clut;
 
@@ -1765,7 +1771,7 @@ void GSLocalMemory::ReadTexture4HHNP(const CRect& r, BYTE* dst, int dstpitch, GI
 	}
 }
 
-void GSLocalMemory::ReadTexture16ZNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+void GSLocalMemory::ReadTexture16ZNP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 {
 	FOREACH_BLOCK_START(16, 8, 16)
 	{
@@ -1774,7 +1780,7 @@ void GSLocalMemory::ReadTexture16ZNP(const CRect& r, BYTE* dst, int dstpitch, GI
 	FOREACH_BLOCK_END
 }
 
-void GSLocalMemory::ReadTexture16SZNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA) const
+void GSLocalMemory::ReadTexture16SZNP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
 {
 	FOREACH_BLOCK_START(16, 8, 16)
 	{
@@ -1785,7 +1791,7 @@ void GSLocalMemory::ReadTexture16SZNP(const CRect& r, BYTE* dst, int dstpitch, G
 
 ///////////////////
 
-void GSLocalMemory::ReadTextureNP(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA, GIFRegCLAMP& CLAMP)
+void GSLocalMemory::ReadTextureNP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, const GIFRegCLAMP& CLAMP)
 {
 	readTexture rtx = m_psm[TEX0.PSM].rtxNP;
 	readTexel rt = m_psm[TEX0.PSM].rtNP;
@@ -1828,7 +1834,7 @@ void GSLocalMemory::ReadTextureNP(const CRect& r, BYTE* dst, int dstpitch, GIFRe
 	}
 }
 
-void GSLocalMemory::ReadTextureNPNC(const CRect& r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA, GIFRegCLAMP& CLAMP)
+void GSLocalMemory::ReadTextureNPNC(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, const GIFRegCLAMP& CLAMP)
 {
 	readTexture rtx = m_psm[TEX0.PSM].rtxNP;
 	readTexel rt = m_psm[TEX0.PSM].rtNP;
@@ -1873,7 +1879,7 @@ void GSLocalMemory::ReadTextureNPNC(const CRect& r, BYTE* dst, int dstpitch, GIF
 //
 
 template<typename T> 
-void GSLocalMemory::ReadTexture(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA, GIFRegCLAMP& CLAMP, readTexel rt, readTexture rtx)
+void GSLocalMemory::ReadTexture(CRect r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, const GIFRegCLAMP& CLAMP, readTexel rt, readTexture rtx)
 {
 	// TODO: this is a mess, make it more simple
 
@@ -2118,7 +2124,7 @@ if(!aligned) printf("unaligned memory pointer passed to ReadTexture\n");
 }
 
 template<typename T> 
-void GSLocalMemory::ReadTextureNC(CRect r, BYTE* dst, int dstpitch, GIFRegTEX0& TEX0, GIFRegTEXA& TEXA, readTexel rt, readTexture rtx)
+void GSLocalMemory::ReadTextureNC(CRect r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, readTexel rt, readTexture rtx)
 {
 	CSize bs = m_psm[TEX0.PSM].bs;
 
