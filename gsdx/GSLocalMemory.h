@@ -1146,50 +1146,6 @@ public:
 		#endif
 	}
 
-	__forceinline void WriteFrameAndZBufX_NOSSE4(
-		int fpsm, const GSVector4i& fa, const GSVector4i& fm, const GSVector4i& f, 
-		int zpsm, const GSVector4i& za, const GSVector4i& zm, const GSVector4i& z, 
-		int pixels)
-	{
-		DWORD* RESTRICT vm32 = m_vm32;
-		WORD* RESTRICT vm16 = m_vm16;
-
-		GSVector4i c = f;
-
-		if(fpsm == 2)
-		{
-			GSVector4i rb = c & 0x00f800f8;
-			GSVector4i ga = c & 0x8000f800;
-			c = (ga >> 16) | (rb >> 9) | (ga >> 6) | (rb >> 3);
-		}
-
-		int i = 0;
-
-		do
-		{
-			if(fm.u32[i] != 0xffffffff)
-			{
-				switch(fpsm)
-				{
-				case 0: WritePixel32(vm32, fa.u32[i], c.u32[i]);  break;
-				case 1: WritePixel24(vm32, fa.u32[i], c.u32[i]);  break;
-				case 2: WritePixel16(vm16, fa.u32[i], c.u16[i * 2]);  break;
-				}
-			}
-
-			if(zm.u32[i] != 0xffffffff) 
-			{
-				switch(zpsm)
-				{
-				case 0: WritePixel32(vm32, za.u32[i], z.u32[i]);  break;
-				case 1: WritePixel24(vm32, za.u32[i], z.u32[i]);  break;
-				case 2: WritePixel16(vm16, za.u32[i], z.u16[i * 2]);  break;
-				}
-			}
-		}
-		while(++i < pixels);
-	}
-
 	// FillRect
 
 	bool FillRect(const CRect& r, DWORD c, DWORD psm, DWORD bp, DWORD bw);

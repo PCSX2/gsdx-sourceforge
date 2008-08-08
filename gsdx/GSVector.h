@@ -1802,6 +1802,17 @@ public:
 		return _mm_movemask_ps(m) == 0xf;
 	}
 
+	// TODO: insert
+
+	template<int i> int extract() const
+	{
+		#if _M_SSE >= 0x401
+		return _mm_extract_ps(m, i);
+		#else
+		return i32[i];
+		#endif
+	}
+
 	static GSVector4 zero() 
 	{
 		return GSVector4(_mm_setzero_ps());

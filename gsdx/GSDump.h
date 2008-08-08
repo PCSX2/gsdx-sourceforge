@@ -53,7 +53,7 @@ public:
 
 	void Open(LPCTSTR fn, DWORD crc, const freezeData& fd, const void* regs);
 	void ReadFIFO(UINT32 size);
-	void Transfer(int index, BYTE* mem, UINT32 size);
+	void Transfer(int index, BYTE* mem, size_t size);
 	void VSync(int field, bool last, const void* regs);
 	operator bool() {return m_fp != NULL;}
 };
