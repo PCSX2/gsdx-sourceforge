@@ -93,7 +93,7 @@ int GSRasterizer::Draw(Vertex* vertices, int count, DWORD* texture)
 
 	// sanity check
 
-	if(context->TEST.ZTE && context->TEST.ZTST == 0)
+	if(context->TEST.ZTE && context->TEST.ZTST == ZTST_NEVER)
 	{
 		return 0;
 	}
@@ -137,16 +137,17 @@ int GSRasterizer::Draw(Vertex* vertices, int count, DWORD* texture)
 		}
 	}
 
-	m_sel.atst = context->TEST.ATE ? context->TEST.ATST : 1;
+	m_sel.atst = context->TEST.ATE ? context->TEST.ATST : ATST_ALWAYS;
 	m_sel.afail = context->TEST.ATE ? context->TEST.AFAIL : 0;
 	m_sel.fge = PRIM->FGE;
 	m_sel.date = context->FRAME.PSM != PSM_PSMCT24 ? context->TEST.DATE : 0;
-	m_sel.abe = env.PABE.PABE ? 2 : PRIM->ABE ? 1 : 0;
-	m_sel.abea = m_sel.abe ? context->ALPHA.A : 0;
-	m_sel.abeb = m_sel.abe ? context->ALPHA.B : 0;
-	m_sel.abec = m_sel.abe ? context->ALPHA.C : 0;
-	m_sel.abed = m_sel.abe ? context->ALPHA.D : 0;
-	m_sel.rfb = m_sel.date || m_sel.abe || m_sel.atst != 1 && m_sel.afail == 3 || context->FRAME.FBMSK != 0 && context->FRAME.FBMSK != 0xffffffff;
+	m_sel.abea = PRIM->ABE ? context->ALPHA.A : 3;
+	m_sel.abeb = PRIM->ABE ? context->ALPHA.B : 3;
+	m_sel.abec = PRIM->ABE ? context->ALPHA.C : 3;
+	m_sel.abed = PRIM->ABE ? context->ALPHA.D : 3;
+	m_sel.pabe = PRIM->ABE ? env.PABE.PABE : 0;
+	m_sel.rfb = m_sel.date || m_sel.abe != 255 || m_sel.atst != 1 && m_sel.afail == 3 || context->FRAME.FBMSK != 0 && context->FRAME.FBMSK != 0xffffffff;
+	m_sel.wzb = context->DepthWrite();
 
 	m_dsf = m_ds[m_sel.fpsm][m_sel.zpsm][m_sel.ztst][m_sel.iip];
 
@@ -210,7 +211,7 @@ int GSRasterizer::Draw(Vertex* vertices, int count, DWORD* texture)
 	m_slenv.datm = GSVector4i(context->TEST.DATM ? 0x80000000 : 0);
 	m_slenv.colclamp = GSVector4i(env.COLCLAMP.CLAMP ? 0xffffffff : 0x00ff00ff);
 	m_slenv.fba = GSVector4i(context->FBA.FBA ? 0x80000000 : 0);
-	m_slenv.aref = GSVector4i((int)context->TEST.AREF + (m_sel.atst == 2 ? -1 : m_sel.atst == 6 ? +1 : 0));
+	m_slenv.aref = GSVector4i((int)context->TEST.AREF + (m_sel.atst == ATST_LESS ? -1 : m_sel.atst == ATST_GREATER ? +1 : 0));
 	m_slenv.afix = GSVector4((float)(int)context->ALPHA.FIX);
 	m_slenv.f.r = GSVector4((float)(int)env.FOGCOL.FCR);
 	m_slenv.f.g = GSVector4((float)(int)env.FOGCOL.FCG);
@@ -231,22 +232,22 @@ int GSRasterizer::Draw(Vertex* vertices, int count, DWORD* texture)
 
 		switch(context->CLAMP.WMS)
 		{
-		case 0: 
+		case CLAMP_REPEAT: 
 			m_slenv.t.min.u16[0] = tw - 1;
 			m_slenv.t.max.u16[0] = 0;
 			m_slenv.t.mask.u32[0] = 0xffffffff; 
 			break;
-		case 1: 
+		case CLAMP_CLAMP: 
 			m_slenv.t.min.u16[0] = 0;
 			m_slenv.t.max.u16[0] = tw - 1;
 			m_slenv.t.mask.u32[0] = 0; 
 			break;
-		case 2: 
+		case CLAMP_REGION_REPEAT: 
 			m_slenv.t.min.u16[0] = context->CLAMP.MINU;
 			m_slenv.t.max.u16[0] = context->CLAMP.MAXU;
 			m_slenv.t.mask.u32[0] = 0; 
 			break;
-		case 3: 
+		case CLAMP_REGION_CLAMP: 
 			m_slenv.t.min.u16[0] = context->CLAMP.MINU;
 			m_slenv.t.max.u16[0] = context->CLAMP.MAXU;
 			m_slenv.t.mask.u32[0] = 0xffffffff; 
@@ -257,22 +258,22 @@ int GSRasterizer::Draw(Vertex* vertices, int count, DWORD* texture)
 
 		switch(context->CLAMP.WMT)
 		{
-		case 0: 
+		case CLAMP_REPEAT: 
 			m_slenv.t.min.u16[4] = th - 1;
 			m_slenv.t.max.u16[4] = 0;
 			m_slenv.t.mask.u32[2] = 0xffffffff; 
 			break;
-		case 1: 
+		case CLAMP_CLAMP: 
 			m_slenv.t.min.u16[4] = 0;
 			m_slenv.t.max.u16[4] = th - 1;
 			m_slenv.t.mask.u32[2] = 0; 
 			break;
-		case 2: 
+		case CLAMP_REGION_REPEAT: 
 			m_slenv.t.min.u16[4] = context->CLAMP.MINV;
 			m_slenv.t.max.u16[4] = context->CLAMP.MAXV;
 			m_slenv.t.mask.u32[2] = 0; 
 			break;
-		case 3: 
+		case CLAMP_REGION_CLAMP: 
 			m_slenv.t.min.u16[4] = context->CLAMP.MINV;
 			m_slenv.t.max.u16[4] = context->CLAMP.MAXV;
 			m_slenv.t.mask.u32[2] = 0xffffffff; 
@@ -293,8 +294,8 @@ int GSRasterizer::Draw(Vertex* vertices, int count, DWORD* texture)
 	m_solidrect = true;
 
 	if(PRIM->IIP || PRIM->TME || PRIM->ABE || PRIM->FGE
-	|| context->TEST.ZTE && context->TEST.ZTST != 1 
-	|| context->TEST.ATE && context->TEST.ATST != 1
+	|| context->TEST.ZTE && context->TEST.ZTST != ZTST_ALWAYS 
+	|| context->TEST.ATE && context->TEST.ATST != ATST_ALWAYS
 	|| context->TEST.DATE
 	|| env.DTHE.DTHE
 	|| context->FRAME.FBMSK)
@@ -826,39 +827,19 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 		
 		GSVector4i fm = m_slenv.fm;
 		GSVector4i zm = m_slenv.zm;
-		GSVector4i test = GSVector4i::zero();
 
 		GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::one(fa));
 
-		if(ztst > 1)
+		GSVector4i test;
+
+		if(!TestZ(zpsm, ztst, zs, za, test))
 		{
-			GSVector4i zd = m_state->m_mem.ReadZBufX(zpsm, za);
-
-			GSVector4i zso = zs;
-			GSVector4i zdo = zd;
-
-			if(zpsm == 0)
-			{
-				zso = zs - GSVector4i::x80000000(test);
-				zdo = zd - GSVector4i::x80000000(test);
-			}
-
-			switch(ztst)
-			{
-			case 2: test = zso < zdo; break; // ge
-			case 3: test = zso <= zdo; break; // g
-			default: __assume(0);
-			}
-
-			if(test.alltrue())
-			{
-				continue;
-			}
+			continue;
 		}
 
 		GSVector4 c[12];
 
-		if(m_sel.tfx < 4)
+		if(m_sel.tfx != TFX_NONE)
 		{
 			GSVector4 u = s;
 			GSVector4 v = t;
@@ -930,93 +911,27 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 				}
 				while(++i < pixels);
 
-				GSVector4::expand(c00, c[0], c[1], c[2], c[3]);
+				// GSVector4::expand(c00, c[0], c[1], c[2], c[3]);
+
+				c[0] = (c00 << 24) >> 24;
+				c[1] = (c00 << 16) >> 24;
+				c[2] = (c00 <<  8) >> 24;
+				c[3] = (c00 >> 24);
 			}
 		}
 
-		switch(m_sel.tfx)
+		AlphaTFX(m_sel.tfx, m_sel.tcc, a, c[3]);
+
+		if(!TestAlpha(m_sel.atst, m_sel.afail, c[3], fm, zm, test))
 		{
-		case 0: c[3] = m_sel.tcc ? c[3].mod2x(a).clamp() : a; break;
-		case 1: break;
-		case 2: c[3] = m_sel.tcc ? (c[3] + a).clamp() : a; break;
-		case 3: if(!m_sel.tcc) c[3] = a; break;
-		case 4: c[3] = a; break; 
-		default: __assume(0);
+			continue;
 		}
 
-		if(m_sel.atst != 1)
-		{
-			GSVector4i t;
-
-			switch(m_sel.atst)
-			{
-			case 0: t = GSVector4i::invzero(); break; // never 
-			case 1: t = GSVector4i::zero(); break; // always
-			case 2: case 3: t = GSVector4i(c[3]) > m_slenv.aref; break; // l, le
-			case 4: t = GSVector4i(c[3]) != m_slenv.aref; break; // e
-			case 5: case 6: t = GSVector4i(c[3]) < m_slenv.aref; break; // ge, g
-			case 7: t = GSVector4i(c[3]) == m_slenv.aref; break; // ne 
-			default: __assume(0);
-			}
-
-			switch(m_sel.afail)
-			{
-			case 0:
-				fm |= t;
-				zm |= t;
-				test |= t;
-				if(test.alltrue()) continue;
-				break;
-			case 1:
-				zm |= t;
-				break;
-			case 2:
-				fm |= t;
-				break;
-			case 3: 
-				fm |= t & GSVector4i::xff000000(t);
-				zm |= t;
-				break;
-			default: 
-				__assume(0);
-			}
-		}
-
-		switch(m_sel.tfx)
-		{
-		case 0:
-			c[0] = c[0].mod2x(r);
-			c[1] = c[1].mod2x(g);
-			c[2] = c[2].mod2x(b);
-			c[0] = c[0].clamp();
-			c[1] = c[1].clamp();
-			c[2] = c[2].clamp();
-			break;
-		case 1:
-			break;
-		case 2:
-		case 3:
-			c[0] = c[0].mod2x(r) + a;
-			c[1] = c[1].mod2x(g) + a;
-			c[2] = c[2].mod2x(b) + a;
-			c[0] = c[0].clamp();
-			c[1] = c[1].clamp();
-			c[2] = c[2].clamp();
-			break;
-		case 4:
-			c[0] = r;
-			c[1] = g;
-			c[2] = b;
-			break;
-		default:
-			__assume(0);
-		}
+		ColorTFX(m_sel.tfx, r, g, b, a, c[0], c[1], c[2]);
 
 		if(m_sel.fge)
 		{
-			c[0] = m_slenv.f.r.lerp(c[0], f);
-			c[1] = m_slenv.f.g.lerp(c[1], f);
-			c[2] = m_slenv.f.b.lerp(c[2], f);
+			Fog(f, c[0], c[1], c[2]);
 		}
 
 		GSVector4i d = GSVector4i::zero();
@@ -1039,9 +954,14 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 		fm |= test;
 		zm |= test;
 
-		if(m_sel.abe)
+		if(m_sel.abe != 255)
 		{
-			GSVector4::expand(d, c[4], c[5], c[6], c[7]);
+//			GSVector4::expand(d, c[4], c[5], c[6], c[7]);
+
+			c[4] = (d << 24) >> 24;
+			c[5] = (d << 16) >> 24;
+			c[6] = (d <<  8) >> 24;
+			c[7] = (d >> 24);
 
 			if(fpsm == 1)
 			{
@@ -1062,7 +982,7 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 			GSVector4 g = (c[abea*4 + 1] - c[abeb*4 + 1]).mod2x(c[abec*4 + 3]) + c[abed*4 + 1];
 			GSVector4 b = (c[abea*4 + 2] - c[abeb*4 + 2]).mod2x(c[abec*4 + 3]) + c[abed*4 + 2];
 
-			if(m_sel.abe == 2)
+			if(m_sel.pabe)
 			{
 				GSVector4 mask = c[3] >= GSVector4(128.0f);
 
@@ -1112,6 +1032,141 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 		if(iip) b += m_slenv.db;
 		if(iip) a += m_slenv.da;
 	}
+}
+
+void GSRasterizer::ColorTFX(DWORD tfx, const GSVector4& rf, const GSVector4& gf, const GSVector4& bf, const GSVector4& af, GSVector4& rt, GSVector4& gt, GSVector4& bt)
+{
+	switch(tfx)
+	{
+	case TFX_MODULATE:
+		rt = rt.mod2x(rf);
+		gt = gt.mod2x(gf);
+		bt = bt.mod2x(bf);
+		rt = rt.clamp();
+		gt = gt.clamp();
+		bt = bt.clamp();
+		break;
+	case TFX_DECAL:
+		break;
+	case TFX_HIGHLIGHT:
+	case TFX_HIGHLIGHT2:
+		rt = rt.mod2x(rf) + af;
+		gt = gt.mod2x(gf) + af;
+		bt = bt.mod2x(bf) + af;
+		rt = rt.clamp();
+		gt = gt.clamp();
+		bt = bt.clamp();
+		break;
+	case TFX_NONE:
+		rt = rf;
+		gt = gf;
+		bt = bf;
+		break;
+	default:
+		__assume(0);
+	}
+}
+
+void GSRasterizer::AlphaTFX(DWORD tfx, DWORD tcc, const GSVector4& af, GSVector4& at)
+{
+	switch(tfx)
+	{
+	case TFX_MODULATE: at = tcc ? at.mod2x(af).clamp() : af; break;
+	case TFX_DECAL: break;
+	case TFX_HIGHLIGHT: at = tcc ? (at + af).clamp() : af; break;
+	case TFX_HIGHLIGHT2: if(!tcc) at = af; break;
+	case TFX_NONE: at = af; break; 
+	default: __assume(0);
+	}
+}
+
+void GSRasterizer::Fog(const GSVector4& f, GSVector4& r, GSVector4& g, GSVector4& b)
+{
+	r = m_slenv.f.r.lerp(r, f);
+	g = m_slenv.f.g.lerp(g, f);
+	b = m_slenv.f.b.lerp(b, f);
+}
+
+bool GSRasterizer::TestZ(DWORD zpsm, DWORD ztst, const GSVector4i& zs, const GSVector4i& za, GSVector4i& test)
+{
+	if(ztst > 1)
+	{
+		GSVector4i zd = m_state->m_mem.ReadZBufX(zpsm, za);
+
+		GSVector4i zso = zs;
+		GSVector4i zdo = zd;
+
+		if(zpsm == 0)
+		{
+			GSVector4i o = GSVector4i::x80000000(zs);
+
+			zso = zs - o;
+			zdo = zd - o;
+		}
+
+		switch(ztst)
+		{
+		case ZTST_GEQUAL: test = zso < zdo; break;
+		case ZTST_GREATER: test = zso <= zdo; break;
+		default: __assume(0);
+		}
+
+		if(test.alltrue())
+		{
+			return false;
+		}
+	}
+	else
+	{
+		test = GSVector4i::zero();
+	}
+
+	return true;
+}
+
+bool GSRasterizer::TestAlpha(DWORD atst, DWORD afail, const GSVector4& a, GSVector4i& fm, GSVector4i& zm, GSVector4i& test)
+{
+	if(atst != 1)
+	{
+		GSVector4i t;
+
+		switch(atst)
+		{
+		case ATST_NEVER: t = GSVector4i::invzero(); break;
+		case ATST_ALWAYS: t = GSVector4i::zero(); break;
+		case ATST_LESS: 
+		case ATST_LEQUAL: t = GSVector4i(a) > m_slenv.aref; break;
+		case ATST_EQUAL: t = GSVector4i(a) != m_slenv.aref; break;
+		case ATST_GEQUAL: 
+		case ATST_GREATER: t = GSVector4i(a) < m_slenv.aref; break;
+		case ATST_NOTEQUAL: t = GSVector4i(a) == m_slenv.aref; break;
+		default: __assume(0);
+		}
+
+		switch(afail)
+		{
+		case AFAIL_KEEP:
+			fm |= t;
+			zm |= t;
+			test |= t;
+			if(test.alltrue()) return false;
+			break;
+		case AFAIL_FB_ONLY:
+			zm |= t;
+			break;
+		case AFAIL_ZB_ONLY:
+			fm |= t;
+			break;
+		case AFAIL_RGB_ONLY: 
+			fm |= t & GSVector4i::xff000000(t);
+			zm |= t;
+			break;
+		default: 
+			__assume(0);
+		}
+	}
+
+	return true;
 }
 
 //

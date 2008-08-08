@@ -49,7 +49,7 @@ void GSDump::Open(LPCTSTR fn, DWORD crc, const freezeData& fd, const void* regs)
 	}
 }
 
-void GSDump::Transfer(int index, BYTE* mem, UINT32 size)
+void GSDump::Transfer(int index, BYTE* mem, size_t size)
 {
 	if(m_fp && size > 0)
 	{

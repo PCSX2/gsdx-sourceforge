@@ -91,7 +91,7 @@ private:
 		{
 			DWORD fpsm:2; // 0
 			DWORD zpsm:2; // 2
-			DWORD ztst:2; // 4 (0: off, 1: write, 2: write + test (ge), 3: write + test (g))
+			DWORD ztst:2; // 4 (0: off, 1: write, 2: test (ge), 3: test (g))
 			DWORD iip:1; // 6
 			DWORD tfx:3; // 7
 			DWORD tcc:1; // 10
@@ -101,12 +101,20 @@ private:
 			DWORD afail:2; // 16
 			DWORD fge:1; // 18
 			DWORD date:1; // 19
-			DWORD abe:2; // 20
-			DWORD abea:2; // 22
-			DWORD abeb:2; // 24
-			DWORD abec:2; // 26
-			DWORD abed:2; // 28
-			DWORD rfb:1; // 30
+			DWORD abea:2; // 20
+			DWORD abeb:2; // 22
+			DWORD abec:2; // 24
+			DWORD abed:2; // 26
+			DWORD pabe:1; // 28
+			DWORD rfb:1; // 29
+			DWORD wzb:1; // 30
+		};
+
+		struct
+		{
+			DWORD _pad1:20;
+			DWORD abe:8;
+			DWORD _pad2:4;
 		};
 
 		DWORD dw;
@@ -139,6 +147,12 @@ private:
 
 	template<DWORD sel> 
 	void DrawScanlineEx(int top, int left, int right, const Vertex& v);
+
+	__forceinline void ColorTFX(DWORD tfx, const GSVector4& rf, const GSVector4& gf, const GSVector4& bf, const GSVector4& af, GSVector4& rt, GSVector4& gt, GSVector4& bt);
+	__forceinline void AlphaTFX(DWORD tfx, DWORD tcc, const GSVector4& af, GSVector4& at);
+	__forceinline void Fog(const GSVector4& f, GSVector4& r, GSVector4& g, GSVector4& b);
+	__forceinline bool TestZ(DWORD zpsm, DWORD ztst, const GSVector4i& zs, const GSVector4i& za, GSVector4i& test);
+	__forceinline bool TestAlpha(DWORD atst, DWORD afail, const GSVector4& a, GSVector4i& fm, GSVector4i& zm, GSVector4i& test);
 
 	__forceinline DWORD ReadTexel(int x, int y)
 	{

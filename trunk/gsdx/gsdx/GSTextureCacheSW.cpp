@@ -60,7 +60,8 @@ DWORD* GSTextureCacheSW::Lookup(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, 
 	{
 		GSTexture* t2 = t2p.GetNext(pos)->t;
 
-		if(t2->m_TEX0.TBP0 != TEX0.TBP0 || t2->m_TEX0.TBW != TEX0.TBW || t2->m_TEX0.PSM != TEX0.PSM || t2->m_TEX0.TW != TEX0.TW || t2->m_TEX0.TH != TEX0.TH)
+		// if(t2->m_TEX0.TBP0 != TEX0.TBP0 || t2->m_TEX0.TBW != TEX0.TBW || t2->m_TEX0.PSM != TEX0.PSM || t2->m_TEX0.TW != TEX0.TW || t2->m_TEX0.TH != TEX0.TH)
+		if(((t2->m_TEX0.ai32[0] ^ TEX0.ai32[0]) | ((t2->m_TEX0.ai32[1] ^ TEX0.ai32[1]) & 3)) != 0)
 		{
 			continue;
 		}
