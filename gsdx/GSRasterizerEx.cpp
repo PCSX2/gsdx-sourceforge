@@ -932,6 +932,54 @@ void GSRasterizer::InitEx()
 	m_dsmap.SetAt(0x64802260, &GSRasterizer::DrawScanlineEx<0x64802260>);
 	m_dsmap.SetAt(0x6481d460, &GSRasterizer::DrawScanlineEx<0x6481d460>);
 
+	// gt4
+
+	m_dsmap.SetAt(0x0ff02201, &GSRasterizer::DrawScanlineEx<0x0ff02201>);
+	m_dsmap.SetAt(0x0ff02224, &GSRasterizer::DrawScanlineEx<0x0ff02224>);
+	m_dsmap.SetAt(0x0ff02c05, &GSRasterizer::DrawScanlineEx<0x0ff02c05>);
+	m_dsmap.SetAt(0x0ff03c01, &GSRasterizer::DrawScanlineEx<0x0ff03c01>);
+	m_dsmap.SetAt(0x0ff03c06, &GSRasterizer::DrawScanlineEx<0x0ff03c06>);
+	m_dsmap.SetAt(0x0ff03c44, &GSRasterizer::DrawScanlineEx<0x0ff03c44>);
+	m_dsmap.SetAt(0x0ff0ec04, &GSRasterizer::DrawScanlineEx<0x0ff0ec04>);
+	m_dsmap.SetAt(0x0ff20204, &GSRasterizer::DrawScanlineEx<0x0ff20204>);
+	m_dsmap.SetAt(0x24402241, &GSRasterizer::DrawScanlineEx<0x24402241>);
+	m_dsmap.SetAt(0x24402441, &GSRasterizer::DrawScanlineEx<0x24402441>);
+	m_dsmap.SetAt(0x24402445, &GSRasterizer::DrawScanlineEx<0x24402445>);
+	m_dsmap.SetAt(0x24403441, &GSRasterizer::DrawScanlineEx<0x24403441>);
+	m_dsmap.SetAt(0x24403c41, &GSRasterizer::DrawScanlineEx<0x24403c41>);
+	m_dsmap.SetAt(0x2440d445, &GSRasterizer::DrawScanlineEx<0x2440d445>);
+	m_dsmap.SetAt(0x24442464, &GSRasterizer::DrawScanlineEx<0x24442464>);
+	m_dsmap.SetAt(0x24443444, &GSRasterizer::DrawScanlineEx<0x24443444>);
+	m_dsmap.SetAt(0x24443465, &GSRasterizer::DrawScanlineEx<0x24443465>);
+	m_dsmap.SetAt(0x244435e4, &GSRasterizer::DrawScanlineEx<0x244435e4>);
+	m_dsmap.SetAt(0x2444b464, &GSRasterizer::DrawScanlineEx<0x2444b464>);
+	m_dsmap.SetAt(0x24802244, &GSRasterizer::DrawScanlineEx<0x24802244>);
+	m_dsmap.SetAt(0x24803441, &GSRasterizer::DrawScanlineEx<0x24803441>);
+	m_dsmap.SetAt(0x24843464, &GSRasterizer::DrawScanlineEx<0x24843464>);
+	m_dsmap.SetAt(0x25843464, &GSRasterizer::DrawScanlineEx<0x25843464>);
+	m_dsmap.SetAt(0x258c3464, &GSRasterizer::DrawScanlineEx<0x258c3464>);
+	m_dsmap.SetAt(0x26402205, &GSRasterizer::DrawScanlineEx<0x26402205>);
+	m_dsmap.SetAt(0x26402245, &GSRasterizer::DrawScanlineEx<0x26402245>);
+	m_dsmap.SetAt(0x26402c05, &GSRasterizer::DrawScanlineEx<0x26402c05>);
+	m_dsmap.SetAt(0x26403c05, &GSRasterizer::DrawScanlineEx<0x26403c05>);
+	m_dsmap.SetAt(0x26802c00, &GSRasterizer::DrawScanlineEx<0x26802c00>);
+	m_dsmap.SetAt(0x2a902204, &GSRasterizer::DrawScanlineEx<0x2a902204>);
+	m_dsmap.SetAt(0x2ff02201, &GSRasterizer::DrawScanlineEx<0x2ff02201>);
+	m_dsmap.SetAt(0x2ff02205, &GSRasterizer::DrawScanlineEx<0x2ff02205>);
+	m_dsmap.SetAt(0x2ff02c00, &GSRasterizer::DrawScanlineEx<0x2ff02c00>);
+	m_dsmap.SetAt(0x2ff02c04, &GSRasterizer::DrawScanlineEx<0x2ff02c04>);
+	m_dsmap.SetAt(0x2ff02c81, &GSRasterizer::DrawScanlineEx<0x2ff02c81>);
+	m_dsmap.SetAt(0x2ff03444, &GSRasterizer::DrawScanlineEx<0x2ff03444>);
+	m_dsmap.SetAt(0x2ff03446, &GSRasterizer::DrawScanlineEx<0x2ff03446>);
+	m_dsmap.SetAt(0x2ff03c06, &GSRasterizer::DrawScanlineEx<0x2ff03c06>);
+	m_dsmap.SetAt(0x2ff0cc04, &GSRasterizer::DrawScanlineEx<0x2ff0cc04>);
+	m_dsmap.SetAt(0x2ff42264, &GSRasterizer::DrawScanlineEx<0x2ff42264>);
+	m_dsmap.SetAt(0x2ff43464, &GSRasterizer::DrawScanlineEx<0x2ff43464>);
+	m_dsmap.SetAt(0x4ff4c464, &GSRasterizer::DrawScanlineEx<0x4ff4c464>);
+	m_dsmap.SetAt(0x64442264, &GSRasterizer::DrawScanlineEx<0x64442264>);
+	m_dsmap.SetAt(0x66402c14, &GSRasterizer::DrawScanlineEx<0x66402c14>);
+
+
 /*
 	// resident evil 4
 
