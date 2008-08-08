@@ -557,6 +557,17 @@ protected:
 			(this->*m_fpDrawingKickHandlers[PRIM->PRIM])(v, count);
 
 			m_count += count;
+/*
+			if(m_context->TEST.DATE)
+			{
+				Flush();
+			}
+
+			if(m_env.COLCLAMP.CLAMP == 0)
+			{
+				Flush();
+			}
+*/
 		}
 	}
 

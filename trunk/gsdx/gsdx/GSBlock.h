@@ -1775,22 +1775,27 @@ public:
 
 			GSVector4i::sw64(v0, v1, v2, v3);
 
+			v0 &= mask;
+			v1 &= mask;
+			v2 &= mask;
+			v3 &= mask;
+
 			GSVector4i* d0 = (GSVector4i*)&dst[dstpitch * 0];
 			GSVector4i* d1 = (GSVector4i*)&dst[dstpitch * 1];
 
 			if(AEM)
 			{
-				d0[0] = (v0 & mask) | TA0.andnot(v0 == GSVector4i::zero()); // TA0 & (v0 != GSVector4i::zero())
-				d0[1] = (v1 & mask) | TA0.andnot(v1 == GSVector4i::zero()); // TA0 & (v1 != GSVector4i::zero())
-				d1[0] = (v2 & mask) | TA0.andnot(v2 == GSVector4i::zero()); // TA0 & (v2 != GSVector4i::zero())
-				d1[1] = (v3 & mask) | TA0.andnot(v3 == GSVector4i::zero()); // TA0 & (v3 != GSVector4i::zero())
+				d0[0] = v0 | TA0.andnot(v0 == GSVector4i::zero()); // TA0 & (v0 != GSVector4i::zero())
+				d0[1] = v1 | TA0.andnot(v1 == GSVector4i::zero()); // TA0 & (v1 != GSVector4i::zero())
+				d1[0] = v2 | TA0.andnot(v2 == GSVector4i::zero()); // TA0 & (v2 != GSVector4i::zero())
+				d1[1] = v3 | TA0.andnot(v3 == GSVector4i::zero()); // TA0 & (v3 != GSVector4i::zero())
 			}
 			else
 			{
-				d0[0] = (v0 & mask) | TA0;
-				d0[1] = (v1 & mask) | TA0;
-				d1[0] = (v2 & mask) | TA0;
-				d1[1] = (v3 & mask) | TA0;
+				d0[0] = v0 | TA0;
+				d0[1] = v1 | TA0;
+				d1[0] = v2 | TA0;
+				d1[1] = v3 | TA0;
 			}
 		}
 
