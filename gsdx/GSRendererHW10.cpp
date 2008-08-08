@@ -214,19 +214,6 @@ void GSRendererHW10::DrawingKick(Vertex* v, int& count)
 	default:
 		__assume(0);
 	}
-
-	// costs a few fps, but fixes RR's shadows (or anything which paints overlapping shapes with date)
-/*
-	if(m_context->TEST.DATE)
-	{
-		Flush();
-	}
-
-	if(m_env.COLCLAMP.CLAMP == 0)
-	{
-		Flush();
-	}
-*/
 }
 
 void GSRendererHW10::Draw(int prim, Texture& rt, Texture& ds, GSTextureCache<Device>::GSTexture* tex)

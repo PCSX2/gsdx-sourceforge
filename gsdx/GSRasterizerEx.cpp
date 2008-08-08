@@ -979,6 +979,29 @@ void GSRasterizer::InitEx()
 	m_dsmap.SetAt(0x64442264, &GSRasterizer::DrawScanlineEx<0x64442264>);
 	m_dsmap.SetAt(0x66402c14, &GSRasterizer::DrawScanlineEx<0x66402c14>);
 
+	// svr2k8
+
+	m_dsmap.SetAt(0x24412244, &GSRasterizer::DrawScanlineEx<0x24412244>);
+	m_dsmap.SetAt(0x2441c244, &GSRasterizer::DrawScanlineEx<0x2441c244>);
+	m_dsmap.SetAt(0x2441d044, &GSRasterizer::DrawScanlineEx<0x2441d044>);
+	m_dsmap.SetAt(0x2441d444, &GSRasterizer::DrawScanlineEx<0x2441d444>);
+	m_dsmap.SetAt(0x2441dc04, &GSRasterizer::DrawScanlineEx<0x2441dc04>);
+	m_dsmap.SetAt(0x244c3474, &GSRasterizer::DrawScanlineEx<0x244c3474>);
+	m_dsmap.SetAt(0x2481a244, &GSRasterizer::DrawScanlineEx<0x2481a244>);
+	m_dsmap.SetAt(0x2481b444, &GSRasterizer::DrawScanlineEx<0x2481b444>);
+	m_dsmap.SetAt(0x2481b464, &GSRasterizer::DrawScanlineEx<0x2481b464>);
+	m_dsmap.SetAt(0x2485d464, &GSRasterizer::DrawScanlineEx<0x2485d464>);
+	m_dsmap.SetAt(0x2a910214, &GSRasterizer::DrawScanlineEx<0x2a910214>);
+	m_dsmap.SetAt(0x2ff31815, &GSRasterizer::DrawScanlineEx<0x2ff31815>);
+	m_dsmap.SetAt(0x4ff0dc26, &GSRasterizer::DrawScanlineEx<0x4ff0dc26>);
+	m_dsmap.SetAt(0x64403064, &GSRasterizer::DrawScanlineEx<0x64403064>);
+	m_dsmap.SetAt(0x6440d454, &GSRasterizer::DrawScanlineEx<0x6440d454>);
+	m_dsmap.SetAt(0x6441a214, &GSRasterizer::DrawScanlineEx<0x6441a214>);
+	m_dsmap.SetAt(0x6441b5e4, &GSRasterizer::DrawScanlineEx<0x6441b5e4>);
+	m_dsmap.SetAt(0x6441bc14, &GSRasterizer::DrawScanlineEx<0x6441bc14>);
+	m_dsmap.SetAt(0x6444d064, &GSRasterizer::DrawScanlineEx<0x6444d064>);
+	m_dsmap.SetAt(0x6484d464, &GSRasterizer::DrawScanlineEx<0x6484d464>);
+	m_dsmap.SetAt(0x664c3474, &GSRasterizer::DrawScanlineEx<0x664c3474>);
 
 /*
 	// resident evil 4
@@ -1007,7 +1030,7 @@ void GSRasterizer::InitEx()
 
 	// dq8
 
-	// svr2k8
+
 */
 }
 
@@ -1303,9 +1326,9 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 		}
 		while(0);
 
-		steps -= 4;
+		if(steps <= 4) break;
 
-		if(steps <= 0) break;
+		steps -= 4;
 
 		fa_offset++;
 		za_offset++;

@@ -1016,9 +1016,9 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 		}
 		while(0);
 
-		steps -= 4;
+		if(steps <= 4) break;
 
-		if(steps <= 0) break;
+		steps -= 4;
 
 		fa_offset++;
 		za_offset++;
