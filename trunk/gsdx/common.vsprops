@@ -9,7 +9,7 @@
 	<Tool
 		Name="VCCLCompilerTool"
 		EnableIntrinsicFunctions="true"
-		PreprocessorDefinitions="WIN32;_WINDOWS"
+		PreprocessorDefinitions="WIN32;_WINDOWS;_WIN32_WINNT=0x500"
 		FloatingPointModel="2"
 		RuntimeTypeInfo="false"
 		WarningLevel="4"
