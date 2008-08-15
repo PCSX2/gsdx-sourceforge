@@ -355,9 +355,19 @@ public:
 		return GSVector4i(_mm_packs_epi16(m, a));
 	}
 
+	GSVector4i ps16() const
+	{
+		return GSVector4i(_mm_packs_epi16(m, m));
+	}
+
 	GSVector4i pu16(const GSVector4i& a) const
 	{
 		return GSVector4i(_mm_packus_epi16(m, a));
+	}
+
+	GSVector4i pu16() const
+	{
+		return GSVector4i(_mm_packus_epi16(m, m));
 	}
 
 	GSVector4i ps32(const GSVector4i& a) const
@@ -365,11 +375,21 @@ public:
 		return GSVector4i(_mm_packs_epi32(m, a));
 	}
 	
+	GSVector4i ps32() const
+	{
+		return GSVector4i(_mm_packs_epi32(m, m));
+	}
+	
 	#if _M_SSE >= 0x401
 
 	GSVector4i pu32(const GSVector4i& a) const
 	{
 		return GSVector4i(_mm_packus_epi32(m, a));
+	}
+
+	GSVector4i pu32() const
+	{
+		return GSVector4i(_mm_packus_epi32(m, m));
 	}
 
 	#endif
@@ -632,6 +652,7 @@ public:
 
 	template<int i> int extract32() const
 	{
+		if(i == 0) return GSVector4i::store(*this);
 		#if _M_SSE >= 0x401
 		return _mm_extract_epi32(m, i);
 		#else
@@ -652,6 +673,7 @@ public:
 
 	template<int i> __int64 extract64() const
 	{
+		if(i == 0) return GSVector4i::storeq(*this);
 		#if _M_SSE >= 0x401
 		return _mm_extract_epi64(m, i);
 		#else
@@ -1548,6 +1570,8 @@ public:
 
 __declspec(align(16)) class GSVector4
 {
+	static const __m128 m_ps0123;
+
 public:
 	union 
 	{
@@ -1818,6 +1842,11 @@ public:
 		return GSVector4(_mm_setzero_ps());
 	}
 
+	static GSVector4 ps0123()
+	{
+		return GSVector4(m_ps0123);
+	}
+
 	static GSVector4 loadl(const void* p)
 	{
 		return GSVector4(_mm_castpd_ps(_mm_load_sd((double*)p)));
@@ -1853,6 +1882,23 @@ public:
 	{
 		GSVector4 v0 = a.xyxy(b);
 		GSVector4 v1 = c.xyxy(d);
+
+		GSVector4 e = v0.xzxz(v1);
+		GSVector4 f = v0.ywyw(v1);
+
+		GSVector4 v2 = a.zwzw(b);
+		GSVector4 v3 = c.zwzw(d);
+
+		GSVector4 g = v2.xzxz(v3);
+		GSVector4 h = v2.ywyw(v3);
+
+		a = e;
+		b = f;
+		c = g;
+		d = h;
+/*
+		GSVector4 v0 = a.xyxy(b);
+		GSVector4 v1 = c.xyxy(d);
 		GSVector4 v2 = a.zwzw(b);
 		GSVector4 v3 = c.zwzw(d);
 
@@ -1860,6 +1906,7 @@ public:
 		b = v0.ywyw(v1);
 		c = v2.xzxz(v3);
 		d = v2.ywyw(v3);
+*/
 /*
 		GSVector4 v0 = a.upl(b);
 		GSVector4 v1 = a.uph(b);

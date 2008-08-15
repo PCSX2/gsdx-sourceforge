@@ -218,7 +218,7 @@ protected:
 	CAtlList<GSDepthStencil*> m_ds;
 	CAtlList<GSTexture*> m_tex;
 
-	template<class T> void RecycleByAge(CAtlList<T*>& l, int maxage = 10)
+	template<class T> void RecycleByAge(CAtlList<T*>& l, int maxage = 60)
 	{
 		POSITION pos = l.GetHeadPosition();
 
@@ -401,7 +401,7 @@ public:
 
 		const DWORD* clut = m_renderer->m_mem.m_clut;
 		const int pal = GSLocalMemory::m_psm[TEX0.PSM].pal;
-
+		
 		if(pal > 0)
 		{
 			m_renderer->m_mem.m_clut.Read(TEX0);

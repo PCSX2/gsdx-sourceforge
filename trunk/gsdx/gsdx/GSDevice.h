@@ -207,8 +207,6 @@ public:
 
 			if(mode == 2)
 			{
-				if(field == 0) return false;
-
 				// blend
 
 				if(!m_blend || m_blend.GetWidth() != ds.cx || m_blend.GetHeight() != ds.cy)

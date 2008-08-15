@@ -22,6 +22,8 @@
 #include "StdAfx.h"
 #include "GSVector.h"
 
+const __m128 GSVector4::m_ps0123 = _mm_set_ps(3, 2, 1, 0);
+
 void GSVector4::operator = (const GSVector4i& v) 
 {
 	m = _mm_cvtepi32_ps(v);

@@ -25,15 +25,6 @@
 #include "GSVertexSW.h"
 #include "GSAlignedClass.h"
 
-// - texture cache size should be the size of the page (depends on psm, ttbl->pgs), 
-// but the min fetchable 4 bpp block size (32x16) is the fastest and 99% ok
-// - there should be only one page in the cache, addressing another is equal to a TEXFLUSH
-
-#define TEXTURE_CACHE_WIDTH 5
-#define TEXTURE_CACHE_HEIGHT 4
-
-// FIXME: the fog effect in re4 needs even bigger cache (128x128) to leave no black lines at the edges (might be the bilinear filter)
-
 class GSRasterizer : public GSAlignedClass<16>
 {
 protected:
@@ -72,17 +63,12 @@ private:
 		GSVector4i fba;
 		GSVector4i aref;
 		GSVector4 afix;
+		GSVector4 afix2;
 		struct {GSVector4 r, g, b;} f;
 
-		GSVector4 dz0123, dz;
-		GSVector4 df0123, df;
-		GSVector4 dt0123, dt;
-		GSVector4 ds0123, ds;
-		GSVector4 dq0123, dq;
-		GSVector4 dr0123, dr;
-		GSVector4 dg0123, dg;
-		GSVector4 db0123, db;
-		GSVector4 da0123, da;
+		GSVector4 dp, dp4;
+		GSVector4 dt, dt4;
+		GSVector4 dc, dc4;
 	};
 
 	union ScanlineSelector
@@ -148,6 +134,7 @@ private:
 	template<DWORD sel> 
 	void DrawScanlineEx(int top, int left, int right, const Vertex& v);
 
+	__forceinline void SampleTexture(DWORD ztst, const GSVector4i& test, int pixels, DWORD ltf, const GSVector4& u, const GSVector4& v, GSVector4* c);
 	__forceinline void ColorTFX(DWORD tfx, const GSVector4& rf, const GSVector4& gf, const GSVector4& bf, const GSVector4& af, GSVector4& rt, GSVector4& gt, GSVector4& bt);
 	__forceinline void AlphaTFX(DWORD tfx, DWORD tcc, const GSVector4& af, GSVector4& at);
 	__forceinline void Fog(const GSVector4& f, GSVector4& r, GSVector4& g, GSVector4& b);
