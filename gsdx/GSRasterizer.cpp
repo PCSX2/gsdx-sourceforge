@@ -21,9 +21,10 @@
 
 // TODO: avx (256 bit regs, 8 pixels, 3-4 op instructions), DrawScanline ~50-70% of total time
 // TODO: sse is a waste for 1 pixel (not that bad, sse register utilization is 90-95%)
-// TODO: sprite doesn't need z/f interpolation, q could be eliminated by premultiplying s/t
+// TODO: sprite doesn't need z/f interpolation
 // TODO: eliminate small triangles faster, usually 50% of the triangles do not output any pixel because they are so tiny
-// current fillrate is about 20-50M tp/s (depends on the effectiveness of the texture cache), ps2 can do 1.2G, that means we can already hit 1 fps in the worst case :P
+// current fillrate is about 20-50M tp/s (depends on the effectiveness of the texture cache), ps2 can do 1.2G, that means we can already hit 1 fps in the worst case :P 
+// (in SoTC it can do 125M tp/s and still 4 fps only, insane fillrate needed there)
 // TODO: DrawScanline => CUDA impl., input: array of [scan, dscan, index], kernel function: draw pixel at [scan + dscan * index]
 
 #include "StdAfx.h"
@@ -135,6 +136,16 @@ int GSRasterizer::Draw(Vertex* vertices, int count, DWORD* texture)
 				vertices[i + 1].t /= vertices[i + 1].t.zzzz();
 			}
 		}
+
+		if(m_sel.fst && m_sel.ltf)
+		{
+			GSVector4 half(0.5f, 0.5f, 0.0f, 0.0f);
+
+			for(int i = 0; i < count; i++)
+			{
+				vertices[i].t -= half;
+			}
+		}
 	}
 
 	m_sel.atst = context->TEST.ATE ? context->TEST.ATST : ATST_ALWAYS;
@@ -213,6 +224,7 @@ int GSRasterizer::Draw(Vertex* vertices, int count, DWORD* texture)
 	m_slenv.fba = GSVector4i(context->FBA.FBA ? 0x80000000 : 0);
 	m_slenv.aref = GSVector4i((int)context->TEST.AREF + (m_sel.atst == ATST_LESS ? -1 : m_sel.atst == ATST_GREATER ? +1 : 0));
 	m_slenv.afix = GSVector4((float)(int)context->ALPHA.FIX);
+	m_slenv.afix2 = m_slenv.afix * (2.0f / 256);
 	m_slenv.f.r = GSVector4((float)(int)env.FOGCOL.FCR);
 	m_slenv.f.g = GSVector4((float)(int)env.FOGCOL.FCG);
 	m_slenv.f.b = GSVector4((float)(int)env.FOGCOL.FCB);
@@ -745,45 +757,24 @@ void GSRasterizer::SetupScanline(const Vertex& dv)
 	{
 		GSVector4 dp = dv.p;
 
-		m_slenv.dz0123 = dp.zzzz() * GSVector4(0, 1, 2, 3);	
-		m_slenv.df0123 = dp.wwww() * GSVector4(0, 1, 2, 3); 
-
-		GSVector4 dp4 = dp * 4.0f;
-
-		m_slenv.dz = dp4.zzzz();
-		m_slenv.df = dp4.wwww();
+		m_slenv.dp = dp;
+		m_slenv.dp4 = dp * 4.0f;
 	}
 
 	if(tex)
 	{
 		GSVector4 dt = dv.t;
 
-		m_slenv.ds0123 = dt.xxxx() * GSVector4(0, 1, 2, 3); 
-		m_slenv.dt0123 = dt.yyyy() * GSVector4(0, 1, 2, 3); 
-		m_slenv.dq0123 = dt.zzzz() * GSVector4(0, 1, 2, 3); 
-
-		GSVector4 dt4 = dt * 4.0f;
-
-		m_slenv.ds = dt4.xxxx();
-		m_slenv.dt = dt4.yyyy();
-		m_slenv.dq = dt4.zzzz();
+		m_slenv.dt = dt;
+		m_slenv.dt4 = dt * 4.0f;
 	}
 
 	if(col)
 	{
 		GSVector4 dc = dv.c;
 
-		m_slenv.dr0123 = dc.xxxx() * GSVector4(0, 1, 2, 3); 
-		m_slenv.dg0123 = dc.yyyy() * GSVector4(0, 1, 2, 3); 
-		m_slenv.db0123 = dc.zzzz() * GSVector4(0, 1, 2, 3); 
-		m_slenv.da0123 = dc.wwww() * GSVector4(0, 1, 2, 3); 
-
-		GSVector4 dc4 = dc * 4.0f;
-
-		m_slenv.dr = dc4.xxxx();
-		m_slenv.dg = dc4.yyyy();
-		m_slenv.db = dc4.zzzz();
-		m_slenv.da = dc4.wwww();
+		m_slenv.dc = dc;
+		m_slenv.dc4 = dc * 4.0f;
 	}
 }
 
@@ -796,20 +787,25 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 	GSVector4i za_base = m_slenv.zbr[top];
 	GSVector4i* za_offset = (GSVector4i*)&m_slenv.zbc[left & 3][left];
 
+	GSVector4 ps0123 = GSVector4::ps0123();
+
 	GSVector4 vp = v.p;
-	GSVector4 z = vp.zzzz(); z += m_slenv.dz0123;
-	GSVector4 f = vp.wwww(); f += m_slenv.df0123;
+	GSVector4 dp = m_slenv.dp;
+	GSVector4 z = vp.zzzz(); z += dp.zzzz() * ps0123;
+	GSVector4 f = vp.wwww(); f += dp.wwww() * ps0123;
 
 	GSVector4 vt = v.t;
-	GSVector4 s = vt.xxxx(); s += m_slenv.ds0123;
-	GSVector4 t = vt.yyyy(); t += m_slenv.dt0123;
-	GSVector4 q = vt.zzzz(); q += m_slenv.dq0123;
+	GSVector4 dt = m_slenv.dt;
+	GSVector4 s = vt.xxxx(); s += dt.xxxx() * ps0123;
+	GSVector4 t = vt.yyyy(); t += dt.yyyy() * ps0123;
+	GSVector4 q = vt.zzzz(); q += dt.zzzz() * ps0123;
 
 	GSVector4 vc = v.c;
-	GSVector4 r = vc.xxxx(); if(iip) r += m_slenv.dr0123;
-	GSVector4 g = vc.yyyy(); if(iip) g += m_slenv.dg0123;
-	GSVector4 b = vc.zzzz(); if(iip) b += m_slenv.db0123;
-	GSVector4 a = vc.wwww(); if(iip) a += m_slenv.da0123;
+	GSVector4 dc = m_slenv.dc;
+	GSVector4 r = vc.xxxx(); if(iip) r += dc.xxxx() * ps0123;
+	GSVector4 g = vc.yyyy(); if(iip) g += dc.yyyy() * ps0123;
+	GSVector4 b = vc.zzzz(); if(iip) b += dc.zzzz() * ps0123;
+	GSVector4 a = vc.wwww(); if(iip) a += dc.wwww() * ps0123;
 
 	int steps = right - left;
 
@@ -820,15 +816,9 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 		do
 		{
 
-		int pixels = min(steps, 4);
-
-		GSVector4i fa = fa_base + GSVector4i::load<true>(fa_offset);
 		GSVector4i za = za_base + GSVector4i::load<true>(za_offset);
 		
-		GSVector4i fm = m_slenv.fm;
-		GSVector4i zm = m_slenv.zm;
-
-		GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::one(fa));
+		GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::one(za));
 
 		GSVector4i test;
 
@@ -836,6 +826,11 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 		{
 			continue;
 		}
+
+		// DWORD mask = (DWORD)(((int)steps - 4) >> 31);
+		// int pixels = (steps & mask) | (4 & ~mask);
+
+		int pixels = GSVector4i::store(GSVector4i::load(steps).min_i16(GSVector4i::load(4)));
 
 		GSVector4 c[12];
 
@@ -850,77 +845,21 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 
 				u *= w;
 				v *= w;
-			}
 
-			if(m_sel.ltf)
-			{
-				u -= 0.5f;
-				v -= 0.5f;
-
-				GSVector4 uf = u.floor();
-				GSVector4 vf = v.floor();
-				
-				GSVector4 uff = u - uf;
-				GSVector4 vff = v - vf;
-
-				GSVector4i uv = GSVector4i(uf).ps32(GSVector4i(vf));
-
-				GSVector4i uv0 = Wrap(uv);
-				GSVector4i uv1 = Wrap(uv + GSVector4i::x0001(uv));
-
-				int i = 0;
-
-				do
+				if(m_sel.ltf)
 				{
-					if(ztst > 1 && test.u32[i])
-					{
-						continue;
-					}
-
-					GSVector4 c00(ReadTexel(uv0.u16[i], uv0.u16[i + 4]));
-					GSVector4 c01(ReadTexel(uv1.u16[i], uv0.u16[i + 4]));
-					GSVector4 c10(ReadTexel(uv0.u16[i], uv1.u16[i + 4]));
-					GSVector4 c11(ReadTexel(uv1.u16[i], uv1.u16[i + 4]));
-
-					c00 = c00.lerp(c01, uff.v[i]);
-					c10 = c10.lerp(c11, uff.v[i]);
-					c00 = c00.lerp(c10, vff.v[i]);
-
-					c[i] = c00;
+					u -= 0.5f;
+					v -= 0.5f;
 				}
-				while(++i < pixels);
-
-				GSVector4::transpose(c[0], c[1], c[2], c[3]);
 			}
-			else
-			{
-				GSVector4i uv = Wrap(GSVector4i(u).ps32(GSVector4i(v)));
 
-				GSVector4i c00;
-
-				int i = 0;
-
-				do
-				{
-					if(ztst > 1 && test.u32[i])
-					{
-						continue;
-					}
-
-					c00.u32[i] = ReadTexel(uv.u16[i], uv.u16[i + 4]);
-				}
-				while(++i < pixels);
-
-				// GSVector4::expand(c00, c[0], c[1], c[2], c[3]);
-
-				c[0] = (c00 << 24) >> 24;
-				c[1] = (c00 << 16) >> 24;
-				c[2] = (c00 <<  8) >> 24;
-				c[3] = (c00 >> 24);
-			}
+			SampleTexture(ztst, test, pixels, m_sel.ltf, u, v, c);
 		}
 
 		AlphaTFX(m_sel.tfx, m_sel.tcc, a, c[3]);
+
+		GSVector4i fm = m_slenv.fm;
+		GSVector4i zm = m_slenv.zm;
 
 		if(!TestAlpha(m_sel.atst, m_sel.afail, c[3], fm, zm, test))
 		{
@@ -933,6 +872,8 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 		{
 			Fog(f, c[0], c[1], c[2]);
 		}
+
+		GSVector4i fa = fa_base + GSVector4i::load<true>(fa_offset);
 
 		GSVector4i d = GSVector4i::zero();
 
@@ -1004,7 +945,12 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 		GSVector4i rg = rb.upl16(ga) & m_slenv.colclamp;
 		GSVector4i ba = rb.uph16(ga) & m_slenv.colclamp;
 		
-		GSVector4i s = rg.upl32(ba).pu16(rg.uph32(ba)) | m_slenv.fba;
+		GSVector4i s = rg.upl32(ba).pu16(rg.uph32(ba));
+
+		if(fpsm != 1)
+		{
+			s |= m_slenv.fba;
+		}
 
 		if(m_sel.rfb)
 		{
@@ -1022,15 +968,92 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 
 		fa_offset++;
 		za_offset++;
-		z += m_slenv.dz;
-		f += m_slenv.df;
-		s += m_slenv.ds;
-		t += m_slenv.dt;
-		q += m_slenv.dq;
-		if(iip) r += m_slenv.dr;
-		if(iip) g += m_slenv.dg;
-		if(iip) b += m_slenv.db;
-		if(iip) a += m_slenv.da;
+
+		GSVector4 dp4 = m_slenv.dp4;
+
+		z += dp4.zzzz();
+		f += dp4.wwww();
+
+		GSVector4 dt4 = m_slenv.dt4;
+
+		s += dt4.xxxx();
+		t += dt4.yyyy();
+		q += dt4.zzzz();
+
+		GSVector4 dc4 = m_slenv.dc4;
+
+		if(iip) r += dc4.xxxx();
+		if(iip) g += dc4.yyyy();
+		if(iip) b += dc4.zzzz();
+		if(iip) a += dc4.wwww();
+	}
+}
+
+void GSRasterizer::SampleTexture(DWORD ztst, const GSVector4i& test, int pixels, DWORD ltf, const GSVector4& u, const GSVector4& v, GSVector4* c)
+{
+	if(ltf)
+	{
+		GSVector4 uf = u.floor();
+		GSVector4 vf = v.floor();
+		
+		GSVector4 uff = u - uf;
+		GSVector4 vff = v - vf;
+
+		GSVector4i uv = GSVector4i(uf).ps32(GSVector4i(vf));
+
+		GSVector4i uv0 = Wrap(uv);
+		GSVector4i uv1 = Wrap(uv + GSVector4i::x0001(uv));
+
+		int i = 0;
+
+		do
+		{
+			if(ztst > 1 && test.u32[i])
+			{
+				continue;
+			}
+
+			GSVector4 c00(ReadTexel(uv0.u16[i], uv0.u16[i + 4]));
+			GSVector4 c01(ReadTexel(uv1.u16[i], uv0.u16[i + 4]));
+			GSVector4 c10(ReadTexel(uv0.u16[i], uv1.u16[i + 4]));
+			GSVector4 c11(ReadTexel(uv1.u16[i], uv1.u16[i + 4]));
+
+			c00 = c00.lerp(c01, uff.v[i]);
+			c10 = c10.lerp(c11, uff.v[i]);
+			c00 = c00.lerp(c10, vff.v[i]);
+
+			c[i] = c00;
+
+		}
+		while(++i < pixels);
+
+		GSVector4::transpose(c[0], c[1], c[2], c[3]);
+	}
+	else
+	{
+		GSVector4i uv = Wrap(GSVector4i(u).ps32(GSVector4i(v)));
+
+		GSVector4i c00;
+
+		int i = 0;
+
+		do
+		{
+			if(ztst > 1 && test.u32[i])
+			{
+				continue;
+			}
+
+			c00.u32[i] = ReadTexel(uv.u16[i], uv.u16[i + 4]);
+		}
+		while(++i < pixels);
+
+		// GSVector4::expand(c00, c[0], c[1], c[2], c[3]);
+
+		c[0] = (c00 << 24) >> 24;
+		c[1] = (c00 << 16) >> 24;
+		c[2] = (c00 <<  8) >> 24;
+		c[3] = (c00 >> 24);
 	}
 }
 

@@ -40,7 +40,6 @@
 #include <atlcoll.h>
 #include <atlpath.h>
 #include <math.h>
-#include <xinput.h>
 
 #define countof(a) (sizeof(a)/sizeof(a[0]))
 
@@ -59,3 +58,6 @@
 
 #pragma warning(disable : 4995 4324 4100)
 
+#ifdef _M_SSE
+#error No SSE please!
+#endif
