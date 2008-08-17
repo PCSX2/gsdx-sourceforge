@@ -47,8 +47,8 @@ public:
 	{
 		GSVector4i dx10;
 		GSVector4 dx9;
-		GSVector4 hw;
-		GSVector4 sw;
+		GSVector4 in;
+		GSVector4 ex;
 	} scissor;
 
 	GSDrawingContext()
@@ -83,13 +83,13 @@ public:
 
 		scissor.dx9 = GSVector4(scissor.dx10);
 
-		scissor.hw = GSVector4(
+		scissor.in = GSVector4(
 			(int)SCISSOR.SCAX0,
 			(int)SCISSOR.SCAY0,
 			(int)SCISSOR.SCAX1 + 1,
 			(int)SCISSOR.SCAY1 + 1);
 
-		scissor.sw = GSVector4i(
+		scissor.ex = GSVector4i(
 			(int)SCISSOR.SCAX0,
 			(int)SCISSOR.SCAY0,
 			(int)SCISSOR.SCAX1,

@@ -51,8 +51,8 @@ public:
 		GSState* m_state;
 		GIFRegTEX0 m_TEX0;
 		GIFRegTEXA m_TEXA;
-		DWORD* m_texture;
-		DWORD* m_clut;
+		void* m_buff;
+		DWORD m_tw;
 		DWORD m_valid[32];
 		DWORD m_maxpages;
 		DWORD m_pages;
@@ -75,7 +75,7 @@ public:
 	GSTextureCacheSW(GSState* state);
 	virtual ~GSTextureCacheSW();
 
-	DWORD* Lookup(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, const CRect* r = NULL);
+	const GSTexture* Lookup(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, const CRect* r = NULL);
 
 	void RemoveAll();
 	void IncAge();

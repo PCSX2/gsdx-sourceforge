@@ -23,6 +23,7 @@
 
 #include "GSState.h"
 #include "GSVertexSW.h"
+#include "GSTextureCacheSW.h"
 #include "GSAlignedClass.h"
 
 class GSRasterizer : public GSAlignedClass<16>
@@ -33,9 +34,6 @@ protected:
 	GSState* m_state;
 	int m_id;
 	int m_threads;
-
-	DWORD* m_texture;
-	DWORD m_tw;
 
 private:
 	struct ColumnOffset
@@ -49,7 +47,11 @@ private:
 	{
 		int steps;
 
-		GSLocalMemory::readTexture rtx;
+		void* vm;
+
+		const void* tex;
+		const DWORD* pal;
+		DWORD tw;
 
 		GSVector4i* fbr;
 		GSVector4i* zbr;
@@ -64,7 +66,7 @@ private:
 		GSVector4i aref;
 		GSVector4 afix;
 		GSVector4 afix2;
-		struct {GSVector4 r, g, b;} f;
+		GSVector4 fc;
 
 		GSVector4 dp, dp4;
 		GSVector4 dt, dt4;
@@ -94,6 +96,7 @@ private:
 			DWORD pabe:1; // 28
 			DWORD rfb:1; // 29
 			DWORD wzb:1; // 30
+			DWORD tlu:1; // 31
 		};
 
 		struct
@@ -105,10 +108,10 @@ private:
 
 		DWORD dw;
 
-		operator DWORD() {return dw & 0x7fffffff;}
+		operator DWORD() {return dw;}// & 0x7fffffff;}
 	};
 
-	CRect m_scissor;
+	GSVector4i m_scissor;
 	CRBMapC<DWORD, ColumnOffset*> m_comap;
 	ColumnOffset* m_fbco;
 	ColumnOffset* m_zbco;
@@ -134,17 +137,23 @@ private:
 	template<DWORD sel> 
 	void DrawScanlineEx(int top, int left, int right, const Vertex& v);
 
-	__forceinline void SampleTexture(DWORD ztst, const GSVector4i& test, int pixels, DWORD ltf, const GSVector4& u, const GSVector4& v, GSVector4* c);
+	__forceinline void SampleTexture(DWORD ztst, const GSVector4i& test, int pixels, DWORD ltf, DWORD pal, const GSVector4& u, const GSVector4& v, GSVector4* c);
 	__forceinline void ColorTFX(DWORD tfx, const GSVector4& rf, const GSVector4& gf, const GSVector4& bf, const GSVector4& af, GSVector4& rt, GSVector4& gt, GSVector4& bt);
 	__forceinline void AlphaTFX(DWORD tfx, DWORD tcc, const GSVector4& af, GSVector4& at);
 	__forceinline void Fog(const GSVector4& f, GSVector4& r, GSVector4& g, GSVector4& b);
 	__forceinline bool TestZ(DWORD zpsm, DWORD ztst, const GSVector4i& zs, const GSVector4i& za, GSVector4i& test);
 	__forceinline bool TestAlpha(DWORD atst, DWORD afail, const GSVector4& a, GSVector4i& fm, GSVector4i& zm, GSVector4i& test);
 
-	__forceinline DWORD ReadTexel(int x, int y)
-	{
-		return m_texture[(y << m_tw) + x];
-	}
+	__forceinline static DWORD ReadPixel32(DWORD* RESTRICT vm, DWORD addr);
+	__forceinline static DWORD ReadPixel24(DWORD* RESTRICT vm, DWORD addr);
+	__forceinline static DWORD ReadPixel16(WORD* RESTRICT vm, DWORD addr);
+	__forceinline static void WritePixel32(DWORD* RESTRICT vm, DWORD addr, DWORD c);
+	__forceinline static void WritePixel24(DWORD* RESTRICT vm, DWORD addr, DWORD c);
+	__forceinline static void WritePixel16(WORD* RESTRICT vm, DWORD addr, DWORD c);
+
+	__forceinline GSVector4i ReadFrameX(int psm, const GSVector4i& addr) const;
+	__forceinline GSVector4i ReadZBufX(int psm, const GSVector4i& addr) const;
+	__forceinline void WriteFrameAndZBufX(int fpsm, const GSVector4i& fa, const GSVector4i& fm, const GSVector4i& f, int zpsm, const GSVector4i& za, const GSVector4i& zm, const GSVector4i& z, int pixels);
 
 	__forceinline GSVector4i Wrap(const GSVector4i& t)
 	{
@@ -158,7 +167,7 @@ private:
 	void DrawLine(Vertex* v);
 	void DrawTriangle(Vertex* v);
 	void DrawSprite(Vertex* v);
-	bool DrawSolidRect(int left, int top, int right, int bottom, const Vertex& v);
+	bool DrawSolidRect(const GSVector4i& r, const Vertex& v);
 
 	__forceinline void DrawTriangleSection(Vertex& l, const Vertex& dl, GSVector4& r, const GSVector4& dr, const GSVector4& b, const Vertex& dscan);
 
@@ -166,13 +175,14 @@ public:
 	GSRasterizer(GSState* state, int id = 0, int threads = 0);
 	virtual ~GSRasterizer();
 
-	int Draw(Vertex* v, int count, DWORD* texture);
+	int Draw(Vertex* v, int count, const GSTextureCacheSW::GSTexture* texture);
 };
 
 class GSRasterizerMT : public GSRasterizer
 {
 	Vertex* m_vertices;
 	int m_count;
+	const GSTextureCacheSW::GSTexture* m_texture;
 	long* m_sync;
 	bool m_exit;
     DWORD m_ThreadId;
@@ -186,5 +196,5 @@ public:
 	GSRasterizerMT(GSState* state, int id, int threads, long* sync);
 	virtual ~GSRasterizerMT();
 
-	void BeginDraw(Vertex* vertices, int count, DWORD* texture);
+	void BeginDraw(Vertex* vertices, int count, const GSTextureCacheSW::GSTexture* texture);
 };

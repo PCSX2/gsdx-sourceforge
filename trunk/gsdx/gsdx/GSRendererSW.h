@@ -155,7 +155,7 @@ protected:
 
 	__forceinline int ScissorTest(const GSVector4& p0, const GSVector4& p1)
 	{
-		GSVector4 scissor = m_context->scissor.sw;
+		GSVector4 scissor = m_context->scissor.ex;
 
 		GSVector4 v0 = p0 < scissor;
 		GSVector4 v1 = p1 > scissor.zwxy();
@@ -226,20 +226,24 @@ protected:
 	{
 		// TODO: lot to optimize here
 
-		DWORD* texture = NULL;
+		GSDrawingContext* context = m_context;
+
+		const GSTextureCacheSW::GSTexture* texture = NULL;
 
 		if(PRIM->TME)
 		{
-			int w = 1 << m_context->TEX0.TW;
-			int h = 1 << m_context->TEX0.TH;
+			m_mem.m_clut.Read32(context->TEX0, m_env.TEXA);
 
-			int wms = m_context->CLAMP.WMS;
-			int wmt = m_context->CLAMP.WMT;
+			int w = 1 << context->TEX0.TW;
+			int h = 1 << context->TEX0.TH;
 
-			int minu = (int)m_context->CLAMP.MINU;
-			int minv = (int)m_context->CLAMP.MINV;
-			int maxu = (int)m_context->CLAMP.MAXU;
-			int maxv = (int)m_context->CLAMP.MAXV;
+			int wms = context->CLAMP.WMS;
+			int wmt = context->CLAMP.WMT;
+
+			int minu = (int)context->CLAMP.MINU;
+			int minv = (int)context->CLAMP.MINV;
+			int maxu = (int)context->CLAMP.MAXU;
+			int maxv = (int)context->CLAMP.MAXV;
 
 			CRect r = CRect(0, 0, w, h);
 
@@ -281,7 +285,7 @@ protected:
 
 			r &= CRect(0, 0, w, h);
 
-			texture = m_tc->Lookup(m_context->TEX0, m_env.TEXA, &r);
+			texture = m_tc->Lookup(context->TEX0, m_env.TEXA, &r);
 
 			if(!texture) {ASSERT(0); return;}
 		}
@@ -323,10 +327,10 @@ protected:
 		{
 			CRect r;
 
-			r.left = max(m_context->SCISSOR.SCAX0, 0);
-			r.top = max(m_context->SCISSOR.SCAY0, 0);
-			r.right = min(m_context->SCISSOR.SCAX1 + 1, m_context->FRAME.FBW * 64);
-			r.bottom = min(m_context->SCISSOR.SCAY1 + 1, 4096);
+			r.left = max(context->SCISSOR.SCAX0, 0);
+			r.top = max(context->SCISSOR.SCAY0, 0);
+			r.right = min(context->SCISSOR.SCAX1 + 1, context->FRAME.FBW * 64);
+			r.bottom = min(context->SCISSOR.SCAY1 + 1, 4096);
 
 			GSVector4 minv(+1e10f);
 			GSVector4 maxv(-1e10f);
@@ -348,16 +352,16 @@ protected:
 
 			GIFRegBITBLTBUF BITBLTBUF;
 			
-			BITBLTBUF.DBP = m_context->FRAME.Block();
-			BITBLTBUF.DBW = m_context->FRAME.FBW;
-			BITBLTBUF.DPSM = m_context->FRAME.PSM;
+			BITBLTBUF.DBP = context->FRAME.Block();
+			BITBLTBUF.DBW = context->FRAME.FBW;
+			BITBLTBUF.DPSM = context->FRAME.PSM;
 
 			m_tc->InvalidateVideoMem(BITBLTBUF, r);
 
-			if(m_context->DepthWrite())
+			if(context->DepthWrite())
 			{
-				BITBLTBUF.DBP = m_context->ZBUF.Block();
-				BITBLTBUF.DPSM = m_context->ZBUF.PSM;
+				BITBLTBUF.DBP = context->ZBUF.Block();
+				BITBLTBUF.DPSM = context->ZBUF.PSM;
 
 				m_tc->InvalidateVideoMem(BITBLTBUF, r);
 			}

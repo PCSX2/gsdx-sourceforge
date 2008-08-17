@@ -835,6 +835,207 @@ public:
 		#endif
 	}
 
+	__forceinline static void ReadBlock4P(const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
+	{
+		#if _M_SSE >= 0x200
+
+		const GSVector4i* s = (const GSVector4i*)src;
+
+		GSVector4i v0, v1, v2, v3;
+
+		GSVector4i mask(0x0f0f0f0f);
+
+		for(int i = 0; i < 2; i++)
+		{
+			// col 0, 2
+
+			v0 = s[i * 8 + 0]; 
+			v1 = s[i * 8 + 1]; 
+			v2 = s[i * 8 + 2]; 
+			v3 = s[i * 8 + 3];
+
+			GSVector4i::sw8(v0, v1, v2, v3);
+			GSVector4i::sw16(v0, v1, v2, v3);
+			GSVector4i::sw8(v0, v2, v1, v3);
+
+			GSVector4i::store<true>(&dst[dstpitch * 0 +  0], (v0 & mask));
+			GSVector4i::store<true>(&dst[dstpitch * 0 + 16], (v1 & mask));
+			GSVector4i::store<true>(&dst[dstpitch * 1 +  0], (v2 & mask));
+			GSVector4i::store<true>(&dst[dstpitch * 1 + 16], (v3 & mask));
+
+			dst += dstpitch * 2;
+
+			GSVector4i::store<true>(&dst[dstpitch * 0 +  0], (v0.andnot(mask)).yxwz() >> 4);
+			GSVector4i::store<true>(&dst[dstpitch * 0 + 16], (v1.andnot(mask)).yxwz() >> 4);
+			GSVector4i::store<true>(&dst[dstpitch * 1 +  0], (v2.andnot(mask)).yxwz() >> 4);
+			GSVector4i::store<true>(&dst[dstpitch * 1 + 16], (v3.andnot(mask)).yxwz() >> 4);
+
+			dst += dstpitch * 2;
+
+			// col 1, 3
+
+			v0 = s[i * 8 + 4]; 
+			v1 = s[i * 8 + 5]; 
+			v2 = s[i * 8 + 6]; 
+			v3 = s[i * 8 + 7];
+
+			GSVector4i::sw8(v0, v1, v2, v3);
+			GSVector4i::sw16(v0, v1, v2, v3);
+			GSVector4i::sw8(v0, v2, v1, v3);
+
+			GSVector4i::store<true>(&dst[dstpitch * 0 +  0], (v0 & mask).yxwz());
+			GSVector4i::store<true>(&dst[dstpitch * 0 + 16], (v1 & mask).yxwz());
+			GSVector4i::store<true>(&dst[dstpitch * 1 +  0], (v2 & mask).yxwz());
+			GSVector4i::store<true>(&dst[dstpitch * 1 + 16], (v3 & mask).yxwz());
+
+			dst += dstpitch * 2;
+
+			GSVector4i::store<true>(&dst[dstpitch * 0 +  0], (v0.andnot(mask)) >> 4);
+			GSVector4i::store<true>(&dst[dstpitch * 0 + 16], (v1.andnot(mask)) >> 4);
+			GSVector4i::store<true>(&dst[dstpitch * 1 +  0], (v2.andnot(mask)) >> 4);
+			GSVector4i::store<true>(&dst[dstpitch * 1 + 16], (v3.andnot(mask)) >> 4);
+
+			dst += dstpitch * 2;
+		}
+
+		#else
+
+		// TODO
+
+		#endif
+	}
+
+	__forceinline static void ReadBlock8HP(const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
+	{
+		#if _M_SSE >= 0x200
+
+		const GSVector4i* s = (const GSVector4i*)src;
+
+		GSVector4i v0, v1, v2, v3;
+
+		for(int i = 0; i < 4; i++)
+		{
+			v0 = s[i * 4 + 0]; 
+			v1 = s[i * 4 + 1]; 
+			v2 = s[i * 4 + 2]; 
+			v3 = s[i * 4 + 3];
+
+			GSVector4i::sw64(v0, v1, v2, v3);
+
+			v0 = ((v0 >> 24).ps32(v1 >> 24)).pu16((v2 >> 24).ps32(v3 >> 24));
+
+			GSVector4i::storel(dst, v0);
+			
+			dst += dstpitch;
+
+			GSVector4i::storeh(dst, v0);
+			
+			dst += dstpitch;
+		}
+
+		#else
+
+		const DWORD* s = &columnTable32[0][0];
+
+		for(int j = 0; j < 8; j++, s += 8, dst += dstpitch)
+		{
+			for(int i = 0; i < 8; i++)
+			{
+				((BYTE*)dst)[i] = ((DWORD*)src)[s[i]] >> 24;
+			}
+		}
+
+		#endif
+	}
+
+	__forceinline static void ReadBlock4HLP(const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
+	{
+		#if _M_SSE >= 0x200
+
+		const GSVector4i* s = (const GSVector4i*)src;
+
+		GSVector4i v0, v1, v2, v3;
+
+		GSVector4i mask(0x0f0f0f0f);
+
+		for(int i = 0; i < 4; i++)
+		{
+			v0 = s[i * 4 + 0]; 
+			v1 = s[i * 4 + 1]; 
+			v2 = s[i * 4 + 2]; 
+			v3 = s[i * 4 + 3];
+
+			GSVector4i::sw64(v0, v1, v2, v3);
+
+			v0 = ((v0 >> 24).ps32(v1 >> 24)).pu16((v2 >> 24).ps32(v3 >> 24)) & mask;
+
+			GSVector4i::storel(dst, v0);
+			
+			dst += dstpitch;
+
+			GSVector4i::storeh(dst, v0);
+			
+			dst += dstpitch;
+		}
+
+		#else
+
+		const DWORD* s = &columnTable32[0][0];
+
+		for(int j = 0; j < 8; j++, s += 8, dst += dstpitch)
+		{
+			for(int i = 0; i < 8; i++)
+			{
+				((BYTE*)dst)[i] = (((DWORD*)src)[s[i]] >> 24) & 0xf;
+			}
+		}
+
+		#endif
+	}
+
+	__forceinline static void ReadBlock4HHP(const BYTE* RESTRICT src, BYTE* RESTRICT dst, int dstpitch)
+	{
+		#if _M_SSE >= 0x200
+
+		const GSVector4i* s = (const GSVector4i*)src;
+
+		GSVector4i v0, v1, v2, v3;
+
+		for(int i = 0; i < 4; i++)
+		{
+			v0 = s[i * 4 + 0]; 
+			v1 = s[i * 4 + 1]; 
+			v2 = s[i * 4 + 2]; 
+			v3 = s[i * 4 + 3];
+
+			GSVector4i::sw64(v0, v1, v2, v3);
+
+			v0 = ((v0 >> 28).ps32(v1 >> 28)).pu16((v2 >> 28).ps32(v3 >> 28));
+
+			GSVector4i::storel(dst, v0);
+			
+			dst += dstpitch;
+
+			GSVector4i::storeh(dst, v0);
+			
+			dst += dstpitch;
+		}
+
+		#else
+
+		const DWORD* s = &columnTable32[0][0];
+
+		for(int j = 0; j < 8; j++, s += 8, dst += dstpitch)
+		{
+			for(int i = 0; i < 8; i++)
+			{
+				((BYTE*)dst)[i] = ((DWORD*)src)[s[i]] >> 28;
+			}
+		}
+
+		#endif
+	}
+
 	static void UnpackBlock24(const BYTE* RESTRICT src, int srcpitch, DWORD* RESTRICT dst)
 	{
 		#if _M_SSE >= 0x200

@@ -414,7 +414,7 @@ void GSRendererHW9::Draw(int prim, Texture& rt, Texture& ds, GSTextureCache<Devi
 	int w = rt.GetWidth();
 	int h = rt.GetHeight();
 
-	CRect scissor = (CRect)GSVector4i(GSVector4(rt.m_scale).xyxy() * context->scissor.hw) & CRect(0, 0, w, h);
+	CRect scissor = (CRect)GSVector4i(GSVector4(rt.m_scale).xyxy() * context->scissor.in) & CRect(0, 0, w, h);
 
 	//
 

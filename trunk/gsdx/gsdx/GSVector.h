@@ -1570,8 +1570,6 @@ public:
 
 __declspec(align(16)) class GSVector4
 {
-	static const __m128 m_ps0123;
-
 public:
 	union 
 	{
@@ -1589,6 +1587,8 @@ public:
 		unsigned __int32 u32[4];
 		__m128 m;
 	};
+
+	static const __m128 m_ps0123;
 
 	GSVector4()
 	{
