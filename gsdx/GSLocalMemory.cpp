@@ -166,6 +166,7 @@ GSLocalMemory::GSLocalMemory()
 		m_psm[i].ri = &GSLocalMemory::ReadImageX; // TODO
 		m_psm[i].rtx = &GSLocalMemory::ReadTexture32;
 		m_psm[i].rtxNP = &GSLocalMemory::ReadTexture32;
+		m_psm[i].rtxP = &GSLocalMemory::ReadTexture32;
 		m_psm[i].bpp = m_psm[i].trbpp = 32;
 		m_psm[i].pal = 0;
 		m_psm[i].bs = CSize(8, 8);
@@ -341,6 +342,12 @@ GSLocalMemory::GSLocalMemory()
 	m_psm[PSM_PSMZ16].rtxNP = &GSLocalMemory::ReadTexture16ZNP;
 	m_psm[PSM_PSMZ16S].rtxNP = &GSLocalMemory::ReadTexture16SZNP;
 
+	m_psm[PSM_PSMT8].rtxP = &GSLocalMemory::ReadTexture8P;
+	m_psm[PSM_PSMT4].rtxP = &GSLocalMemory::ReadTexture4P;
+	m_psm[PSM_PSMT8H].rtxP = &GSLocalMemory::ReadTexture8HP;
+	m_psm[PSM_PSMT4HL].rtxP = &GSLocalMemory::ReadTexture4HLP;
+	m_psm[PSM_PSMT4HH].rtxP = &GSLocalMemory::ReadTexture4HHP;
+
 	m_psm[PSM_PSMT8].pal = m_psm[PSM_PSMT8H].pal = 256;
 	m_psm[PSM_PSMT4].pal = m_psm[PSM_PSMT4HL].pal = m_psm[PSM_PSMT4HH].pal = 16;
 
@@ -381,7 +388,7 @@ GSLocalMemory::~GSLocalMemory()
 	VirtualFree(m_vm8, 0, MEM_RELEASE);
 }
 
-bool GSLocalMemory::FillRect(const CRect& r, DWORD c, DWORD psm, DWORD bp, DWORD bw)
+bool GSLocalMemory::FillRect(const GSVector4i& r, DWORD c, DWORD psm, DWORD bp, DWORD bw)
 {
 	const psm_t& tbl = m_psm[psm];
 
@@ -404,31 +411,39 @@ bool GSLocalMemory::FillRect(const CRect& r, DWORD c, DWORD psm, DWORD bp, DWORD
 
 	CRect clip;
 	
-	clip.left = (r.left + (w-1)) & ~(w-1);
-	clip.top = (r.top + (h-1)) & ~(h-1);
-	clip.right = r.right & ~(w-1);
-	clip.bottom = r.bottom & ~(h-1);
+	clip.left = (r.x + (w - 1)) & ~(w - 1);
+	clip.top = (r.y + (h - 1)) & ~(h - 1);
+	clip.right = r.z & ~(w - 1);
+	clip.bottom = r.w & ~(h - 1);
 
-	for(int y = r.top; y < clip.top; y++)
+	for(int y = r.y; y < clip.top; y++)
 	{
-		for(int x = r.left; x < r.right; x++)
+		for(int x = r.x; x < r.z; x++)
 		{
 			(this->*wp)(x, y, c, bp, bw);
 		}
 	}
 
-	if(r.left < clip.left || clip.right < r.right)
+	for(int y = clip.bottom; y < r.w; y++)
+	{
+		for(int x = r.x; x < r.z; x++)
+		{
+			(this->*wp)(x, y, c, bp, bw);
+		}
+	}
+
+	if(r.x < clip.left || clip.right < r.z)
 	{
 		for(int y = clip.top; y < clip.bottom; y += h)
 		{
 			for(int ys = y, ye = y + h; ys < ye; ys++)
 			{
-				for(int x = r.left; x < clip.left; x++)
+				for(int x = r.x; x < clip.left; x++)
 				{
 					(this->*wp)(x, ys, c, bp, bw);
 				}
 
-				for(int x = clip.right; x < r.right; x++)
+				for(int x = clip.right; x < r.z; x++)
 				{
 					(this->*wp)(x, ys, c, bp, bw);
 				}
@@ -522,14 +537,6 @@ bool GSLocalMemory::FillRect(const CRect& r, DWORD c, DWORD psm, DWORD bp, DWORD
 		}
 
 		#endif
-	}
-
-	for(int y = clip.bottom; y < r.bottom; y++)
-	{
-		for(int x = r.left; x < r.right; x++)
-		{
-			(this->*wp)(x, y, c, bp, bw);
-		}
 	}
 
 	return true;
@@ -1874,6 +1881,53 @@ void GSLocalMemory::ReadTextureNPNC(const CRect& r, BYTE* dst, int dstpitch, con
 	{
 		(this->*rtx)(r, dst, dstpitch, TEX0, TEXA);
 	}
+}
+
+// 32/8
+
+void GSLocalMemory::ReadTexture8P(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
+{
+	FOREACH_BLOCK_START(16, 16, 8)
+	{
+		ReadBlock8<true>(&m_vm8[BlockAddress8(x, y, bp, bw)], dst, dstpitch);
+	}
+	FOREACH_BLOCK_END
+}
+
+void GSLocalMemory::ReadTexture4P(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
+{
+	FOREACH_BLOCK_START(32, 16, 8)
+	{
+		ReadBlock4P(&m_vm8[BlockAddress4(x, y, bp, bw) >> 1], dst, dstpitch);
+	}
+	FOREACH_BLOCK_END
+}
+
+void GSLocalMemory::ReadTexture8HP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
+{
+	FOREACH_BLOCK_START(8, 8, 8)
+	{
+		ReadBlock8HP((BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)], dst, dstpitch);
+	}
+	FOREACH_BLOCK_END
+}
+
+void GSLocalMemory::ReadTexture4HLP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
+{
+	FOREACH_BLOCK_START(8, 8, 8)
+	{
+		ReadBlock4HLP((BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)], dst, dstpitch);
+	}
+	FOREACH_BLOCK_END
+}
+
+void GSLocalMemory::ReadTexture4HHP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const
+{
+	FOREACH_BLOCK_START(8, 8, 8)
+	{
+		ReadBlock4HHP((BYTE*)&m_vm32[BlockAddress32(x, y, bp, bw)], dst, dstpitch);
+	}
+	FOREACH_BLOCK_END
 }
 
 //

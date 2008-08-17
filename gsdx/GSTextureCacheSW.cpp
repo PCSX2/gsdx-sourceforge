@@ -37,14 +37,11 @@ GSTextureCacheSW::~GSTextureCacheSW()
 	RemoveAll();
 }
 
-DWORD* GSTextureCacheSW::Lookup(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, const CRect* r)
+const GSTextureCacheSW::GSTexture* GSTextureCacheSW::Lookup(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, const CRect* r)
 {
 	GSLocalMemory& mem = m_state->m_mem;
 
-	mem.m_clut.Read32(TEX0, TEXA);
-
 	const GSLocalMemory::psm_t& psm = GSLocalMemory::m_psm[TEX0.PSM];
-	const DWORD* clut = mem.m_clut;
 
 	const CAtlList<GSTexturePage*>& t2p = m_p2t[TEX0.TBP0 >> 5];
 
@@ -67,11 +64,6 @@ DWORD* GSTextureCacheSW::Lookup(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, 
 		}
 
 		if((psm.trbpp == 16 || psm.trbpp == 24) && (t2->m_TEX0.TCC != TEX0.TCC || TEX0.TCC == 1 && !(t2->m_TEXA == (GSVector4i)TEXA).alltrue()))
-		{
-			continue;
-		}
-
-		if(psm.pal > 0 && !GSVector4i::compare(t2->m_clut, clut, psm.pal * sizeof(clut[0])))
 		{
 			continue;
 		}
@@ -134,7 +126,7 @@ DWORD* GSTextureCacheSW::Lookup(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, 
 		return NULL;
 	}
 
-	return t->m_texture;
+	return t;
 }
 
 void GSTextureCacheSW::RemoveAll()
@@ -239,8 +231,8 @@ void GSTextureCacheSW::InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, cons
 
 GSTextureCacheSW::GSTexture::GSTexture(GSState* state)
 	: m_state(state)
-	, m_texture(NULL)
-	, m_clut(NULL)
+	, m_buff(NULL)
+	, m_tw(0)
 	, m_maxpages(0)
 	, m_pages(0)
 	, m_pos(NULL)
@@ -251,14 +243,9 @@ GSTextureCacheSW::GSTexture::GSTexture(GSState* state)
 
 GSTextureCacheSW::GSTexture::~GSTexture()
 {
-	if(m_texture)
+	if(m_buff)
 	{
-		_aligned_free(m_texture);
-	}
-
-	if(m_clut)
-	{
-		_aligned_free(m_clut);
+		_aligned_free(m_buff);
 	}
 
 	POSITION pos = m_p2te.GetHeadPosition();
@@ -294,7 +281,6 @@ bool GSTextureCacheSW::GSTexture::Update(const GIFRegTEX0& TEX0, const GIFRegTEX
 	GSLocalMemory& mem = m_state->m_mem;
 
 	const GSLocalMemory::psm_t& psm = GSLocalMemory::m_psm[TEX0.PSM];
-	const DWORD* clut = mem.m_clut;
 
 	int tw = 1 << TEX0.TW;
 	int th = 1 << TEX0.TH;
@@ -302,28 +288,18 @@ bool GSTextureCacheSW::GSTexture::Update(const GIFRegTEX0& TEX0, const GIFRegTEX
 	if(tw < psm.bs.cx) tw = psm.bs.cx;
 	if(th < psm.bs.cy) th = psm.bs.cy;
 
-	if(m_texture == NULL)
+	if(m_buff == NULL)
 	{
 		// fprintf(m_log, "up new (%d %d)\n", tw, th);
 
-		m_texture = (DWORD*)_aligned_malloc(tw * th * sizeof(DWORD), 16);
+		m_buff = _aligned_malloc(tw * th * sizeof(DWORD), 16);
 
-		if(m_texture == NULL)
+		if(m_buff == NULL)
 		{
 			return false;
 		}
 
-		m_clut = (DWORD*)_aligned_malloc(256 * sizeof(DWORD), 16);
-
-		if(m_clut == NULL)
-		{
-			return false;
-		}
-
-		if(psm.pal > 0)
-		{
-			memcpy(m_clut, clut, psm.pal * sizeof(clut[0]));
-		}
+		m_tw = max(psm.pal > 0 ? 5 : 3, TEX0.TW); // makes one row 32 bytes at least, matches the smallest block size that is allocated above for m_buff
 	}
 
 	CRect r2;
@@ -336,12 +312,17 @@ bool GSTextureCacheSW::GSTexture::Update(const GIFRegTEX0& TEX0, const GIFRegTEX
 		r2.bottom = (r->bottom + (psm.pgs.cy - 1)) & ~(psm.pgs.cy - 1);
 	}
 
-	DWORD* texture = m_texture;
+	// TODO
 
-	DWORD pitch = 1 << max(3, TEX0.TW); // makes one row 32 bytes at least, matches the smallest block size that is allocated above for m_texture
+	GSLocalMemory::readTexture rt = psm.pal > 0 ? psm.rtxP : psm.rtx;
+	int bytes = psm.pal > 0 ? 1 : 4;
+
+	BYTE* dst = (BYTE*)m_buff;
+
+	DWORD pitch = (1 << m_tw) * bytes;
 	DWORD mask = pitch - 1;
 
-	for(int j = 0, y = 0; y < th; j++, y += psm.pgs.cy, texture += pitch * psm.pgs.cy)
+	for(int j = 0, y = 0; y < th; j++, y += psm.pgs.cy, dst += pitch * psm.pgs.cy)
 	{
 		if(m_valid[j] == mask)
 		{
@@ -385,9 +366,9 @@ bool GSTextureCacheSW::GSTexture::Update(const GIFRegTEX0& TEX0, const GIFRegTEX
 
 			// fprintf(m_log, "up fetch (%d %d) (%d %d %d %d)\n", j, i, r.left, r.top, r.right, r.bottom);
 
-			(mem.*psm.rtx)(r, (BYTE*)&texture[x], pitch * 4, TEX0, TEXA);
+			(mem.*rt)(r, &dst[x * bytes], pitch, TEX0, TEXA);
 
-			m_state->m_perfmon.Put(GSPerfMon::Unswizzle, r.Width() * r.Height() * 4);
+			m_state->m_perfmon.Put(GSPerfMon::Unswizzle, r.Width() * r.Height() * bytes);
 		}
 	}
 

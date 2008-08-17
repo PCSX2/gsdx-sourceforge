@@ -86,7 +86,7 @@ GSRasterizer::~GSRasterizer()
 	m_comap.RemoveAll();
 }
 
-int GSRasterizer::Draw(Vertex* vertices, int count, DWORD* texture)
+int GSRasterizer::Draw(Vertex* vertices, int count, const GSTextureCacheSW::GSTexture* texture)
 {
 	GSDrawingEnvironment& env = m_state->m_env;
 	GSDrawingContext* context = m_state->m_context;
@@ -101,14 +101,20 @@ int GSRasterizer::Draw(Vertex* vertices, int count, DWORD* texture)
 
 	// m_scissor
 
-	m_scissor.left = max(context->SCISSOR.SCAX0, 0);
-	m_scissor.top = max(context->SCISSOR.SCAY0, 0);
-	m_scissor.right = min(context->SCISSOR.SCAX1 + 1, context->FRAME.FBW * 64);
-	m_scissor.bottom = min(context->SCISSOR.SCAY1 + 1, 4096);
+	m_scissor = context->scissor.in;
+
+	// TODO: find a game that overflows and check which one is the right behaviour
+
+	m_scissor.z = min(m_scissor.z, context->FRAME.FBW * 64); 
 
 	// m_sel
 
 	m_sel.dw = 0;
+
+	if(PRIM->AA1)
+	{
+		// TODO: automatic alpha blending (ABE=1, A=0 B=1 C=0 D=1)
+	}
 
 	m_sel.fpsm = GSUtil::EncodePSM(context->FRAME.PSM);
 	m_sel.zpsm = GSUtil::EncodePSM(context->ZBUF.PSM);
@@ -159,6 +165,7 @@ int GSRasterizer::Draw(Vertex* vertices, int count, DWORD* texture)
 	m_sel.pabe = PRIM->ABE ? env.PABE.PABE : 0;
 	m_sel.rfb = m_sel.date || m_sel.abe != 255 || m_sel.atst != 1 && m_sel.afail == 3 || context->FRAME.FBMSK != 0 && context->FRAME.FBMSK != 0xffffffff;
 	m_sel.wzb = context->DepthWrite();
+	m_sel.tlu = PRIM->TME && GSLocalMemory::m_psm[context->TEX0.PSM].pal > 0 ? 1 : 0;
 
 	m_dsf = m_ds[m_sel.fpsm][m_sel.zpsm][m_sel.ztst][m_sel.iip];
 
@@ -212,7 +219,7 @@ int GSRasterizer::Draw(Vertex* vertices, int count, DWORD* texture)
 	SetupColumnOffset();
 
 	m_slenv.steps = 0;
-	m_slenv.rtx = GSLocalMemory::m_psm[context->TEX0.PSM].rtx;
+	m_slenv.vm = m_state->m_mem.m_vm32;
 	m_slenv.fbr = m_fbco->row;
 	m_slenv.zbr = m_zbco->row;
 	m_slenv.fbc = m_fbco->col;
@@ -225,9 +232,7 @@ int GSRasterizer::Draw(Vertex* vertices, int count, DWORD* texture)
 	m_slenv.aref = GSVector4i((int)context->TEST.AREF + (m_sel.atst == ATST_LESS ? -1 : m_sel.atst == ATST_GREATER ? +1 : 0));
 	m_slenv.afix = GSVector4((float)(int)context->ALPHA.FIX);
 	m_slenv.afix2 = m_slenv.afix * (2.0f / 256);
-	m_slenv.f.r = GSVector4((float)(int)env.FOGCOL.FCR);
-	m_slenv.f.g = GSVector4((float)(int)env.FOGCOL.FCG);
-	m_slenv.f.b = GSVector4((float)(int)env.FOGCOL.FCB);
+	m_slenv.fc = GSVector4((DWORD)env.FOGCOL.ai32[0]);
 
 	if(m_sel.fpsm == 1)
 	{
@@ -236,8 +241,9 @@ int GSRasterizer::Draw(Vertex* vertices, int count, DWORD* texture)
 
 	if(PRIM->TME)
 	{
-		m_texture = texture;
-		m_tw = max(3, context->TEX0.TW);
+		m_slenv.tex = texture->m_buff;
+		m_slenv.pal = m_state->m_mem.m_clut;
+		m_slenv.tw = texture->m_tw;
 
 		short tw = (short)(1 << context->TEX0.TW);
 		short th = (short)(1 << context->TEX0.TH);
@@ -297,8 +303,6 @@ int GSRasterizer::Draw(Vertex* vertices, int count, DWORD* texture)
 		m_slenv.t.min = m_slenv.t.min.xxxxl().xxxxh();
 		m_slenv.t.max = m_slenv.t.max.xxxxl().xxxxh();
 		m_slenv.t.mask = m_slenv.t.mask.xxzz();
-
-		// m_tw = (int)max(context->TEX0.TW, TEXTURE_CACHE_WIDTH);
 	}
 
 	//
@@ -355,7 +359,7 @@ void GSRasterizer::DrawPoint(Vertex* v)
 
 	GSVector4i p(v->p);
 
-	if(m_scissor.left <= p.x && p.x < m_scissor.right && m_scissor.top <= p.y && p.y < m_scissor.bottom)
+	if(m_scissor.x <= p.x && p.x < m_scissor.z && m_scissor.y <= p.y && p.y < m_scissor.w)
 	{
 		if((p.y % m_threads) == m_id) 
 		{
@@ -481,8 +485,8 @@ void GSRasterizer::DrawTriangleSection(Vertex& l, const Vertex& dl, GSVector4& r
 	int top = tb.z;
 	int bottom = tb.w;
 
-	if(top < m_scissor.top) top = m_scissor.top;
-	if(bottom > m_scissor.bottom) bottom = m_scissor.bottom;
+	if(top < m_scissor.y) top = m_scissor.y;
+	if(bottom > m_scissor.w) bottom = m_scissor.w;
 	
 	if(top < bottom)
 	{
@@ -520,8 +524,8 @@ if(scanmsk >= 0)
 				int left = lr.x;
 				int right = lr.y;
 
-				if(left < m_scissor.left) left = m_scissor.left;
-				if(right > m_scissor.right) right = m_scissor.right;
+				if(left < m_scissor.x) left = m_scissor.x;
+				if(right > m_scissor.z) right = m_scissor.z;
 
 				if(right > left)
 				{
@@ -554,25 +558,35 @@ void GSRasterizer::DrawSprite(Vertex* vertices)
 	v[1].p = vertices[1].p.blend8(vertices[0].p, mask);
 	v[1].t = vertices[1].t.blend8(vertices[0].t, mask);
 
-	GSVector4i tlbr(v[0].p.xyxy(v[1].p).ceil());
+	GSVector4i r(v[0].p.xyxy(v[1].p).ceil());
 
-	int top = tlbr.y;
-	int bottom = tlbr.w;
+	int& top = r.y;
+	int& bottom = r.w;
 
-	if(top < m_scissor.top) top = m_scissor.top;
-	if(bottom > m_scissor.bottom) bottom = m_scissor.bottom;
+	int& left = r.x;
+	int& right = r.z;
+
+	#if _M_SSE >= 0x401
+
+	r = r.sat_i32(m_scissor);
+	
+	if((r < r.zwzw()).mask() != 0x00ff) return;
+
+	#else
+
+	if(top < m_scissor.y) top = m_scissor.y;
+	if(bottom > m_scissor.w) bottom = m_scissor.w;
 	if(top >= bottom) return;
 
-	int left = tlbr.x;
-	int right = tlbr.z;
-
-	if(left < m_scissor.left) left = m_scissor.left;
-	if(right > m_scissor.right) right = m_scissor.right;
+	if(left < m_scissor.x) left = m_scissor.x;
+	if(right > m_scissor.z) right = m_scissor.z;
 	if(left >= right) return;
+
+	#endif
 
 	Vertex scan = v[0];
 
-	if(DrawSolidRect(left, top, right, bottom, scan))
+	if(DrawSolidRect(r, scan))
 	{
 		return;
 	}
@@ -618,9 +632,9 @@ void GSRasterizer::DrawSprite(Vertex* vertices)
 	}
 }
 
-bool GSRasterizer::DrawSolidRect(int left, int top, int right, int bottom, const Vertex& v)
+bool GSRasterizer::DrawSolidRect(const GSVector4i& r, const Vertex& v)
 {
-	if(left >= right || top >= bottom || !m_solidrect)
+	if(r.x >= r.z || r.y >= r.w || !m_solidrect)
 	{
 		return false;
 	}
@@ -630,10 +644,8 @@ bool GSRasterizer::DrawSolidRect(int left, int top, int right, int bottom, const
 		return true;
 	}
 
-	ASSERT(top >= 0);
-	ASSERT(bottom >= 0);
-
-	CRect r(left, top, right, bottom);
+	ASSERT(r.y >= 0);
+	ASSERT(r.w >= 0);
 
 	GSDrawingContext* context = m_state->m_context;
 
@@ -827,9 +839,6 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 			continue;
 		}
 
-		// DWORD mask = (DWORD)(((int)steps - 4) >> 31);
-		// int pixels = (steps & mask) | (4 & ~mask);
-
 		int pixels = GSVector4i::store(GSVector4i::load(steps).min_i16(GSVector4i::load(4)));
 
 		GSVector4 c[12];
@@ -853,7 +862,7 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 				}
 			}
 
-			SampleTexture(ztst, test, pixels, m_sel.ltf, u, v, c);
+			SampleTexture(ztst, test, pixels, m_sel.ltf, m_sel.tlu, u, v, c);
 		}
 
 		AlphaTFX(m_sel.tfx, m_sel.tcc, a, c[3]);
@@ -879,7 +888,7 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 
 		if(m_sel.rfb)
 		{
-			d = m_state->m_mem.ReadFrameX(fpsm == 1 ? 0 : fpsm, fa);
+			d = ReadFrameX(fpsm == 1 ? 0 : fpsm, fa);
 
 			if(fpsm != 1 && m_sel.date)
 			{
@@ -957,7 +966,7 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 			s = s.blend(d, fm);
 		}
 
-		m_state->m_mem.WriteFrameAndZBufX(fpsm, fa, fm, s, ztst > 0 ? zpsm : 3, za, zm, zs, pixels);
+		WriteFrameAndZBufX(fpsm, fa, fm, s, ztst > 0 ? zpsm : 3, za, zm, zs, pixels);
 
 		}
 		while(0);
@@ -989,8 +998,12 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 	}
 }
 
-void GSRasterizer::SampleTexture(DWORD ztst, const GSVector4i& test, int pixels, DWORD ltf, const GSVector4& u, const GSVector4& v, GSVector4* c)
+void GSRasterizer::SampleTexture(DWORD ztst, const GSVector4i& test, int pixels, DWORD ltf, DWORD tlu, const GSVector4& u, const GSVector4& v, GSVector4* c)
 {
+	const void* RESTRICT tex = m_slenv.tex;
+	const DWORD* RESTRICT pal = m_slenv.pal;
+	const DWORD tw = m_slenv.tw;
+
 	if(ltf)
 	{
 		GSVector4 uf = u.floor();
@@ -1006,26 +1019,51 @@ void GSRasterizer::SampleTexture(DWORD ztst, const GSVector4i& test, int pixels,
 
 		int i = 0;
 
-		do
+		if(tlu)
 		{
-			if(ztst > 1 && test.u32[i])
+			do
 			{
-				continue;
+				if(ztst > 1 && test.u32[i])
+				{
+					continue;
+				}
+
+				GSVector4 c00 = GSVector4(pal[((const BYTE*)tex)[(uv0.u16[i + 4] << tw) + uv0.u16[i]]]);
+				GSVector4 c01 = GSVector4(pal[((const BYTE*)tex)[(uv0.u16[i + 4] << tw) + uv1.u16[i]]]);
+				GSVector4 c10 = GSVector4(pal[((const BYTE*)tex)[(uv1.u16[i + 4] << tw) + uv0.u16[i]]]);
+				GSVector4 c11 = GSVector4(pal[((const BYTE*)tex)[(uv1.u16[i + 4] << tw) + uv1.u16[i]]]);
+
+				c00 = c00.lerp(c01, uff.v[i]);
+				c10 = c10.lerp(c11, uff.v[i]);
+				c00 = c00.lerp(c10, vff.v[i]);
+
+				c[i] = c00;
+
 			}
-
-			GSVector4 c00(ReadTexel(uv0.u16[i], uv0.u16[i + 4]));
-			GSVector4 c01(ReadTexel(uv1.u16[i], uv0.u16[i + 4]));
-			GSVector4 c10(ReadTexel(uv0.u16[i], uv1.u16[i + 4]));
-			GSVector4 c11(ReadTexel(uv1.u16[i], uv1.u16[i + 4]));
-
-			c00 = c00.lerp(c01, uff.v[i]);
-			c10 = c10.lerp(c11, uff.v[i]);
-			c00 = c00.lerp(c10, vff.v[i]);
-
-			c[i] = c00;
-
+			while(++i < pixels);
 		}
-		while(++i < pixels);
+		else
+		{
+			do
+			{
+				if(ztst > 1 && test.u32[i])
+				{
+					continue;
+				}
+
+				GSVector4 c00 = GSVector4(((const DWORD*)tex)[(uv0.u16[i + 4] << tw) + uv0.u16[i]]);
+				GSVector4 c01 = GSVector4(((const DWORD*)tex)[(uv0.u16[i + 4] << tw) + uv1.u16[i]]);
+				GSVector4 c10 = GSVector4(((const DWORD*)tex)[(uv1.u16[i + 4] << tw) + uv0.u16[i]]);
+				GSVector4 c11 = GSVector4(((const DWORD*)tex)[(uv1.u16[i + 4] << tw) + uv1.u16[i]]);
+
+				c00 = c00.lerp(c01, uff.v[i]);
+				c10 = c10.lerp(c11, uff.v[i]);
+				c00 = c00.lerp(c10, vff.v[i]);
+
+				c[i] = c00;
+			}
+			while(++i < pixels);
+		}
 
 		GSVector4::transpose(c[0], c[1], c[2], c[3]);
 	}
@@ -1037,16 +1075,32 @@ void GSRasterizer::SampleTexture(DWORD ztst, const GSVector4i& test, int pixels,
 
 		int i = 0;
 
-		do
+		if(tlu)
 		{
-			if(ztst > 1 && test.u32[i])
+			do
 			{
-				continue;
-			}
+				if(ztst > 1 && test.u32[i])
+				{
+					continue;
+				}
 
-			c00.u32[i] = ReadTexel(uv.u16[i], uv.u16[i + 4]);
+				c00.u32[i] = pal[((const BYTE*)tex)[(uv.u16[i + 4] << tw) + uv.u16[i]]];
+			}
+			while(++i < pixels);
 		}
-		while(++i < pixels);
+		else
+		{
+			do
+			{
+				if(ztst > 1 && test.u32[i])
+				{
+					continue;
+				}
+
+				c00.u32[i] = ((const DWORD*)tex)[(uv.u16[i + 4] << tw) + uv.u16[i]];
+			}
+			while(++i < pixels);
+		}
 
 		// GSVector4::expand(c00, c[0], c[1], c[2], c[3]);
 
@@ -1105,16 +1159,18 @@ void GSRasterizer::AlphaTFX(DWORD tfx, DWORD tcc, const GSVector4& af, GSVector4
 
 void GSRasterizer::Fog(const GSVector4& f, GSVector4& r, GSVector4& g, GSVector4& b)
 {
-	r = m_slenv.f.r.lerp(r, f);
-	g = m_slenv.f.g.lerp(g, f);
-	b = m_slenv.f.b.lerp(b, f);
+	GSVector4 fc = m_slenv.fc;
+
+	r = fc.xxxx().lerp(r, f);
+	g = fc.yyyy().lerp(g, f);
+	b = fc.zzzz().lerp(b, f);
 }
 
 bool GSRasterizer::TestZ(DWORD zpsm, DWORD ztst, const GSVector4i& zs, const GSVector4i& za, GSVector4i& test)
 {
 	if(ztst > 1)
 	{
-		GSVector4i zd = m_state->m_mem.ReadZBufX(zpsm, za);
+		GSVector4i zd = ReadZBufX(zpsm, za);
 
 		GSVector4i zso = zs;
 		GSVector4i zdo = zd;
@@ -1192,6 +1248,277 @@ bool GSRasterizer::TestAlpha(DWORD atst, DWORD afail, const GSVector4& a, GSVect
 	return true;
 }
 
+DWORD GSRasterizer::ReadPixel32(DWORD* RESTRICT vm, DWORD addr)
+{
+	return vm[addr];
+}
+
+DWORD GSRasterizer::ReadPixel24(DWORD* RESTRICT vm, DWORD addr)
+{
+	return vm[addr] & 0x00ffffff;
+}
+
+DWORD GSRasterizer::ReadPixel16(WORD* RESTRICT vm, DWORD addr)
+{
+	return (DWORD)vm[addr];
+}
+
+void GSRasterizer::WritePixel32(DWORD* RESTRICT vm, DWORD addr, DWORD c) 
+{
+	vm[addr] = c;
+}
+
+void GSRasterizer::WritePixel24(DWORD* RESTRICT vm, DWORD addr, DWORD c) 
+{
+	vm[addr] = (vm[addr] & 0xff000000) | (c & 0x00ffffff);
+}
+
+void GSRasterizer::WritePixel16(WORD* RESTRICT vm, DWORD addr, DWORD c) 
+{
+	vm[addr] = (WORD)c;
+}
+
+GSVector4i GSRasterizer::ReadFrameX(int psm, const GSVector4i& addr) const
+{
+	DWORD* RESTRICT vm32 = (DWORD*)m_slenv.vm;
+	WORD* RESTRICT vm16 = (WORD*)m_slenv.vm;
+
+	GSVector4i c, r, g, b, a;
+
+	switch(psm)
+	{
+	case 0:
+		#if _M_SSE >= 0x401
+		c = addr.gather32_32(vm32);
+		#else
+		c = GSVector4i(
+			ReadPixel32(vm32, addr.u32[0]),
+			ReadPixel32(vm32, addr.u32[1]),
+			ReadPixel32(vm32, addr.u32[2]),
+			ReadPixel32(vm32, addr.u32[3]));
+		#endif
+		break;
+	case 1:
+		#if _M_SSE >= 0x401
+		c = addr.gather32_32(vm32);
+		#else
+		c = GSVector4i(
+			ReadPixel32(vm32, addr.u32[0]),
+			ReadPixel32(vm32, addr.u32[1]),
+			ReadPixel32(vm32, addr.u32[2]),
+			ReadPixel32(vm32, addr.u32[3]));
+		#endif
+		c = (c & GSVector4i::x00ffffff(addr)) | GSVector4i::x80000000(addr);
+		break;
+	case 2:
+		#if _M_SSE >= 0x401
+		c = addr.gather32_32(vm16);
+		#else
+		c = GSVector4i(
+			ReadPixel16(vm16, addr.u32[0]),
+			ReadPixel16(vm16, addr.u32[1]),
+			ReadPixel16(vm16, addr.u32[2]),
+			ReadPixel16(vm16, addr.u32[3]));
+		#endif
+		c = ((c & 0x8000) << 16) | ((c & 0x7c00) << 9) | ((c & 0x03e0) << 6) | ((c & 0x001f) << 3); 
+		break;
+	default: 
+		ASSERT(0); 
+		c = GSVector4i::zero();
+	}
+	
+	return c;
+}
+
+GSVector4i GSRasterizer::ReadZBufX(int psm, const GSVector4i& addr) const
+{
+	DWORD* RESTRICT vm32 = (DWORD*)m_slenv.vm;
+	WORD* RESTRICT vm16 = (WORD*)m_slenv.vm;
+
+	GSVector4i z;
+
+	switch(psm)
+	{
+	case 0: 
+		#if _M_SSE >= 0x401
+		z = addr.gather32_32(vm32);
+		#else
+		z = GSVector4i(
+			ReadPixel32(vm32, addr.u32[0]),
+			ReadPixel32(vm32, addr.u32[1]),
+			ReadPixel32(vm32, addr.u32[2]),
+			ReadPixel32(vm32, addr.u32[3]));
+		#endif
+		break;
+	case 1: 
+		#if _M_SSE >= 0x401
+		z = addr.gather32_32(vm32);
+		#else
+		z = GSVector4i(
+			ReadPixel32(vm32, addr.u32[0]),
+			ReadPixel32(vm32, addr.u32[1]),
+			ReadPixel32(vm32, addr.u32[2]),
+			ReadPixel32(vm32, addr.u32[3]));
+		#endif
+		z = z & GSVector4i::x00ffffff(addr);
+		break;
+	case 2: 
+		#if _M_SSE >= 0x401
+		z = addr.gather32_32(vm16);
+		#else
+		z = GSVector4i(
+			ReadPixel16(vm16, addr.u32[0]),
+			ReadPixel16(vm16, addr.u32[1]),
+			ReadPixel16(vm16, addr.u32[2]),
+			ReadPixel16(vm16, addr.u32[3]));
+		#endif
+		break;
+	default: 
+		ASSERT(0); 
+		z = GSVector4i::zero();
+	}
+
+	return z;
+}
+
+void GSRasterizer::WriteFrameAndZBufX(
+	int fpsm, const GSVector4i& fa, const GSVector4i& fm, const GSVector4i& f, 
+	int zpsm, const GSVector4i& za, const GSVector4i& zm, const GSVector4i& z, 
+	int pixels)
+{
+	// FIXME: compiler problem or not enough xmm regs in x86 mode to store the address regs (fa, za)
+
+	DWORD* RESTRICT vm32 = (DWORD*)m_slenv.vm;
+	WORD* RESTRICT vm16 = (WORD*)m_slenv.vm;
+
+	GSVector4i c = f;
+
+	if(fpsm == 2)
+	{
+		GSVector4i rb = c & 0x00f800f8;
+		GSVector4i ga = c & 0x8000f800;
+		c = (ga >> 16) | (rb >> 9) | (ga >> 6) | (rb >> 3);
+	}
+
+	#if _M_SSE >= 0x401
+
+	if(fm.extract32<0>() != 0xffffffff) 
+	{
+		switch(fpsm)
+		{
+		case 0: WritePixel32(vm32, fa.u32[0], c.extract32<0>()); break;
+		case 1: WritePixel24(vm32, fa.u32[0], c.extract32<0>()); break;
+		case 2: WritePixel16(vm16, fa.u32[0], c.extract16<0 * 2>()); break;
+		}
+	}
+
+	if(zm.extract32<0>() != 0xffffffff) 
+	{
+		switch(zpsm)
+		{
+		case 0: WritePixel32(vm32, za.u32[0], z.extract32<0>()); break;
+		case 1: WritePixel24(vm32, za.u32[0], z.extract32<0>()); break;
+		case 2: WritePixel16(vm16, za.u32[0], z.extract16<0 * 2>()); break;
+		}
+	}
+
+	if(pixels <= 1) return;
+
+	if(fm.extract32<1>() != 0xffffffff) 
+	{
+		switch(fpsm)
+		{
+		case 0: WritePixel32(vm32, fa.u32[1], c.extract32<1>()); break;
+		case 1: WritePixel24(vm32, fa.u32[1], c.extract32<1>()); break;
+		case 2: WritePixel16(vm16, fa.u32[1], c.extract16<1 * 2>()); break;
+		}
+	}
+
+	if(zm.extract32<1>() != 0xffffffff) 
+	{
+		switch(zpsm)
+		{
+		case 0: WritePixel32(vm32, za.u32[1], z.extract32<1>()); break;
+		case 1: WritePixel24(vm32, za.u32[1], z.extract32<1>()); break;
+		case 2: WritePixel16(vm16, za.u32[1], z.extract16<1 * 2>()); break;
+		}
+	}
+
+	if(pixels <= 2) return;
+
+	if(fm.extract32<2>() != 0xffffffff) 
+	{
+		switch(fpsm)
+		{
+		case 0: WritePixel32(vm32, fa.u32[2], c.extract32<2>()); break;
+		case 1: WritePixel24(vm32, fa.u32[2], c.extract32<2>()); break;
+		case 2: WritePixel16(vm16, fa.u32[2], c.extract16<2 * 2>()); break;
+		}
+	}
+
+	if(zm.extract32<2>() != 0xffffffff) 
+	{
+		switch(zpsm)
+		{
+		case 0: WritePixel32(vm32, za.u32[2], z.extract32<2>()); break;
+		case 1: WritePixel24(vm32, za.u32[2], z.extract32<2>()); break;
+		case 2: WritePixel16(vm16, za.u32[2], z.extract16<2 * 2>()); break;
+		}
+	}
+
+	if(pixels <= 3) return;
+
+	if(fm.extract32<3>() != 0xffffffff) 
+	{
+		switch(fpsm)
+		{
+		case 0: WritePixel32(vm32, fa.u32[3], c.extract32<3>()); break;
+		case 1: WritePixel24(vm32, fa.u32[3], c.extract32<3>()); break;
+		case 2: WritePixel16(vm16, fa.u32[3], c.extract16<3 * 2>()); break;
+		}
+	}
+
+	if(zm.extract32<3>() != 0xffffffff) 
+	{
+		switch(zpsm)
+		{
+		case 0: WritePixel32(vm32, za.u32[3], z.extract32<3>()); break;
+		case 1: WritePixel24(vm32, za.u32[3], z.extract32<3>()); break;
+		case 2: WritePixel16(vm16, za.u32[3], z.extract16<3 * 2>()); break;
+		}
+	}
+
+	#else
+
+	int i = 0;
+
+	do
+	{
+		if(fm.u32[i] != 0xffffffff)
+		{
+			switch(fpsm)
+			{
+			case 0: WritePixel32(vm32, fa.u32[i], c.u32[i]);  break;
+			case 1: WritePixel24(vm32, fa.u32[i], c.u32[i]);  break;
+			case 2: WritePixel16(vm16, fa.u32[i], c.u16[i * 2]);  break;
+			}
+		}
+
+		if(zm.u32[i] != 0xffffffff) 
+		{
+			switch(zpsm)
+			{
+			case 0: WritePixel32(vm32, za.u32[i], z.u32[i]);  break;
+			case 1: WritePixel24(vm32, za.u32[i], z.u32[i]);  break;
+			case 2: WritePixel16(vm16, za.u32[i], z.u16[i * 2]);  break;
+			}
+		}
+	}
+	while(++i < pixels);
+
+	#endif
+}
+
 //
 
 GSRasterizerMT::GSRasterizerMT(GSState* state, int id, int threads, long* sync)
@@ -1221,7 +1548,7 @@ GSRasterizerMT::~GSRasterizerMT()
 	}
 }
 
-void GSRasterizerMT::BeginDraw(Vertex* vertices, int count, DWORD* texture)
+void GSRasterizerMT::BeginDraw(Vertex* vertices, int count, const GSTextureCacheSW::GSTexture* texture)
 {
 	m_vertices = vertices;
 	m_count = count;

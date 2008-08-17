@@ -59,7 +59,7 @@ public:
 			writeFrameAddr wfa;
 			writeImage wi;
 			readImage ri;
-			readTexture rtx, rtxNP;
+			readTexture rtx, rtxNP, rtxP;
 			DWORD bpp, pal, trbpp; 
 			CSize bs, pgs;
 			int* rowOffset[8];
@@ -547,21 +547,6 @@ public:
 		WritePixel16(addr, (ga >> 16) | (rb >> 9) | (ga >> 6) | (rb >> 3));
 	}
 
-	__forceinline void WritePixel32(DWORD* dst, DWORD addr, DWORD c) 
-	{
-		dst[addr] = c;
-	}
-
-	__forceinline void WritePixel24(DWORD* dst, DWORD addr, DWORD c) 
-	{
-		dst[addr] = (dst[addr] & 0xff000000) | (c & 0x00ffffff);
-	}
-
-	__forceinline void WritePixel16(WORD* dst, DWORD addr, DWORD c) 
-	{
-		dst[addr] = (WORD)c;
-	}
-
 	__forceinline void WritePixel32(int x, int y, DWORD c, DWORD bp, DWORD bw)
 	{
 		WritePixel32(PixelAddress32(x, y, bp, bw), c);
@@ -911,244 +896,9 @@ public:
 		}
 	}
 
-	__forceinline GSVector4i ReadFrameX(int psm, const GSVector4i& addr) const
-	{
-		GSVector4i c, r, g, b, a;
-
-		switch(psm)
-		{
-		case 0:
-			#if _M_SSE >= 0x401
-			c = addr.gather32_32(m_vm32);
-			#else
-			c = GSVector4i(
-				(int)ReadPixel32(addr.u32[0]), 
-				(int)ReadPixel32(addr.u32[1]), 
-				(int)ReadPixel32(addr.u32[2]), 
-				(int)ReadPixel32(addr.u32[3]));
-			#endif
-			break;
-		case 1:
-			#if _M_SSE >= 0x401
-			c = addr.gather32_32(m_vm32);
-			#else
-			c = GSVector4i(
-				(int)ReadPixel32(addr.u32[0]), 
-				(int)ReadPixel32(addr.u32[1]), 
-				(int)ReadPixel32(addr.u32[2]), 
-				(int)ReadPixel32(addr.u32[3]));
-			#endif
-			c = (c & GSVector4i::x00ffffff(addr)) | GSVector4i::x80000000(addr);
-			break;
-		case 2:
-			#if _M_SSE >= 0x401
-			c = addr.gather32_32(m_vm16);
-			#else
-			c = GSVector4i(
-				(int)ReadPixel16(addr.u32[0]), 
-				(int)ReadPixel16(addr.u32[1]), 
-				(int)ReadPixel16(addr.u32[2]), 
-				(int)ReadPixel16(addr.u32[3]));
-			#endif
-			c = ((c & 0x8000) << 16) | ((c & 0x7c00) << 9) | ((c & 0x03e0) << 6) | ((c & 0x001f) << 3); 
-			break;
-		default: 
-			ASSERT(0); 
-			c = GSVector4i::zero();
-		}
-		
-		return c;
-	}
-
-	__forceinline GSVector4i ReadZBufX(int psm, const GSVector4i& addr) const
-	{
-		GSVector4i z;
-
-		switch(psm)
-		{
-		case 0: 
-			#if _M_SSE >= 0x401
-			z = addr.gather32_32(m_vm32);
-			#else
-			z = GSVector4i(
-				(int)ReadPixel32(addr.u32[0]), 
-				(int)ReadPixel32(addr.u32[1]), 
-				(int)ReadPixel32(addr.u32[2]), 
-				(int)ReadPixel32(addr.u32[3]));
-			#endif
-			break;
-		case 1: 
-			#if _M_SSE >= 0x401
-			z = addr.gather32_32(m_vm32);
-			#else
-			z = GSVector4i(
-				(int)ReadPixel32(addr.u32[0]), 
-				(int)ReadPixel32(addr.u32[1]), 
-				(int)ReadPixel32(addr.u32[2]), 
-				(int)ReadPixel32(addr.u32[3]));
-			#endif
-			z = z & GSVector4i::x00ffffff(addr);
-			break;
-		case 2: 
-			#if _M_SSE >= 0x401
-			z = addr.gather32_32(m_vm16);
-			#else
-			z = GSVector4i(
-				(int)ReadPixel16(addr.u32[0]), 
-				(int)ReadPixel16(addr.u32[1]), 
-				(int)ReadPixel16(addr.u32[2]), 
-				(int)ReadPixel16(addr.u32[3]));
-			#endif
-			break;
-		default: 
-			ASSERT(0); 
-			z = GSVector4i::zero();
-		}
-
-		return z;
-	}
-
-	__forceinline void WriteFrameAndZBufX(
-		int fpsm, const GSVector4i& fa, const GSVector4i& fm, const GSVector4i& f, 
-		int zpsm, const GSVector4i& za, const GSVector4i& zm, const GSVector4i& z, 
-		int pixels)
-	{
-		// FIXME: compiler problem or not enough xmm regs in x86 mode to store the address regs (fa, za)
-
-		DWORD* RESTRICT vm32 = m_vm32;
-		WORD* RESTRICT vm16 = m_vm16;
-
-		GSVector4i c = f;
-
-		if(fpsm == 2)
-		{
-			GSVector4i rb = c & 0x00f800f8;
-			GSVector4i ga = c & 0x8000f800;
-			c = (ga >> 16) | (rb >> 9) | (ga >> 6) | (rb >> 3);
-		}
-
-		#if _M_SSE >= 0x401
-
-		if(fm.extract32<0>() != 0xffffffff) 
-		{
-			switch(fpsm)
-			{
-			case 0: WritePixel32(vm32, fa.u32[0], c.extract32<0>()); break;
-			case 1: WritePixel24(vm32, fa.u32[0], c.extract32<0>()); break;
-			case 2: WritePixel16(vm16, fa.u32[0], c.extract16<0 * 2>()); break;
-			}
-		}
-
-		if(zm.extract32<0>() != 0xffffffff) 
-		{
-			switch(zpsm)
-			{
-			case 0: WritePixel32(vm32, za.u32[0], z.extract32<0>()); break;
-			case 1: WritePixel24(vm32, za.u32[0], z.extract32<0>()); break;
-			case 2: WritePixel16(vm16, za.u32[0], z.extract16<0 * 2>()); break;
-			}
-		}
-
-		if(pixels <= 1) return;
-
-		if(fm.extract32<1>() != 0xffffffff) 
-		{
-			switch(fpsm)
-			{
-			case 0: WritePixel32(vm32, fa.u32[1], c.extract32<1>()); break;
-			case 1: WritePixel24(vm32, fa.u32[1], c.extract32<1>()); break;
-			case 2: WritePixel16(vm16, fa.u32[1], c.extract16<1 * 2>()); break;
-			}
-		}
-
-		if(zm.extract32<1>() != 0xffffffff) 
-		{
-			switch(zpsm)
-			{
-			case 0: WritePixel32(vm32, za.u32[1], z.extract32<1>()); break;
-			case 1: WritePixel24(vm32, za.u32[1], z.extract32<1>()); break;
-			case 2: WritePixel16(vm16, za.u32[1], z.extract16<1 * 2>()); break;
-			}
-		}
-
-		if(pixels <= 2) return;
-
-		if(fm.extract32<2>() != 0xffffffff) 
-		{
-			switch(fpsm)
-			{
-			case 0: WritePixel32(vm32, fa.u32[2], c.extract32<2>()); break;
-			case 1: WritePixel24(vm32, fa.u32[2], c.extract32<2>()); break;
-			case 2: WritePixel16(vm16, fa.u32[2], c.extract16<2 * 2>()); break;
-			}
-		}
-
-		if(zm.extract32<2>() != 0xffffffff) 
-		{
-			switch(zpsm)
-			{
-			case 0: WritePixel32(vm32, za.u32[2], z.extract32<2>()); break;
-			case 1: WritePixel24(vm32, za.u32[2], z.extract32<2>()); break;
-			case 2: WritePixel16(vm16, za.u32[2], z.extract16<2 * 2>()); break;
-			}
-		}
-
-		if(pixels <= 3) return;
-
-		if(fm.extract32<3>() != 0xffffffff) 
-		{
-			switch(fpsm)
-			{
-			case 0: WritePixel32(vm32, fa.u32[3], c.extract32<3>()); break;
-			case 1: WritePixel24(vm32, fa.u32[3], c.extract32<3>()); break;
-			case 2: WritePixel16(vm16, fa.u32[3], c.extract16<3 * 2>()); break;
-			}
-		}
-
-		if(zm.extract32<3>() != 0xffffffff) 
-		{
-			switch(zpsm)
-			{
-			case 0: WritePixel32(vm32, za.u32[3], z.extract32<3>()); break;
-			case 1: WritePixel24(vm32, za.u32[3], z.extract32<3>()); break;
-			case 2: WritePixel16(vm16, za.u32[3], z.extract16<3 * 2>()); break;
-			}
-		}
-
-		#else
-
-		int i = 0;
-
-		do
-		{
-			if(fm.u32[i] != 0xffffffff)
-			{
-				switch(fpsm)
-				{
-				case 0: WritePixel32(vm32, fa.u32[i], c.u32[i]);  break;
-				case 1: WritePixel24(vm32, fa.u32[i], c.u32[i]);  break;
-				case 2: WritePixel16(vm16, fa.u32[i], c.u16[i * 2]);  break;
-				}
-			}
-
-			if(zm.u32[i] != 0xffffffff) 
-			{
-				switch(zpsm)
-				{
-				case 0: WritePixel32(vm32, za.u32[i], z.u32[i]);  break;
-				case 1: WritePixel24(vm32, za.u32[i], z.u32[i]);  break;
-				case 2: WritePixel16(vm16, za.u32[i], z.u16[i * 2]);  break;
-				}
-			}
-		}
-		while(++i < pixels);
-
-		#endif
-	}
-
 	// FillRect
 
-	bool FillRect(const CRect& r, DWORD c, DWORD psm, DWORD bp, DWORD bw);
+	bool FillRect(const GSVector4i& r, DWORD c, DWORD psm, DWORD bp, DWORD bw);
 
 	//
 
@@ -1211,6 +961,14 @@ public:
 
 	void ReadTextureNP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, const GIFRegCLAMP& CLAMP);
 	void ReadTextureNPNC(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, const GIFRegCLAMP& CLAMP);
+
+	// 32/8
+
+	void ReadTexture8P(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture4P(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture8HP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture4HLP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
+	void ReadTexture4HHP(const CRect& r, BYTE* dst, int dstpitch, const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA) const;
 
 	//
 
