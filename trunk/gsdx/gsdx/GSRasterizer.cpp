@@ -408,81 +408,115 @@ static const int s_abc[8][4] =
 
 void GSRasterizer::DrawTriangle(Vertex* vertices)
 {
-	Vertex v[4];
+	Vertex v[3];
 
 	GSVector4 aabb = vertices[0].p.yyyy(vertices[1].p);
 	GSVector4 bccb = vertices[1].p.yyyy(vertices[2].p).xzzx();
 
-	int i = (bccb < aabb).mask() & 7;
+	int i = (aabb > bccb).mask() & 7;
 
 	v[0] = vertices[s_abc[i][0]];
 	v[1] = vertices[s_abc[i][1]];
-	v[3] = vertices[s_abc[i][2]];
+	v[2] = vertices[s_abc[i][2]];
 
-	if(v[0].p.y >= v[3].p.y) return;
+	aabb = v[0].p.yyyy(v[1].p);
+	bccb = v[1].p.yyyy(v[2].p).xzzx();
 
-	Vertex v01, v03, v12, v13; 
+	i = (aabb == bccb).mask() & 7;
 
-	v03 = v[3] - v[0];
-	v01.p = v[1].p - v[0].p;
-
-	Vertex v03_y = v03 / v03.p.yyyy();
-
-	v[2] = v[0] + v03_y * v01.p.yyyy();
-
-	v12.p = v[2].p - v[1].p;
-
-	if(v12.p.x == 0) return;
-
-	v12.c = v[2].c - v[1].c;
-	v12.t = v[2].t - v[1].t;
-
-	Vertex dscan = v12 * v12.p.xxxx().rcp();
-
-	SetupScanline<true, true, true>(dscan);
-
-	Vertex dl, dr;
-
-	if(v12.p.x < 0) 
+	switch(i)
 	{
-		dl = v03_y;
-		dr.p = v01.p / v01.p.yyyy();
-
-		GSVector4 p0 = v[0].p;
-
-		DrawTriangleSection(v[0], dl, p0, dr.p, v[1].p, dscan);
-
-		v13.p = v[3].p - v[1].p;
-
-		dr.p = v13.p / v13.p.yyyy();
-
-		DrawTriangleSection(v[2], dl, v[1].p, dr.p, v[3].p, dscan);
-	}
-	else
-	{
-		v01.t = v[1].t - v[0].t;
-		v01.c = v[1].c - v[0].c;
-
-		dl = v01 / v01.p.yyyy();
-		dr.p = v03_y.p;
-
-		GSVector4 p0 = v[0].p;
-
-		DrawTriangleSection(v[0], dl, p0, dr.p, v[1].p, dscan);
-		
-		v13 = v[3] - v[1];
-
-		dl = v13 / v13.p.yyyy();
-
-		DrawTriangleSection(v[1], dl, v[2].p, dr.p, v[3].p, dscan);
+	case 0: // a < b < c
+		DrawTriangleTopBottom(v);
+		break;
+	case 1: // a == b < c
+		DrawTriangleBottom(v);
+		break;
+	case 4: // a < b == c
+		DrawTriangleTop(v);
+		break;
+	case 7: // a == b == c
+		break;
+	default:
+		__assume(0);
 	}
 }
 
-void GSRasterizer::DrawTriangleSection(Vertex& l, const Vertex& dl, GSVector4& r, const GSVector4& dr, const GSVector4& b, const Vertex& dscan)
+void GSRasterizer::DrawTriangleTop(Vertex* v)
 {
-	GSVector4i tb(l.p.upl(b).ceil());
+	Vertex longest = v[2] - v[1];
+	
+	if((longest.p == GSVector4::zero()).mask() & 1)
+	{
+		return;
+	}
 
-	int top = tb.z;
+	Vertex dscan = longest * longest.p.xxxx().rcp();
+
+	SetupScanline<true, true, true>(dscan);
+
+	int i = (longest.p > GSVector4::zero()).mask() & 1;
+
+	Vertex& l = v[0];
+	GSVector4 r = v[0].p;
+
+	Vertex vl = v[2 - i] - l;
+	GSVector4 vr = v[1 + i].p - r;
+
+	Vertex dl = vl / vl.p.yyyy();
+	GSVector4 dr = vr / vr.yyyy();
+
+	GSVector4i tb(l.p.xyxy(v[2].p).ceil());
+
+	int top = tb.y;
+	int bottom = tb.w;
+
+	if(top < m_scissor.y) top = m_scissor.y;
+	if(bottom > m_scissor.w) bottom = m_scissor.w;
+			
+	if(top < bottom)
+	{
+		float py = (float)top - l.p.y;
+
+		if(py > 0)
+		{
+			GSVector4 dy(py);
+
+			l += dl * dy;
+			r += dr * dy;
+		}
+
+		DrawTriangleSection(top, bottom, l, dl, r, dr, dscan);
+	}
+}
+
+void GSRasterizer::DrawTriangleBottom(Vertex* v)
+{
+	Vertex longest = v[1] - v[0];
+	
+	if((longest.p == GSVector4::zero()).mask() & 1)
+	{
+		return;
+	}
+	
+	Vertex dscan = longest * longest.p.xxxx().rcp();
+
+	SetupScanline<true, true, true>(dscan);
+
+	int i = (longest.p > GSVector4::zero()).mask() & 1;
+
+	Vertex& l = v[1 - i];
+	GSVector4& r = v[i].p;
+
+	Vertex vl = v[2] - l;
+	GSVector4 vr = v[2].p - r;
+
+	Vertex dl = vl / vl.p.yyyy();
+	GSVector4 dr = vr / vr.yyyy();
+
+	GSVector4i tb(l.p.xyxy(v[2].p).ceil());
+
+	int top = tb.y;
 	int bottom = tb.w;
 
 	if(top < m_scissor.y) top = m_scissor.y;
@@ -492,7 +526,7 @@ void GSRasterizer::DrawTriangleSection(Vertex& l, const Vertex& dl, GSVector4& r
 	{
 		float py = (float)top - l.p.y;
 
-		if(py > 0) // almost always true
+		if(py > 0)
 		{
 			GSVector4 dy(py);
 
@@ -500,48 +534,159 @@ void GSRasterizer::DrawTriangleSection(Vertex& l, const Vertex& dl, GSVector4& r
 			r += dr * dy;
 		}
 
-		for(; top < bottom; top++, l += dl, r += dr)
-		{
-/*
-
-// rarely used (character shadows in ffx-2)
-
-int scanmsk = (int)m_state->m_env.SCANMSK.MSK - 2;
-
-if(scanmsk >= 0)
-{
-	if(((top & 1) ^ scanmsk) == 0)
-	{
-		continue;
+		DrawTriangleSection(top, bottom, l, dl, r, dr, dscan);
 	}
 }
 
-*/
+void GSRasterizer::DrawTriangleTopBottom(Vertex* v)
+{
+	Vertex v01, v02, v12;
+
+	v01 = v[1] - v[0];
+	v02 = v[2] - v[0];
+
+	Vertex longest = v[0] + v02 * (v01.p / v02.p).yyyy() - v[1];
+
+	if((longest.p == GSVector4::zero()).mask() & 1)
+	{
+		return;
+	}
+
+	Vertex dscan = longest * longest.p.xxxx().rcp();
+
+	SetupScanline<true, true, true>(dscan);
+
+	Vertex& l = v[0];
+	GSVector4 r = v[0].p;
+
+	Vertex dl;
+	GSVector4 dr;
+
+	bool b = (longest.p > GSVector4::zero()).mask() & 1;
+	
+	if(b)
+	{
+		dl = v01 / v01.p.yyyy();
+		dr = v02.p / v02.p.yyyy();
+	}
+	else
+	{
+		dl = v02 / v02.p.yyyy();
+		dr = v01.p / v01.p.yyyy();
+	}
+
+	GSVector4i tb(v[0].p.yyyy(v[1].p).xzyy(v[2].p).ceil());
+
+	int top = tb.x;
+	int bottom = tb.y;
+
+	if(top < m_scissor.y) top = m_scissor.y;
+	if(bottom > m_scissor.w) bottom = m_scissor.w;
+
+	float py = (float)top - l.p.y;
+
+	if(py > 0)
+	{
+		GSVector4 dy(py);
+
+		l += dl * dy;
+		r += dr * dy;
+	}
+
+	if(top < bottom)
+	{
+		DrawTriangleSection(top, bottom, l, dl, r, dr, dscan);
+	}
+
+	if(b)
+	{
+		v12 = v[2] - v[1];
+
+		l = v[1];
+
+		dl = v12 / v12.p.yyyy();
+	}
+	else
+	{
+		v12.p = v[2].p - v[1].p;
+
+		r = v[1].p;
+
+		dr = v12.p / v12.p.yyyy();
+	}
+
+	top = tb.y;
+	bottom = tb.z;
+
+	if(top < m_scissor.y) top = m_scissor.y;
+	if(bottom > m_scissor.w) bottom = m_scissor.w;
+
+	if(top < bottom)
+	{
+		py = (float)top - l.p.y;
+
+		if(py > 0) l += dl * py;
+
+		py = (float)top - r.y;
+
+		if(py > 0) r += dr * py;
+
+		DrawTriangleSection(top, bottom, l, dl, r, dr, dscan);
+	}
+}
+
+void GSRasterizer::DrawTriangleSection(int top, int bottom, Vertex& l, const Vertex& dl, GSVector4& r, const GSVector4& dr, const Vertex& dscan)
+{
+	ASSERT(top < bottom);
+
+	while(1)
+	{
+		do
+		{
+			// rarely used (character shadows in ffx-2)
+
+			/*
+
+			int scanmsk = (int)m_state->m_env.SCANMSK.MSK - 2;
+
+			if(scanmsk >= 0)
+			{
+				if(((top & 1) ^ scanmsk) == 0)
+				{
+					continue;
+				}
+			}
+
+			*/
+
 			if((top % m_threads) == m_id) 
 			{
-				GSVector4i lr(l.p.upl(r).ceil());
+				GSVector4i lr(l.p.xyxy(r).ceil());
 
-				int left = lr.x;
-				int right = lr.y;
+				int& left = lr.x;
+				int& right = lr.z;
 
 				if(left < m_scissor.x) left = m_scissor.x;
 				if(right > m_scissor.z) right = m_scissor.z;
 
-				if(right > left)
+				if(left < right)
 				{
 					Vertex scan = l;
 
 					float px = (float)left - l.p.x;
 
-					if(px > 0) // almost always true
-					{
-						scan += dscan * px;
-					}
+					if(px > 0) scan += dscan * px;
 
 					(this->*m_dsf)(top, left, right, scan);
 				}
 			}
 		}
+		while(0);
+
+		if(++top >= bottom) break;
+
+		l += dl;
+		r += dr;
 	}
 }
 
@@ -586,8 +731,13 @@ void GSRasterizer::DrawSprite(Vertex* vertices)
 
 	Vertex scan = v[0];
 
-	if(DrawSolidRect(r, scan))
+	if(m_solidrect)
 	{
+		if(m_id == 0)
+		{
+			DrawSolidRect(r, scan);
+		}
+
 		return;
 	}
 
@@ -632,18 +782,8 @@ void GSRasterizer::DrawSprite(Vertex* vertices)
 	}
 }
 
-bool GSRasterizer::DrawSolidRect(const GSVector4i& r, const Vertex& v)
+void GSRasterizer::DrawSolidRect(const GSVector4i& r, const Vertex& v)
 {
-	if(r.x >= r.z || r.y >= r.w || !m_solidrect)
-	{
-		return false;
-	}
-
-	if(m_id != 0)
-	{
-		return true;
-	}
-
 	ASSERT(r.y >= 0);
 	ASSERT(r.w >= 0);
 
@@ -675,8 +815,6 @@ bool GSRasterizer::DrawSolidRect(const GSVector4i& r, const Vertex& v)
 	m_state->m_mem.FillRect(r, c, fpsm, fbp, bw);
 
 	// m_slenv.steps += r.Width() * r.Height();
-
-	return true;
 }
 
 void GSRasterizer::SetupColumnOffset()

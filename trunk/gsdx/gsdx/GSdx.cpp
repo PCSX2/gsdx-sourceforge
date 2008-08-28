@@ -612,6 +612,7 @@ EXPORT_C GSBenchmark(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow
 				GSLocalMemory::writeImage wi = psm.wi;
 				GSLocalMemory::readImage ri = psm.ri;
 				GSLocalMemory::readTexture rtx = psm.rtx;
+				GSLocalMemory::readTexture rtxP = psm.rtxP;
 
 				GIFRegBITBLTBUF BITBLTBUF;
 
@@ -692,6 +693,20 @@ EXPORT_C GSBenchmark(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow
 				end = clock();
 
 				_ftprintf(file, _T("%6d %6d "), (int)((float)len * n / (end - start) / 1000), (int)((float)(w * h) * n / (end - start) / 1000));
+
+				if(psm.pal > 0)
+				{
+					start = clock();
+
+					for(int j = 0; j < n; j++)
+					{
+						(mem.*rtxP)(r, ptr, w, TEX0, TEXA);
+					}
+
+					end = clock();
+
+					_ftprintf(file, _T("| %6d %6d "), (int)((float)len * n / (end - start) / 1000), (int)((float)(w * h) * n / (end - start) / 1000));
+				}
 
 				_ftprintf(file, _T("\n"));
 

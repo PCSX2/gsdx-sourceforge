@@ -26,7 +26,7 @@
 GSClut::GSClut(const GSLocalMemory* mem)
 	: m_mem(mem)
 {
-	BYTE* p = (BYTE*)VirtualAlloc(NULL, 8192, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	BYTE* p = (BYTE*)VirtualAlloc(NULL, 2 * 4096, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
 	m_clut = (WORD*)&p[0]; // 1k + 1k for buffer overruns (sfex: PSM == PSM_PSMT8, CPSM == PSM_PSMCT32, CSA != 0)
 	m_buff32 = (DWORD*)&p[2048]; // 1k
@@ -270,7 +270,7 @@ void GSClut::Read32(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA)
 			case PSM_PSMT4HH:
 				// TODO: merge these functions
 				ReadCLUT_T32_I4(clut, m_buff32);
-				ExpandCLUT64_T32_I8(m_buff32, (UINT64*)m_buff64);
+				ExpandCLUT64_T32_I8(m_buff32, (UINT64*)m_buff64); // sw renderer does not need m_buff64 anymore
 				break;
 			}
 		}
@@ -287,7 +287,7 @@ void GSClut::Read32(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA)
 			case PSM_PSMT4HH:
 				// TODO: merge these functions
 				Expand16(clut, m_buff32, 16, TEXA);
-				ExpandCLUT64_T32_I8(m_buff32, (UINT64*)m_buff64);
+				ExpandCLUT64_T32_I8(m_buff32, (UINT64*)m_buff64); // sw renderer does not need m_buff64 anymore
 				break;
 			}
 		}

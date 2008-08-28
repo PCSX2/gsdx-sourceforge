@@ -492,7 +492,9 @@ public:
 
 		#else
 
-		if(i < 16) return v.sll<i>() | srl<16 - i>();
+		if(i == 0) return *this;
+		else if(i < 16) return srl<i>() | v.sll<16 - i>();
+		else if(i == 16) return v;
 		else if(i < 32) return v.srl<i - 16>();
 		else return zero();
 
@@ -501,7 +503,12 @@ public:
 
 	template<int i> GSVector4i sll() const
 	{
+		#pragma warning(push)
+		#pragma warning(disable: 4556)
+
 		return GSVector4i(_mm_slli_si128(m, i));
+
+		#pragma warning(pop)
 	}
 
 	GSVector4i sra16(int i) const
@@ -1588,7 +1595,7 @@ public:
 		__m128 m;
 	};
 
-	static const __m128 m_ps0123;
+	static const GSVector4 m_ps0123;
 
 	GSVector4()
 	{
@@ -1719,6 +1726,26 @@ public:
 	GSVector4 mod2x(float f, const int scale = 256) const 
 	{
 		return mod2x(GSVector4(f), scale);
+	}
+
+	GSVector4 madd(const GSVector4& a, const GSVector4& b) const
+	{
+		return *this * a + b; // TODO: _mm_fmadd_ps
+	}
+
+	GSVector4 msub(const GSVector4& a, const GSVector4& b) const
+	{
+		return *this * a + b; // TODO: _mm_fmsub_ps
+	}
+
+	GSVector4 nmadd(const GSVector4& a, const GSVector4& b) const
+	{
+		return b - *this * a; // TODO: _mm_fnmadd_ps
+	}
+
+	GSVector4 nmsub(const GSVector4& a, const GSVector4& b) const
+	{
+		return -b - *this * a; // TODO: _mm_fmnsub_ps
 	}
 
 	GSVector4 lerp(const GSVector4& v, const GSVector4& f) const 
@@ -1918,6 +1945,11 @@ public:
 		c = v1.l2h(v3);
 		d = v3.h2l(v1);
 */	}
+
+	GSVector4 operator - () const
+	{
+		return neg();
+	}
 
 	void operator += (const GSVector4& v) 
 	{
