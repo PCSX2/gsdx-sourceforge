@@ -670,20 +670,23 @@ template<int i> void GSState::GIFRegHandlerXYOFFSET(GIFReg* r)
 
 void GSState::GIFRegHandlerPRMODECONT(GIFReg* r)
 {
-	if(!(m_env.PRMODECONT == (GSVector4i)r->PRMODECONT).alltrue())
+	if(m_env.PRMODECONT.AC != r->PRMODECONT.AC)
 	{
-		Flush();
+		if(m_env.PRIM.ai32[0] != m_env.PRMODE.ai32[0])
+		{
+			Flush();
+		}
+
+		m_env.PRMODECONT.AC = r->PRMODECONT.AC;
+
+		PRIM = m_env.PRMODECONT.AC ? &m_env.PRIM : (GIFRegPRIM*)&m_env.PRMODE;
+
+		if(PRIM->PRIM == 7) TRACE(_T("Invalid PRMODECONT/PRIM\n"));
+
+		m_context = &m_env.CTXT[PRIM->CTXT];
+
+		m_vprim = GSUtil::GetPrimVertexCount(PRIM->PRIM);
 	}
-
-	m_env.PRMODECONT = (GSVector4i)r->PRMODECONT;
-
-	PRIM = !m_env.PRMODECONT.AC ? (GIFRegPRIM*)&m_env.PRMODE : &m_env.PRIM;
-
-	if(PRIM->PRIM == 7) TRACE(_T("Invalid PRMODECONT/PRIM\n"));
-
-	m_context = &m_env.CTXT[PRIM->CTXT];
-
-	m_vprim = GSUtil::GetPrimVertexCount(PRIM->PRIM);
 }
 
 void GSState::GIFRegHandlerPRMODE(GIFReg* r)

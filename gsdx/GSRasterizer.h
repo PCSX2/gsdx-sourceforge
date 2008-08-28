@@ -166,10 +166,13 @@ private:
 	void DrawPoint(Vertex* v);
 	void DrawLine(Vertex* v);
 	void DrawTriangle(Vertex* v);
+	void DrawTriangleTop(Vertex* v);
+	void DrawTriangleBottom(Vertex* v);
+	void DrawTriangleTopBottom(Vertex* v);
 	void DrawSprite(Vertex* v);
-	bool DrawSolidRect(const GSVector4i& r, const Vertex& v);
+	void DrawSolidRect(const GSVector4i& r, const Vertex& v);
 
-	__forceinline void DrawTriangleSection(Vertex& l, const Vertex& dl, GSVector4& r, const GSVector4& dr, const GSVector4& b, const Vertex& dscan);
+	__forceinline void DrawTriangleSection(int top, int bottom, Vertex& l, const Vertex& dl, GSVector4& r, const GSVector4& dr, const Vertex& dscan);
 
 public:
 	GSRasterizer(GSState* state, int id = 0, int threads = 0);

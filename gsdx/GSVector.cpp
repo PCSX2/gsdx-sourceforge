@@ -22,7 +22,7 @@
 #include "StdAfx.h"
 #include "GSVector.h"
 
-const __m128 GSVector4::m_ps0123 = _mm_set_ps(3, 2, 1, 0);
+const GSVector4 GSVector4::m_ps0123(0.0f, 1.0f, 2.0f, 3.0f);
 
 void GSVector4::operator = (const GSVector4i& v) 
 {

@@ -60,6 +60,7 @@ CRC::Game CRC::m_games[] =
 	{0x26A6E286, MetalGearSolid3, EU, false},
 	{0xAA31B5BF, MetalGearSolid3, Unknown, false},
 	{0x9F185CE1, MetalGearSolid3, Unknown, false},
+	{0x98D4BC93, MetalGearSolid3, EU, false},
 	{0x278722BF, DBZBT2, US, false},
 	{0xFE961D28, DBZBT2, US, false},
 	{0X0393B6BE, DBZBT2, EU, false},
