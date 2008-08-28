@@ -4,7 +4,7 @@ sampler s0 : register(s0);
 float4 Params1 : register(c0);
 
 #define ZrH (Params1.xy)
-#define hH  (Params1.w)
+#define hH  (Params1.z)
 
 float4 ps_main0(float2 tex : TEXCOORD0) : COLOR
 {
