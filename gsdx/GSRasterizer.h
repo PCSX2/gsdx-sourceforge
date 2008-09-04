@@ -119,7 +119,7 @@ private:
 	ScanlineEnvironment m_slenv;
 	bool m_solidrect;
 
-	void SetupColumnOffset();
+	void SetupColumnOffset(ColumnOffset*& co, DWORD bp, DWORD bw, DWORD psm);
 
 	template<bool pos, bool tex, bool col> 
 	__forceinline void SetupScanline(const Vertex& dv);

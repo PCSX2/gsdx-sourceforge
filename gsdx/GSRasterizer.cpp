@@ -138,13 +138,17 @@ int GSRasterizer::Draw(Vertex* vertices, int count, const GSTextureCacheSW::GSTe
 
 			for(int i = 0; i < count; i += 2)
 			{
-				vertices[i + 0].t /= vertices[i + 1].t.zzzz();
-				vertices[i + 1].t /= vertices[i + 1].t.zzzz();
+				GSVector4 q = vertices[i + 1].t.zzzz();
+
+				vertices[i + 0].t /= q;
+				vertices[i + 1].t /= q;
 			}
 		}
 
 		if(m_sel.fst && m_sel.ltf)
 		{
+			// if q is constant we can do the half pel shift for bilinear sampling on the vertices
+
 			GSVector4 half(0.5f, 0.5f, 0.0f, 0.0f);
 
 			for(int i = 0; i < count; i++)
@@ -216,7 +220,8 @@ int GSRasterizer::Draw(Vertex* vertices, int count, const GSTextureCacheSW::GSTe
 
 	// m_slenv
 
-	SetupColumnOffset();
+	SetupColumnOffset(m_fbco, context->FRAME.Block(), context->FRAME.FBW, context->FRAME.PSM);
+	SetupColumnOffset(m_zbco, context->ZBUF.Block(), context->FRAME.FBW, context->ZBUF.PSM);
 
 	m_slenv.steps = 0;
 	m_slenv.vm = m_state->m_mem.m_vm32;
@@ -817,85 +822,43 @@ void GSRasterizer::DrawSolidRect(const GSVector4i& r, const Vertex& v)
 	// m_slenv.steps += r.Width() * r.Height();
 }
 
-void GSRasterizer::SetupColumnOffset()
+void GSRasterizer::SetupColumnOffset(ColumnOffset*& co, DWORD bp, DWORD bw, DWORD psm)
 {
-	GSDrawingContext* context = m_state->m_context;
+	if(bw == 0) {ASSERT(0); return;}
 
-	if(context->FRAME.FBW == 0) return;
+	DWORD hash = bp | (bw << 14) | (psm << 20);
 
-	// fb
-
-	DWORD hash = context->FRAME.FBP | (context->FRAME.FBW << 9) | (context->FRAME.PSM << 15);
-
-	if(!m_fbco || m_fbco->hash != hash)
+	if(!co || co->hash != hash)
 	{
 		CRBMap<DWORD, ColumnOffset*>::CPair* pair = m_comap.Lookup(hash);
 
 		if(pair)
 		{
-			m_fbco = pair->m_value;
+			co = pair->m_value;
 		}
 		else
 		{
-			m_fbco = (ColumnOffset*)_aligned_malloc(sizeof(ColumnOffset), 16);
+			co = (ColumnOffset*)_aligned_malloc(sizeof(ColumnOffset), 16);
 
-			m_fbco->hash = hash;
+			co->hash = hash;
 
-			GSLocalMemory::pixelAddress pa = GSLocalMemory::m_psm[context->FRAME.PSM].pa;
+			GSLocalMemory::pixelAddress pa = GSLocalMemory::m_psm[psm].pa;
 
 			for(int i = 0, j = 1024; i < j; i++)
 			{
-				m_fbco->row[i] = GSVector4i((int)pa(0, i, context->FRAME.Block(), context->FRAME.FBW));
+				co->row[i] = GSVector4i((int)pa(0, i, bp, bw));
 			}
 
 			int* p = (int*)_aligned_malloc(sizeof(int) * (2048 + 3) * 4, 16);
 
 			for(int i = 0; i < 4; i++)
 			{
-				m_fbco->col[i] = &p[2048 * i + ((4 - (i & 3)) & 3)];
+				co->col[i] = &p[2048 * i + ((4 - (i & 3)) & 3)];
 
-				memcpy(m_fbco->col[i], GSLocalMemory::m_psm[context->FRAME.PSM].rowOffset[0], sizeof(int) * 2048);
+				memcpy(co->col[i], GSLocalMemory::m_psm[psm].rowOffset[0], sizeof(int) * 2048);
 			}
 
-			m_comap.SetAt(hash, m_fbco);
-		}
-	}
-
-	// zb
-
-	hash = context->ZBUF.ZBP | (context->FRAME.FBW << 9) | (context->ZBUF.PSM << 15);
-
-	if(!m_zbco || m_zbco->hash != hash)
-	{
-		CRBMap<DWORD, ColumnOffset*>::CPair* pair = m_comap.Lookup(hash);
-
-		if(pair)
-		{
-			m_zbco = pair->m_value;
-		}
-		else
-		{
-			m_zbco = (ColumnOffset*)_aligned_malloc(sizeof(ColumnOffset), 16);
-
-			m_zbco->hash = hash;
-
-			GSLocalMemory::pixelAddress pa = GSLocalMemory::m_psm[context->ZBUF.PSM].pa;
-
-			for(int i = 0, j = 1024; i < j; i++)
-			{
-				m_zbco->row[i] = GSVector4i((int)pa(0, i, context->ZBUF.Block(), context->FRAME.FBW));
-			}
-
-			int* p = (int*)_aligned_malloc(sizeof(int) * (2048 + 3) * 4, 16);
-
-			for(int i = 0; i < 4; i++)
-			{
-				m_zbco->col[i] = &p[2048 * i + ((4 - (i & 3)) & 3)];
-
-				memcpy(m_zbco->col[i], GSLocalMemory::m_psm[context->ZBUF.PSM].rowOffset[0], sizeof(int) * 2048);
-			}
-
-			m_comap.SetAt(hash, m_zbco);
+			m_comap.SetAt(hash, co);
 		}
 	}
 }

@@ -104,3 +104,33 @@ struct cdvdTN
 #define CDVD_AUDIO_MASK		0x00
 #define CDVD_DATA_MASK		0x40
 //	CDROM_DATA_TRACK	0x04	// do not enable this! (from linux kernel)
+
+//
+
+#define CACHE_BLOCK_COUNT 16
+
+class CDVD
+{
+	HANDLE m_hFile;
+	CString m_label;
+	OVERLAPPED m_overlapped;
+	struct {int count, size, offset;} m_block;
+	struct {BYTE buff[2048 * CACHE_BLOCK_COUNT]; bool pending; int start, count;} m_cache;
+	BYTE m_buff[2352];
+
+	LARGE_INTEGER MakeOffset(int lsn);
+	bool SyncRead(int lsn);
+
+public:
+	CDVD();
+	virtual ~CDVD();
+
+	bool Open(CString path);
+	void Close();
+	CString GetLabel();
+	bool Read(int lsn, int mode = CDVD_MODE_2048);
+	BYTE* GetBuffer();
+	UINT32 GetTN(cdvdTN* buff);
+	UINT32 GetTD(BYTE track, cdvdTD* buff);
+};
+
