@@ -1061,6 +1061,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\SettingsDlg.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\stdafx.cpp"
 				>
 				<FileConfiguration
@@ -1200,6 +1204,10 @@
 			>
 			<File
 				RelativePath=".\cdvd.h"
+				>
+			</File>
+			<File
+				RelativePath=".\SettingsDlg.h"
 				>
 			</File>
 			<File

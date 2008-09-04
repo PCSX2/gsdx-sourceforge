@@ -63,7 +63,8 @@ CRC::Game CRC::m_games[] =
 	{0x98D4BC93, MetalGearSolid3, EU, false},
 	{0x278722BF, DBZBT2, US, false},
 	{0xFE961D28, DBZBT2, US, false},
-	{0X0393B6BE, DBZBT2, EU, false},
+	{0x0393B6BE, DBZBT2, EU, false},
+	{0xE2F289ED, DBZBT2, JP, false}, // Sparking Neo!
 	{0x428113C2, DBZBT3, US, false},
 	{0xA422BB13, DBZBT3, EU, false},
 	{0x983c53d2, DBZBT3, Unknown, false},	
