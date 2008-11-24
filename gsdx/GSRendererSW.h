@@ -120,7 +120,7 @@ protected:
 
 	void VertexKick(bool skip)
 	{
-		GSVertexSW& v = m_vl.AddTail();
+		Vertex& v = m_vl.AddTail();
 
 		int x = (int)m_v.XYZ.X - (int)m_context->XYOFFSET.OFX;
 		int y = (int)m_v.XYZ.Y - (int)m_context->XYOFFSET.OFY;

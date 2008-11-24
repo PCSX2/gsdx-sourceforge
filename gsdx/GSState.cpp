@@ -1412,7 +1412,7 @@ template<class T> static void ReadState(T* dst, BYTE*& src, size_t len = sizeof(
 	src += len;
 }
 
-int GSState::Freeze(freezeData* fd, bool sizeonly)
+int GSState::Freeze(GSFreezeData* fd, bool sizeonly)
 {
 	if(sizeonly)
 	{
@@ -1484,7 +1484,7 @@ int GSState::Freeze(freezeData* fd, bool sizeonly)
 	return 0;
 }
 
-int GSState::Defrost(const freezeData* fd)
+int GSState::Defrost(const GSFreezeData* fd)
 {
 	if(!fd || !fd->data || fd->size == 0) 
 	{

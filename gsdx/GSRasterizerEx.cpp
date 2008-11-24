@@ -23,7 +23,7 @@
 #include "GSRasterizer.h"
 
 void GSRasterizer::InitEx()
-{
+{/*
 	// ffx
 
 	m_dsmap.SetAt(0x2420c265, &GSRasterizer::DrawScanlineEx<0x2420c265>);
@@ -1245,6 +1245,7 @@ void GSRasterizer::InitEx()
 	m_dsmap.SetAt(0xa4802c09, &GSRasterizer::DrawScanlineEx<0xa4802c09>);
 	m_dsmap.SetAt(0xa485bc29, &GSRasterizer::DrawScanlineEx<0xa485bc29>);
 	m_dsmap.SetAt(0xe441bc29, &GSRasterizer::DrawScanlineEx<0xe441bc29>);
+*/
 /*
 	// dmc (fixme)
 
@@ -1321,189 +1322,187 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 	{
 		do
 		{
+			GSVector4i za = za_base + GSVector4i::load<true>(za_offset);
+			
+			GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::one(za));
 
-		GSVector4i za = za_base + GSVector4i::load<true>(za_offset);
-		
-		GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::one(za));
+			GSVector4i test;
 
-		GSVector4i test;
-
-		if(!TestZ(zpsm, ztst, zs, za, test))
-		{
-			continue;
-		}
-
-		int pixels = GSVector4i::store(GSVector4i::load(steps).min_i16(GSVector4i::load(4)));
-
-		GSVector4 c[12];
-
-		if(tfx != TFX_NONE)
-		{
-			GSVector4 u = s;
-			GSVector4 v = t;
-
-			if(!fst)
+			if(!TestZ(zpsm, ztst, zs, za, test))
 			{
-				GSVector4 w = q.rcp();
-
-				u *= w;
-				v *= w;
-
-				if(ltf)
-				{
-					u -= 0.5f;
-					v -= 0.5f;
-				}
+				continue;
 			}
 
-			SampleTexture(ztst, test, pixels, ltf, tlu, u, v, c);
-		}
+			int pixels = GSVector4i::store(GSVector4i::load(steps).min_i16(GSVector4i::load(4)));
 
-		AlphaTFX(tfx, tcc, a, c[3]);
+			GSVector4 c[12];
 
-		GSVector4i fm = m_slenv.fm;
-		GSVector4i zm = m_slenv.zm;
-
-		if(!TestAlpha(atst, afail, c[3], fm, zm, test))
-		{
-			continue;
-		}
-
-		ColorTFX(tfx, r, g, b, a, c[0], c[1], c[2]);
-
-		if(fge)
-		{
-			Fog(f, c[0], c[1], c[2]);
-		}
-
-		GSVector4i fa = fa_base + GSVector4i::load<true>(fa_offset);
-
-		GSVector4i d = GSVector4i::zero();
-
-		if(rfb)
-		{
-			d = ReadFrameX(fpsm == 1 ? 0 : fpsm, fa);
-
-			if(fpsm != 1 && date)
+			if(tfx != TFX_NONE)
 			{
-				test |= (d ^ m_slenv.datm).sra32(31);
+				GSVector4 u = s;
+				GSVector4 v = t;
 
-				if(test.alltrue())
+				if(!fst)
 				{
-					continue;
-				}
-			}
-		}
+					GSVector4 w = q.rcp();
 
-		fm |= test;
-		zm |= test;
+					u *= w;
+					v *= w;
 
-		if(abe != 255)
-		{
-//			GSVector4::expand(d, c[4], c[5], c[6], c[7]);
-
-			c[4] = (d << 24) >> 24;
-			c[5] = (d << 16) >> 24;
-			c[6] = (d <<  8) >> 24;
-			c[7] = (d >> 24);
-
-			if(fpsm == 1)
-			{
-				c[7] = GSVector4(128.0f);
-			}
-
-			c[8] = GSVector4::zero();
-			c[9] = GSVector4::zero();
-			c[10] = GSVector4::zero();
-			c[11] = m_slenv.afix;
-
-			/*
-			GSVector4 r = (c[abea*4 + 0] - c[abeb*4 + 0]).mod2x(c[abec*4 + 3]) + c[abed*4 + 0];
-			GSVector4 g = (c[abea*4 + 1] - c[abeb*4 + 1]).mod2x(c[abec*4 + 3]) + c[abed*4 + 1];
-			GSVector4 b = (c[abea*4 + 2] - c[abeb*4 + 2]).mod2x(c[abec*4 + 3]) + c[abed*4 + 2];
-			*/
-
-			GSVector4 r, g, b; 
-
-			if(abea != abeb)
-			{
-				r = c[abea*4 + 0];
-				g = c[abea*4 + 1];
-				b = c[abea*4 + 2];
-
-				if(abeb != 2)
-				{
-					r -= c[abeb*4 + 0];
-					g -= c[abeb*4 + 1];
-					b -= c[abeb*4 + 2];
-				}
-
-				if(!(fpsm == 1 && abec == 1))
-				{
-					if(abec == 2)
+					if(ltf)
 					{
-						r *= m_slenv.afix2;
-						g *= m_slenv.afix2;
-						b *= m_slenv.afix2;
-					}
-					else
-					{
-						r = r.mod2x(c[abec*4 + 3]);
-						g = g.mod2x(c[abec*4 + 3]);
-						b = b.mod2x(c[abec*4 + 3]);
+						u -= 0.5f;
+						v -= 0.5f;
 					}
 				}
 
-				if(abed < 2)
+				SampleTexture(ztst, test, pixels, ltf, tlu, u, v, c);
+			}
+
+			AlphaTFX(tfx, tcc, a, c[3]);
+
+			GSVector4i fm = m_slenv.fm;
+			GSVector4i zm = m_slenv.zm;
+
+			if(!TestAlpha(atst, afail, c[3], fm, zm, test))
+			{
+				continue;
+			}
+
+			ColorTFX(tfx, r, g, b, a, c[0], c[1], c[2]);
+
+			if(fge)
+			{
+				Fog(f, c[0], c[1], c[2]);
+			}
+
+			GSVector4i fa = fa_base + GSVector4i::load<true>(fa_offset);
+
+			GSVector4i d = GSVector4i::zero();
+
+			if(rfb)
+			{
+				d = ReadFrameX(fpsm == 1 ? 0 : fpsm, fa);
+
+				if(fpsm != 1 && date)
 				{
-					r += c[abed*4 + 0];
-					g += c[abed*4 + 1];
-					b += c[abed*4 + 2];
+					test |= (d ^ m_slenv.datm).sra32(31);
+
+					if(test.alltrue())
+					{
+						continue;
+					}
 				}
 			}
-			else
+
+			fm |= test;
+			zm |= test;
+
+			if(abe != 255)
 			{
-				r = c[abed*4 + 0];
-				g = c[abed*4 + 1];
-				b = c[abed*4 + 2];
+	//			GSVector4::expand(d, c[4], c[5], c[6], c[7]);
+
+				c[4] = (d << 24) >> 24;
+				c[5] = (d << 16) >> 24;
+				c[6] = (d <<  8) >> 24;
+				c[7] = (d >> 24);
+
+				if(fpsm == 1)
+				{
+					c[7] = GSVector4(128.0f);
+				}
+
+				c[8] = GSVector4::zero();
+				c[9] = GSVector4::zero();
+				c[10] = GSVector4::zero();
+				c[11] = m_slenv.afix;
+
+				/*
+				GSVector4 r = (c[abea*4 + 0] - c[abeb*4 + 0]).mod2x(c[abec*4 + 3]) + c[abed*4 + 0];
+				GSVector4 g = (c[abea*4 + 1] - c[abeb*4 + 1]).mod2x(c[abec*4 + 3]) + c[abed*4 + 1];
+				GSVector4 b = (c[abea*4 + 2] - c[abeb*4 + 2]).mod2x(c[abec*4 + 3]) + c[abed*4 + 2];
+				*/
+
+				GSVector4 r, g, b; 
+
+				if(abea != abeb)
+				{
+					r = c[abea*4 + 0];
+					g = c[abea*4 + 1];
+					b = c[abea*4 + 2];
+
+					if(abeb != 2)
+					{
+						r -= c[abeb*4 + 0];
+						g -= c[abeb*4 + 1];
+						b -= c[abeb*4 + 2];
+					}
+
+					if(!(fpsm == 1 && abec == 1))
+					{
+						if(abec == 2)
+						{
+							r *= m_slenv.afix2;
+							g *= m_slenv.afix2;
+							b *= m_slenv.afix2;
+						}
+						else
+						{
+							r = r.mod2x(c[abec*4 + 3]);
+							g = g.mod2x(c[abec*4 + 3]);
+							b = b.mod2x(c[abec*4 + 3]);
+						}
+					}
+
+					if(abed < 2)
+					{
+						r += c[abed*4 + 0];
+						g += c[abed*4 + 1];
+						b += c[abed*4 + 2];
+					}
+				}
+				else
+				{
+					r = c[abed*4 + 0];
+					g = c[abed*4 + 1];
+					b = c[abed*4 + 2];
+				}
+
+				if(pabe)
+				{
+					GSVector4 mask = c[3] >= GSVector4(128.0f);
+
+					c[0] = c[0].blend8(r, mask);
+					c[1] = c[1].blend8(g, mask);
+					c[2] = c[2].blend8(b, mask);
+				}
+				else
+				{
+					c[0] = r;
+					c[1] = g;
+					c[2] = b;
+				}
 			}
 
-			if(pabe)
+			GSVector4i rb = GSVector4i(c[0]).ps32(GSVector4i(c[2]));
+			GSVector4i ga = GSVector4i(c[1]).ps32(GSVector4i(c[3]));
+			
+			GSVector4i rg = rb.upl16(ga) & m_slenv.colclamp;
+			GSVector4i ba = rb.uph16(ga) & m_slenv.colclamp;
+			
+			GSVector4i s = rg.upl32(ba).pu16(rg.uph32(ba));
+
+			if(fpsm != 1)
 			{
-				GSVector4 mask = c[3] >= GSVector4(128.0f);
-
-				c[0] = c[0].blend8(r, mask);
-				c[1] = c[1].blend8(g, mask);
-				c[2] = c[2].blend8(b, mask);
+				s |= m_slenv.fba;
 			}
-			else
+
+			if(rfb)
 			{
-				c[0] = r;
-				c[1] = g;
-				c[2] = b;
+				s = s.blend(d, fm);
 			}
-		}
 
-		GSVector4i rb = GSVector4i(c[0]).ps32(GSVector4i(c[2]));
-		GSVector4i ga = GSVector4i(c[1]).ps32(GSVector4i(c[3]));
-		
-		GSVector4i rg = rb.upl16(ga) & m_slenv.colclamp;
-		GSVector4i ba = rb.uph16(ga) & m_slenv.colclamp;
-		
-		GSVector4i s = rg.upl32(ba).pu16(rg.uph32(ba));
-
-		if(fpsm != 1)
-		{
-			s |= m_slenv.fba;
-		}
-
-		if(rfb)
-		{
-			s = s.blend(d, fm);
-		}
-
-		WriteFrameAndZBufX(fpsm == 1 && rfb ? 0 : fpsm, fa, fm, s, wzb ? zpsm : 3, za, zm, zs, pixels);
-
+			WriteFrameAndZBufX(fpsm == 1 && rfb ? 0 : fpsm, fa, fm, s, wzb ? zpsm : 3, za, zm, zs, pixels);
 		}
 		while(0);
 

@@ -147,7 +147,7 @@ public:
 	GSDrawingContext* m_context;
 	GSVertex m_v;
 	float m_q;
-	int m_vprim;
+	DWORD m_vprim;
 
 	GSPerfMon m_perfmon;
 	bool m_nloophack;
@@ -197,8 +197,8 @@ public:
 	void WriteCSR(UINT32 csr) {CSR->ai32[1] = csr;}
 	void ReadFIFO(BYTE* mem, int size);
 	template<int index> void Transfer(BYTE* mem, UINT32 size);
-	int Freeze(freezeData* fd, bool sizeonly);
-	int Defrost(const freezeData* fd);
+	int Freeze(GSFreezeData* fd, bool sizeonly);
+	int Defrost(const GSFreezeData* fd);
 	void GetLastTag(UINT32* tag) {*tag = m_path3hack; m_path3hack = 0;}
 	virtual void SetGameCRC(DWORD crc, int options);
 	void SetFrameSkip(int frameskip);

@@ -21,44 +21,14 @@
 
 #pragma once
 
+#include "GS.h"
+
 class GSUtil
 {
 public:
-	static int GetPrimClass(DWORD prim);
-	static int GetPrimVertexCount(DWORD prim);
-	/*
-	static int GetPrimClass(DWORD prim)
-	{
-		switch(prim)
-		{
-		case GS_POINTLIST: return 0;
-		case GS_LINELIST: return 1;
-		case GS_LINESTRIP: return 1;
-		case GS_TRIANGLELIST: return 2;
-		case GS_TRIANGLESTRIP: return 2;
-		case GS_TRIANGLEFAN: return 2;
-		case GS_SPRITE: return 3;
-		case GS_INVALID: return -1;
-		default: __assume(0);
-		}
-	}
+	static DWORD GetPrimClass(DWORD prim);
+	static DWORD GetPrimVertexCount(DWORD prim);
 
-	static int GetPrimVertexCount(DWORD prim)
-	{
-		switch(prim)
-		{
-		case GS_POINTLIST: return 1;
-		case GS_LINELIST: return 2;
-		case GS_LINESTRIP: return 2;
-		case GS_TRIANGLELIST: return 3;
-		case GS_TRIANGLESTRIP: return 3;
-		case GS_TRIANGLEFAN: return 3;
-		case GS_SPRITE: return 2;
-		case GS_INVALID: return 1;
-		default: __assume(0);
-		}
-	}
-	*/
 	static bool HasSharedBits(DWORD spsm, DWORD dpsm);
 	static bool HasSharedBits(DWORD sbp, DWORD spsm, DWORD dbp, DWORD dpsm);
 	static bool HasCompatibleBits(DWORD spsm, DWORD dpsm);
@@ -86,5 +56,10 @@ public:
 			return 3;
 		}
 	}
+
+	static bool CheckDirectX();
+	static bool CheckSSE();
+
+	static char* GetLibName();
 };
 

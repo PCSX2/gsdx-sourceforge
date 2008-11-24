@@ -90,6 +90,9 @@ protected:
 	}
 
 public:
+	GSWnd m_wnd;
+
+public:
 	GSRendererBase(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs)
 		: GSState(base, mt, irq, nloophack)
 		, m_osd(true)
@@ -105,8 +108,6 @@ public:
 	virtual bool Create(LPCTSTR title) = 0;
 	virtual void VSync(int field) = 0;
 	virtual bool MakeSnapshot(LPCTSTR path) = 0;
-
-	GSWnd m_wnd;
 };
 
 template<class Device> class GSRenderer : public GSRendererBase
@@ -445,7 +446,7 @@ public:
 
 		if((::GetAsyncKeyState(VK_SHIFT) & 0x8000) && !m_dump)
 		{
-			freezeData fd;
+			GSFreezeData fd;
 			fd.size = 0;
 			fd.data = NULL;
 			Freeze(&fd, true);

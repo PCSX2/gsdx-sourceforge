@@ -26,6 +26,8 @@
 
 #pragma once
 
+#define PLUGIN_VERSION 10
+
 #include "GSVector.h"
 
 #pragma pack(push, 1)
@@ -222,6 +224,12 @@ enum GS_AFAIL
 // sps2regstructs.h
 //
 
+#define REG32(name) \
+union name			\
+{					\
+	UINT32 ai32;	\
+	struct {		\
+
 #define REG64(name) \
 union name			\
 {					\
@@ -238,11 +246,17 @@ union name			\
 	UINT32 ai32[4];	\
 	struct {		\
 
+#define REG32_(prefix, name) REG32(prefix##name)
 #define REG64_(prefix, name) REG64(prefix##name)
 #define REG128_(prefix, name) REG128(prefix##name)
 
 #define REG_END }; };
 #define REG_END2 };
+
+#define REG32_SET(name) \
+union name			\
+{					\
+	UINT32 ai32;	\
 
 #define REG64_SET(name) \
 union name			\
@@ -1065,6 +1079,6 @@ enum {KEYPRESS=1, KEYRELEASE=2};
 struct keyEvent {UINT32 key, event;};
 
 enum {FREEZE_LOAD=0, FREEZE_SAVE=1, FREEZE_SIZE=2};
-struct freezeData {int size; BYTE* data;};
+struct GSFreezeData {int size; BYTE* data;};
 
 enum stateType {ST_WRITE, ST_TRANSFER, ST_VSYNC}; 

@@ -31,6 +31,5 @@ protected:
 	LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
 
 	afx_msg void OnBrowse();
-public:
 	afx_msg void OnBnClickedOk();
 };

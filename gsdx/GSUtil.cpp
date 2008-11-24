@@ -22,6 +22,7 @@
 #include "stdafx.h"
 #include "GS.h"
 #include "GSUtil.h"
+#include "svnrev.h"
 
 static struct GSUtilMaps
 {
@@ -81,15 +82,16 @@ static struct GSUtilMaps
 
 } s_maps;
 
-int GSUtil::GetPrimClass(DWORD prim)
+DWORD GSUtil::GetPrimClass(DWORD prim)
 {
 	return s_maps.PrimClassField[prim];
 }
 
-int GSUtil::GetPrimVertexCount(DWORD prim)
+DWORD GSUtil::GetPrimVertexCount(DWORD prim)
 {
 	return s_maps.PrimVertexCount[prim];
 }
+
 bool GSUtil::HasSharedBits(DWORD spsm, DWORD dpsm)
 {
 	return s_maps.SharedBitsField[spsm][dpsm];
@@ -124,4 +126,115 @@ bool GSUtil::IsRectInRectV(const CRect& inner, const CRect& outer)
 	return outer.left <= inner.left && inner.right <= outer.right;
 }
 
+bool GSUtil::CheckDirectX()
+{
+	CString str;
 
+	str.Format(_T("d3dx9_%d.dll"), D3DX_SDK_VERSION);
+
+	if(HINSTANCE hDll = LoadLibrary(str))
+	{
+		FreeLibrary(hDll);
+	}
+	else
+	{
+		int res = AfxMessageBox(_T("Please update DirectX!\n\nWould you like to open the download page in your browser?"), MB_YESNO);
+
+		if(res == IDYES)
+		{
+			ShellExecute(NULL, _T("open"), _T("http://www.microsoft.com/downloads/details.aspx?FamilyId=2DA43D38-DB71-4C1B-BC6A-9B6652CD92A3"), NULL, NULL, SW_SHOWNORMAL);
+		}
+
+		return false;
+	}
+
+	return true;
+}
+
+static bool _CheckSSE()
+{
+	__try
+	{
+		static __m128i m;
+
+		#if _M_SSE >= 0x402
+		m.m128i_i32[0] = _mm_popcnt_u32(1234);
+		#elif _M_SSE >= 0x401
+		m = _mm_packus_epi32(m, m);
+		#elif _M_SSE >= 0x301
+		m = _mm_alignr_epi8(m, m, 1);
+		#elif _M_SSE >= 0x200
+		m = _mm_packs_epi32(m, m);
+		#endif
+	}
+	__except(EXCEPTION_EXECUTE_HANDLER)
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool GSUtil::CheckSSE()
+{
+	if(!_CheckSSE())
+	{
+		CString str;
+		str.Format(_T("This CPU does not support SSE %d.%02d"), _M_SSE >> 8, _M_SSE & 0xff);
+		AfxMessageBox(str, MB_OK);
+
+		return false;
+	}
+
+	return true;
+}
+
+char* GSUtil::GetLibName()
+{
+	CString str;
+
+	str.Format(_T("GSdx %d"), SVN_REV);
+
+	if(SVN_MODS) str += _T("m");
+
+#if _M_AMD64
+	str += _T(" 64-bit");
+#endif
+
+	CAtlList<CString> sl;
+
+#ifdef __INTEL_COMPILER
+	CString s;
+	s.Format(_T("Intel C++ %d.%02d"), __INTEL_COMPILER/100, __INTEL_COMPILER%100);
+	sl.AddTail(s);
+#elif _MSC_VER
+	CString s;
+	s.Format(_T("MSVC %d.%02d"), _MSC_VER/100, _MSC_VER%100);
+	sl.AddTail(s);
+#endif
+
+#if _M_SSE >= 0x402
+	sl.AddTail(_T("SSE42"));
+#elif _M_SSE >= 0x401
+	sl.AddTail(_T("SSE41"));
+#elif _M_SSE >= 0x301
+	sl.AddTail(_T("SSSE3"));
+#elif _M_SSE >= 0x200
+	sl.AddTail(_T("SSE2"));
+#elif _M_SSE >= 0x100
+	sl.AddTail(_T("SSE"));
+#endif
+
+	POSITION pos = sl.GetHeadPosition();
+
+	while(pos)
+	{
+		if(pos == sl.GetHeadPosition()) str += _T(" (");
+		str += sl.GetNext(pos);
+		str += pos ? _T(", ") : _T(")");
+	}
+
+	static char buff[256];
+	strncpy(buff, CStringA(str), min(countof(buff)-1, str.GetLength()));
+	return buff;
+}

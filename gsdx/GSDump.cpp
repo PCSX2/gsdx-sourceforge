@@ -35,7 +35,7 @@ GSDump::~GSDump()
 	}
 }
 
-void GSDump::Open(LPCTSTR fn, DWORD crc, const freezeData& fd, const void* regs)
+void GSDump::Open(LPCTSTR fn, DWORD crc, const GSFreezeData& fd, const void* regs)
 {
 	m_fp = _tfopen(fn, _T("wb"));
 	m_vsyncs = 0;

@@ -136,6 +136,8 @@ void GSClut::WriteCLUT32_I4_CSM1(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TE
 {
 	ASSERT(TEX0.CSA < 16);
 
+	GSVector4i dummy; // this just forces stack alignment and enables inlining the next call
+
 	WriteCLUT_T32_I4_CSM1(&m_mem->m_vm32[m_mem->BlockAddress32(0, 0, TEX0.CBP, 1)], m_clut + (TEX0.CSA << 4));
 }
 
