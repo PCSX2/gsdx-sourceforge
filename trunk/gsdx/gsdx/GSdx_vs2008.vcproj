@@ -1052,6 +1052,54 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\GPU.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GPULocalMemory.cpp"
+				>
+				<FileConfiguration
+					Name="Release SSE4|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AssemblerOutput="4"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\GPURasterizer.cpp"
+				>
+				<FileConfiguration
+					Name="Release SSE4|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AssemblerOutput="4"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\GPURenderer.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GPURendererSW.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GPUState.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GPUTextureCacheSW.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GS.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\GSAlignedClass.cpp"
 				>
 			</File>
@@ -1597,6 +1645,46 @@
 			Filter="h;hpp;hxx;hm;inl;inc;xsd"
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
+			<File
+				RelativePath=".\GPU.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GPUDrawingEnvironment.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GPULocalMemory.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GPURasterizer.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GPURenderer.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GPURendererSW.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GPUState.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GPUTextureCacheSW.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GPUVertex.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GPUVertexSW.h"
+				>
+			</File>
 			<File
 				RelativePath=".\GS.h"
 				>

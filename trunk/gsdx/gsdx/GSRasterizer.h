@@ -43,36 +43,6 @@ private:
 		DWORD hash;
 	};
 
-	__declspec(align(16)) struct ScanlineEnvironment
-	{
-		int steps;
-
-		void* vm;
-
-		const void* tex;
-		const DWORD* pal;
-		DWORD tw;
-
-		GSVector4i* fbr;
-		GSVector4i* zbr;
-		int** fbc;
-		int** zbc;
-
-		GSVector4i fm, zm;
-		struct {GSVector4i min, max, mask;} t; // [u] x 4 [v] x 4
-		GSVector4i datm;
-		GSVector4i colclamp;
-		GSVector4i fba;
-		GSVector4i aref;
-		GSVector4 afix;
-		GSVector4 afix2;
-		GSVector4 fc;
-
-		GSVector4 dp, dp4;
-		GSVector4 dt, dt4;
-		GSVector4 dc, dc4;
-	};
-
 	union ScanlineSelector
 	{
 		struct
@@ -111,6 +81,36 @@ private:
 		operator DWORD() {return dw;}// & 0x7fffffff;}
 	};
 
+	__declspec(align(16)) struct ScanlineEnvironment
+	{
+		int steps;
+
+		void* vm;
+
+		const void* tex;
+		const DWORD* pal;
+		DWORD tw;
+
+		GSVector4i* fbr;
+		GSVector4i* zbr;
+		int** fbc;
+		int** zbc;
+
+		GSVector4i fm, zm;
+		struct {GSVector4i min, max, mask;} t; // [u] x 4 [v] x 4
+		GSVector4i datm;
+		GSVector4i colclamp;
+		GSVector4i fba;
+		GSVector4i aref;
+		GSVector4 afix;
+		GSVector4 afix2;
+		GSVector4 fc;
+
+		GSVector4 dp, dp4;
+		GSVector4 dt, dt4;
+		GSVector4 dc, dc4;
+	};
+
 	GSVector4i m_scissor;
 	CRBMapC<DWORD, ColumnOffset*> m_comap;
 	ColumnOffset* m_fbco;
@@ -137,7 +137,7 @@ private:
 	template<DWORD sel> 
 	void DrawScanlineEx(int top, int left, int right, const Vertex& v);
 
-	__forceinline void SampleTexture(DWORD ztst, const GSVector4i& test, int pixels, DWORD ltf, DWORD pal, const GSVector4& u, const GSVector4& v, GSVector4* c);
+	__forceinline void SampleTexture(int pixels, DWORD ztst, DWORD ltf, DWORD pal, const GSVector4i& test, const GSVector4& u, const GSVector4& v, GSVector4* c);
 	__forceinline void ColorTFX(DWORD tfx, const GSVector4& rf, const GSVector4& gf, const GSVector4& bf, const GSVector4& af, GSVector4& rt, GSVector4& gt, GSVector4& bt);
 	__forceinline void AlphaTFX(DWORD tfx, DWORD tcc, const GSVector4& af, GSVector4& at);
 	__forceinline void Fog(const GSVector4& f, GSVector4& r, GSVector4& g, GSVector4& b);

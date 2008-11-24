@@ -174,6 +174,8 @@ public:
 		#endif
 	}
 
+	static GSVector4i cast(const GSVector4& v);
+
 	#if _M_SSE >= 0x401
 
 	GSVector4i sat_i8(const GSVector4i& a, const GSVector4i& b) const 
@@ -604,6 +606,51 @@ public:
 	}
 
 	#endif
+
+	GSVector4i eq8(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_cmpeq_epi8(m, v.m));
+	}
+
+	GSVector4i eq16(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_cmpeq_epi16(m, v.m));
+	}
+
+	GSVector4i eq32(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_cmpeq_epi32(m, v.m));
+	}
+
+	GSVector4i gt8(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_cmpgt_epi8(m, v.m));
+	}
+
+	GSVector4i gt16(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_cmpgt_epi16(m, v.m));
+	}
+
+	GSVector4i gt32(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_cmpgt_epi32(m, v.m));
+	}
+
+	GSVector4i lt8(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_cmplt_epi8(m, v.m));
+	}
+
+	GSVector4i lt16(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_cmplt_epi16(m, v.m));
+	}
+
+	GSVector4i lt32(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_cmplt_epi32(m, v.m));
+	}
 
 	GSVector4i andnot(const GSVector4i& v) const
 	{
@@ -1105,6 +1152,11 @@ public:
 		return invzero().srl16(15);
 	}
 
+	static GSVector4i x00ff()
+	{
+		return invzero().srl16(8);
+	}
+
 	static GSVector4i x000000ff()
 	{
 		return invzero().srl32(24);
@@ -1130,6 +1182,11 @@ public:
 		return invzero().srl32(18);
 	}
 
+	static GSVector4i x00007fff()
+	{
+		return invzero().srl32(17);
+	}
+
 	static GSVector4i invzero(const GSVector4i& v) 
 	{
 		// - vc can't generate a simple pxor xmm0, xmm0 / pcmpeqd xmm0, xmm0 
@@ -1146,6 +1203,11 @@ public:
 	static GSVector4i x0001(const GSVector4i& v)
 	{
 		return invzero(v).srl16(15);
+	}
+
+	static GSVector4i x00ff(const GSVector4i& v)
+	{
+		return invzero(v).srl16(8);
 	}
 
 	static GSVector4i x000000ff(const GSVector4i& v)
@@ -1171,6 +1233,11 @@ public:
 	static GSVector4i x00003fff(const GSVector4i& v)
 	{
 		return invzero(v).srl32(18);
+	}
+
+	static GSVector4i x00007fff(const GSVector4i& v)
+	{
+		return invzero(v).srl32(17);
 	}
 
 	#if _M_SSE >= 0x401
@@ -1596,6 +1663,7 @@ public:
 	};
 
 	static const GSVector4 m_ps0123;
+	static const GSVector4 m_ps4567;
 
 	GSVector4()
 	{
@@ -1687,6 +1755,8 @@ public:
 	{
 		return GSVector4i(*this).rgba64();
 	}
+
+	static GSVector4 cast(const GSVector4i& v);
 
 	GSVector4 abs() const 
 	{
@@ -1872,6 +1942,11 @@ public:
 	static GSVector4 ps0123()
 	{
 		return GSVector4(m_ps0123);
+	}
+
+	static GSVector4 ps4567()
+	{
+		return GSVector4(m_ps4567);
 	}
 
 	static GSVector4 loadl(const void* p)

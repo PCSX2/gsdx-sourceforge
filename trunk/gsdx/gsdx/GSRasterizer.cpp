@@ -928,147 +928,145 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 	{
 		do
 		{
+			GSVector4i za = za_base + GSVector4i::load<true>(za_offset);
+			
+			GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::one(za));
 
-		GSVector4i za = za_base + GSVector4i::load<true>(za_offset);
-		
-		GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::one(za));
+			GSVector4i test;
 
-		GSVector4i test;
-
-		if(!TestZ(zpsm, ztst, zs, za, test))
-		{
-			continue;
-		}
-
-		int pixels = GSVector4i::store(GSVector4i::load(steps).min_i16(GSVector4i::load(4)));
-
-		GSVector4 c[12];
-
-		if(m_sel.tfx != TFX_NONE)
-		{
-			GSVector4 u = s;
-			GSVector4 v = t;
-
-			if(!m_sel.fst)
+			if(!TestZ(zpsm, ztst, zs, za, test))
 			{
-				GSVector4 w = q.rcp();
+				continue;
+			}
 
-				u *= w;
-				v *= w;
+			int pixels = GSVector4i::store(GSVector4i::load(steps).min_i16(GSVector4i::load(4)));
 
-				if(m_sel.ltf)
+			GSVector4 c[12];
+
+			if(m_sel.tfx != TFX_NONE)
+			{
+				GSVector4 u = s;
+				GSVector4 v = t;
+
+				if(!m_sel.fst)
 				{
-					u -= 0.5f;
-					v -= 0.5f;
+					GSVector4 w = q.rcp();
+
+					u *= w;
+					v *= w;
+
+					if(m_sel.ltf)
+					{
+						u -= 0.5f;
+						v -= 0.5f;
+					}
+				}
+
+				SampleTexture(pixels, ztst, m_sel.ltf, m_sel.tlu, test, u, v, c);
+			}
+
+			AlphaTFX(m_sel.tfx, m_sel.tcc, a, c[3]);
+
+			GSVector4i fm = m_slenv.fm;
+			GSVector4i zm = m_slenv.zm;
+
+			if(!TestAlpha(m_sel.atst, m_sel.afail, c[3], fm, zm, test))
+			{
+				continue;
+			}
+
+			ColorTFX(m_sel.tfx, r, g, b, a, c[0], c[1], c[2]);
+
+			if(m_sel.fge)
+			{
+				Fog(f, c[0], c[1], c[2]);
+			}
+
+			GSVector4i fa = fa_base + GSVector4i::load<true>(fa_offset);
+
+			GSVector4i d = GSVector4i::zero();
+
+			if(m_sel.rfb)
+			{
+				d = ReadFrameX(fpsm == 1 ? 0 : fpsm, fa);
+
+				if(fpsm != 1 && m_sel.date)
+				{
+					test |= (d ^ m_slenv.datm).sra32(31);
+
+					if(test.alltrue())
+					{
+						continue;
+					}
 				}
 			}
 
-			SampleTexture(ztst, test, pixels, m_sel.ltf, m_sel.tlu, u, v, c);
-		}
+			fm |= test;
+			zm |= test;
 
-		AlphaTFX(m_sel.tfx, m_sel.tcc, a, c[3]);
-
-		GSVector4i fm = m_slenv.fm;
-		GSVector4i zm = m_slenv.zm;
-
-		if(!TestAlpha(m_sel.atst, m_sel.afail, c[3], fm, zm, test))
-		{
-			continue;
-		}
-
-		ColorTFX(m_sel.tfx, r, g, b, a, c[0], c[1], c[2]);
-
-		if(m_sel.fge)
-		{
-			Fog(f, c[0], c[1], c[2]);
-		}
-
-		GSVector4i fa = fa_base + GSVector4i::load<true>(fa_offset);
-
-		GSVector4i d = GSVector4i::zero();
-
-		if(m_sel.rfb)
-		{
-			d = ReadFrameX(fpsm == 1 ? 0 : fpsm, fa);
-
-			if(fpsm != 1 && m_sel.date)
+			if(m_sel.abe != 255)
 			{
-				test |= (d ^ m_slenv.datm).sra32(31);
+	//			GSVector4::expand(d, c[4], c[5], c[6], c[7]);
 
-				if(test.alltrue())
+				c[4] = (d << 24) >> 24;
+				c[5] = (d << 16) >> 24;
+				c[6] = (d <<  8) >> 24;
+				c[7] = (d >> 24);
+
+				if(fpsm == 1)
 				{
-					continue;
+					c[7] = GSVector4(128.0f);
+				}
+
+				c[8] = GSVector4::zero();
+				c[9] = GSVector4::zero();
+				c[10] = GSVector4::zero();
+				c[11] = m_slenv.afix;
+
+				DWORD abea = m_sel.abea;
+				DWORD abeb = m_sel.abeb;
+				DWORD abec = m_sel.abec;
+				DWORD abed = m_sel.abed;
+
+				GSVector4 r = (c[abea*4 + 0] - c[abeb*4 + 0]).mod2x(c[abec*4 + 3]) + c[abed*4 + 0];
+				GSVector4 g = (c[abea*4 + 1] - c[abeb*4 + 1]).mod2x(c[abec*4 + 3]) + c[abed*4 + 1];
+				GSVector4 b = (c[abea*4 + 2] - c[abeb*4 + 2]).mod2x(c[abec*4 + 3]) + c[abed*4 + 2];
+
+				if(m_sel.pabe)
+				{
+					GSVector4 mask = c[3] >= GSVector4(128.0f);
+
+					c[0] = c[0].blend8(r, mask);
+					c[1] = c[1].blend8(g, mask);
+					c[2] = c[2].blend8(b, mask);
+				}
+				else
+				{
+					c[0] = r;
+					c[1] = g;
+					c[2] = b;
 				}
 			}
-		}
 
-		fm |= test;
-		zm |= test;
+			GSVector4i rb = GSVector4i(c[0]).ps32(GSVector4i(c[2]));
+			GSVector4i ga = GSVector4i(c[1]).ps32(GSVector4i(c[3]));
+			
+			GSVector4i rg = rb.upl16(ga) & m_slenv.colclamp;
+			GSVector4i ba = rb.uph16(ga) & m_slenv.colclamp;
+			
+			GSVector4i s = rg.upl32(ba).pu16(rg.uph32(ba));
 
-		if(m_sel.abe != 255)
-		{
-//			GSVector4::expand(d, c[4], c[5], c[6], c[7]);
-
-			c[4] = (d << 24) >> 24;
-			c[5] = (d << 16) >> 24;
-			c[6] = (d <<  8) >> 24;
-			c[7] = (d >> 24);
-
-			if(fpsm == 1)
+			if(fpsm != 1)
 			{
-				c[7] = GSVector4(128.0f);
+				s |= m_slenv.fba;
 			}
 
-			c[8] = GSVector4::zero();
-			c[9] = GSVector4::zero();
-			c[10] = GSVector4::zero();
-			c[11] = m_slenv.afix;
-
-			DWORD abea = m_sel.abea;
-			DWORD abeb = m_sel.abeb;
-			DWORD abec = m_sel.abec;
-			DWORD abed = m_sel.abed;
-
-			GSVector4 r = (c[abea*4 + 0] - c[abeb*4 + 0]).mod2x(c[abec*4 + 3]) + c[abed*4 + 0];
-			GSVector4 g = (c[abea*4 + 1] - c[abeb*4 + 1]).mod2x(c[abec*4 + 3]) + c[abed*4 + 1];
-			GSVector4 b = (c[abea*4 + 2] - c[abeb*4 + 2]).mod2x(c[abec*4 + 3]) + c[abed*4 + 2];
-
-			if(m_sel.pabe)
+			if(m_sel.rfb)
 			{
-				GSVector4 mask = c[3] >= GSVector4(128.0f);
-
-				c[0] = c[0].blend8(r, mask);
-				c[1] = c[1].blend8(g, mask);
-				c[2] = c[2].blend8(b, mask);
+				s = s.blend(d, fm);
 			}
-			else
-			{
-				c[0] = r;
-				c[1] = g;
-				c[2] = b;
-			}
-		}
 
-		GSVector4i rb = GSVector4i(c[0]).ps32(GSVector4i(c[2]));
-		GSVector4i ga = GSVector4i(c[1]).ps32(GSVector4i(c[3]));
-		
-		GSVector4i rg = rb.upl16(ga) & m_slenv.colclamp;
-		GSVector4i ba = rb.uph16(ga) & m_slenv.colclamp;
-		
-		GSVector4i s = rg.upl32(ba).pu16(rg.uph32(ba));
-
-		if(fpsm != 1)
-		{
-			s |= m_slenv.fba;
-		}
-
-		if(m_sel.rfb)
-		{
-			s = s.blend(d, fm);
-		}
-
-		WriteFrameAndZBufX(fpsm, fa, fm, s, ztst > 0 ? zpsm : 3, za, zm, zs, pixels);
-
+			WriteFrameAndZBufX(fpsm, fa, fm, s, ztst > 0 ? zpsm : 3, za, zm, zs, pixels);
 		}
 		while(0);
 
@@ -1099,7 +1097,7 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 	}
 }
 
-void GSRasterizer::SampleTexture(DWORD ztst, const GSVector4i& test, int pixels, DWORD ltf, DWORD tlu, const GSVector4& u, const GSVector4& v, GSVector4* c)
+void GSRasterizer::SampleTexture(int pixels, DWORD ztst, DWORD ltf, DWORD tlu, const GSVector4i& test, const GSVector4& u, const GSVector4& v, GSVector4* c)
 {
 	const void* RESTRICT tex = m_slenv.tex;
 	const DWORD* RESTRICT pal = m_slenv.pal;
