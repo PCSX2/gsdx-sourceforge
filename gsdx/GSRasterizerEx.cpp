@@ -23,7 +23,7 @@
 #include "GSRasterizer.h"
 
 void GSRasterizer::InitEx()
-{/*
+{
 	// ffx
 
 	m_dsmap.SetAt(0x2420c265, &GSRasterizer::DrawScanlineEx<0x2420c265>);
@@ -1245,7 +1245,6 @@ void GSRasterizer::InitEx()
 	m_dsmap.SetAt(0xa4802c09, &GSRasterizer::DrawScanlineEx<0xa4802c09>);
 	m_dsmap.SetAt(0xa485bc29, &GSRasterizer::DrawScanlineEx<0xa485bc29>);
 	m_dsmap.SetAt(0xe441bc29, &GSRasterizer::DrawScanlineEx<0xe441bc29>);
-*/
 /*
 	// dmc (fixme)
 
@@ -1356,7 +1355,7 @@ void GSRasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v)
 					}
 				}
 
-				SampleTexture(ztst, test, pixels, ltf, tlu, u, v, c);
+				SampleTexture(pixels, ztst, ltf, tlu, test, u, v, c);
 			}
 
 			AlphaTFX(tfx, tcc, a, c[3]);

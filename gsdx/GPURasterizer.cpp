@@ -34,7 +34,6 @@ GPURasterizer::GPURasterizer(GPUState* state, int id, int threads)
 		m_ds[i] = &GPURasterizer::DrawScanline;
 	}
 
-	/*
 	m_ds[0x00] = &GPURasterizer::DrawScanlineEx<0x00>;
 	m_ds[0x01] = &GPURasterizer::DrawScanlineEx<0x01>;
 	m_ds[0x02] = &GPURasterizer::DrawScanlineEx<0x02>;
@@ -547,7 +546,6 @@ GPURasterizer::GPURasterizer(GPUState* state, int id, int threads)
 	m_ds[0x1fd] = &GPURasterizer::DrawScanlineEx<0x1fd>;
 	m_ds[0x1fe] = &GPURasterizer::DrawScanlineEx<0x1fe>;
 	m_ds[0x1ff] = &GPURasterizer::DrawScanlineEx<0x1ff>;
-	*/
 }
 
 GPURasterizer::~GPURasterizer()
