@@ -50,6 +50,9 @@ public:
 
 		STATUS.IDLE = 1;
 		STATUS.COM = 1;
+		STATUS.WIDTH0 = 1;
+		DVRANGE.Y1 = 16;
+		DVRANGE.Y2 = 256;
 	}
 
 	CRect GetDisplayRect()
@@ -57,12 +60,14 @@ public:
 		static int s_width[] = {256, 320, 512, 640, 384, 320, 320, 320};
 		static int s_height[] = {240, 480};
 
+		// FIXME: mgs, tekken3
+
 		CRect r;
 
 		r.left = DAREA.X & ~7;
 		r.top = DAREA.Y;
 		r.right = r.left + s_width[(STATUS.WIDTH1 << 2) | STATUS.WIDTH0];
-		r.bottom = r.top + s_height[STATUS.HEIGHT];
+		r.bottom = r.top + (DVRANGE.Y2 - DVRANGE.Y1) * s_height[STATUS.HEIGHT] / 240;
 
 		r &= CRect(0, 0, 1024, 512);
 

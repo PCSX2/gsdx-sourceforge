@@ -89,11 +89,10 @@ void GPUState::SetPrim(GPUReg* r)
 		break;
 	case GPU_LINE: 
 		PRIM.ai32 = (r->PRIM.ai32 & 0xF2000000) | 2; // TYPE IIP ABE
-		PRIM.TGE = 1;
+		PRIM.TGE = 1; // ?
 		break; 
 	case GPU_SPRITE: 
-		PRIM.ai32 = (r->PRIM.ai32 & 0xE6000000) | 2; // TYPE TME ABE
-		PRIM.TGE = 1;
+		PRIM.ai32 = (r->PRIM.ai32 & 0xE7000000) | 2; // TYPE TME ABE TGE
 		break; 
 	}
 
@@ -561,7 +560,7 @@ int GPUState::PH_Move(GPUReg* r, int size)
 
 	Invalidate(CRect(dst, CSize(w, h)));
 
-	Dump(_T("m"));
+	// Dump(_T("m"));
 
 	return 4;
 }
@@ -619,6 +618,8 @@ int GPUState::PH_Read(GPUReg* r, int size)
 	m_mem.ReadRect(r2, (WORD*)m_read.buff);
 
 	Invalidate(r2);
+
+	Dump(_T("r"));
 
 	m_env.STATUS.IMG = 1;
 
@@ -721,9 +722,10 @@ void GPUState::SaveBMP(LPCTSTR path, UINT32 TP, CRect r)
 
 			if(TP == 0) // 4 bpp
 			{
-				for(int i = 0, k = r.Width(); i < k; i++)
+				for(int i = 0, k = r.Width() / 2; i < k; i++)
 				{
-					buff[i] = clut[(i & 1) == 0 ? (((BYTE*)p)[i] & 0xf) : (((BYTE*)p)[i] >> 4)];
+					buff[i * 2 + 0] = clut[((BYTE*)p)[i] & 0xf];
+					buff[i * 2 + 1] = clut[((BYTE*)p)[i] >> 4];
 				}
 			}
 			else if(TP == 1) // 8 bpp

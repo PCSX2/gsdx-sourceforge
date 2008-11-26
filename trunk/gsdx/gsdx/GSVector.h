@@ -1142,7 +1142,7 @@ public:
 		return zero() == zero();
 	}
 
-	static GSVector4i one()
+	static GSVector4i x00000001()
 	{
 		return invzero().srl32(31);
 	}
@@ -1195,7 +1195,7 @@ public:
 		return v == v; 
 	}
 
-	static GSVector4i one(const GSVector4i& v)
+	static GSVector4i x00000001(const GSVector4i& v)
 	{
 		return invzero(v).srl32(31);
 	}

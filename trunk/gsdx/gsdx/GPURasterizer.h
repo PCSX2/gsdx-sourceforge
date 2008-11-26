@@ -104,7 +104,7 @@ private:
 
 	__forceinline void SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin, GSVector4i& test, const GSVector4* s, const GSVector4* t, GSVector4i* c);
 	__forceinline void ColorTFX(DWORD tfx, const GSVector4* r, const GSVector4* g, const GSVector4* b, GSVector4i* c);
-	__forceinline void AlphaBlend(UINT32 abr, const GSVector4i& d, GSVector4i* c);
+	__forceinline void AlphaBlend(UINT32 abr, UINT32 tme, const GSVector4i& d, GSVector4i* c);
 	__forceinline void WriteFrame(WORD* RESTRICT fb, const GSVector4i& test, const GSVector4i* c, int pixels);
 
 	void DrawPoint(Vertex* v);

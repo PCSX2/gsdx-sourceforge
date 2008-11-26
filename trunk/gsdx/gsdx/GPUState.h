@@ -90,12 +90,14 @@ protected:
 
 	void Dump(LPCTSTR s, UINT32 TP, const CRect& r, int inc = true)
 	{
-		if(inc) s_n++;
-
-		//if(s_n < 3000 || s_n > 3100) return;
 		//if(m_perfmon.GetFrame() < 1000) 
 		//if((m_env.TWIN.ai32 & 0xfffff) == 0)
+		//if(!m_env.STATUS.ME && !m_env.STATUS.MD)
 			return;
+
+		if(inc) s_n++;
+
+		if(s_n < 133) return;
 
 		int dir = 1;
 #ifdef DEBUG
