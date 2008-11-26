@@ -33,7 +33,7 @@ GPURasterizer::GPURasterizer(GPUState* state, int id, int threads)
 	{
 		m_ds[i] = &GPURasterizer::DrawScanline;
 	}
-
+/*
 	m_ds[0x00] = &GPURasterizer::DrawScanlineEx<0x00>;
 	m_ds[0x01] = &GPURasterizer::DrawScanlineEx<0x01>;
 	m_ds[0x02] = &GPURasterizer::DrawScanlineEx<0x02>;
@@ -546,6 +546,7 @@ GPURasterizer::GPURasterizer(GPUState* state, int id, int threads)
 	m_ds[0x1fd] = &GPURasterizer::DrawScanlineEx<0x1fd>;
 	m_ds[0x1fe] = &GPURasterizer::DrawScanlineEx<0x1fe>;
 	m_ds[0x1ff] = &GPURasterizer::DrawScanlineEx<0x1ff>;
+*/
 }
 
 GPURasterizer::~GPURasterizer()
@@ -580,6 +581,7 @@ int GPURasterizer::Draw(Vertex* vertices, int count, const void* texture)
 	m_sel.tme = env.PRIM.TME;
 	m_sel.tlu = env.STATUS.TP < 2;
 	m_sel.twin = (env.TWIN.ai32 & 0xfffff) != 0;
+	m_sel.dtd = env.STATUS.DTD;
 	m_sel.ltf = 1; // TODO
 
 	m_dsf = m_ds[m_sel];
@@ -1049,6 +1051,14 @@ void GPURasterizer::SetupScanline(const Vertex& dv)
 	}
 }
 
+__declspec(align(16)) static WORD s_dither[4][16] = 
+{
+	{7, 0, 6, 1, 7, 0, 6, 1, 7, 0, 6, 1, 7, 0, 6, 1},
+	{2, 5, 3, 4, 2, 5, 3, 4, 2, 5, 3, 4, 2, 5, 3, 4}, 
+	{1, 6, 0, 7, 1, 6, 0, 7, 1, 6, 0, 7, 1, 6, 0, 7}, 
+	{4, 3, 5, 2, 4, 3, 5, 2, 4, 3, 5, 2, 4, 3, 5, 2}, 
+};
+
 void GPURasterizer::DrawScanline(int top, int left, int right, const Vertex& v)	
 {
 	GSVector4 ps0123 = GSVector4::ps0123();
@@ -1089,6 +1099,13 @@ void GPURasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 		r[1] += dc.xxxx() * ps4567;
 		g[1] += dc.yyyy() * ps4567;
 		b[1] += dc.zzzz() * ps4567;
+	}
+
+	GSVector4i dither;
+
+	if(m_sel.dtd)
+	{
+		dither = GSVector4i::load<false>(&s_dither[top & 3][left & 3]);
 	}
 
 	int steps = right - left;
@@ -1134,6 +1151,13 @@ void GPURasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 			if(m_sel.abe)
 			{
 				AlphaBlend(m_sel.abr, m_sel.tme, d, c);
+			}
+
+			if(m_sel.dtd)
+			{
+				c[0] = c[0].addus8(dither);
+				c[1] = c[1].addus8(dither);
+				c[2] = c[2].addus8(dither);
 			}
 
 			WriteFrame(fb, test, c, pixels);
@@ -1224,6 +1248,13 @@ void GPURasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v
 		b[1] += dc.zzzz() * ps4567;
 	}
 
+	GSVector4i dither;
+
+	if(m_sel.dtd)
+	{
+		dither = GSVector4i::load<false>(&s_dither[top & 3][left & 3]);
+	}
+
 	int steps = right - left;
 
 	m_slenv.steps += steps;
@@ -1267,6 +1298,13 @@ void GPURasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v
 			if(abe)
 			{
 				AlphaBlend(abr, tme, d, c);
+			}
+
+			if(m_sel.dtd)
+			{
+				c[0] = c[0].addus8(dither);
+				c[1] = c[1].addus8(dither);
+				c[2] = c[2].addus8(dither);
 			}
 
 			WriteFrame(fb, test, c, pixels);

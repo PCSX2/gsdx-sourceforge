@@ -97,7 +97,7 @@ protected:
 
 		if(inc) s_n++;
 
-		if(s_n < 133) return;
+		//if(s_n < 133) return;
 
 		int dir = 1;
 #ifdef DEBUG

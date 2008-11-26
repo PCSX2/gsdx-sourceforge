@@ -568,6 +568,26 @@ public:
 		return GSVector4i(_mm_add_epi32(m, v.m));
 	}
 
+	GSVector4i adds8(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_adds_epi8(m, v.m));
+	}
+
+	GSVector4i adds16(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_adds_epi16(m, v.m));
+	}
+
+	GSVector4i addus8(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_adds_epu8(m, v.m));
+	}
+
+	GSVector4i addus16(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_adds_epu16(m, v.m));
+	}
+
 	GSVector4i sub8(const GSVector4i& v) const
 	{
 		return GSVector4i(_mm_sub_epi8(m, v.m));
@@ -581,6 +601,26 @@ public:
 	GSVector4i sub32(const GSVector4i& v) const
 	{
 		return GSVector4i(_mm_sub_epi32(m, v.m));
+	}
+
+	GSVector4i subs8(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_subs_epi8(m, v.m));
+	}
+
+	GSVector4i subs16(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_subs_epi16(m, v.m));
+	}
+
+	GSVector4i subus8(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_subs_epu8(m, v.m));
+	}
+
+	GSVector4i subus16(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_subs_epu16(m, v.m));
 	}
 
 	GSVector4i mul16hs(const GSVector4i& v) const

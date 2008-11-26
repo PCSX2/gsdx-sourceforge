@@ -49,8 +49,8 @@ private:
 			DWORD tme:1; // 6
 			DWORD tlu:1; // 7
 			DWORD twin:1; // 8
-			DWORD ltf:1; // 9
-			// DWORD dtd:1; // 10
+			DWORD dtd:1; // 9
+			DWORD ltf:1; // 10
 			// DWORD dte:1: // 11
 		};
 

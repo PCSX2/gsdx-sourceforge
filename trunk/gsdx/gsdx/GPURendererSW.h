@@ -69,16 +69,20 @@ protected:
 
 		if(m_env.STATUS.ISRGB24)
 		{
-			for(int i = r.top; i < r.bottom; i++)
+			DWORD* dst = buff;
+
+			for(int i = r.top; i < r.bottom; i++, dst += 1024)
 			{
-				m_mem.Expand24(&m_mem.m_vm16[(i << 10) + r.left], &buff[i << 10], r.Width());
+				m_mem.Expand24(&m_mem.m_vm16[(i << 10) + r.left], dst, r.Width());
 			}
 		}
 		else
 		{
-			for(int i = r.top; i < r.bottom; i++)
+			DWORD* dst = buff;
+
+			for(int i = r.top; i < r.bottom; i++, dst += 1024)
 			{
-				m_mem.Expand16(&m_mem.m_vm16[(i << 10) + r.left], &buff[i << 10], r.Width());
+				m_mem.Expand16(&m_mem.m_vm16[(i << 10) + r.left], dst, r.Width());
 			}
 		}
 
