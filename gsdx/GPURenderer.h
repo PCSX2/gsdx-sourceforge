@@ -26,6 +26,7 @@
 
 struct GPURendererSettings
 {
+	int m_aspectratio;
 	bool m_vsync;
 };
 
@@ -39,6 +40,7 @@ public:
 		: m_hWnd(NULL)
 	{
 		m_vsync = rs.m_vsync;
+		m_aspectratio = rs.m_aspectratio;
 	}
 
 	virtual bool Create(HWND hWnd) = 0;
@@ -134,12 +136,12 @@ protected:
 	{
 		if(m_count > 0)
 		{
-			Dump(_T("db"));
+//			Dump(_T("db"));
 
 			Draw();
 
 			m_count = 0;
-
+/*
 			Dump(_T("dc"), false);
 
 			if(m_env.PRIM.TME)
@@ -155,7 +157,7 @@ protected:
 				str.Format(_T("da_%d_%d_%d_%d_%d"), m_env.STATUS.TP, r);
 				Dump(str, m_env.STATUS.TP, r, false);
 			}
-
+*/
 		}
 	}
 
@@ -304,9 +306,36 @@ public:
 			ResetDevice();
 		}
 
-		CRect r;
+		static const int ar[][2] = {{0, 0}, {4, 3}, {16, 9}};
 
-		GetClientRect(m_hWnd, &r);
+		int arx = ar[m_aspectratio][0];
+		int ary = ar[m_aspectratio][1];
+
+		CRect cr;
+		
+		GetClientRect(m_hWnd, &cr);
+
+		CRect r = cr;
+
+		if(arx > 0 && ary > 0)
+		{
+			if(r.Width() * ary > r.Height() * arx)
+			{
+				int w = r.Height() * arx / ary;
+				r.left = r.CenterPoint().x - w / 2;
+				if(r.left & 1) r.left++;
+				r.right = r.left + w;
+			}
+			else
+			{
+				int h = r.Width() * ary / arx;
+				r.top = r.CenterPoint().y - h / 2;
+				if(r.top & 1) r.top++;
+				r.bottom = r.top + h;
+			}
+		}
+
+		r &= cr;
 
 		m_dev.Present(r);
 	}

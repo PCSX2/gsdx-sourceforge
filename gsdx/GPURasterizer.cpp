@@ -580,7 +580,7 @@ int GPURasterizer::Draw(Vertex* vertices, int count, const void* texture)
 	m_sel.tme = env.PRIM.TME;
 	m_sel.tlu = env.STATUS.TP < 2;
 	m_sel.twin = (env.TWIN.ai32 & 0xfffff) != 0;
-	m_sel.ltf = 0; // TODO
+	m_sel.ltf = 1; // TODO
 
 	m_dsf = m_ds[m_sel];
 
@@ -615,8 +615,6 @@ int GPURasterizer::Draw(Vertex* vertices, int count, const void* texture)
 
 	m_slenv.a = GSVector4i(env.PRIM.ABE ? 0xffffffff : 0);
 	m_slenv.md = GSVector4i(env.STATUS.MD ? 0x80008000 : 0);
-
-	// TODO
 
 	switch(env.PRIM.TYPE)
 	{
@@ -1130,16 +1128,12 @@ void GPURasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 			{
 				SampleTexture(pixels, m_sel.ltf, m_sel.tlu, m_sel.twin, test, s, t, c);
 			}
-			else
-			{
-				c[3] = m_slenv.a;
-			}
 
 			ColorTFX(m_sel.tfx, r, g, b, c);
 
 			if(m_sel.abe)
 			{
-				AlphaBlend(m_sel.abr, d, c);
+				AlphaBlend(m_sel.abr, m_sel.tme, d, c);
 			}
 
 			WriteFrame(fb, test, c, pixels);
@@ -1267,16 +1261,12 @@ void GPURasterizer::DrawScanlineEx(int top, int left, int right, const Vertex& v
 			{
 				SampleTexture(pixels, m_sel.ltf, tlu, twin, test, s, t, c); // TODO: ltf
 			}
-			else
-			{
-				c[3] = m_slenv.a;
-			}
 
 			ColorTFX(tfx, r, g, b, c);
 
 			if(abe)
 			{
-				AlphaBlend(abr, d, c);
+				AlphaBlend(abr, tme, d, c);
 			}
 
 			WriteFrame(fb, test, c, pixels);
@@ -1321,7 +1311,143 @@ void GPURasterizer::SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin, 
 
 	if(ltf)
 	{
-		// TODO
+		GSVector4i cc[8];
+
+		for(int j = 0; j < 2; j++)
+		{
+			GSVector4 ss = s[j] - 0.5f;
+			GSVector4 tt = t[j] - 0.5f;
+
+			GSVector4 uf = ss.floor();
+			GSVector4 vf = tt.floor();
+
+			GSVector4 uff = ss - uf;
+			GSVector4 vff = tt - vf;
+
+			GSVector4i u = GSVector4i(uf);
+			GSVector4i v = GSVector4i(vf);
+		
+			GSVector4i u01 = GSVector4i(u).ps32(u + GSVector4i::x00000001());
+			GSVector4i v01 = GSVector4i(v).ps32(v + GSVector4i::x00000001());
+
+			if(twin)
+			{
+				u01 = (u01 & m_slenv.u[0]).add16(m_slenv.u[1]);
+				v01 = (v01 & m_slenv.v[0]).add16(m_slenv.v[1]);
+			}
+
+			GSVector4i uv01 = u01.pu16(v01);
+
+			GSVector4i addr0011 = uv01.upl8(uv01.zwxy());
+			GSVector4i addr0110 = uv01.upl8(uv01.wzyx());
+
+			GSVector4i c0011, c0110;
+
+			#if _M_SSE >= 0x401
+
+			if(tlu)
+			{
+				c0011 = addr0011.gather16_16((const BYTE*)tex).gather16_16(clut);
+				c0110 = addr0110.gather16_16((const BYTE*)tex).gather16_16(clut);
+			}
+			else
+			{
+				c0011 = addr0011.gather16_16((const WORD*)tex);
+				c0110 = addr0110.gather16_16((const WORD*)tex);
+			}
+
+			#else
+
+			int i = 0;
+
+			if(tlu)
+			{
+				do
+				{
+					c0011.u16[i] = clut[((const BYTE*)tex)[addr0011.u16[i]]];
+					c0110.u16[i] = clut[((const BYTE*)tex)[addr0110.u16[i]]];
+				}
+				while(++i < 8);
+			}
+			else
+			{
+				do
+				{
+					c0011.u16[i] = ((const WORD*)tex)[addr0011.u16[i]];
+					c0110.u16[i] = ((const WORD*)tex)[addr0110.u16[i]];
+				}
+				while(++i < 8);
+			}
+
+			#endif
+
+			GSVector4i r0011 = GSVector4i(c0011 & 0x001f001f) << 3;
+			GSVector4i g0011 = GSVector4i(c0011 & 0x03e003e0) >> 2;
+			GSVector4i b0011 = GSVector4i(c0011 & 0x7c007c00) >> 7;
+			GSVector4i a0011 = GSVector4i(c0011 & 0x80008000);
+
+			GSVector4i r0110 = GSVector4i(c0110 & 0x001f001f) << 3;
+			GSVector4i g0110 = GSVector4i(c0110 & 0x03e003e0) >> 2;
+			GSVector4i b0110 = GSVector4i(c0110 & 0x7c007c00) >> 7;
+			GSVector4i a0110 = GSVector4i(c0110 & 0x80008000);
+
+			GSVector4 r00 = GSVector4(r0011.upl16());
+			GSVector4 g00 = GSVector4(g0011.upl16());
+			GSVector4 b00 = GSVector4(b0011.upl16());
+			GSVector4 a00 = GSVector4(a0011.upl16());
+
+			GSVector4 r01 = GSVector4(r0110.upl16());
+			GSVector4 g01 = GSVector4(g0110.upl16());
+			GSVector4 b01 = GSVector4(b0110.upl16());
+			GSVector4 a01 = GSVector4(a0110.upl16());
+
+			GSVector4 r10 = GSVector4(r0110.uph16());
+			GSVector4 g10 = GSVector4(g0110.uph16());
+			GSVector4 b10 = GSVector4(b0110.uph16());
+			GSVector4 a10 = GSVector4(a0110.uph16());
+
+			GSVector4 r11 = GSVector4(r0011.uph16());
+			GSVector4 g11 = GSVector4(g0011.uph16());
+			GSVector4 b11 = GSVector4(b0011.uph16());
+			GSVector4 a11 = GSVector4(a0011.uph16());
+
+			r00 = r00.lerp(r01, vff);
+			r10 = r10.lerp(r11, vff);
+			r00 = r00.lerp(r10, uff);
+
+			cc[j * 4 + 0] = GSVector4i(r00);
+
+			g00 = g00.lerp(g01, vff);
+			g10 = g10.lerp(g11, vff);
+			g00 = g00.lerp(g10, uff);
+
+			cc[j * 4 + 1] = GSVector4i(g00);
+
+			b00 = b00.lerp(b01, vff);
+			b10 = b10.lerp(b11, vff);
+			b00 = b00.lerp(b10, uff);
+
+			cc[j * 4 + 2] = GSVector4i(b00);
+
+			a00 = a00.lerp(a01, vff);
+			a10 = a10.lerp(a11, vff);
+			a00 = a00.lerp(a10, uff);
+
+			cc[j * 4 + 3] = GSVector4i(a00);
+		}
+
+		c[0] = cc[0].ps32(cc[4]);
+		c[1] = cc[1].ps32(cc[5]);
+		c[2] = cc[2].ps32(cc[6]);
+		c[3] = cc[3].ps32(cc[7]).gt16(GSVector4i::zero());
+
+		// mask out blank pixels (not perfect)
+
+		test |= 
+			c[0].eq16(GSVector4i::zero()) & 
+			c[1].eq16(GSVector4i::zero()) &
+			c[2].eq16(GSVector4i::zero()) & 
+			c[3].eq16(GSVector4i::zero());
 	}
 	else
 	{
@@ -1427,7 +1553,7 @@ void GPURasterizer::ColorTFX(DWORD tfx, const GSVector4* r, const GSVector4* g, 
 		__assume(0);
 	}
 }
-void GPURasterizer::AlphaBlend(UINT32 abr, const GSVector4i& d, GSVector4i* c)
+void GPURasterizer::AlphaBlend(UINT32 abr, UINT32 tme, const GSVector4i& d, GSVector4i* c)
 {
 	GSVector4i r = (d & 0x001f001f) << 3;
 	GSVector4i g = (d & 0x03e003e0) >> 2;
@@ -1459,9 +1585,19 @@ void GPURasterizer::AlphaBlend(UINT32 abr, const GSVector4i& d, GSVector4i* c)
 		__assume(0);
 	}
 
-	c[0] = c[0].blend8(r, c[3]);
-	c[1] = c[1].blend8(g, c[3]);
-	c[2] = c[2].blend8(b, c[3]);
+	if(tme) // per pixel
+	{
+		c[0] = c[0].blend8(r, c[3]);
+		c[1] = c[1].blend8(g, c[3]);
+		c[2] = c[2].blend8(b, c[3]);
+	}
+	else
+	{
+		c[0] = r;
+		c[1] = g;
+		c[2] = b;
+		c[3] = GSVector4i::zero();
+	}
 }
 
 void GPURasterizer::WriteFrame(WORD* RESTRICT fb, const GSVector4i& test, const GSVector4i* c, int pixels)
@@ -1469,8 +1605,9 @@ void GPURasterizer::WriteFrame(WORD* RESTRICT fb, const GSVector4i& test, const 
 	GSVector4i r = (c[0] & 0x00f800f8) >> 3;
 	GSVector4i g = (c[1] & 0x00f800f8) << 2;
 	GSVector4i b = (c[2] & 0x00f800f8) << 7;
+	GSVector4i a = (c[3] & 0x00800080) << 8;
 
-	GSVector4i s = r | g | b | m_slenv.md;
+	GSVector4i s = r | g | b | a | m_slenv.md;
 
 	int i = 0;
 

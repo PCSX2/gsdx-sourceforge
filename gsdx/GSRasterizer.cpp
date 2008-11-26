@@ -930,7 +930,7 @@ void GSRasterizer::DrawScanline(int top, int left, int right, const Vertex& v)
 		{
 			GSVector4i za = za_base + GSVector4i::load<true>(za_offset);
 			
-			GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::one(za));
+			GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::x00000001(za));
 
 			GSVector4i test;
 
