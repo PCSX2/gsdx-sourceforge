@@ -26,6 +26,8 @@
 
 struct GPURendererSettings
 {
+	int m_filter;
+	int m_dither;
 	int m_aspectratio;
 	bool m_vsync;
 };
@@ -34,16 +36,86 @@ class GPURendererBase : public GPUState, protected GPURendererSettings
 {
 protected:
 	HWND m_hWnd;
+	WNDPROC m_wndproc;
+	static CAtlMap<HWND, GPURendererBase*> m_wnd2gpu;
+
+	static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+	{
+		if(CAtlMap<HWND, GPURendererBase*>::CPair* pair = m_wnd2gpu.Lookup(hWnd))
+		{
+			return pair->m_value->OnMessage(message, wParam, lParam);
+		}
+
+		ASSERT(0);
+
+		return 0;
+	}
+
+	LRESULT OnMessage(UINT message, WPARAM wParam, LPARAM lParam)
+	{
+		if(message == WM_KEYUP)
+		{
+			if(wParam == VK_DELETE)
+			{
+				m_filter = m_filter ? 0 : 1;
+				return 0;
+			}
+
+			if(wParam == VK_END)
+			{
+				m_dither = m_dither ? 0 : 1;
+				return 0;
+			}
+
+			if(wParam == VK_NEXT)
+			{
+				m_aspectratio = (m_aspectratio + 1) % 3;
+				return 0;
+			}
+		}
+
+		return m_wndproc(m_hWnd, message, wParam, lParam);
+	}
 
 public:
 	GPURendererBase(const GPURendererSettings& rs)
 		: m_hWnd(NULL)
+		, m_wndproc(NULL)
 	{
-		m_vsync = rs.m_vsync;
+		m_filter = rs.m_filter;
+		m_dither = rs.m_dither;
 		m_aspectratio = rs.m_aspectratio;
+		m_vsync = rs.m_vsync;
 	}
 
-	virtual bool Create(HWND hWnd) = 0;
+	virtual ~GPURendererBase()
+	{
+		if(m_wndproc)
+		{
+			SetWindowLongPtr(m_hWnd, GWL_WNDPROC, (LONG_PTR)m_wndproc);
+
+			m_wnd2gpu.RemoveKey(m_hWnd);
+		}
+	}
+
+	virtual bool Create(HWND hWnd)
+	{
+		m_hWnd = hWnd;
+
+		m_wndproc = (WNDPROC)GetWindowLongPtr(hWnd, GWL_WNDPROC);
+		SetWindowLongPtr(hWnd, GWL_WNDPROC, (LONG_PTR)WndProc);
+		m_wnd2gpu.SetAt(hWnd, this);
+
+		DWORD style = GetWindowLong(hWnd, GWL_STYLE);
+		style |= WS_OVERLAPPEDWINDOW;
+		SetWindowLong(hWnd, GWL_STYLE, style);
+		UpdateWindow(hWnd);
+
+		ShowWindow(hWnd, SW_SHOWNORMAL);
+
+		return true;
+	}
+
 	virtual void VSync() = 0;
 	virtual bool MakeSnapshot(LPCTSTR path) = 0;
 };
@@ -225,21 +297,15 @@ public:
 
 	virtual bool Create(HWND hWnd)
 	{
-		if(!m_dev.Create(hWnd, m_vsync))
+		if(!__super::Create(hWnd))
 		{
 			return false;
 		}
 
-		m_hWnd = hWnd; // TODO
-
-		DWORD style = GetWindowLong(hWnd, GWL_STYLE);
-		style |= WS_OVERLAPPEDWINDOW;
-		SetWindowLong(hWnd, GWL_STYLE, style);
-		UpdateWindow(hWnd);
-
-		ShowWindow(hWnd, SW_SHOWNORMAL);
-
-		// TODO
+		if(!m_dev.Create(hWnd, m_vsync))
+		{
+			return false;
+		}
 
 		Reset();
 

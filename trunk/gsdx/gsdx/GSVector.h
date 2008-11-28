@@ -623,6 +623,16 @@ public:
 		return GSVector4i(_mm_subs_epu16(m, v.m));
 	}
 
+	GSVector4i avg8(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_avg_epu8(m, v.m));
+	}
+
+	GSVector4i avg16(const GSVector4i& v) const
+	{
+		return GSVector4i(_mm_avg_epu16(m, v.m));
+	}
+
 	GSVector4i mul16hs(const GSVector4i& v) const
 	{
 		return GSVector4i(_mm_mulhi_epi16(m, v.m));

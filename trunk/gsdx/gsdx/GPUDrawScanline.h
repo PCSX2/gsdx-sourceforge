@@ -22,21 +22,11 @@
 #pragma once
 
 #include "GPUState.h"
-#include "GPUVertexSW.h"
-#include "GPUTextureCacheSW.h"
+#include "GSRasterizer.h"
 #include "GSAlignedClass.h"
 
-class GPURasterizer : public GSAlignedClass<16>
+class GPUDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 {
-protected:
-	typedef GPUVertexSW Vertex;
-
-	GPUState* m_state;
-	int m_id;
-	int m_threads;
-
-private:
-
 	union ScanlineSelector
 	{
 		struct
@@ -47,8 +37,8 @@ private:
 			DWORD abr:2; // 3
 			DWORD tge:1; // 5
 			DWORD tme:1; // 6
-			DWORD tlu:1; // 7
-			DWORD twin:1; // 8
+			DWORD twin:1; // 7
+			DWORD tlu:1; // 8
 			DWORD dtd:1; // 9
 			DWORD ltf:1; // 10
 			// DWORD dte:1: // 11
@@ -64,13 +54,11 @@ private:
 
 		DWORD dw;
 
-		operator DWORD() {return dw & 0x1ff;}
+		operator DWORD() {return dw & 0xff;}
 	};
 	
 	__declspec(align(16)) struct ScanlineEnvironment
 	{
-		int steps;
-
 		WORD* vm;
 
 		const void* tex;
@@ -81,45 +69,39 @@ private:
 
 		GSVector4i a;
 		GSVector4i md; // similar to gs fba
-
-		GSVector4 dp, dp8;
-		GSVector4 dc, dc8;
 	};
 
-	GSVector4i m_scissor;
 	ScanlineSelector m_sel;
 	ScanlineEnvironment m_slenv;
 
-	template<bool pos, bool col> 
-	__forceinline void SetupScanline(const Vertex& dv);
+	typedef void (GPUDrawScanline::*DrawScanlinePtr)(int top, int left, int right, const Vertex& v, const Vertex& dv);
 
-	typedef void (GPURasterizer::*DrawScanlinePtr)(int top, int left, int right, const Vertex& v);
+	DrawScanlinePtr m_ds[2048], m_dsf;
 
-	DrawScanlinePtr m_ds[512], m_dsf;
+	void InitEx();
 
-	void DrawScanline(int top, int left, int right, const Vertex& v);
-
-	template<DWORD sel> 
-	void DrawScanlineEx(int top, int left, int right, const Vertex& v);
+	template<DWORD sel>
+	void DrawScanlineExT(int top, int left, int right, const Vertex& v, const Vertex& dv);
 
 	__forceinline void SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin, GSVector4i& test, const GSVector4* s, const GSVector4* t, GSVector4i* c);
 	__forceinline void ColorTFX(DWORD tfx, const GSVector4* r, const GSVector4* g, const GSVector4* b, GSVector4i* c);
 	__forceinline void AlphaBlend(UINT32 abr, UINT32 tme, const GSVector4i& d, GSVector4i* c);
 	__forceinline void WriteFrame(WORD* RESTRICT fb, const GSVector4i& test, const GSVector4i* c, int pixels);
 
-	void DrawPoint(Vertex* v);
-	void DrawLine(Vertex* v);
-	void DrawTriangle(Vertex* v);
-	void DrawTriangleTop(Vertex* v);
-	void DrawTriangleBottom(Vertex* v);
-	void DrawTriangleTopBottom(Vertex* v);
-	void DrawSprite(Vertex* v);
-
-	__forceinline void DrawTriangleSection(int top, int bottom, Vertex& l, const Vertex& dl, GSVector4& r, const GSVector4& dr, const Vertex& dscan);
+protected:
+	GPUState* m_state;
+	int m_filter;
+	int m_dither;
 
 public:
-	GPURasterizer(GPUState* state, int id = 0, int threads = 0);
-	virtual ~GPURasterizer();
+	GPUDrawScanline(GPUState* state, int filter, int dither);
+	virtual ~GPUDrawScanline();
 
-	int Draw(Vertex* v, int count, const void* texture);
+	void SetOptions(int filter, int dither);
+
+	// IDrawScanline
+
+	void SetupDraw(Vertex* vertices, int count, const void* texture);
+	void DrawScanline(int top, int left, int right, const Vertex& v, const Vertex& dv);
+	void FillRect(const GSVector4i& r, const Vertex& v);
 };

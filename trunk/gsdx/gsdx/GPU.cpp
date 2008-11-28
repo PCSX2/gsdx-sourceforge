@@ -97,6 +97,8 @@ EXPORT_C_(INT32) GPUopen(HWND hWnd)
 
 	GPURendererSettings rs;
 
+	rs.m_filter = AfxGetApp()->GetProfileInt(_T("Settings"), _T("filter"), 1);
+	rs.m_dither = AfxGetApp()->GetProfileInt(_T("Settings"), _T("dither"), 1);
 	rs.m_aspectratio = AfxGetApp()->GetProfileInt(_T("Settings"), _T("aspectratio"), 1);
 	rs.m_vsync = !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("vsync"), FALSE);
 

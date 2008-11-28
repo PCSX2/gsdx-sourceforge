@@ -22,19 +22,19 @@
 #pragma once
 
 #include "GPURenderer.h"
-#include "GPUVertexSW.h"
-#include "GPURasterizer.h"
 #include "GPUTextureCacheSW.h"
+#include "GPUDrawScanline.h"
 
 template <class Device>
-class GPURendererSW : public GPURenderer<Device, GPUVertexSW>
+class GPURendererSW : public GPURenderer<Device, GSVertexSW>
 {
-	typedef GPUVertexSW Vertex;
+	typedef GSVertexSW Vertex;
 
 protected:
 	long m_threads;
 	GPUTextureCacheSW* m_tc;
-	GPURasterizer* m_rst;
+	GPUDrawScanline* m_ds;
+	GSRasterizer* m_rst;
 	Texture m_texture;
 
 	void Reset() 
@@ -99,12 +99,18 @@ protected:
 	{
 		Vertex& v = m_vl.AddTail();
 
-		// x/y + off.x/y should wrap around at +/-1024
+		// TODO: x/y + off.x/y should wrap around at +/-1024
 
 		int x = m_v.XY.X + m_env.DROFF.X;
 		int y = m_v.XY.Y + m_env.DROFF.Y;
 
-		v.p = GSVector4(x, y, m_v.UV.X, m_v.UV.Y) + GSVector4(0.0f, 0.0f, 0.5f, 0.5f);
+		int s = m_v.UV.X;
+		int t = m_v.UV.Y;
+
+		GSVector4 pt(x, y, s, t);
+
+		v.p = pt.xyxy(GSVector4::zero());
+		v.t = pt.zwzw(GSVector4::zero()) + GSVector4(0.5f);
 		v.c = GSVector4((DWORD)m_v.RGB.ai32);
 
 		__super::VertexKick();
@@ -136,40 +142,78 @@ protected:
 			if(!texture) {ASSERT(0); return;}
 		}
 
-		int prims = m_rst->Draw(m_vertices, m_count, texture);
+		//
+
+		m_ds->SetOptions(m_filter, m_dither);
+
+		m_ds->SetupDraw(m_vertices, m_count, texture);
+
+		//
+
+		GSVector4i scissor;
+
+		scissor.x = m_env.DRAREATL.X;
+		scissor.y = m_env.DRAREATL.Y;
+		scissor.z = min(m_env.DRAREABR.X + 1, 1024);
+		scissor.w = min(m_env.DRAREABR.Y + 1, 512);
+
+		//
+
+		int prims = 0;
+
+		switch(m_env.PRIM.TYPE)
+		{
+		case GPU_POLYGON:
+			ASSERT(!(m_count % 3));
+			prims = m_count / 3;
+			for(int i = 0, j = m_count; i < j; i += 3) m_rst->DrawTriangle(&m_vertices[i], scissor);
+			break;
+		case GPU_LINE:
+			ASSERT(!(m_count & 1));
+			prims = m_count / 2;
+			for(int i = 0, j = m_count; i < j; i += 2) m_rst->DrawLine(&m_vertices[i], scissor);
+			break;
+		case GPU_SPRITE:
+			ASSERT(!(m_count & 1));
+			prims = m_count / 2;
+			for(int i = 0, j = m_count; i < j; i += 2) m_rst->DrawSprite(&m_vertices[i], scissor, false);
+			break;
+		default:
+			__assume(0);
+		}
+
+		m_perfmon.Put(GSPerfMon::Prim, prims);
+		m_perfmon.Put(GSPerfMon::Draw, 1);
+
+		{
+			int pixels = m_rst->GetPixels();
+			
+			m_perfmon.Put(GSPerfMon::Fillrate, pixels); 
+		}
 
 		// TODO
-		{
-			CRect r;
-			
-			r.left = m_env.DRAREATL.X;
-			r.top = m_env.DRAREATL.Y;
-			r.right = min(m_env.DRAREABR.X + 1, 1024);
-			r.bottom = min(m_env.DRAREABR.Y + 1, 512);
 
-			GSVector4 minv(+1e10f);
-			GSVector4 maxv(-1e10f);
+		{
+			GSVector4 tl(+1e10f);
+			GSVector4 br(-1e10f);
 
 			for(int i = 0, j = m_count; i < j; i++)
 			{
 				GSVector4 p = m_vertices[i].p;
 
-				minv = minv.minv(p);
-				maxv = maxv.maxv(p);
+				tl = tl.minv(p);
+				br = br.maxv(p);
 			}
 
-			GSVector4i v(minv.xyxy(maxv));
+			CRect r;
 
-			r.left = max(r.left, min(r.right, v.x));
-			r.top = max(r.top, min(r.bottom, v.y));
-			r.right = min(r.right, max(r.left, v.z));
-			r.bottom = min(r.bottom, max(r.top, v.w));
+			r.left = max(scissor.x, min(scissor.z, (int)tl.x));
+			r.top = max(scissor.y, min(scissor.w, (int)tl.y));
+			r.right = max(scissor.x, min(scissor.z, (int)br.x));
+			r.bottom = max(scissor.y, min(scissor.w, (int)br.y));
 
 			Invalidate(r);
 		}
-
-		m_perfmon.Put(GSPerfMon::Prim, prims);
-		m_perfmon.Put(GSPerfMon::Draw, 1);
 	}
 
 	void Invalidate(const CRect& r)
@@ -186,8 +230,8 @@ public:
 		m_threads = 1;
 
 		m_tc = new GPUTextureCacheSW(this);
-
-		m_rst = new GPURasterizer(this, 0, m_threads);
+		m_ds = new GPUDrawScanline(this, m_filter, m_dither);
+		m_rst = new GSRasterizer(m_ds, 0, m_threads);
 
 		m_fpDrawingKickHandlers[GPU_POLYGON] = (DrawingKickHandler)&GPURendererSW::DrawingKickTriangle;
 		m_fpDrawingKickHandlers[GPU_LINE] = (DrawingKickHandler)&GPURendererSW::DrawingKickLine;
@@ -197,7 +241,7 @@ public:
 	virtual ~GPURendererSW()
 	{
 		delete m_tc;
-
+		delete m_ds;
 		delete m_rst;
 	}
 };
