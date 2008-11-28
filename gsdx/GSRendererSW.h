@@ -22,14 +22,13 @@
 #pragma once
 
 #include "GSRenderer.h"
-#include "GSVertexSW.h"
-#include "GSRasterizer.h"
 #include "GSTextureCacheSW.h"
+#include "GSDrawScanline.h"
 
 extern const GSVector4 g_pos_scale;
 
 template <class Device>
-class GSRendererSW : public GSRendererT<Device, GSVertexSW>
+class GSRendererSW : public GSRendererT<Device, GSVertexSW>, public IDrawAsync
 {
 	typedef GSVertexSW Vertex;
 
@@ -37,6 +36,7 @@ protected:
 	long* m_sync;
 	long m_threads;
 	GSTextureCacheSW* m_tc;
+	GSDrawScanline* m_ds;
 	GSRasterizer* m_rst;
 	CAtlList<GSRasterizerMT*> m_rmt;
 	Texture m_texture[2];
@@ -228,6 +228,15 @@ protected:
 
 		GSDrawingContext* context = m_context;
 
+		// sanity check
+
+		if(context->TEST.ZTE && context->TEST.ZTST == ZTST_NEVER)
+		{
+			return;
+		}
+
+		//
+
 		const GSTextureCacheSW::GSTexture* texture = NULL;
 
 		if(PRIM->TME)
@@ -301,20 +310,24 @@ protected:
 			if(s_savez) {m_mem.SaveBMP(str, m_context->ZBUF.Block(), m_context->FRAME.FBW, m_context->ZBUF.PSM, GetFrameSize(1).cx, 512);}
 		}
 
+		//
+
+		m_ds->SetupDraw(m_vertices, m_count, texture);
+
+		//
+
 		*m_sync = 0;
 
 		POSITION pos = m_rmt.GetHeadPosition();
 
 		while(pos)
 		{
-			GSRasterizerMT* r = m_rmt.GetNext(pos);
-
-			r->BeginDraw(m_vertices, m_count, texture);
+			m_rmt.GetNext(pos)->Run();
 		}
 
 		// 1st thread is this thread
 
-		int prims = m_rst->Draw(m_vertices, m_count, texture);
+		int prims = DrawAsync(m_rst);
 
 		// wait for the other threads to finish
 
@@ -323,32 +336,48 @@ protected:
 			_mm_pause();
 		}
 		
-		// TODO
+		m_perfmon.Put(GSPerfMon::Prim, prims);
+		m_perfmon.Put(GSPerfMon::Draw, 1);
+		
 		{
-			CRect r;
+			int pixels = m_rst->GetPixels();
+			
+			POSITION pos = m_rmt.GetHeadPosition();
 
-			r.left = max(context->SCISSOR.SCAX0, 0);
-			r.top = max(context->SCISSOR.SCAY0, 0);
-			r.right = min(context->SCISSOR.SCAX1 + 1, context->FRAME.FBW * 64);
-			r.bottom = min(context->SCISSOR.SCAY1 + 1, 4096);
+			while(pos)
+			{
+				pixels += m_rmt.GetNext(pos)->GetPixels();
+			}
 
-			GSVector4 minv(+1e10f);
-			GSVector4 maxv(-1e10f);
+			m_perfmon.Put(GSPerfMon::Fillrate, pixels); 
+		}
+
+		// TODO
+
+		{
+			GSVector4 tl(+1e10f);
+			GSVector4 br(-1e10f);
 
 			for(int i = 0, j = m_count; i < j; i++)
 			{
 				GSVector4 p = m_vertices[i].p;
 
-				minv = minv.minv(p);
-				maxv = maxv.maxv(p);
+				tl = tl.minv(p);
+				br = br.maxv(p);
 			}
 
-			GSVector4i v(minv.xyxy(maxv));
+			GSVector4i scissor(context->scissor.in);
 
-			r.left = max(r.left, min(r.right, v.x));
-			r.top = max(r.top, min(r.bottom, v.y));
-			r.right = min(r.right, max(r.left, v.z));
-			r.bottom = min(r.bottom, max(r.top, v.w));
+			// TODO: find a game that overflows and check which one is the right behaviour
+
+			scissor.z = min(scissor.z, (int)context->FRAME.FBW * 64); 
+
+			CRect r;
+
+			r.left = max(scissor.x, min(scissor.z, (int)tl.x));
+			r.top = max(scissor.y, min(scissor.w, (int)tl.y));
+			r.right = max(scissor.x, min(scissor.z, (int)br.x));
+			r.bottom = max(scissor.y, min(scissor.w, (int)br.y));
 
 			GIFRegBITBLTBUF BITBLTBUF;
 			
@@ -367,9 +396,6 @@ protected:
 			}
 		}
 
-		m_perfmon.Put(GSPerfMon::Prim, prims);
-		m_perfmon.Put(GSPerfMon::Draw, 1);
-
 		if(s_dump)
 		{
 			CString str;
@@ -378,6 +404,65 @@ protected:
 			str.Format(_T("c:\\temp1\\_%05d_f%I64d_rz1_%05x_%d.bmp"), s_n-1, m_perfmon.GetFrame(), m_context->ZBUF.Block(), m_context->ZBUF.PSM);
 			if(s_savez) {m_mem.SaveBMP(str, m_context->ZBUF.Block(), m_context->FRAME.FBW, m_context->ZBUF.PSM, GetFrameSize(1).cx, 512);}
 		}
+	}
+
+	int DrawAsync(GSRasterizer* r)
+	{
+		GSDrawingContext* context = m_context;
+
+		GSVector4i scissor(context->scissor.in);
+
+		// TODO: find a game that overflows and check which one is the right behaviour
+
+		scissor.z = min(scissor.z, (int)context->FRAME.FBW * 64); 
+
+		//
+
+		bool solid = true;
+
+		if(PRIM->IIP || PRIM->TME || PRIM->ABE || PRIM->FGE
+		|| context->TEST.ZTE && context->TEST.ZTST != ZTST_ALWAYS 
+		|| context->TEST.ATE && context->TEST.ATST != ATST_ALWAYS
+		|| context->TEST.DATE
+		|| m_env.DTHE.DTHE
+		|| context->FRAME.FBMSK)
+		{
+			solid = false;
+		}
+
+		//
+
+		int prims = 0;
+
+		switch(PRIM->PRIM)
+		{
+		case GS_POINTLIST:
+			prims = m_count;
+			for(int i = 0, j = m_count; i < j; i++) r->DrawPoint(&m_vertices[i], scissor);
+			break;
+		case GS_LINELIST: 
+		case GS_LINESTRIP: 
+			ASSERT(!(m_count & 1));
+			prims = m_count / 2;
+			for(int i = 0, j = m_count; i < j; i += 2) r->DrawLine(&m_vertices[i], scissor);
+			break;
+		case GS_TRIANGLELIST: 
+		case GS_TRIANGLESTRIP: 
+		case GS_TRIANGLEFAN:
+			ASSERT(!(m_count % 3));
+			prims = m_count / 3;
+			for(int i = 0, j = m_count; i < j; i += 3) r->DrawTriangle(&m_vertices[i], scissor);
+			break;
+		case GS_SPRITE:
+			ASSERT(!(m_count & 1));
+			prims = m_count / 2;
+			for(int i = 0, j = m_count; i < j; i += 2) r->DrawSprite(&m_vertices[i], scissor, solid);
+			break;
+		default:
+			__assume(0);
+		}
+
+		return prims;
 	}
 
 	void InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r)
@@ -393,14 +478,12 @@ public:
 		m_threads = AfxGetApp()->GetProfileInt(_T("Settings"), _T("swthreads"), 1);
 
 		m_tc = new GSTextureCacheSW(this);
-
-		m_rst = new GSRasterizer(this, 0, m_threads);
+		m_ds = new GSDrawScanline(this);
+		m_rst = new GSRasterizer(m_ds, 0, m_threads);
 
 		for(int i = 1; i < m_threads; i++) 
 		{
-			GSRasterizerMT* r = new GSRasterizerMT(this, i, m_threads, m_sync);
-
-			m_rmt.AddTail(r);
+			m_rmt.AddTail(new GSRasterizerMT(m_ds, i, m_threads, this, m_sync));
 		}
 
 		m_fpDrawingKickHandlers[GS_POINTLIST] = (DrawingKickHandler)&GSRendererSW::DrawingKickPoint;
@@ -415,7 +498,7 @@ public:
 	virtual ~GSRendererSW()
 	{
 		delete m_tc;
-
+		delete m_ds;
 		delete m_rst;
 
 		while(!m_rmt.IsEmpty()) 

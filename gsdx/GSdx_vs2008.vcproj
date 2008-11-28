@@ -1056,28 +1056,12 @@
 				>
 			</File>
 			<File
-				RelativePath=".\GPULocalMemory.cpp"
+				RelativePath=".\GPUDrawScanline.cpp"
 				>
-				<FileConfiguration
-					Name="Release SSE4|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						AssemblerOutput="4"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\GPURasterizer.cpp"
+				RelativePath=".\GPULocalMemory.cpp"
 				>
-				<FileConfiguration
-					Name="Release SSE4|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						AssemblerOutput="4"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\GPURenderer.cpp"
@@ -1176,6 +1160,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\GSDrawScanline.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\GSDump.cpp"
 				>
 			</File>
@@ -1264,42 +1252,6 @@
 				</FileConfiguration>
 				<FileConfiguration
 					Name="Release SSSE3|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						AssemblerOutput="4"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release SSE4|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						AssemblerOutput="4"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release SSE4|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						AssemblerOutput="4"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath=".\GSRasterizerEx.cpp"
-				>
-				<FileConfiguration
-					Name="Release SSSE3|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						AssemblerOutput="4"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release SSSE3|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1654,11 +1606,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\GPULocalMemory.h"
+				RelativePath=".\GPUDrawScanline.h"
 				>
 			</File>
 			<File
-				RelativePath=".\GPURasterizer.h"
+				RelativePath=".\GPULocalMemory.h"
 				>
 			</File>
 			<File
@@ -1739,6 +1691,10 @@
 			</File>
 			<File
 				RelativePath=".\GSDrawingEnvironment.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSDrawScanline.h"
 				>
 			</File>
 			<File

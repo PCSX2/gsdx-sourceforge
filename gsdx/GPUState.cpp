@@ -615,6 +615,7 @@ int GPUState::PH_Read(GPUReg* r, int size)
 	m_read.bytes = ((w * h + 1) & ~1) * 2;
 	m_read.cur = 0;
 	m_read.Reserve(m_read.bytes);
+
 	m_mem.ReadRect(r2, (WORD*)m_read.buff);
 
 	Invalidate(r2);
@@ -640,11 +641,6 @@ int GPUState::PH_Environment(GPUReg* r, int size)
 		m_env.STATUS.TP = r->MODE.TP;
 		m_env.STATUS.DTD = r->MODE.DTD;
 		m_env.STATUS.DFE = r->MODE.DFE;
-		// ?
-		// m_env.STATUS.MD = r->MODE.MD; 
-		// m_env.STATUS.ME = r->MODE.ME;
-		
-		// mirror bits?
 
 		return 1;
 
