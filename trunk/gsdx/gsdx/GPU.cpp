@@ -25,7 +25,7 @@
 #include "GSDevice9.h"
 #include "GSDevice10.h"
 
-#define PSE_LT_GPU	2
+#define PSE_LT_GPU 2
 
 static HRESULT s_hr = E_FAIL;
 static GPURendererBase* s_gpu = NULL;
