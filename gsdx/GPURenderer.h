@@ -57,7 +57,7 @@ protected:
 		{
 			if(wParam == VK_DELETE)
 			{
-				m_filter = m_filter ? 0 : 1;
+				m_filter = (m_filter + 1) % 3;
 				return 0;
 			}
 
@@ -372,36 +372,11 @@ public:
 			ResetDevice();
 		}
 
-		static const int ar[][2] = {{0, 0}, {4, 3}, {16, 9}};
-
-		int arx = ar[m_aspectratio][0];
-		int ary = ar[m_aspectratio][1];
-
-		CRect cr;
+		CRect r;
 		
-		GetClientRect(m_hWnd, &cr);
+		GetClientRect(m_hWnd, &r);
 
-		CRect r = cr;
-
-		if(arx > 0 && ary > 0)
-		{
-			if(r.Width() * ary > r.Height() * arx)
-			{
-				int w = r.Height() * arx / ary;
-				r.left = r.CenterPoint().x - w / 2;
-				if(r.left & 1) r.left++;
-				r.right = r.left + w;
-			}
-			else
-			{
-				int h = r.Width() * ary / arx;
-				r.top = r.CenterPoint().y - h / 2;
-				if(r.top & 1) r.top++;
-				r.bottom = r.top + h;
-			}
-		}
-
-		r &= cr;
+		GSUtil::FitRect(r, m_aspectratio);
 
 		m_dev.Present(r);
 	}

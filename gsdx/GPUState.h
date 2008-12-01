@@ -105,15 +105,13 @@ protected:
 #endif
 		CString str;
 		str.Format(_T("c:\\temp%d\\%04d_%s.bmp"), dir, s_n, s);
-		SaveBMP(str, TP, r);
+		m_mem.SaveBMP(str, r, TP, m_env.CLUT.X, m_env.CLUT.Y);
 	}
 
 	void Dump(LPCTSTR s, int inc = true)
 	{
 		Dump(s, 2, CRect(0, 0, 1024, 512), inc);
 	}
-
-	void SaveBMP(LPCTSTR path, UINT32 TP, CRect r);
 
 public:
 	GPUDrawingEnvironment m_env;
@@ -131,9 +129,7 @@ public:
 	virtual void FlushPrim() = 0;
 	virtual void ResetPrim() = 0;
 	virtual void VertexKick() = 0;
-	virtual void Invalidate(const CRect& r) {}
-
-	WORD* GetCLUT() {return &m_mem.m_vm16[(m_env.CLUT.Y << 10) + (m_env.CLUT.X << 4)];}
+	virtual void Invalidate(const CRect& r);
 
 	void WriteData(const BYTE* mem, UINT32 size);
 	void ReadData(BYTE* mem, UINT32 size);

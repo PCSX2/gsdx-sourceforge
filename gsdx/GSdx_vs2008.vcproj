@@ -1076,10 +1076,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\GPUTextureCacheSW.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\GS.cpp"
 				>
 			</File>
@@ -1626,15 +1622,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\GPUTextureCacheSW.h"
-				>
-			</File>
-			<File
 				RelativePath=".\GPUVertex.h"
-				>
-			</File>
-			<File
-				RelativePath=".\GPUVertexSW.h"
 				>
 			</File>
 			<File

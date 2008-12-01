@@ -126,6 +126,41 @@ bool GSUtil::IsRectInRectV(const CRect& inner, const CRect& outer)
 	return outer.left <= inner.left && inner.right <= outer.right;
 }
 
+void GSUtil::FitRect(CRect& r, int aspectratio)
+{
+	static const int ar[][2] = {{0, 0}, {4, 3}, {16, 9}};
+
+	if(aspectratio <= 0 || aspectratio >= countof(ar))
+	{
+		return;
+	}
+
+	int arx = ar[aspectratio][0];
+	int ary = ar[aspectratio][1];
+
+	CRect r2 = r;
+
+	if(arx > 0 && ary > 0)
+	{
+		if(r.Width() * ary > r.Height() * arx)
+		{
+			int w = r.Height() * arx / ary;
+			r.left = r.CenterPoint().x - w / 2;
+			if(r.left & 1) r.left++;
+			r.right = r.left + w;
+		}
+		else
+		{
+			int h = r.Width() * ary / arx;
+			r.top = r.CenterPoint().y - h / 2;
+			if(r.top & 1) r.top++;
+			r.bottom = r.top + h;
+		}
+	}
+
+	r &= r2;
+}
+
 bool GSUtil::CheckDirectX()
 {
 	CString str;

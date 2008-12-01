@@ -23,14 +23,19 @@
 
 #include "GSVertexSW.h"
 
-interface IDrawScanline
+class IDrawScanline
 {
 public:
 	typedef GSVertexSW Vertex;
+	typedef void (IDrawScanline::*DrawScanlinePtr)(int top, int left, int right, const Vertex& v);
+
+	virtual ~IDrawScanline() {}
 
 	virtual void SetupDraw(Vertex* vertices, int count, const void* texture) = 0;
-	virtual void DrawScanline(int top, int left, int right, const Vertex& v, const Vertex& dv) = 0;
+	virtual void SetupScanline(const Vertex& dv) = 0;
+	virtual void DrawScanline(int top, int left, int right, const Vertex& v) = 0;
 	virtual void FillRect(const GSVector4i& r, const Vertex& v) = 0;
+	virtual DrawScanlinePtr GetDrawScanlinePtr() = 0;
 };
 
 class GSRasterizer
@@ -51,12 +56,14 @@ protected:
 
 public:
 	GSRasterizer(IDrawScanline* ds, int id = 0, int threads = 0);
+	virtual ~GSRasterizer();
 
 	void DrawPoint(Vertex* v, const GSVector4i& scissor);
 	void DrawLine(Vertex* v, const GSVector4i& scissor);
 	void DrawTriangle(Vertex* v, const GSVector4i& scissor);
 	void DrawSprite(Vertex* v, const GSVector4i& scissor, bool solid);
 
+	IDrawScanline* GetDrawScanline() {return m_ds;}
 	int GetPixels() {int pixels = m_pixels; m_pixels = 0; return pixels;}
 };
 
@@ -82,5 +89,5 @@ public:
 	GSRasterizerMT(IDrawScanline* ds, int id, int threads, IDrawAsync* da, long* sync);
 	virtual ~GSRasterizerMT();
 
-	void Run();
+	void Run(Vertex* vertices, int count, const void* texture);
 };
