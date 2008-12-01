@@ -102,7 +102,7 @@ EXPORT_C_(INT32) GPUopen(HWND hWnd)
 	rs.m_aspectratio = AfxGetApp()->GetProfileInt(_T("Settings"), _T("aspectratio"), 1);
 	rs.m_vsync = !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("vsync"), FALSE);
 
-	s_gpu = new GPURendererSW<GSDevice10>(rs);
+	s_gpu = new GPURendererSW<GSDevice9>(rs);
 
 	s_hr = ::CoInitializeEx(NULL, COINIT_MULTITHREADED);
 

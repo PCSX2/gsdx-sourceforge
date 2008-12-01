@@ -36,6 +36,8 @@ public:
 	static bool IsRectInRect(const CRect& inner, const CRect& outer);
 	static bool IsRectInRectH(const CRect& inner, const CRect& outer);
 	static bool IsRectInRectV(const CRect& inner, const CRect& outer);
+
+	static void FitRect(CRect& r, int aspectratio);
 	
 	static int EncodePSM(int psm)
 	{

@@ -36,7 +36,6 @@ protected:
 	long* m_sync;
 	long m_threads;
 	GSTextureCacheSW* m_tc;
-	GSDrawScanline* m_ds;
 	GSRasterizer* m_rst;
 	CAtlList<GSRasterizerMT*> m_rmt;
 	Texture m_texture[2];
@@ -312,7 +311,7 @@ protected:
 
 		//
 
-		m_ds->SetupDraw(m_vertices, m_count, texture);
+		m_rst->GetDrawScanline()->SetupDraw(m_vertices, m_count, texture);
 
 		//
 
@@ -322,7 +321,7 @@ protected:
 
 		while(pos)
 		{
-			m_rmt.GetNext(pos)->Run();
+			m_rmt.GetNext(pos)->Run(m_vertices, m_count, texture);
 		}
 
 		// 1st thread is this thread
@@ -478,12 +477,11 @@ public:
 		m_threads = AfxGetApp()->GetProfileInt(_T("Settings"), _T("swthreads"), 1);
 
 		m_tc = new GSTextureCacheSW(this);
-		m_ds = new GSDrawScanline(this);
-		m_rst = new GSRasterizer(m_ds, 0, m_threads);
+		m_rst = new GSRasterizer(new GSDrawScanline(this), 0, m_threads);
 
 		for(int i = 1; i < m_threads; i++) 
 		{
-			m_rmt.AddTail(new GSRasterizerMT(m_ds, i, m_threads, this, m_sync));
+			m_rmt.AddTail(new GSRasterizerMT(new GSDrawScanline(this), i, m_threads, this, m_sync));
 		}
 
 		m_fpDrawingKickHandlers[GS_POINTLIST] = (DrawingKickHandler)&GSRendererSW::DrawingKickPoint;
@@ -498,7 +496,6 @@ public:
 	virtual ~GSRendererSW()
 	{
 		delete m_tc;
-		delete m_ds;
 		delete m_rst;
 
 		while(!m_rmt.IsEmpty()) 

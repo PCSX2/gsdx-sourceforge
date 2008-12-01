@@ -30,6 +30,11 @@ GSRasterizer::GSRasterizer(IDrawScanline* ds, int id, int threads)
 {
 }
 
+GSRasterizer::~GSRasterizer()
+{
+	delete m_ds;
+}
+
 void GSRasterizer::DrawPoint(Vertex* v, const GSVector4i& scissor)
 {
 	// TODO: round to closest for point, prestep for line
@@ -40,7 +45,7 @@ void GSRasterizer::DrawPoint(Vertex* v, const GSVector4i& scissor)
 	{
 		if((p.y % m_threads) == m_id) 
 		{
-			m_ds->DrawScanline(p.y, p.x, p.x + 1, *v, *v);
+			m_ds->DrawScanline(p.y, p.x, p.x + 1, *v);
 
 			m_pixels++;
 		}
@@ -163,6 +168,8 @@ void GSRasterizer::DrawTriangleTop(Vertex* v, const GSVector4i& scissor)
 			r += dr * dy;
 		}
 
+		m_ds->SetupScanline(dscan);
+
 		DrawTriangleSection(top, bottom, l, dl, r, dr, dscan, scissor);
 	}
 }
@@ -209,6 +216,8 @@ void GSRasterizer::DrawTriangleBottom(Vertex* v, const GSVector4i& scissor)
 			r += dr * dy;
 		}
 
+		m_ds->SetupScanline(dscan);
+
 		DrawTriangleSection(top, bottom, l, dl, r, dr, dscan, scissor);
 	}
 }
@@ -228,6 +237,8 @@ void GSRasterizer::DrawTriangleTopBottom(Vertex* v, const GSVector4i& scissor)
 	}
 
 	Vertex dscan = longest * longest.p.xxxx().rcp();
+
+	m_ds->SetupScanline(dscan);
 
 	Vertex& l = v[0];
 	GSVector4 r = v[0].p;
@@ -312,6 +323,8 @@ void GSRasterizer::DrawTriangleSection(int top, int bottom, Vertex& l, const Ver
 {
 	ASSERT(top < bottom);
 
+	IDrawScanline::DrawScanlinePtr dsf = m_ds->GetDrawScanlinePtr();
+
 	while(1)
 	{
 		do
@@ -354,7 +367,7 @@ void GSRasterizer::DrawTriangleSection(int top, int bottom, Vertex& l, const Ver
 
 					if(px > 0) scan += dscan * px;
 
-					m_ds->DrawScanline(top, left, right, scan, dscan);
+					(m_ds->*dsf)(top, left, right, scan);
 				}
 			}
 		}
@@ -433,11 +446,15 @@ void GSRasterizer::DrawSprite(Vertex* vertices, const GSVector4i& scissor, bool 
 	if(scan.p.y < (float)top) scan.t += dedge.t * ((float)top - scan.p.y);
 	if(scan.p.x < (float)left) scan.t += dscan.t * ((float)left - scan.p.x);
 
+	m_ds->SetupScanline(dscan);
+
+	IDrawScanline::DrawScanlinePtr dsf = m_ds->GetDrawScanlinePtr();
+
 	for(; top < bottom; top++, scan.t += dedge.t)
 	{
 		if((top % m_threads) == m_id) 
 		{
-			m_ds->DrawScanline(top, left, right, scan, dscan);
+			(m_ds->*dsf)(top, left, right, scan);
 
 			m_pixels += right - left;
 		}
@@ -472,8 +489,10 @@ GSRasterizerMT::~GSRasterizerMT()
 	}
 }
 
-void GSRasterizerMT::Run()
+void GSRasterizerMT::Run(Vertex* vertices, int count, const void* texture)
 {
+	m_ds->SetupDraw(vertices, count, texture);
+
 	InterlockedBitTestAndSet(m_sync, m_id);
 }
 

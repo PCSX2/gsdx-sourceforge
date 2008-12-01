@@ -87,6 +87,10 @@ class GSDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 		GSVector4 afix;
 		GSVector4 afix2;
 		GSVector4 fc;
+
+		GSVector4 dp, dp4;
+		GSVector4 dt, dt4;
+		GSVector4 dc, dc4;
 	};
 
 	struct Offset
@@ -106,18 +110,16 @@ class GSDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 	void SetupOffset(Offset*& co, DWORD bp, DWORD bw, DWORD psm);
 	void FreeOffsets();
 
-	typedef void (GSDrawScanline::*DrawScanlinePtr)(int top, int left, int right, const Vertex& v, const Vertex& dv);
-
 	DrawScanlinePtr m_ds[4][4][4][2], m_dsf;
 	CRBMap<DWORD, DrawScanlinePtr> m_dsmap, m_dsmap2;
 
-	template<DWORD fpsm, DWORD zpsm, DWORD ztst, DWORD iip>
-	void DrawScanlineT(int top, int left, int right, const Vertex& v, const Vertex& dv);
+	void Init();
 
-	void InitEx();
+	template<DWORD fpsm, DWORD zpsm, DWORD ztst, DWORD iip>
+	void DrawScanlineT(int top, int left, int right, const Vertex& v);
 
 	template<DWORD sel> 
-	void DrawScanlineExT(int top, int left, int right, const Vertex& v, const Vertex& dv);
+	void DrawScanlineExT(int top, int left, int right, const Vertex& v);
 
 	__forceinline GSVector4i Wrap(const GSVector4i& t);
 
@@ -149,6 +151,8 @@ public:
 	// IDrawScanline
 
 	void SetupDraw(Vertex* vertices, int count, const void* texture);
-	void DrawScanline(int top, int left, int right, const Vertex& v, const Vertex& dv);
+	void SetupScanline(const Vertex& dv);
+	void DrawScanline(int top, int left, int right, const Vertex& v);
 	void FillRect(const GSVector4i& r, const Vertex& v);
+	DrawScanlinePtr GetDrawScanlinePtr();
 };

@@ -63,6 +63,8 @@ void GPUState::Reset()
 {
 	m_env.Reset();
 
+	m_mem.Invalidate(CRect(0, 0, 1024, 512));
+
 	memset(&m_v, 0, sizeof(m_v));
 }
 
@@ -130,6 +132,11 @@ void GPUState::SetTPAGE(GPUReg* r)
 
 		m_env.STATUS.ai32 = value;
 	}
+}
+
+void GPUState::Invalidate(const CRect& r)
+{
+	m_mem.Invalidate(r);
 }
 
 void GPUState::WriteData(const BYTE* mem, UINT32 size)
@@ -209,14 +216,14 @@ void GPUState::Freeze(GPUFreezeData* data)
 {
 	data->status = m_env.STATUS.ai32;
 	memcpy(data->control, m_status, 256 * 4);
-	memcpy(data->vram, m_mem.m_vm16, 1024 * 512 * 2);
+	m_mem.ReadRect(CRect(0, 0, 1024, 512), data->vram);
 }
 
 void GPUState::Defrost(const GPUFreezeData* data)
 {
 	m_env.STATUS.ai32 = data->status;
 	memcpy(m_status, data->control, 256 * 4);
-	memcpy(m_mem.m_vm16, data->vram, 1024 * 512 * 2);
+	m_mem.WriteRect(CRect(0, 0, 1024, 512), data->vram);
 
 	for(int i = 0; i <= 8; i++)
 	{
@@ -618,8 +625,6 @@ int GPUState::PH_Read(GPUReg* r, int size)
 
 	m_mem.ReadRect(r2, (WORD*)m_read.buff);
 
-	Invalidate(r2);
-
 	Dump(_T("r"));
 
 	m_env.STATUS.IMG = 1;
@@ -679,85 +684,6 @@ int GPUState::PH_Environment(GPUReg* r, int size)
 	ASSERT(0);
 
 	return 1;
-}
-
-void GPUState::SaveBMP(LPCTSTR path, UINT32 TP, CRect r)
-{
-	r.left &= ~1;
-	r.right &= ~1;
-
-	if(FILE* fp = _tfopen(path, _T("wb")))
-	{
-		BITMAPINFOHEADER bih;
-		memset(&bih, 0, sizeof(bih));
-        bih.biSize = sizeof(bih);
-		bih.biWidth = r.Width();
-		bih.biHeight = r.Height();
-        bih.biPlanes = 1;
-        bih.biBitCount = 32;
-        bih.biCompression = BI_RGB;
-        bih.biSizeImage = bih.biWidth * bih.biHeight * 4;
-
-		BITMAPFILEHEADER bfh;
-		memset(&bfh, 0, sizeof(bfh));
-		bfh.bfType = 'MB';
-		bfh.bfOffBits = sizeof(bfh) + sizeof(bih);
-		bfh.bfSize = bfh.bfOffBits + bih.biSizeImage;
-		bfh.bfReserved1 = bfh.bfReserved2 = 0;
-
-		fwrite(&bfh, 1, sizeof(bfh), fp);
-		fwrite(&bih, 1, sizeof(bih), fp);
-
-		WORD* buff = (WORD*)_aligned_malloc(sizeof(WORD) * 1024, 16);
-		DWORD* buff32 = (DWORD*)_aligned_malloc(sizeof(DWORD) * 1024, 16);
-		WORD* clut = GetCLUT();
-
-		for(int j = r.bottom - 1; j >= r.top; j--)
-		{
-			WORD* p = &m_mem.m_vm16[(j << 10) + r.left];
-
-			if(TP == 0) // 4 bpp
-			{
-				for(int i = 0, k = r.Width() / 2; i < k; i++)
-				{
-					buff[i * 2 + 0] = clut[((BYTE*)p)[i] & 0xf];
-					buff[i * 2 + 1] = clut[((BYTE*)p)[i] >> 4];
-				}
-			}
-			else if(TP == 1) // 8 bpp
-			{
-				for(int i = 0, k = r.Width(); i < k; i++)
-				{
-					buff[i] = clut[((BYTE*)p)[i]];
-				}
-			}
-			else if(TP == 2) // 16 bpp;
-			{
-				for(int i = 0, k = r.Width(); i < k; i++)
-				{
-					buff[i] = p[i];
-				}
-			}
-			else if(TP == 3) // 24 bpp
-			{
-				// TODO
-			}
-
-			m_mem.Expand16(buff, buff32, r.Width());
-
-			for(int i = 0, k = r.Width(); i < k; i++)
-			{
-				buff32[i] = (buff32[i] & 0xff00ff00) | ((buff32[i] & 0x00ff0000) >> 16) | ((buff32[i] & 0x000000ff) << 16);
-			}
-
-			fwrite(buff32, 1, r.Width() * 4, fp);
-		}
-
-		_aligned_free(buff);
-		_aligned_free(buff32);
-
-		fclose(fp);
-	}
 }
 
 //

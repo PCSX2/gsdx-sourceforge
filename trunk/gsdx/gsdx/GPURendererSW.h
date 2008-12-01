@@ -22,7 +22,6 @@
 #pragma once
 
 #include "GPURenderer.h"
-#include "GPUTextureCacheSW.h"
 #include "GPUDrawScanline.h"
 
 template <class Device>
@@ -32,17 +31,8 @@ class GPURendererSW : public GPURenderer<Device, GSVertexSW>
 
 protected:
 	long m_threads;
-	GPUTextureCacheSW* m_tc;
-	GPUDrawScanline* m_ds;
 	GSRasterizer* m_rst;
 	Texture m_texture;
-
-	void Reset() 
-	{
-		m_tc->Invalidate(CRect(0, 0, 1024, 512));
-
-		__super::Reset();
-	}
 
 	void ResetDevice() 
 	{
@@ -52,6 +42,11 @@ protected:
 	bool GetOutput(Texture& t)
 	{
 		CRect r = m_env.GetDisplayRect();
+
+		r.left <<= 1;
+		r.top <<= 1;
+		r.right <<= 1;
+		r.bottom <<= 1;
 
 		if(m_texture.GetWidth() != r.Width() || m_texture.GetHeight() != r.Height())
 		{
@@ -64,31 +59,13 @@ protected:
 		}
 
 		// TODO
-		static DWORD* buff = (DWORD*)_aligned_malloc(1024 * 512 * 4, 16);
-		static int pitch = 1024 * 4;
+		static DWORD* buff = (DWORD*)_aligned_malloc(GPULocalMemory::m_size * 2, 16);
 
-		if(m_env.STATUS.ISRGB24)
-		{
-			DWORD* dst = buff;
-
-			for(int i = r.top; i < r.bottom; i++, dst += 1024)
-			{
-				m_mem.Expand24(&m_mem.m_vm16[(i << 10) + r.left], dst, r.Width());
-			}
-		}
-		else
-		{
-			DWORD* dst = buff;
-
-			for(int i = r.top; i < r.bottom; i++, dst += 1024)
-			{
-				m_mem.Expand16(&m_mem.m_vm16[(i << 10) + r.left], dst, r.Width());
-			}
-		}
+		m_mem.ReadFrame32(r, buff, !!m_env.STATUS.ISRGB24);
 
 		r.OffsetRect(-r.TopLeft());
 
-		m_texture.Update(r, buff, pitch);
+		m_texture.Update(r, buff, GPULocalMemory::m_width * 4);
 
 		t = m_texture;
 
@@ -107,11 +84,11 @@ protected:
 		int s = m_v.UV.X;
 		int t = m_v.UV.Y;
 
-		GSVector4 pt(x, y, s, t);
+		GSVector4 pt(x << 1, y << 1, s, t);
 
 		v.p = pt.xyxy(GSVector4::zero());
-		v.t = pt.zwzw(GSVector4::zero()) + GSVector4(0.5f);
-		v.c = GSVector4((DWORD)m_v.RGB.ai32);
+		v.t = pt.zwzw(GSVector4::zero()) + GSVector4(0.25f);
+		v.c = GSVector4((DWORD)m_v.RGB.ai32) * 128.0f;
 
 		__super::VertexKick();
 	}
@@ -137,25 +114,27 @@ protected:
 
 		if(m_env.PRIM.TME)
 		{
-			texture = m_tc->Lookup(m_env.STATUS);
+			texture = m_mem.GetTexture(m_env.STATUS.TP, m_env.STATUS.TX, m_env.STATUS.TY);
 
 			if(!texture) {ASSERT(0); return;}
 		}
 
 		//
 
-		m_ds->SetOptions(m_filter, m_dither);
+		GPUDrawScanline* ds = (GPUDrawScanline*)m_rst->GetDrawScanline();
+		
+		ds->SetOptions(m_filter, m_dither);
 
-		m_ds->SetupDraw(m_vertices, m_count, texture);
+		ds->SetupDraw(m_vertices, m_count, texture);
 
 		//
 
 		GSVector4i scissor;
 
-		scissor.x = m_env.DRAREATL.X;
-		scissor.y = m_env.DRAREATL.Y;
-		scissor.z = min(m_env.DRAREABR.X + 1, 1024);
-		scissor.w = min(m_env.DRAREABR.Y + 1, 512);
+		scissor.x = m_env.DRAREATL.X << 1;
+		scissor.y = m_env.DRAREATL.Y << 1;
+		scissor.z = min((m_env.DRAREABR.X + 1) << 1, 1024 << 1);
+		scissor.w = min((m_env.DRAREABR.Y + 1) << 1, 512 << 1);
 
 		//
 
@@ -207,20 +186,13 @@ protected:
 
 			CRect r;
 
-			r.left = max(scissor.x, min(scissor.z, (int)tl.x));
-			r.top = max(scissor.y, min(scissor.w, (int)tl.y));
-			r.right = max(scissor.x, min(scissor.z, (int)br.x));
-			r.bottom = max(scissor.y, min(scissor.w, (int)br.y));
+			r.left = max(scissor.x, min(scissor.z, (int)tl.x)) >> 1;
+			r.top = max(scissor.y, min(scissor.w, (int)tl.y)) >> 1;
+			r.right = max(scissor.x, min(scissor.z, (int)br.x)) >> 1;
+			r.bottom = max(scissor.y, min(scissor.w, (int)br.y)) >> 1;
 
 			Invalidate(r);
 		}
-	}
-
-	void Invalidate(const CRect& r)
-	{
-		__super::Invalidate(r);
-
-		m_tc->Invalidate(r);
 	}
 
 public:
@@ -229,9 +201,7 @@ public:
 	{
 		m_threads = 1;
 
-		m_tc = new GPUTextureCacheSW(this);
-		m_ds = new GPUDrawScanline(this, m_filter, m_dither);
-		m_rst = new GSRasterizer(m_ds, 0, m_threads);
+		m_rst = new GSRasterizer(new GPUDrawScanline(this, m_filter, m_dither), 0, m_threads);
 
 		m_fpDrawingKickHandlers[GPU_POLYGON] = (DrawingKickHandler)&GPURendererSW::DrawingKickTriangle;
 		m_fpDrawingKickHandlers[GPU_LINE] = (DrawingKickHandler)&GPURendererSW::DrawingKickLine;
@@ -240,8 +210,6 @@ public:
 
 	virtual ~GPURendererSW()
 	{
-		delete m_tc;
-		delete m_ds;
 		delete m_rst;
 	}
 };
