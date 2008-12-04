@@ -365,8 +365,6 @@ void GPULocalMemory::MoveRect(const CPoint& src, const CPoint& dst, int w, int h
 
 void GPULocalMemory::ReadPage4(int tx, int ty, BYTE* RESTRICT dst)
 {
-	GSVector4i mask(0x0f0f0f0f);
-
 	WORD* src = GetPixelAddressScaled(tx << 6, ty << 8);
 
 	int pitch = GetWidth() << m_scale.cy;

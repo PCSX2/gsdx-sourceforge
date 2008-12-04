@@ -188,23 +188,33 @@ void GPUDrawScanline::SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin
 		{
 			do
 			{
+				if(test.u16[i]) // me && 
+				{
+					continue;
+				}
+
 				c00.u16[i] = clut[((const BYTE*)tex)[addr00.u16[i]]];
 				c01.u16[i] = clut[((const BYTE*)tex)[addr01.u16[i]]];
 				c10.u16[i] = clut[((const BYTE*)tex)[addr10.u16[i]]];
 				c11.u16[i] = clut[((const BYTE*)tex)[addr11.u16[i]]];
 			}
-			while(++i < 8);
+			while(++i < pixels);
 		}
 		else
 		{
 			do
 			{
+				if(test.u16[i]) // me && 
+				{
+					continue;
+				}
+
 				c00.u16[i] = ((const WORD*)tex)[addr00.u16[i]];
 				c01.u16[i] = ((const WORD*)tex)[addr01.u16[i]];
 				c10.u16[i] = ((const WORD*)tex)[addr10.u16[i]];
 				c11.u16[i] = ((const WORD*)tex)[addr11.u16[i]];
 			}
-			while(++i < 8);
+			while(++i < pixels);
 		}
 
 		#endif
