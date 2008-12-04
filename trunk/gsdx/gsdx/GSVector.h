@@ -324,6 +324,11 @@ public:
 
 	#endif
 
+	static int min_i16(int a, int b)
+	{
+		 return store(load(a).min_i16(load(b)));
+	}
+
 	GSVector4i blend8(const GSVector4i& a, const GSVector4i& mask) const
 	{
 		return GSVector4i(_mm_blendv_epi8(m, a, mask));

@@ -224,6 +224,18 @@ bool GSUtil::CheckSSE()
 	return true;
 }
 
+bool GSUtil::IsDirect3D10Available()
+{
+	if(HMODULE hModule = LoadLibrary(_T("d3d10.dll")))
+	{
+		FreeLibrary(hModule);
+
+		return true;
+	}
+
+	return false;
+}
+
 char* GSUtil::GetLibName()
 {
 	CString str;

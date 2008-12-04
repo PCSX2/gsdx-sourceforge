@@ -30,6 +30,7 @@ struct GPURendererSettings
 	int m_dither;
 	int m_aspectratio;
 	bool m_vsync;
+	CSize m_scale;
 };
 
 class GPURendererBase : public GPUState, protected GPURendererSettings
@@ -79,13 +80,15 @@ protected:
 
 public:
 	GPURendererBase(const GPURendererSettings& rs)
-		: m_hWnd(NULL)
+		: GPUState(rs.m_scale)
+		, m_hWnd(NULL)
 		, m_wndproc(NULL)
 	{
 		m_filter = rs.m_filter;
 		m_dither = rs.m_dither;
 		m_aspectratio = rs.m_aspectratio;
 		m_vsync = rs.m_vsync;
+		m_scale = m_mem.GetScale();
 	}
 
 	virtual ~GPURendererBase()
@@ -208,13 +211,8 @@ protected:
 	{
 		if(m_count > 0)
 		{
-//			Dump(_T("db"));
-
-			Draw();
-
-			m_count = 0;
-/*
-			Dump(_T("dc"), false);
+			/*
+			Dump(_T("db"));
 
 			if(m_env.PRIM.TME)
 			{
@@ -229,7 +227,13 @@ protected:
 				str.Format(_T("da_%d_%d_%d_%d_%d"), m_env.STATUS.TP, r);
 				Dump(str, m_env.STATUS.TP, r, false);
 			}
-*/
+			*/
+
+			Draw();
+
+			m_count = 0;
+
+			//Dump(_T("dc"), false);
 		}
 	}
 
@@ -346,10 +350,13 @@ public:
 			double fps = 1000.0f / m_perfmon.Get(GSPerfMon::Frame);
 
 			CRect r = m_env.GetDisplayRect();
-			
+
+			int w = r.Width() << m_scale.cx;
+			int h = r.Height() << m_scale.cy;
+
 			s_stats.Format(
 				_T("%I64d | %d x %d | %.2f fps (%d%%) | %d/%d | %d%% CPU | %.2f | %.2f"), 
-				m_perfmon.GetFrame(), r.Width(), r.Height(), fps, (int)(100.0 * fps / m_env.GetFPS()),
+				m_perfmon.GetFrame(), w, h, fps, (int)(100.0 * fps / m_env.GetFPS()),
 				(int)m_perfmon.Get(GSPerfMon::Prim),
 				(int)m_perfmon.Get(GSPerfMon::Draw),
 				m_perfmon.CPU(),

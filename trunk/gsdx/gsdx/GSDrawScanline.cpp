@@ -932,6 +932,8 @@ void GSDrawScanline::Init()
 
 	InitDS();
 
+	#ifdef FAST_DRAWSCANLINE
+
 	// ffx
 
 	m_dsmap.SetAt(0x2420c265, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0x2420c265>);
@@ -2153,6 +2155,8 @@ void GSDrawScanline::Init()
 	m_dsmap.SetAt(0xa4802c09, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xa4802c09>);
 	m_dsmap.SetAt(0xa485bc29, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xa485bc29>);
 	m_dsmap.SetAt(0xe441bc29, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xe441bc29>);
+
+	#endif
 /*
 	// dmc (fixme)
 
@@ -2216,7 +2220,7 @@ void GSDrawScanline::DrawScanlineT(int top, int left, int right, const Vertex& v
 				continue;
 			}
 
-			int pixels = GSVector4i::store(GSVector4i::load(steps).min_i16(GSVector4i::load(4)));
+			int pixels = GSVector4i::min_i16(steps, 4);
 
 			GSVector4 c[12];
 
@@ -2442,7 +2446,7 @@ void GSDrawScanline::DrawScanlineExT(int top, int left, int right, const Vertex&
 				continue;
 			}
 
-			int pixels = GSVector4i::store(GSVector4i::load(steps).min_i16(GSVector4i::load(4)));
+			int pixels = GSVector4i::min_i16(steps, 4);
 
 			GSVector4 c[12];
 

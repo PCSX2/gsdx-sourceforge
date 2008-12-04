@@ -58,7 +58,7 @@ void GPUDrawScanline::SetupDraw(Vertex* vertices, int count, const void* texture
 	m_sel.tlu = env.STATUS.TP < 2;
 	m_sel.twin = (env.TWIN.ai32 & 0xfffff) != 0;
 	m_sel.dtd = m_dither ? env.STATUS.DTD : 0;
-	m_sel.ltf = m_filter < 2 ? m_filter : env.PRIM.TYPE == GPU_POLYGON ? 1 : 0;
+	m_sel.ltf = m_filter == 1 && env.PRIM.TYPE == GPU_POLYGON || m_filter == 2 ? 1 : 0;
 
 	m_dsf = m_ds[m_sel];
 
@@ -84,8 +84,8 @@ void GPUDrawScanline::SetupDraw(Vertex* vertices, int count, const void* texture
 			u = env.TWIN.TWX << 3;
 			v = env.TWIN.TWY << 3;
 			
-			m_slenv.u[1] = GSVector4i((u << 16) | u);
-			m_slenv.v[1] = GSVector4i((v << 16) | v);
+			m_slenv.u[1] = GSVector4i((u << 16) | u) & ~m_slenv.u[0];
+			m_slenv.v[1] = GSVector4i((v << 16) | v) & ~m_slenv.v[0];
 		}
 	}
 
@@ -95,30 +95,21 @@ void GPUDrawScanline::SetupDraw(Vertex* vertices, int count, const void* texture
 
 void GPUDrawScanline::SetupScanline(const Vertex& dv)
 {
+	// we could use integers here but it's more accurate to multiply a float than a 8.8 fixed point number
+
 	GSVector4 ps0123 = GSVector4::ps0123();
 	GSVector4 ps4567 = GSVector4::ps4567();
 
-	GSVector4 dt = dv.t;
+	GSVector4i dtc8 = GSVector4i(dv.t * 8.0f).ps32(GSVector4i(dv.c * 8.0f));
 
-	m_slenv.ds[0] = dt.xxxx() * ps0123;
-	m_slenv.dt[0] = dt.yyyy() * ps0123;
-	m_slenv.ds[1] = dt.xxxx() * ps4567;
-	m_slenv.dt[1] = dt.yyyy() * ps4567;
-	m_slenv.ds[2] = dt.xxxx() * 8.0f;
-	m_slenv.dt[2] = dt.yyyy() * 8.0f;
+	m_slenv.ds = GSVector4i(dv.t.xxxx() * ps0123).ps32(GSVector4i(dv.t.xxxx() * ps4567));
+	m_slenv.dt = GSVector4i(dv.t.yyyy() * ps0123).ps32(GSVector4i(dv.t.yyyy() * ps4567));
+	m_slenv.dst8 = dtc8.upl16(dtc8);
 
-	GSVector4i dc;
-
-	dc = GSVector4i(dv.c);
-	dc = dc.ps32();
-	dc = dc.upl16(dc);
-
-	GSVector4i s_01234567(0x00010000, 0x00030002, 0x00050004, 0x00070006); // TODO
-
-	m_slenv.dr = dc.xxxx().mul16l(s_01234567);
-	m_slenv.dg = dc.yyyy().mul16l(s_01234567);
-	m_slenv.db = dc.zzzz().mul16l(s_01234567);
-	m_slenv.dc = dc.sll16(3);
+	m_slenv.dr = GSVector4i(dv.c.xxxx() * ps0123).ps32(GSVector4i(dv.c.xxxx() * ps4567));
+	m_slenv.dg = GSVector4i(dv.c.yyyy() * ps0123).ps32(GSVector4i(dv.c.yyyy() * ps4567));
+	m_slenv.db = GSVector4i(dv.c.zzzz() * ps0123).ps32(GSVector4i(dv.c.zzzz() * ps4567));
+	m_slenv.dc8 = dtc8.uph16(dtc8);
 }
 
 void GPUDrawScanline::DrawScanline(int top, int left, int right, const Vertex& v)	
@@ -138,144 +129,121 @@ IDrawScanline::DrawScanlinePtr GPUDrawScanline::GetDrawScanlinePtr()
 	return m_dsf;
 }
 
-void GPUDrawScanline::SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin, GSVector4i& test, const GSVector4* s, const GSVector4* t, GSVector4i* c)
+void GPUDrawScanline::SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin, GSVector4i& test, const GSVector4i& s, const GSVector4i& t, GSVector4i* c)
 {
 	const void* RESTRICT tex = m_slenv.tex;
 	const WORD* RESTRICT clut = m_slenv.clut;
 
 	if(ltf)
 	{
-		GSVector4i cc[8];
+		GSVector4i u = s.sub16(GSVector4i(0x00200020)); // - 0.125f
+		GSVector4i v = t.sub16(GSVector4i(0x00200020)); // - 0.125f
 
-		for(int j = 0; j < 2; j++)
+		GSVector4i u0 = u.srl16(8);
+		GSVector4i v0 = v.srl16(8);
+
+		GSVector4i u1 = u0.add16(GSVector4i::x0001());
+		GSVector4i v1 = v0.add16(GSVector4i::x0001());
+
+		GSVector4i uf = u & GSVector4i::x00ff();
+		GSVector4i vf = v & GSVector4i::x00ff();
+
+		if(twin)
 		{
-			GSVector4 ss = s[j] - 0.25f;
-			GSVector4 tt = t[j] - 0.25f;
-
-			GSVector4 uf = ss.floor();
-			GSVector4 vf = tt.floor();
-
-			GSVector4 uff = ss - uf;
-			GSVector4 vff = tt - vf;
-
-			GSVector4i u = GSVector4i(uf);
-			GSVector4i v = GSVector4i(vf);
-		
-			GSVector4i u01 = GSVector4i(u).ps32(u + GSVector4i::x00000001());
-			GSVector4i v01 = GSVector4i(v).ps32(v + GSVector4i::x00000001());
-
-			if(twin)
-			{
-				u01 = (u01 & m_slenv.u[0]).add16(m_slenv.u[1]);
-				v01 = (v01 & m_slenv.v[0]).add16(m_slenv.v[1]);
-			}
-
-			GSVector4i uv01 = u01.pu16(v01);
-
-			GSVector4i addr0011 = uv01.upl8(uv01.zwxy());
-			GSVector4i addr0110 = uv01.upl8(uv01.wzyx());
-
-			GSVector4i c0011, c0110;
-
-			#if _M_SSE >= 0x401
-
-			if(tlu)
-			{
-				c0011 = addr0011.gather16_16((const BYTE*)tex).gather16_16(clut);
-				c0110 = addr0110.gather16_16((const BYTE*)tex).gather16_16(clut);
-			}
-			else
-			{
-				c0011 = addr0011.gather16_16((const WORD*)tex);
-				c0110 = addr0110.gather16_16((const WORD*)tex);
-			}
-
-			#else
-
-			int i = 0;
-
-			if(tlu)
-			{
-				do
-				{
-					c0011.u16[i] = clut[((const BYTE*)tex)[addr0011.u16[i]]];
-					c0110.u16[i] = clut[((const BYTE*)tex)[addr0110.u16[i]]];
-				}
-				while(++i < 8);
-			}
-			else
-			{
-				do
-				{
-					c0011.u16[i] = ((const WORD*)tex)[addr0011.u16[i]];
-					c0110.u16[i] = ((const WORD*)tex)[addr0110.u16[i]];
-				}
-				while(++i < 8);
-			}
-
-			#endif
-
-			GSVector4i r0011 = GSVector4i(c0011 & 0x001f001f) << 3;
-			GSVector4i r0110 = GSVector4i(c0110 & 0x001f001f) << 3;
-
-			GSVector4 r00 = GSVector4(r0011.upl16());
-			GSVector4 r01 = GSVector4(r0110.upl16());
-			GSVector4 r10 = GSVector4(r0110.uph16());
-			GSVector4 r11 = GSVector4(r0011.uph16());
-
-			r00 = r00.lerp(r01, vff);
-			r10 = r10.lerp(r11, vff);
-			r00 = r00.lerp(r10, uff);
-
-			cc[j * 4 + 0] = GSVector4i(r00);
-
-			GSVector4i g0011 = GSVector4i(c0011 & 0x03e003e0) >> 2;
-			GSVector4i g0110 = GSVector4i(c0110 & 0x03e003e0) >> 2;
-
-			GSVector4 g00 = GSVector4(g0011.upl16());
-			GSVector4 g01 = GSVector4(g0110.upl16());
-			GSVector4 g10 = GSVector4(g0110.uph16());
-			GSVector4 g11 = GSVector4(g0011.uph16());
-
-			g00 = g00.lerp(g01, vff);
-			g10 = g10.lerp(g11, vff);
-			g00 = g00.lerp(g10, uff);
-
-			cc[j * 4 + 1] = GSVector4i(g00);
-
-			GSVector4i b0011 = GSVector4i(c0011 & 0x7c007c00) >> 7;
-			GSVector4i b0110 = GSVector4i(c0110 & 0x7c007c00) >> 7;
-
-			GSVector4 b00 = GSVector4(b0011.upl16());
-			GSVector4 b01 = GSVector4(b0110.upl16());
-			GSVector4 b10 = GSVector4(b0110.uph16());
-			GSVector4 b11 = GSVector4(b0011.uph16());
-
-			b00 = b00.lerp(b01, vff);
-			b10 = b10.lerp(b11, vff);
-			b00 = b00.lerp(b10, uff);
-
-			cc[j * 4 + 2] = GSVector4i(b00);
-
-			GSVector4i a0011 = GSVector4i(c0011 & 0x80008000);
-			GSVector4i a0110 = GSVector4i(c0110 & 0x80008000);
-
-			GSVector4 a00 = GSVector4(a0011.upl16());
-			GSVector4 a01 = GSVector4(a0110.upl16());
-			GSVector4 a10 = GSVector4(a0110.uph16());
-			GSVector4 a11 = GSVector4(a0011.uph16());
-
-			a00 = a00.lerp(a01, vff);
-			a10 = a10.lerp(a11, vff);
-			a00 = a00.lerp(a10, uff);
-
-			cc[j * 4 + 3] = GSVector4i(a00);
+			u0 = (u0 & m_slenv.u[0]).add16(m_slenv.u[1]);
+			v0 = (v0 & m_slenv.v[0]).add16(m_slenv.v[1]);
+			u1 = (u1 & m_slenv.u[0]).add16(m_slenv.u[1]);
+			v1 = (v1 & m_slenv.v[0]).add16(m_slenv.v[1]);
 		}
 
-		c[0] = cc[0].ps32(cc[4]);
-		c[1] = cc[1].ps32(cc[5]);
-		c[2] = cc[2].ps32(cc[6]);
-		c[3] = cc[3].ps32(cc[7]).gt16(GSVector4i::zero());
+		GSVector4i addr00 = v0.sll16(8) | u0;
+		GSVector4i addr01 = v0.sll16(8) | u1;
+		GSVector4i addr10 = v1.sll16(8) | u0;
+		GSVector4i addr11 = v1.sll16(8) | u1;
+
+		GSVector4i c00, c01, c10, c11;
+
+		#if _M_SSE >= 0x401
+
+		if(tlu)
+		{
+			c00 = addr00.gather16_16((const BYTE*)tex).gather16_16(clut);
+			c01 = addr01.gather16_16((const BYTE*)tex).gather16_16(clut);
+			c10 = addr10.gather16_16((const BYTE*)tex).gather16_16(clut);
+			c11 = addr11.gather16_16((const BYTE*)tex).gather16_16(clut);
+		}
+		else
+		{
+			c00 = addr00.gather16_16((const WORD*)tex);
+			c01 = addr01.gather16_16((const WORD*)tex);
+			c10 = addr00.gather16_16((const WORD*)tex);
+			c11 = addr01.gather16_16((const WORD*)tex);
+		}
+
+		#else
+
+		int i = 0;
+
+		if(tlu)
+		{
+			do
+			{
+				c00.u16[i] = clut[((const BYTE*)tex)[addr00.u16[i]]];
+				c01.u16[i] = clut[((const BYTE*)tex)[addr01.u16[i]]];
+				c10.u16[i] = clut[((const BYTE*)tex)[addr10.u16[i]]];
+				c11.u16[i] = clut[((const BYTE*)tex)[addr11.u16[i]]];
+			}
+			while(++i < 8);
+		}
+		else
+		{
+			do
+			{
+				c00.u16[i] = ((const WORD*)tex)[addr00.u16[i]];
+				c01.u16[i] = ((const WORD*)tex)[addr01.u16[i]];
+				c10.u16[i] = ((const WORD*)tex)[addr10.u16[i]];
+				c11.u16[i] = ((const WORD*)tex)[addr11.u16[i]];
+			}
+			while(++i < 8);
+		}
+
+		#endif
+
+		GSVector4i r00 = (c00 & 0x001f001f) << 2;
+		GSVector4i r01 = (c01 & 0x001f001f) << 2;
+		GSVector4i r10 = (c10 & 0x001f001f) << 2;
+		GSVector4i r11 = (c11 & 0x001f001f) << 2;
+
+		r00 = r00.add16(r01.sub16(r00).mul16l(uf).sra16(8));
+		r10 = r10.add16(r11.sub16(r10).mul16l(uf).sra16(8));
+		c[0] = r00.add16(r10.sub16(r00).mul16l(vf).sra16(8)) << 1;
+
+		GSVector4i g00 = (c00 & 0x03e003e0) >> 3;
+		GSVector4i g01 = (c01 & 0x03e003e0) >> 3;
+		GSVector4i g10 = (c10 & 0x03e003e0) >> 3;
+		GSVector4i g11 = (c11 & 0x03e003e0) >> 3;
+
+		g00 = g00.add16(g01.sub16(g00).mul16l(uf).sra16(8));
+		g10 = g10.add16(g11.sub16(g10).mul16l(uf).sra16(8));
+		c[1] = g00.add16(g10.sub16(g00).mul16l(vf).sra16(8)) << 1;
+
+		GSVector4i b00 = (c00 & 0x7c007c00) >> 8;
+		GSVector4i b01 = (c01 & 0x7c007c00) >> 8;
+		GSVector4i b10 = (c10 & 0x7c007c00) >> 8;
+		GSVector4i b11 = (c11 & 0x7c007c00) >> 8;
+
+		b00 = b00.add16(b01.sub16(b00).mul16l(uf).sra16(8));
+		b10 = b10.add16(b11.sub16(b10).mul16l(uf).sra16(8));
+		c[2] = b00.add16(b10.sub16(b00).mul16l(vf).sra16(8)) << 1;
+
+		GSVector4i a00 = (c00 & 0x80008000) >> 9;
+		GSVector4i a01 = (c01 & 0x80008000) >> 9;
+		GSVector4i a10 = (c10 & 0x80008000) >> 9;
+		GSVector4i a11 = (c11 & 0x80008000) >> 9;
+
+		a00 = a00.add16(a01.sub16(a00).mul16l(uf).sra16(8));
+		a10 = a10.add16(a11.sub16(a10).mul16l(uf).sra16(8));
+		c[3] = a00.add16(a10.sub16(a00).mul16l(vf).sra16(8)).gt16(GSVector4i::zero());
 
 		// mask out blank pixels (not perfect)
 
@@ -287,10 +255,8 @@ void GPUDrawScanline::SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin
 	}
 	else
 	{
-		GSVector4i u, v;
-		
-		u = GSVector4i(s[0]).ps32(GSVector4i(s[1]));
-		v = GSVector4i(t[0]).ps32(GSVector4i(t[1]));
+		GSVector4i u = s.srl16(8);
+		GSVector4i v = t.srl16(8);
 
 		if(twin)
 		{
@@ -298,9 +264,7 @@ void GPUDrawScanline::SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin
 			v = (v & m_slenv.v[0]).add16(m_slenv.v[1]);
 		}
 
-		GSVector4i uv = u.pu16(v);
-
-		GSVector4i addr = uv.upl8(uv.zwxy());
+		GSVector4i addr = v.sll16(8) | u;
 
 		GSVector4i c00;
 
@@ -378,6 +342,7 @@ void GPUDrawScanline::ColorTFX(DWORD tfx, const GSVector4i& r, const GSVector4i&
 		__assume(0);
 	}
 }
+
 void GPUDrawScanline::AlphaBlend(UINT32 abr, UINT32 tme, const GSVector4i& d, GSVector4i* c)
 {
 	GSVector4i r = (d & 0x001f001f) << 3;
@@ -454,6 +419,8 @@ void GPUDrawScanline::Init()
 	{
 		m_ds[i] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineT;
 	}
+
+	#ifdef FAST_DRAWSCANLINE
 
 	m_ds[0x00] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineExT<0x00>;
 	m_ds[0x01] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineExT<0x01>;
@@ -711,6 +678,8 @@ void GPUDrawScanline::Init()
 	m_ds[0xfd] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineExT<0xfd>;
 	m_ds[0xfe] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineExT<0xfe>;
 	m_ds[0xff] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineExT<0xff>;
+
+	#endif
 }
 
 __declspec(align(16)) static WORD s_dither[4][16] = 
@@ -723,28 +692,19 @@ __declspec(align(16)) static WORD s_dither[4][16] =
 
 void GPUDrawScanline::DrawScanlineT(int top, int left, int right, const Vertex& v)	
 {
-	GSVector4 s[2], t[2]; 
-	
-	GSVector4 vt = v.t;
-
-	s[0] = vt.xxxx(); s[1] = s[0];
-	t[0] = vt.yyyy(); t[1] = t[0];
+	GSVector4i s, t;
+	GSVector4i r, g, b;
 
 	if(m_sel.tme)
 	{
-		s[0] += m_slenv.ds[0];
-		t[0] += m_slenv.dt[0];
-		s[1] += m_slenv.ds[1];
-		t[1] += m_slenv.dt[1];
+		GSVector4i vt = GSVector4i(v.t).xxzzl();
+
+		s = vt.xxxx().add16(m_slenv.ds);
+		t = vt.yyyy().add16(m_slenv.dt);
 	}
 
-	GSVector4i vc = GSVector4i(v.c);
+	GSVector4i vc = GSVector4i(v.c).xxzzl().xxzzh();
 
-	vc = vc.ps32(vc);
-	vc = vc.upl16(vc);
-
-	GSVector4i r, g, b;
-	
 	r = vc.xxxx();
 	g = vc.yyyy();
 	b = vc.zzzz();
@@ -771,7 +731,7 @@ void GPUDrawScanline::DrawScanlineT(int top, int left, int right, const Vertex& 
 	{
 		do
 		{
-			int pixels = GSVector4i::store(GSVector4i::load(steps).min_i16(GSVector4i::load(8)));
+			int pixels = GSVector4i::min_i16(steps, 8);
 
 			GSVector4i test = GSVector4i::zero();
 
@@ -825,22 +785,19 @@ void GPUDrawScanline::DrawScanlineT(int top, int left, int right, const Vertex& 
 
 		if(m_sel.tme)
 		{
-			GSVector4 ds = m_slenv.ds[2];
-			GSVector4 dt = m_slenv.dt[2];
+			GSVector4i dst8 = m_slenv.dst8;
 
-			s[0] += ds;
-			t[0] += dt;
-			s[1] += ds;
-			t[1] += dt;
+			s = s.add16(dst8.xxxx());
+			t = t.add16(dst8.yyyy());
 		}
 
 		if(m_sel.iip)
 		{
-			GSVector4i dc = m_slenv.dc;
+			GSVector4i dc8 = m_slenv.dc8;
 
-			r = r.add16(dc.xxxx());
-			g = g.add16(dc.yyyy());
-			b = b.add16(dc.zzzz());
+			r = r.add16(dc8.xxxx());
+			g = g.add16(dc8.yyyy());
+			b = b.add16(dc8.zzzz());
 		}
 	}
 }
@@ -858,33 +815,24 @@ void GPUDrawScanline::DrawScanlineExT(int top, int left, int right, const Vertex
 	DWORD rfb = (sel >> 1) & 3;
 	DWORD tfx = (sel >> 5) & 3;
 
-	GSVector4 s[2], t[2]; 
-	
-	GSVector4 vt = v.t;
+	GSVector4i s, t;
+	GSVector4i r, g, b;
 
-	s[0] = vt.xxxx(); s[1] = s[0];
-	t[0] = vt.yyyy(); t[1] = t[0];
-	
 	if(tme)
 	{
-		s[0] += m_slenv.ds[0];
-		t[0] += m_slenv.dt[0];
-		s[1] += m_slenv.ds[1];
-		t[1] += m_slenv.dt[1];
+		GSVector4i vt = GSVector4i(v.t).xxzzl();
+
+		s = vt.xxxx().add16(m_slenv.ds);
+		t = vt.yyyy().add16(m_slenv.dt);
 	}
 
-	GSVector4i vc = GSVector4i(v.c);
+	GSVector4i vc = GSVector4i(v.c).xxzzl().xxzzh();
 
-	vc = vc.ps32(vc);
-	vc = vc.upl16(vc);
-
-	GSVector4i r, g, b;
-	
 	r = vc.xxxx();
 	g = vc.yyyy();
 	b = vc.zzzz();
 
-	if(m_sel.iip)
+	if(iip)
 	{
 		r = r.add16(m_slenv.dr);
 		g = g.add16(m_slenv.dg);
@@ -906,7 +854,7 @@ void GPUDrawScanline::DrawScanlineExT(int top, int left, int right, const Vertex
 	{
 		do
 		{
-			int pixels = GSVector4i::store(GSVector4i::load(steps).min_i16(GSVector4i::load(8)));
+			int pixels = GSVector4i::min_i16(steps, 8);
 
 			GSVector4i test = GSVector4i::zero();
 
@@ -960,22 +908,19 @@ void GPUDrawScanline::DrawScanlineExT(int top, int left, int right, const Vertex
 
 		if(tme)
 		{
-			GSVector4 ds = m_slenv.ds[2];
-			GSVector4 dt = m_slenv.dt[2];
+			GSVector4i dst8 = m_slenv.dst8;
 
-			s[0] += ds;
-			t[0] += dt;
-			s[1] += ds;
-			t[1] += dt;
+			s = s.add16(dst8.xxxx());
+			t = t.add16(dst8.yyyy());
 		}
 
 		if(iip)
 		{
-			GSVector4i dc = m_slenv.dc;
+			GSVector4i dc8 = m_slenv.dc8;
 
-			r = r.add16(dc.xxxx());
-			g = g.add16(dc.yyyy());
-			b = b.add16(dc.zzzz());
+			r = r.add16(dc8.xxxx());
+			g = g.add16(dc8.yyyy());
+			b = b.add16(dc8.zzzz());
 		}
 	}
 }

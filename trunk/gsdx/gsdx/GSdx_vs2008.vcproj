@@ -1072,6 +1072,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\GPUSettingsDlg.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\GPUState.cpp"
 				>
 			</File>
@@ -1615,6 +1619,10 @@
 			</File>
 			<File
 				RelativePath=".\GPURendererSW.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GPUSettingsDlg.h"
 				>
 			</File>
 			<File

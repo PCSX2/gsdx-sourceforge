@@ -221,6 +221,17 @@ protected:
 		}
 	}
 
+	GSVector4i GetScissor()
+	{
+		GSVector4i v = GSVector4i(m_context->scissor.in);
+
+		// TODO: find a game that overflows and check which one is the right behaviour
+
+		v.z = min(v.z, (int)m_context->FRAME.FBW * 64);
+
+		return v;
+	}
+
 	void Draw()
 	{
 		// TODO: lot to optimize here
@@ -311,7 +322,9 @@ protected:
 
 		//
 
-		m_rst->GetDrawScanline()->SetupDraw(m_vertices, m_count, texture);
+		GSDrawScanline* ds = (GSDrawScanline*)m_rst->GetDrawScanline();
+
+		ds->SetupDraw(m_vertices, m_count, texture);
 
 		//
 
@@ -321,7 +334,13 @@ protected:
 
 		while(pos)
 		{
-			m_rmt.GetNext(pos)->Run(m_vertices, m_count, texture);
+			GSRasterizerMT* r = m_rmt.GetNext(pos);
+
+			GSDrawScanline* ds = (GSDrawScanline*)r->GetDrawScanline();
+			
+			ds->SetupDraw(m_vertices, m_count, texture);
+
+			r->Draw();
 		}
 
 		// 1st thread is this thread
@@ -365,11 +384,7 @@ protected:
 				br = br.maxv(p);
 			}
 
-			GSVector4i scissor(context->scissor.in);
-
-			// TODO: find a game that overflows and check which one is the right behaviour
-
-			scissor.z = min(scissor.z, (int)context->FRAME.FBW * 64); 
+			GSVector4i scissor = GetScissor();
 
 			CRect r;
 
@@ -409,12 +424,6 @@ protected:
 	{
 		GSDrawingContext* context = m_context;
 
-		GSVector4i scissor(context->scissor.in);
-
-		// TODO: find a game that overflows and check which one is the right behaviour
-
-		scissor.z = min(scissor.z, (int)context->FRAME.FBW * 64); 
-
 		//
 
 		bool solid = true;
@@ -430,6 +439,8 @@ protected:
 		}
 
 		//
+
+		GSVector4i scissor = GetScissor();
 
 		int prims = 0;
 

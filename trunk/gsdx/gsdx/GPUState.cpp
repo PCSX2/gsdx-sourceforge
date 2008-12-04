@@ -22,8 +22,9 @@
 #include "stdafx.h"
 #include "GPUState.h"
 
-GPUState::GPUState()
-	: s_n(0)
+GPUState::GPUState(const CSize& scale)
+	: m_mem(scale)
+	, s_n(0)
 {
 	memset(m_status, 0, sizeof(m_status));
 

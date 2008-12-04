@@ -97,7 +97,7 @@ protected:
 
 		if(inc) s_n++;
 
-		//if(s_n < 133) return;
+		//if(s_n < 86) return;
 
 		int dir = 1;
 #ifdef DEBUG
@@ -121,7 +121,7 @@ public:
 	UINT32 m_status[256];
 
 public:
-	GPUState();
+	GPUState(const CSize& scale);
 	virtual ~GPUState();
 
 	virtual void Reset();
