@@ -23,6 +23,8 @@
 
 #include "GSVertexSW.h"
 
+#define FAST_DRAWSCANLINE
+
 class IDrawScanline
 {
 public:
@@ -89,5 +91,5 @@ public:
 	GSRasterizerMT(IDrawScanline* ds, int id, int threads, IDrawAsync* da, long* sync);
 	virtual ~GSRasterizerMT();
 
-	void Run(Vertex* vertices, int count, const void* texture);
+	void Draw();
 };

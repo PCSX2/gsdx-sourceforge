@@ -70,8 +70,8 @@ class GPUDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 		GSVector4i a;
 		GSVector4i md; // similar to gs fba
 
-		GSVector4 ds[3], dt[3];
-		GSVector4i dr, dg, db, dc;
+		GSVector4i ds, dt, dst8;
+		GSVector4i dr, dg, db, dc8;
 	};
 
 	ScanlineSelector m_sel;
@@ -86,7 +86,7 @@ class GPUDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 	template<DWORD sel>
 	void DrawScanlineExT(int top, int left, int right, const Vertex& v);
 
-	__forceinline void SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin, GSVector4i& test, const GSVector4* s, const GSVector4* t, GSVector4i* c);
+	__forceinline void SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin, GSVector4i& test, const GSVector4i& s, const GSVector4i& t, GSVector4i* c);
 	__forceinline void ColorTFX(DWORD tfx, const GSVector4i& r, const GSVector4i& g, const GSVector4i& b, GSVector4i* c);
 	__forceinline void AlphaBlend(UINT32 abr, UINT32 tme, const GSVector4i& d, GSVector4i* c);
 	__forceinline void WriteFrame(WORD* RESTRICT fb, const GSVector4i& test, const GSVector4i* c, int pixels);

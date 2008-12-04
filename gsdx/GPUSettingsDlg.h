@@ -24,42 +24,35 @@
 #include "GSSetting.h"
 #include "resource.h"
 
-class GSSettingsDlg : public CDialog
+class GPUSettingsDlg : public CDialog
 {
-	DECLARE_DYNAMIC(GSSettingsDlg)
+	DECLARE_DYNAMIC(GPUSettingsDlg)
 
 private:
 	CAtlList<D3DDISPLAYMODE> m_modes;
 
 public:
-	GSSettingsDlg(CWnd* pParent = NULL);   // standard constructor
-	virtual ~GSSettingsDlg();
+	GPUSettingsDlg(CWnd* pParent = NULL);   // standard constructor
+	virtual ~GPUSettingsDlg();
 
 	static GSSetting g_renderers[]; 
 	static GSSetting g_psversion[];
-	static GSSetting g_interlace[];
+	static GSSetting g_filter[];
+	static GSSetting g_dithering[];
 	static GSSetting g_aspectratio[];
+	static GSSetting g_internalresolution[];
 
 // Dialog Data
-	enum { IDD = IDD_CONFIG };
+	enum { IDD = IDD_GPUCONFIG };
 	CComboBox m_resolution;
 	CComboBox m_renderer;
 	CComboBox m_psversion;
-	CComboBox m_interlace;
+	CComboBox m_filter;
+	CComboBox m_dithering;
 	CComboBox m_aspectratio;
-	BOOL m_tvout;
-	int m_filter;
-	int m_nloophack;
-	CSpinButtonCtrl m_resx;
-	CSpinButtonCtrl m_resy;
+	CComboBox m_internalresolution;
 	CSpinButtonCtrl m_swthreads;
-	BOOL m_nativeres;
-	CEdit m_resxedit;
-	CEdit m_resyedit;
 	CEdit m_swthreadsedit;
-	BOOL m_vsync;
-	BOOL m_logz;
-	BOOL m_fba;
 
 protected:
 	virtual LRESULT DefWindowProc(UINT message, WPARAM wParam, LPARAM lParam);
@@ -76,4 +69,3 @@ public:
 	afx_msg void OnUpdateSWOptions(CCmdUI* pCmdUI);
 	afx_msg void OnCbnSelchangeCombo1();
 };
-

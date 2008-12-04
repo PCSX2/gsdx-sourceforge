@@ -489,10 +489,8 @@ GSRasterizerMT::~GSRasterizerMT()
 	}
 }
 
-void GSRasterizerMT::Run(Vertex* vertices, int count, const void* texture)
+void GSRasterizerMT::Draw()
 {
-	m_ds->SetupDraw(vertices, count, texture);
-
 	InterlockedBitTestAndSet(m_sync, m_id);
 }
 

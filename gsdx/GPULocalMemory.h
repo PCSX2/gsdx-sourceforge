@@ -47,16 +47,18 @@ class GPULocalMemory
 		WORD valid[3][2];
 	} m_texture;
 
-public:
-	static const int m_width = (1024 << 1);
-	static const int m_height = (512 << 1);
-	static const int m_size = m_width * m_height * 2;
+	CSize m_scale;
 
 public:
-	GPULocalMemory();
+	GPULocalMemory(const CSize& scale);
 	virtual ~GPULocalMemory();
 
-	WORD* GetPixelAddress(int x, int y) const {return &m_vm[(y << (10 + 1)) + x];}
+	CSize GetScale() {return m_scale;}
+	int GetWidth() {return 1 << (10 + m_scale.cx);}
+	int GetHeight() {return 1 << (9 + m_scale.cy);}
+
+	WORD* GetPixelAddress(int x, int y) const {return &m_vm[(y << (10 + m_scale.cx)) + x];}
+	WORD* GetPixelAddressScaled(int x, int y) const {return &m_vm[((y << m_scale.cy) << (10 + m_scale.cx)) + (x << m_scale.cx)];}
 
 	const WORD* GetCLUT(int tp, int cx, int cy);
 	const void* GetTexture(int tp, int tx, int ty);
@@ -68,14 +70,14 @@ public:
 	void ReadRect(const CRect& r, WORD* RESTRICT dst);
 	void MoveRect(const CPoint& src, const CPoint& dst, int w, int h);
 
-	void ReadPage4(int tx, int ty, BYTE* dst);
-	void ReadPage8(int tx, int ty, BYTE* dst);
-	void ReadPage16(int tx, int ty, WORD* dst);
+	void ReadPage4(int tx, int ty, BYTE* RESTRICT dst);
+	void ReadPage8(int tx, int ty, BYTE* RESTRICT dst);
+	void ReadPage16(int tx, int ty, WORD* RESTRICT dst);
 
-	void ReadFrame32(const CRect& r, DWORD* dst, bool rgb24);
+	void ReadFrame32(const CRect& r, DWORD* RESTRICT dst, bool rgb24);
 
-	static void Expand16(const WORD* RESTRICT src, DWORD* RESTRICT dst, int pixels);
-	static void Expand24(const WORD* RESTRICT src, DWORD* RESTRICT dst, int pixels);
+	void Expand16(const WORD* RESTRICT src, DWORD* RESTRICT dst, int pixels);
+	void Expand24(const WORD* RESTRICT src, DWORD* RESTRICT dst, int pixels);
 
 	void SaveBMP(LPCTSTR path, CRect r, int tp, int cx, int cy);
 };

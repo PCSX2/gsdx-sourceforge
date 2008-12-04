@@ -22,10 +22,11 @@
 #include "stdafx.h"
 #include "GSdx.h"
 #include "GSSettingsDlg.h"
+#include "GSUtil.h"
 #include <shlobj.h>
 #include <afxpriv.h>
 
-GSSetting g_renderers[] =
+GSSetting GSSettingsDlg::g_renderers[] =
 {
 	{0, _T("Direct3D9 (Hardware)"), NULL},
 	{1, _T("Direct3D9 (Software)"), NULL},
@@ -37,7 +38,7 @@ GSSetting g_renderers[] =
 	{7, _T("Null (Null)"), NULL},
 };
 
-GSSetting g_psversion[] =
+GSSetting GSSettingsDlg::g_psversion[] =
 {
 	{D3DPS_VERSION(3, 0), _T("Pixel Shader 3.0"), NULL},
 	{D3DPS_VERSION(2, 0), _T("Pixel Shader 2.0"), NULL},
@@ -46,7 +47,7 @@ GSSetting g_psversion[] =
 	//{D3DPS_VERSION(0, 0), _T("Fixed Pipeline (bogus)"), NULL},
 };
 
-GSSetting g_interlace[] =
+GSSetting GSSettingsDlg::g_interlace[] =
 {
 	{0, _T("None"), NULL},
 	{1, _T("Weave tff"), _T("saw-tooth")},
@@ -57,7 +58,7 @@ GSSetting g_interlace[] =
 	{6, _T("Blend bff"), _T("slight blur, 1/2 fps")},
 };
 
-GSSetting g_aspectratio[] =
+GSSetting GSSettingsDlg::g_aspectratio[] =
 {
 	{0, _T("Stretch"), NULL},
 	{1, _T("4:3"), NULL},
@@ -79,21 +80,6 @@ GSSettingsDlg::GSSettingsDlg(CWnd* pParent /*=NULL*/)
 
 GSSettingsDlg::~GSSettingsDlg()
 {
-}
-
-void GSSettingsDlg::InitComboBox(CComboBox& combobox, const GSSetting* settings, int count, DWORD sel, DWORD maxid)
-{
-	for(int i = 0; i < count; i++)
-	{
-		if(settings[i].id <= maxid)
-		{
-			CString str = settings[i].name;
-			if(settings[i].note != NULL) str = str + _T(" (") + settings[i].note + _T(")");
-			int item = combobox.AddString(str);
-			combobox.SetItemData(item, settings[i].id);
-			if(settings[i].id == sel) combobox.SetCurSel(item);
-		}
-	}
 }
 
 LRESULT GSSettingsDlg::DefWindowProc(UINT message, WPARAM wParam, LPARAM lParam)
@@ -149,18 +135,6 @@ END_MESSAGE_MAP()
 void GSSettingsDlg::OnKickIdle()
 {
 	UpdateDialogControls(this, false);
-}
-
-static bool IsDirect3D10Available()
-{
-	if(HMODULE hModule = LoadLibrary(_T("d3d10.dll")))
-	{
-		FreeLibrary(hModule);
-
-		return true;
-	}
-
-	return false;
 }
 
 BOOL GSSettingsDlg::OnInitDialog()
@@ -220,7 +194,7 @@ BOOL GSSettingsDlg::OnInitDialog()
 		d3d->GetDeviceCaps(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, &caps);
 	}
 
-	bool isdx10avail = IsDirect3D10Available();
+	bool isdx10avail = GSUtil::IsDirect3D10Available();
 
 	CAtlArray<GSSetting> renderers;
 
@@ -231,10 +205,10 @@ BOOL GSSettingsDlg::OnInitDialog()
 		renderers.Add(g_renderers[i]);
 	}
 
-	InitComboBox(m_renderer, renderers.GetData(), renderers.GetCount(), pApp->GetProfileInt(_T("Settings"), _T("Renderer"), 0));
-	InitComboBox(m_psversion, g_psversion, countof(g_psversion), pApp->GetProfileInt(_T("Settings"), _T("PixelShaderVersion2"), D3DPS_VERSION(2, 0)), caps.PixelShaderVersion);
-	InitComboBox(m_interlace, g_interlace, countof(g_interlace), pApp->GetProfileInt(_T("Settings"), _T("Interlace"), 0));
-	InitComboBox(m_aspectratio, g_aspectratio, countof(g_aspectratio), pApp->GetProfileInt(_T("Settings"), _T("AspectRatio"), 1));
+	GSSetting::InitComboBox(renderers.GetData(), renderers.GetCount(), m_renderer, pApp->GetProfileInt(_T("Settings"), _T("Renderer"), 0));
+	GSSetting::InitComboBox(g_psversion, countof(g_psversion), m_psversion, pApp->GetProfileInt(_T("Settings"), _T("PixelShaderVersion2"), D3DPS_VERSION(2, 0)), caps.PixelShaderVersion);
+	GSSetting::InitComboBox(g_interlace, countof(g_interlace), m_interlace, pApp->GetProfileInt(_T("Settings"), _T("Interlace"), 0));
+	GSSetting::InitComboBox(g_aspectratio, countof(g_aspectratio), m_aspectratio, pApp->GetProfileInt(_T("Settings"), _T("AspectRatio"), 1));
 
 	OnCbnSelchangeCombo1();
 

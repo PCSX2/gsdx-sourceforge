@@ -20,7 +20,9 @@
 #define IDC_COMBO2                      2015
 #define IDC_COMBO5                      2016
 #define IDC_RADIO1                      2017
+#define IDC_COMBO6                      2017
 #define IDC_SPIN1                       2018
+#define IDC_COMBO7                      2018
 #define IDC_SPIN2                       2019
 #define IDD_CONFIG                      2020
 #define IDC_SPIN3                       2020
@@ -31,6 +33,7 @@
 #define IDC_LOGO10                      2025
 #define IDD_CAPTURE                     2026
 #define IDC_EDIT4                       2027
+#define IDD_GPUCONFIG                   2027
 #define IDR_CONVERT9_FX                 10000
 #define IDR_TFX9_FX                     10001
 #define IDR_MERGE9_FX                   10002

@@ -24,6 +24,7 @@
 #include "GPURendererSW.h"
 #include "GSDevice9.h"
 #include "GSDevice10.h"
+#include "GPUSettingsDlg.h"
 
 #define PSE_LT_GPU 2
 
@@ -97,12 +98,23 @@ EXPORT_C_(INT32) GPUopen(HWND hWnd)
 
 	GPURendererSettings rs;
 
-	rs.m_filter = AfxGetApp()->GetProfileInt(_T("Settings"), _T("filter"), 1);
-	rs.m_dither = AfxGetApp()->GetProfileInt(_T("Settings"), _T("dither"), 1);
-	rs.m_aspectratio = AfxGetApp()->GetProfileInt(_T("Settings"), _T("aspectratio"), 1);
-	rs.m_vsync = !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("vsync"), FALSE);
+	rs.m_filter = AfxGetApp()->GetProfileInt(_T("GPUSettings"), _T("filter"), 0);
+	rs.m_dither = AfxGetApp()->GetProfileInt(_T("GPUSettings"), _T("dithering"), 1);
+	rs.m_aspectratio = AfxGetApp()->GetProfileInt(_T("GPUSettings"), _T("AspectRatio"), 1);
+	rs.m_vsync = !!AfxGetApp()->GetProfileInt(_T("GPUSettings"), _T("vsync"), FALSE);
+	rs.m_scale.cx = AfxGetApp()->GetProfileInt(_T("GPUSettings"), _T("scale_x"), 0);
+	rs.m_scale.cy = AfxGetApp()->GetProfileInt(_T("GPUSettings"), _T("scale_y"), 0);
 
-	s_gpu = new GPURendererSW<GSDevice9>(rs);
+	int renderer = AfxGetApp()->GetProfileInt(_T("GPUSettings"), _T("Renderer"), 1);
+
+	switch(renderer)
+	{
+	default: 
+	// TODO: case 0: s_gpu = new GPURendererSW<GSDevice7>(rs); break;
+	case 1: s_gpu = new GPURendererSW<GSDevice9>(rs); break;
+	case 2: s_gpu = new GPURendererSW<GSDevice10>(rs); break;
+	// TODO: case 3: s_gpu = new GPURendererNull<GSDeviceNull>(rs); break;
+	}
 
 	s_hr = ::CoInitializeEx(NULL, COINIT_MULTITHREADED);
 
@@ -118,7 +130,15 @@ EXPORT_C_(INT32) GPUopen(HWND hWnd)
 
 EXPORT_C_(INT32) GPUconfigure()
 {
-	// TODO
+	AFX_MANAGE_STATE(AfxGetStaticModuleState());
+
+	GPUSettingsDlg dlg;
+
+	if(IDOK == dlg.DoModal())
+	{
+		GPUshutdown();
+		GPUinit();
+	}
 
 	return 0;
 }
@@ -173,8 +193,16 @@ EXPORT_C_(UINT32) GPUdmaChain(const BYTE* mem, UINT32 addr)
 {
 	// TODO
 
+	UINT32 last[3];
+
+	memset(last, 0xff, sizeof(last));
+
 	do
 	{
+		if(addr == last[1] || addr == last[2]) break;
+		(addr < last[0] ? last[1] : last[2]) = addr;
+		last[0] = addr;
+
 		BYTE size = mem[addr + 3];
 
 		if(size > 0)
