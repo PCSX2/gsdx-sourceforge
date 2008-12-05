@@ -2346,7 +2346,7 @@ void GSDrawScanline::DrawScanlineT(int top, int left, int right, const Vertex& v
 					if(m_sel.ltf)
 					{
 						u -= 2048.0f;
-						v -= 2048.5f;
+						v -= 2048.0f;
 					}
 				}
 
