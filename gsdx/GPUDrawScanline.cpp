@@ -1,5 +1,5 @@
 /* 
- *	Copyright (C) 2007 Gabest
+ *	Copyright (C) 2007-2009 Gabest
  *	http://www.gabest.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -22,10 +22,10 @@
 #include "StdAfx.h"
 #include "GPUDrawScanline.h"
 
-GPUDrawScanline::GPUDrawScanline(GPUState* state, int filter, int dither)
+GPUDrawScanline::GPUDrawScanline(GPUState* state)
 	: m_state(state)
-	, m_filter(filter)
-	, m_dither(dither)
+	, m_filter(0)
+	, m_dither(1)
 {
 	Init();
 }
@@ -119,8 +119,6 @@ void GPUDrawScanline::DrawScanline(int top, int left, int right, const Vertex& v
 
 void GPUDrawScanline::FillRect(const GSVector4i& r, const Vertex& v)
 {
-	// TODO
-
 	ASSERT(0);
 }
 

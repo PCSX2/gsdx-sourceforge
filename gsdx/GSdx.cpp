@@ -1,5 +1,5 @@
 /* 
- *	Copyright (C) 2007 Gabest
+ *	Copyright (C) 2007-2009 Gabest
  *	http://www.gabest.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -21,8 +21,6 @@
 
 #include "stdafx.h"
 #include "GSdx.h"
-
-#define PLUGIN_VERSION 10
 
 //
 //	Note!

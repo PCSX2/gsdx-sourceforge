@@ -1,5 +1,5 @@
 /* 
- *	Copyright (C) 2007 Gabest
+ *	Copyright (C) 2007-2009 Gabest
  *	http://www.gabest.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -105,14 +105,16 @@ EXPORT_C_(INT32) GPUopen(HWND hWnd)
 	rs.m_scale.cx = AfxGetApp()->GetProfileInt(_T("GPUSettings"), _T("scale_x"), 0);
 	rs.m_scale.cy = AfxGetApp()->GetProfileInt(_T("GPUSettings"), _T("scale_y"), 0);
 
+	int threads = AfxGetApp()->GetProfileInt(_T("GPUSettings"), _T("swthreads"), 1);
+
 	int renderer = AfxGetApp()->GetProfileInt(_T("GPUSettings"), _T("Renderer"), 1);
 
 	switch(renderer)
 	{
 	default: 
 	// TODO: case 0: s_gpu = new GPURendererSW<GSDevice7>(rs); break;
-	case 1: s_gpu = new GPURendererSW<GSDevice9>(rs); break;
-	case 2: s_gpu = new GPURendererSW<GSDevice10>(rs); break;
+	case 1: s_gpu = new GPURendererSW<GSDevice9>(rs, threads); break;
+	case 2: s_gpu = new GPURendererSW<GSDevice10>(rs, threads); break;
 	// TODO: case 3: s_gpu = new GPURendererNull<GSDeviceNull>(rs); break;
 	}
 

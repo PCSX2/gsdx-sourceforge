@@ -1,5 +1,5 @@
 /* 
- *	Copyright (C) 2007 Gabest
+ *	Copyright (C) 2007-2009 Gabest
  *	http://www.gabest.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -471,7 +471,10 @@ GSRasterizerMT::GSRasterizerMT(IDrawScanline* ds, int id, int threads, IDrawAsyn
 	, m_ThreadId(0)
 	, m_hThread(NULL)
 {
-	m_hThread = CreateThread(NULL, 0, StaticThreadProc, (LPVOID)this, 0, &m_ThreadId);
+	if(id > 0)
+	{
+		m_hThread = CreateThread(NULL, 0, StaticThreadProc, (LPVOID)this, 0, &m_ThreadId);
+	}
 }
 
 GSRasterizerMT::~GSRasterizerMT()
@@ -489,9 +492,22 @@ GSRasterizerMT::~GSRasterizerMT()
 	}
 }
 
-void GSRasterizerMT::Draw()
+int GSRasterizerMT::Draw(Vertex* vertices, int count, const void* texture)
 {
-	InterlockedBitTestAndSet(m_sync, m_id);
+	m_ds->SetupDraw(vertices, count, texture);
+
+	int prims = 0;
+
+	if(m_id == 0)
+	{
+		prims = m_da->DrawAsync(this);
+	}
+	else
+	{
+		InterlockedBitTestAndSet(m_sync, m_id);
+	}
+
+	return prims;
 }
 
 DWORD WINAPI GSRasterizerMT::StaticThreadProc(LPVOID lpParam)

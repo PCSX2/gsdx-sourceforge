@@ -1,5 +1,5 @@
 /* 
- *	Copyright (C) 2007 Gabest
+ *	Copyright (C) 2007-2009 Gabest
  *	http://www.gabest.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -97,7 +97,7 @@ protected:
 	int m_dither;
 
 public:
-	GPUDrawScanline(GPUState* state, int filter, int dither);
+	GPUDrawScanline(GPUState* state);
 	virtual ~GPUDrawScanline();
 
 	void SetOptions(int filter, int dither);
