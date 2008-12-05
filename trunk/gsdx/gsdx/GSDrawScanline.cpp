@@ -556,8 +556,8 @@ void GSDrawScanline::SampleTexture(int pixels, DWORD ztst, DWORD ltf, DWORD tlu,
 
 		#endif
 
-		c[0] = c00 & 0x00ff00ff;
-		c[1] = (c00 >> 8) & 0x00ff00ff;
+		c[0] = c00 & GSVector4i::x00ff();
+		c[1] = (c00 >> 8) & GSVector4i::x00ff();
 	}
 }
 
@@ -2394,8 +2394,8 @@ void GSDrawScanline::DrawScanlineT(int top, int left, int right, const Vertex& v
 
 			if(m_sel.abe != 255)
 			{
-				c[2] = d & 0x00ff00ff;
-				c[3] = (d >> 8) & 0x00ff00ff;
+				c[2] = d & GSVector4i::x00ff();
+				c[3] = (d >> 8) & GSVector4i::x00ff();
 
 				if(fpsm == 1)
 				{
@@ -2645,8 +2645,8 @@ void GSDrawScanline::DrawScanlineExT(int top, int left, int right, const Vertex&
 
 			if(abe != 255)
 			{
-				c[2] = d & 0x00ff00ff;
-				c[3] = (d >> 8) & 0x00ff00ff;
+				c[2] = d & GSVector4i::x00ff();
+				c[3] = (d >> 8) & GSVector4i::x00ff();
 
 				if(fpsm == 1)
 				{
