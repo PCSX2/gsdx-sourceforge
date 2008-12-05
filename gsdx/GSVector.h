@@ -329,6 +329,11 @@ public:
 		 return store(load(a).min_i16(load(b)));
 	}
 
+	GSVector4i clamp8() const
+	{
+		return pu16().upl8();
+	}
+
 	GSVector4i blend8(const GSVector4i& a, const GSVector4i& mask) const
 	{
 		return GSVector4i(_mm_blendv_epi8(m, a, mask));
@@ -346,6 +351,19 @@ public:
 	GSVector4i blend(const GSVector4i& a, const GSVector4i& mask) const
 	{
 		return GSVector4i(_mm_or_si128(_mm_andnot_si128(mask, m), _mm_and_si128(mask, a)));
+	}
+
+	GSVector4i mix16(const GSVector4i& a) const
+	{
+		#if _M_SSE >= 0x401
+
+		return blend16<0x55>(a);
+		
+		#else
+		
+		return blend8(a, GSVector4i::x0000ffff());
+
+		#endif
 	}
 
 	#if _M_SSE >= 0x301
@@ -675,6 +693,21 @@ public:
 	GSVector4i eq32(const GSVector4i& v) const
 	{
 		return GSVector4i(_mm_cmpeq_epi32(m, v.m));
+	}
+
+	GSVector4i neq8(const GSVector4i& v) const
+	{
+		return ~eq8(v);
+	}
+
+	GSVector4i neq16(const GSVector4i& v) const
+	{
+		return ~eq16(v);
+	}
+
+	GSVector4i neq32(const GSVector4i& v) const
+	{
+		return ~eq32(v);
 	}
 
 	GSVector4i gt8(const GSVector4i& v) const
@@ -1212,6 +1245,11 @@ public:
 		return invzero().srl16(8);
 	}
 
+	static GSVector4i xff00()
+	{
+		return invzero().sll16(8);
+	}
+
 	static GSVector4i x000000ff()
 	{
 		return invzero().srl32(24);
@@ -1225,6 +1263,16 @@ public:
 	static GSVector4i xff000000()
 	{
 		return invzero().sll32(24);
+	}
+
+	static GSVector4i x00000fff()
+	{
+		return invzero().srl32(20);
+	}
+
+	static GSVector4i x0000ffff()
+	{
+		return invzero().srl32(16);
 	}
 
 	static GSVector4i x00ffffff()
@@ -1265,6 +1313,11 @@ public:
 		return invzero(v).srl16(8);
 	}
 
+	static GSVector4i xff00(const GSVector4i& v)
+	{
+		return invzero(v).sll16(8);
+	}
+
 	static GSVector4i x000000ff(const GSVector4i& v)
 	{
 		return invzero(v).srl32(24);
@@ -1278,6 +1331,16 @@ public:
 	static GSVector4i xff000000(const GSVector4i& v)
 	{
 		return invzero(v).sll32(24);
+	}
+
+	static GSVector4i x00000fff(const GSVector4i& v)
+	{
+		return invzero(v).srl32(20);
+	}
+
+	static GSVector4i x0000ffff(const GSVector4i& v)
+	{
+		return invzero(v).srl32(16);
 	}
 
 	static GSVector4i x00ffffff(const GSVector4i& v)
