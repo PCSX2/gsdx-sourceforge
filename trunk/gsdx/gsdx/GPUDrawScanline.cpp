@@ -340,9 +340,9 @@ void GPUDrawScanline::ColorTFX(DWORD tfx, const GSVector4i& r, const GSVector4i&
 		c[2] = b.srl16(7);
 		break;
 	case 2: // modulate (tfx = tme | tge)
-		c[0] = c[0].sll16(2).mul16hu(r).pu16().upl8();
-		c[1] = c[1].sll16(2).mul16hu(g).pu16().upl8();
-		c[2] = c[2].sll16(2).mul16hu(b).pu16().upl8();
+		c[0] = c[0].sll16(2).mul16hu(r).clamp8();
+		c[1] = c[1].sll16(2).mul16hu(g).clamp8();
+		c[2] = c[2].sll16(2).mul16hu(b).clamp8();
 		break;
 	case 3: // decal (tfx = tme)
 		break;

@@ -84,13 +84,13 @@ class GSDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 		GSVector4i colclamp;
 		GSVector4i fba;
 		GSVector4i aref;
-		GSVector4 afix;
-		GSVector4 afix2;
-		GSVector4 fc;
+		GSVector4i afix, afix2;
+		GSVector4i frb, fga;
 
-		GSVector4 dp, dp4;
+		GSVector4 dz, dz4;
+		GSVector4i df, df4;
 		GSVector4 dt, dt4;
-		GSVector4 dc, dc4;
+		GSVector4i drb, dga, dc4;
 	};
 
 	struct Offset
@@ -123,12 +123,12 @@ class GSDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 
 	__forceinline GSVector4i Wrap(const GSVector4i& t);
 
-	__forceinline void SampleTexture(int pixels, DWORD ztst, DWORD ltf, DWORD pal, const GSVector4i& test, const GSVector4& u, const GSVector4& v, GSVector4* c);
-	__forceinline void ColorTFX(DWORD tfx, const GSVector4& rf, const GSVector4& gf, const GSVector4& bf, const GSVector4& af, GSVector4& rt, GSVector4& gt, GSVector4& bt);
-	__forceinline void AlphaTFX(DWORD tfx, DWORD tcc, const GSVector4& af, GSVector4& at);
-	__forceinline void Fog(const GSVector4& f, GSVector4& r, GSVector4& g, GSVector4& b);
+	__forceinline void SampleTexture(int pixels, DWORD ztst, DWORD ltf, DWORD pal, const GSVector4i& test, const GSVector4& u, const GSVector4& v, GSVector4i* c);
+	__forceinline void ColorTFX(DWORD tfx, const GSVector4i& rbf, const GSVector4i& gaf, GSVector4i& rbt, GSVector4i& gat);
+	__forceinline void AlphaTFX(DWORD tfx, DWORD tcc, const GSVector4i& gaf, GSVector4i& gat);
+	__forceinline void Fog(const GSVector4i& f, GSVector4i& rb, GSVector4i& ga);
 	__forceinline bool TestZ(DWORD zpsm, DWORD ztst, const GSVector4i& zs, const GSVector4i& za, GSVector4i& test);
-	__forceinline bool TestAlpha(DWORD atst, DWORD afail, const GSVector4& a, GSVector4i& fm, GSVector4i& zm, GSVector4i& test);
+	__forceinline bool TestAlpha(DWORD atst, DWORD afail, const GSVector4i& ga, GSVector4i& fm, GSVector4i& zm, GSVector4i& test);
 
 	__forceinline static DWORD ReadPixel32(DWORD* RESTRICT vm, DWORD addr);
 	__forceinline static DWORD ReadPixel24(DWORD* RESTRICT vm, DWORD addr);

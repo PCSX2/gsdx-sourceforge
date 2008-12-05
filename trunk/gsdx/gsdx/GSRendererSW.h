@@ -121,12 +121,11 @@ protected:
 		int x = (int)m_v.XYZ.X - (int)m_context->XYOFFSET.OFX;
 		int y = (int)m_v.XYZ.Y - (int)m_context->XYOFFSET.OFY;
 
-		GSVector4i p(x, y, 0, (int)m_v.FOG.F);
-
-		v.p = GSVector4(p) * g_pos_scale;
+		v.p = GSVector4(x, y, 0, (int)m_v.FOG.F) * g_pos_scale;
 		v.p.z = (float)min(m_v.XYZ.Z, 0xffffff00); // max value which can survive the DWORD=>float=>DWORD conversion
 
 		v.c = (DWORD)m_v.RGBAQ.ai32[0];
+		v.c *= 128.0f;
 
 		if(PRIM->TME)
 		{
@@ -134,14 +133,14 @@ protected:
 			{
 				v.t.x = (float)(int)m_v.UV.U;
 				v.t.y = (float)(int)m_v.UV.V;
-				v.t *= 1.0f / 16;
+				v.t *= 4096.0f / 16;
 				v.t.z = 1.0f;
 			}
 			else
 			{
 				v.t.x = m_v.ST.S;
 				v.t.y = m_v.ST.T;
-				v.t *= GSVector4((float)(1 << m_context->TEX0.TW), (float)(1 << m_context->TEX0.TH));
+				v.t *= GSVector4((float)(4096 << m_context->TEX0.TW), (float)(4096 << m_context->TEX0.TH));
 				v.t.z = m_v.RGBAQ.Q;
 			}
 		}
