@@ -1,5 +1,5 @@
 /* 
- *	Copyright (C) 2007 Gabest
+ *	Copyright (C) 2007-2009 Gabest
  *	http://www.gabest.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -420,7 +420,6 @@ void GSDrawScanline::SampleTexture(int pixels, DWORD ztst, DWORD ltf, DWORD tlu,
 				c00 = c00.lerp(c10, vff.v[i]);
 
 				c[i] = c00;
-
 			}
 			while(++i < pixels);
 		}

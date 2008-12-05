@@ -1,5 +1,5 @@
 /* 
- *	Copyright (C) 2007 Gabest
+ *	Copyright (C) 2007-2009 Gabest
  *	http://www.gabest.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -30,10 +30,7 @@ class GPURendererSW : public GPURenderer<Device, GSVertexSW>, public IDrawAsync
 	typedef GSVertexSW Vertex;
 
 protected:
-	long* m_sync;
-	long m_threads;
-	GSRasterizer* m_rst;
-	CAtlList<GSRasterizerMT*> m_rmt;
+	GSRasterizerList m_rl;
 	Texture m_texture;
 
 	void ResetDevice() 
@@ -135,55 +132,27 @@ protected:
 
 		//
 
-		GPUDrawScanline* ds = (GPUDrawScanline*)m_rst->GetDrawScanline();
-
-		ds->SetOptions(m_filter, m_dither);
-		ds->SetupDraw(m_vertices, m_count, texture);
-
-		//
-
-		*m_sync = 0;
-
-		POSITION pos = m_rmt.GetHeadPosition();
-
-		while(pos)
 		{
-			GSRasterizerMT* r = m_rmt.GetNext(pos);
-
-			GPUDrawScanline* ds = (GPUDrawScanline*)r->GetDrawScanline();
-
-			ds->SetOptions(m_filter, m_dither);
-			ds->SetupDraw(m_vertices, m_count, texture);
-
-			r->Draw();
-		}
-
-		// 1st thread is this thread
-
-		int prims = DrawAsync(m_rst);
-
-		// wait for the other threads to finish
-
-		while(*m_sync)
-		{
-			_mm_pause();
-		}
-		
-		m_perfmon.Put(GSPerfMon::Prim, prims);
-		m_perfmon.Put(GSPerfMon::Draw, 1);
-		
-		{
-			int pixels = m_rst->GetPixels();
-			
-			POSITION pos = m_rmt.GetHeadPosition();
+			POSITION pos = m_rl.GetHeadPosition();
 
 			while(pos)
 			{
-				pixels += m_rmt.GetNext(pos)->GetPixels();
-			}
+				GSRasterizerMT* r = m_rl.GetNext(pos);
 
-			m_perfmon.Put(GSPerfMon::Fillrate, pixels); 
+				GPUDrawScanline* ds = (GPUDrawScanline*)r->GetDrawScanline();
+
+				ds->SetOptions(m_filter, m_dither);
+			}
 		}
+
+		int prims = m_rl.Draw(m_vertices, m_count, texture);
+	
+		m_perfmon.Put(GSPerfMon::Prim, prims);
+		m_perfmon.Put(GSPerfMon::Draw, 1);
+
+		int pixels = m_rl.GetPixels();
+
+		m_perfmon.Put(GSPerfMon::Fillrate, pixels); 
 
 		// TODO
 
@@ -216,6 +185,8 @@ protected:
 	{
 		GSVector4i scissor = GetScissor();
 
+		//
+
 		int prims = 0;
 
 		switch(m_env.PRIM.TYPE)
@@ -243,18 +214,10 @@ protected:
 	}
 
 public:
-	GPURendererSW(const GPURendererSettings& rs)
+	GPURendererSW(const GPURendererSettings& rs, int threads)
 		: GPURenderer(rs)
 	{
-		m_sync = (long*)_aligned_malloc(sizeof(*m_sync), 128); // get a whole cache line
-		m_threads = AfxGetApp()->GetProfileInt(_T("GPUSettings"), _T("swthreads"), 1);
-
-		m_rst = new GSRasterizer(new GPUDrawScanline(this, m_filter, m_dither), 0, m_threads);
-
-		for(int i = 1; i < m_threads; i++) 
-		{
-			m_rmt.AddTail(new GSRasterizerMT(new GPUDrawScanline(this, m_filter, m_dither), i, m_threads, this, m_sync));
-		}
+		m_rl.Create<GPUDrawScanline>(this, this, threads);
 
 		m_fpDrawingKickHandlers[GPU_POLYGON] = (DrawingKickHandler)&GPURendererSW::DrawingKickTriangle;
 		m_fpDrawingKickHandlers[GPU_LINE] = (DrawingKickHandler)&GPURendererSW::DrawingKickLine;
@@ -263,11 +226,5 @@ public:
 
 	virtual ~GPURendererSW()
 	{
-		delete m_rst;
-
-		while(!m_rmt.IsEmpty()) 
-		{
-			delete m_rmt.RemoveHead();
-		}
 	}
 };

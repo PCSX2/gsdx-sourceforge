@@ -1,5 +1,5 @@
 /* 
- *	Copyright (C) 2007 Gabest
+ *	Copyright (C) 2007-2009 Gabest
  *	http://www.gabest.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -66,6 +66,7 @@ public:
 	void DrawSprite(Vertex* v, const GSVector4i& scissor, bool solid);
 
 	IDrawScanline* GetDrawScanline() {return m_ds;}
+
 	int GetPixels() {int pixels = m_pixels; m_pixels = 0; return pixels;}
 };
 
@@ -91,5 +92,84 @@ public:
 	GSRasterizerMT(IDrawScanline* ds, int id, int threads, IDrawAsync* da, long* sync);
 	virtual ~GSRasterizerMT();
 
-	void Draw();
+	int Draw(Vertex* vertices, int count, const void* texture);
+};
+
+class GSRasterizerList : public CAtlList<GSRasterizerMT*>
+{
+	long* m_sync;
+
+	void FreeRasterizers()
+	{
+		while(!IsEmpty()) 
+		{
+			delete RemoveHead();
+		}
+	}
+
+public:
+	GSRasterizerList()
+	{
+		// get a whole cache line (twice the size for future cpus ;)
+
+		m_sync = (long*)_aligned_malloc(sizeof(*m_sync), 128);
+	}
+
+	virtual ~GSRasterizerList()
+	{
+		_aligned_free(m_sync);
+
+		FreeRasterizers();
+	}
+
+	template<class DS, class T> void Create(T* parent, IDrawAsync* da, int threads)
+	{
+		FreeRasterizers();
+
+		threads = max(threads, 1); // TODO: min(threads, number of cpu cores)
+
+		for(int i = 0; i < threads; i++) 
+		{
+			AddTail(new GSRasterizerMT(new DS(parent), i, threads, da, m_sync));
+		}
+	}
+
+	int Draw(GSVertexSW* vertices, int count, const void* texture)
+	{
+		*m_sync = 0;
+
+		int prims = 0;
+
+		POSITION pos = GetHeadPosition();
+
+		while(pos)
+		{
+			GSRasterizerMT* r = GetNext(pos);
+
+			prims += r->Draw(vertices, count, texture);
+		}
+
+		// wait for the other threads to finish
+
+		while(*m_sync)
+		{
+			_mm_pause();
+		}
+
+		return prims;
+	}
+
+	int GetPixels()
+	{
+		int pixels = 0;
+		
+		POSITION pos = GetHeadPosition();
+
+		while(pos)
+		{
+			pixels += GetNext(pos)->GetPixels();
+		}
+
+		return pixels;
+	}
 };
