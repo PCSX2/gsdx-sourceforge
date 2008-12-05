@@ -485,15 +485,15 @@ void GSDrawScanline::SampleTexture(int pixels, DWORD ztst, DWORD ltf, DWORD tlu,
 
 		#endif
 
-		GSVector4i rb00 = (c00 & GSVector4i::x00ff());
-		GSVector4i rb01 = (c01 & GSVector4i::x00ff());
-		GSVector4i rb10 = (c10 & GSVector4i::x00ff());
-		GSVector4i rb11 = (c11 & GSVector4i::x00ff());
+		GSVector4i rb00 = c00 & GSVector4i::x00ff();
+		GSVector4i rb01 = c01 & GSVector4i::x00ff();
+		GSVector4i rb10 = c10 & GSVector4i::x00ff();
+		GSVector4i rb11 = c11 & GSVector4i::x00ff();
 
-		GSVector4i ga00 = (c00 & GSVector4i::xff00()) >> 8;
-		GSVector4i ga01 = (c01 & GSVector4i::xff00()) >> 8;
-		GSVector4i ga10 = (c10 & GSVector4i::xff00()) >> 8;
-		GSVector4i ga11 = (c11 & GSVector4i::xff00()) >> 8;
+		GSVector4i ga00 = (c00 >> 8) & GSVector4i::x00ff();
+		GSVector4i ga01 = (c01 >> 8) & GSVector4i::x00ff();
+		GSVector4i ga10 = (c10 >> 8) & GSVector4i::x00ff();
+		GSVector4i ga11 = (c11 >> 8) & GSVector4i::x00ff();
 
 		rb00 = rb00.add16(rb01.sub16(rb00).sll16(4).mul16hs(uf));
 		rb10 = rb10.add16(rb11.sub16(rb10).sll16(4).mul16hs(uf));
@@ -584,57 +584,6 @@ void GSDrawScanline::ColorTFX(DWORD tfx, const GSVector4i& rbf, const GSVector4i
 	default:
 		__assume(0);
 	}
-/*
-	GSVector4i rb, ga, c, a, aa;
-
-	switch(tfx)
-	{
-	case TFX_MODULATE:
-		rb = rbt.sll16(2).mul16hu(rbf);
-		ga = gat.sll16(2).mul16hu(gaf);
-		c = rb.pu16(ga);
-		rb = c.upl8();
-		ga = c.uph8();
-		if(!tcc) ga = gaf.srl16(7).mix16(ga);
-		break;
-	case TFX_DECAL:
-		return;
-	case TFX_HIGHLIGHT:
-		rb = rbt.sll16(2).mul16hu(rbf);
-		ga = gat.sll16(2).mul16hu(gaf);
-		c = rb.pu16(ga);
-		rb = c.upl8();
-		ga = c.uph8();
-		a = gaf.srl16(7);
-		aa = a.yywwl().yywwh();
-		rb = rb.addus8(aa);
-		ga = ga.addus8(aa);
-		if(tcc) a = a.addus8(gat);
-		ga = a.mix16(ga);
-		break;
-	case TFX_HIGHLIGHT2:
-		rb = rbt.sll16(2).mul16hu(rbf);
-		ga = gat.sll16(2).mul16hu(gaf);
-		c = rb.pu16(ga);
-		rb = c.upl8();
-		ga = c.uph8();
-		a = gaf.srl16(7);
-		aa = a.yywwl().yywwh();
-		rb = rb.addus8(aa);
-		ga = ga.addus8(aa);
-		if(!tcc) ga = a.mix16(ga);
-		break;
-	case TFX_NONE:
-		rb = rbf.srl16(7);
-		ga = gaf.srl16(7);
-		break;
-	default:
-		__assume(0);
-	}
-
-	rbt = rb;
-	gat = ga;
-*/
 }
 
 void GSDrawScanline::AlphaTFX(DWORD tfx, DWORD tcc, const GSVector4i& gaf, GSVector4i& gat)
