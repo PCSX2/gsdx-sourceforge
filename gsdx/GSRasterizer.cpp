@@ -535,3 +535,64 @@ DWORD GSRasterizerMT::ThreadProc()
 
 	return 0;
 }
+
+//
+
+GSRasterizerList::GSRasterizerList()
+{
+	// get a whole cache line (twice the size for future cpus ;)
+
+	m_sync = (long*)_aligned_malloc(sizeof(*m_sync), 128);
+}
+
+GSRasterizerList::~GSRasterizerList()
+{
+	_aligned_free(m_sync);
+
+	FreeRasterizers();
+}
+
+void GSRasterizerList::FreeRasterizers()
+{
+	while(!IsEmpty()) 
+	{
+		delete RemoveHead();
+	}
+}
+
+int GSRasterizerList::Draw(GSVertexSW* vertices, int count, const void* texture)
+{
+	*m_sync = 0;
+
+	int prims = 0;
+
+	POSITION pos = GetHeadPosition();
+
+	while(pos)
+	{
+		GSRasterizerMT* r = GetNext(pos);
+
+		prims += r->Draw(vertices, count, texture);
+	}
+
+	while(*m_sync)
+	{
+		_mm_pause();
+	}
+
+	return prims;
+}
+
+int GSRasterizerList::GetPixels()
+{
+	int pixels = 0;
+	
+	POSITION pos = GetHeadPosition();
+
+	while(pos)
+	{
+		pixels += GetNext(pos)->GetPixels();
+	}
+
+	return pixels;
+}

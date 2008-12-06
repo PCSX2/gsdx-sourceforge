@@ -69,7 +69,7 @@ int GSTexture10::GetFormat() const
 	return m_desc.Format;
 }
 
-bool GSTexture10::Update(CRect r, const void* data, int pitch)
+bool GSTexture10::Update(const CRect& r, const void* data, int pitch)
 {
 	if(m_dev && m_texture)
 	{

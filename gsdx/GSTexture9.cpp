@@ -83,7 +83,7 @@ int GSTexture9::GetFormat() const
 	return m_desc.Format;
 }
 
-bool GSTexture9::Update(CRect r, const void* data, int pitch)
+bool GSTexture9::Update(const CRect& r, const void* data, int pitch)
 {
 	if(CComPtr<IDirect3DSurface9> surface = *this)
 	{

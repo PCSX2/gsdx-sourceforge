@@ -1148,6 +1148,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\GSDevice7.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\GSDevice9.cpp"
 				>
 			</File>
@@ -1393,6 +1397,10 @@
 			</File>
 			<File
 				RelativePath=".\GSTexture10.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GSTexture7.cpp"
 				>
 			</File>
 			<File
@@ -1670,6 +1678,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\GSDevice7.h"
+				>
+			</File>
+			<File
 				RelativePath=".\GSDevice9.h"
 				>
 			</File>
@@ -1759,6 +1771,10 @@
 			</File>
 			<File
 				RelativePath=".\GSTexture10.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSTexture7.h"
 				>
 			</File>
 			<File

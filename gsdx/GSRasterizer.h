@@ -101,28 +101,11 @@ class GSRasterizerList : public CAtlList<GSRasterizerMT*>
 {
 	long* m_sync;
 
-	void FreeRasterizers()
-	{
-		while(!IsEmpty()) 
-		{
-			delete RemoveHead();
-		}
-	}
+	void FreeRasterizers();
 
 public:
-	GSRasterizerList()
-	{
-		// get a whole cache line (twice the size for future cpus ;)
-
-		m_sync = (long*)_aligned_malloc(sizeof(*m_sync), 128);
-	}
-
-	virtual ~GSRasterizerList()
-	{
-		_aligned_free(m_sync);
-
-		FreeRasterizers();
-	}
+	GSRasterizerList();
+	virtual ~GSRasterizerList();
 
 	template<class DS, class T> void Create(T* parent, IDrawAsync* da, int threads)
 	{
@@ -136,42 +119,6 @@ public:
 		}
 	}
 
-	int Draw(GSVertexSW* vertices, int count, const void* texture)
-	{
-		*m_sync = 0;
-
-		int prims = 0;
-
-		POSITION pos = GetHeadPosition();
-
-		while(pos)
-		{
-			GSRasterizerMT* r = GetNext(pos);
-
-			prims += r->Draw(vertices, count, texture);
-		}
-
-		// wait for the other threads to finish
-
-		while(*m_sync)
-		{
-			_mm_pause();
-		}
-
-		return prims;
-	}
-
-	int GetPixels()
-	{
-		int pixels = 0;
-		
-		POSITION pos = GetHeadPosition();
-
-		while(pos)
-		{
-			pixels += GetNext(pos)->GetPixels();
-		}
-
-		return pixels;
-	}
+	int Draw(GSVertexSW* vertices, int count, const void* texture);
+	int GetPixels();
 };
