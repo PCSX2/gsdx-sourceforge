@@ -39,7 +39,7 @@ public:
 	virtual int GetWidth() const = 0;
 	virtual int GetHeight() const = 0;
 	virtual int GetFormat() const = 0;
-	virtual bool Update(CRect r, const void* data, int pitch) = 0;
+	virtual bool Update(const CRect& r, const void* data, int pitch) = 0;
 	virtual bool Map(BYTE** bits, int& pitch, const RECT* r = NULL) = 0;
 	virtual void Unmap() = 0;
 	virtual bool Save(CString fn, bool dds = false) = 0;

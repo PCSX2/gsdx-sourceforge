@@ -28,7 +28,7 @@
 
 GSSetting GPUSettingsDlg::g_renderers[] =
 {
-//	{0, _T("Direct3D7 (Software)"), NULL},
+	{0, _T("Direct3D7 (Software)"), NULL},
 	{1, _T("Direct3D9 (Software)"), NULL},
 	{2, _T("Direct3D10 (Software)"), NULL},
 //	{3, _T("Null (Null)"), NULL},

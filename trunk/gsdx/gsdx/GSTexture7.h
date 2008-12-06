@@ -22,23 +22,34 @@
 #pragma once
 
 #include "GSTexture.h"
+#include <ddraw.h>
 
-class GSTextureNull : public GSTexture
+class GSTexture7 : public GSTexture
 {
-	struct {int type, w, h, format;} m_desc;
+	int m_type;
+	CComPtr<IDirectDrawSurface7> m_system;
+	CComPtr<IDirectDrawSurface7> m_video;
+	DDSURFACEDESC2 m_desc;
+	CRect m_lr;
 
 public:
-	GSTextureNull();
-	GSTextureNull(int type, int w, int h, int format);
+	GSTexture7();
+	explicit GSTexture7(int type, IDirectDrawSurface7* system);
+	GSTexture7(int type, IDirectDrawSurface7* system, IDirectDrawSurface7* video);
+	virtual ~GSTexture7();
 
-	operator bool() {return m_desc.type != 0;}
+	operator bool();
 
-	int GetType() const {return m_desc.type;}
-	int GetWidth() const {return m_desc.w;}
-	int GetHeight() const {return m_desc.h;}
-	int GetFormat() const {return m_desc.format;}
-	bool Update(const CRect& r, const void* data, int pitch) {return true;}
-	bool Map(BYTE** bits, int& pitch, const RECT* r = NULL) {return true;}
-	void Unmap() {}
-	bool Save(CString fn, bool dds = false) {return false;}
+	int GetType() const;
+	int GetWidth() const;
+	int GetHeight() const;
+	int GetFormat() const;
+	bool Update(const CRect& r, const void* data, int pitch);
+	bool Map(BYTE** bits, int& pitch, const RECT* r = NULL);
+	void Unmap();
+	bool Save(CString fn, bool dds = false);
+
+	IDirectDrawSurface7* operator->(); // TODO: remove direct access
+
+	operator IDirectDrawSurface7*();
 };

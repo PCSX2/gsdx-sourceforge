@@ -22,6 +22,7 @@
 #include "stdafx.h"
 #include "GSUtil.h"
 #include "GPURendererSW.h"
+#include "GSDevice7.h"
 #include "GSDevice9.h"
 #include "GSDevice10.h"
 #include "GPUSettingsDlg.h"
@@ -112,10 +113,10 @@ EXPORT_C_(INT32) GPUopen(HWND hWnd)
 	switch(renderer)
 	{
 	default: 
-	// TODO: case 0: s_gpu = new GPURendererSW<GSDevice7>(rs); break;
+	case 0: s_gpu = new GPURendererSW<GSDevice7>(rs, threads); break;
 	case 1: s_gpu = new GPURendererSW<GSDevice9>(rs, threads); break;
 	case 2: s_gpu = new GPURendererSW<GSDevice10>(rs, threads); break;
-	// TODO: case 3: s_gpu = new GPURendererNull<GSDeviceNull>(rs); break;
+	// TODO: case 3: s_gpu = new GPURendererNull<GSDeviceNull>(rs, threads); break;
 	}
 
 	s_hr = ::CoInitializeEx(NULL, COINIT_MULTITHREADED);
