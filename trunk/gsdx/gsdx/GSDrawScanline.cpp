@@ -576,7 +576,7 @@ void GSDrawScanline::ColorTFX(DWORD tfx, const GSVector4i& rbf, const GSVector4i
 	case TFX_HIGHLIGHT2:
 		af = gaf.srl16(7).yywwl().yywwh();
 		rbt = rbt.sll16(2).mul16hu(rbf).add16(af).clamp8();
-		gat = gat.mix16(gat.sll16(2).mul16hu(gaf).add16(af).clamp8());
+		gat = gat.sll16(2).mul16hu(gaf).add16(af).clamp8().mix16(gat);
 		break;
 	case TFX_NONE:
 		rbt = rbf.srl16(7);
@@ -592,7 +592,7 @@ void GSDrawScanline::AlphaTFX(DWORD tfx, DWORD tcc, const GSVector4i& gaf, GSVec
 	{
 	case TFX_MODULATE:
 		gat = gat.sll16(2).mul16hu(gaf).clamp8();
-		if(!tcc) gat = gaf.srl16(7).mix16(gat);
+		if(!tcc) gat = gat.mix16(gaf.srl16(7));
 		break;
 	case TFX_DECAL: 
 		break;
@@ -619,7 +619,7 @@ void GSDrawScanline::Fog(const GSVector4i& f, GSVector4i& rb, GSVector4i& ga)
 	GSVector4i fog = f.srl16(3);
 
 	rb = frb.add16(rb.sub16(frb).sll16(4).mul16hs(fog));
-	ga = ga.mix16(fga.add16(ga.sub16(fga).sll16(4).mul16hs(fog)));
+	ga = fga.add16(ga.sub16(fga).sll16(4).mul16hs(fog)).mix16(ga);
 }
 
 bool GSDrawScanline::TestZ(DWORD zpsm, DWORD ztst, const GSVector4i& zs, const GSVector4i& za, GSVector4i& test)
@@ -2399,7 +2399,7 @@ void GSDrawScanline::DrawScanlineT(int top, int left, int right, const Vertex& v
 
 				if(fpsm == 1)
 				{
-					c[3] = GSVector4i(0x00800000).mix16(c[3]);
+					c[3] = c[3].mix16(GSVector4i(0x00800000));
 				}
 
 				c[4] = GSVector4::zero();
@@ -2427,7 +2427,7 @@ void GSDrawScanline::DrawScanlineT(int top, int left, int right, const Vertex& v
 				}
 
 				c[0] = rb;
-				c[1] = c[1].mix16(ga);
+				c[1] = ga.mix16(c[1]);
 			}
 
 			c[0] &= m_slenv.colclamp;
@@ -2650,7 +2650,7 @@ void GSDrawScanline::DrawScanlineExT(int top, int left, int right, const Vertex&
 
 				if(fpsm == 1)
 				{
-					c[3] = GSVector4i(0x00800000).mix16(c[3]);
+					c[3] = c[3].mix16(GSVector4i(0x00800000));
 				}
 
 				c[4] = GSVector4::zero();
@@ -2721,7 +2721,7 @@ void GSDrawScanline::DrawScanlineExT(int top, int left, int right, const Vertex&
 				}
 
 				c[0] = rb;
-				c[1] = c[1].mix16(ga);
+				c[1] = ga.mix16(c[1]);
 			}
 
 			c[0] &= m_slenv.colclamp;

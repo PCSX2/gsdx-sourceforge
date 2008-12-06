@@ -357,11 +357,11 @@ public:
 	{
 		#if _M_SSE >= 0x401
 
-		return blend16<0x55>(a);
+		return blend16<0xaa>(a);
 		
 		#else
 		
-		return blend8(a, GSVector4i::x0000ffff());
+		return blend8(a, GSVector4i::xffff0000());
 
 		#endif
 	}
@@ -1265,6 +1265,11 @@ public:
 		return invzero().sll32(24);
 	}
 
+	static GSVector4i xffff0000()
+	{
+		return invzero().sll32(16);
+	}
+
 	static GSVector4i x00000fff()
 	{
 		return invzero().srl32(20);
@@ -1331,6 +1336,11 @@ public:
 	static GSVector4i xff000000(const GSVector4i& v)
 	{
 		return invzero(v).sll32(24);
+	}
+
+	static GSVector4i xffff0000(const GSVector4i& v)
+	{
+		return invzero(v).sll32(16);
 	}
 
 	static GSVector4i x00000fff(const GSVector4i& v)
