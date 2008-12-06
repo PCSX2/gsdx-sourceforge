@@ -93,22 +93,45 @@ void GPUDrawScanline::SetupDraw(Vertex* vertices, int count, const void* texture
 	m_slenv.md = GSVector4i(env.STATUS.MD ? 0x80008000 : 0);
 }
 
-void GPUDrawScanline::SetupScanline(const Vertex& dv)
+void GPUDrawScanline::SetupPrim(PrimitiveType type, const Vertex* vertices, const Vertex& dscan)
 {
+	if(m_sel.tme && !m_sel.twin)
+	{
+		GSVector4i t;
+
+		switch(type)
+		{
+		case Sprite:
+			t = (GSVector4i(vertices[1].t) >> 8) - GSVector4i::x00000001();
+			t = t.ps32(t);
+			t = t.upl16(t);
+			m_slenv.u[2] = t.xxxx();
+			m_slenv.v[2] = t.yyyy();
+			break;
+		default:
+			m_slenv.u[2] = GSVector4i::x00ff();
+			m_slenv.v[2] = GSVector4i::x00ff();
+			break;
+		}
+	}
+
 	// we could use integers here but it's more accurate to multiply a float than a 8.8 fixed point number
 
 	GSVector4 ps0123 = GSVector4::ps0123();
 	GSVector4 ps4567 = GSVector4::ps4567();
 
-	GSVector4i dtc8 = GSVector4i(dv.t * 8.0f).ps32(GSVector4i(dv.c * 8.0f));
+	GSVector4 dt = dscan.t;
+	GSVector4 dc = dscan.c;
 
-	m_slenv.ds = GSVector4i(dv.t.xxxx() * ps0123).ps32(GSVector4i(dv.t.xxxx() * ps4567));
-	m_slenv.dt = GSVector4i(dv.t.yyyy() * ps0123).ps32(GSVector4i(dv.t.yyyy() * ps4567));
+	GSVector4i dtc8 = GSVector4i(dt * 8.0f).ps32(GSVector4i(dc * 8.0f));
+
+	m_slenv.ds = GSVector4i(dt.xxxx() * ps0123).ps32(GSVector4i(dt.xxxx() * ps4567));
+	m_slenv.dt = GSVector4i(dt.yyyy() * ps0123).ps32(GSVector4i(dt.yyyy() * ps4567));
 	m_slenv.dst8 = dtc8.upl16(dtc8);
 
-	m_slenv.dr = GSVector4i(dv.c.xxxx() * ps0123).ps32(GSVector4i(dv.c.xxxx() * ps4567));
-	m_slenv.dg = GSVector4i(dv.c.yyyy() * ps0123).ps32(GSVector4i(dv.c.yyyy() * ps4567));
-	m_slenv.db = GSVector4i(dv.c.zzzz() * ps0123).ps32(GSVector4i(dv.c.zzzz() * ps4567));
+	m_slenv.dr = GSVector4i(dc.xxxx() * ps0123).ps32(GSVector4i(dc.xxxx() * ps4567));
+	m_slenv.dg = GSVector4i(dc.yyyy() * ps0123).ps32(GSVector4i(dc.yyyy() * ps4567));
+	m_slenv.db = GSVector4i(dc.zzzz() * ps0123).ps32(GSVector4i(dc.zzzz() * ps4567));
 	m_slenv.dc8 = dtc8.uph16(dtc8);
 }
 
@@ -152,6 +175,13 @@ void GPUDrawScanline::SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin
 			v0 = (v0 & m_slenv.v[0]).add16(m_slenv.v[1]);
 			u1 = (u1 & m_slenv.u[0]).add16(m_slenv.u[1]);
 			v1 = (v1 & m_slenv.v[0]).add16(m_slenv.v[1]);
+		}
+		else
+		{
+			u0 = u0.min_i16(m_slenv.u[2]);
+			v0 = v0.min_i16(m_slenv.v[2]);
+			u1 = u1.min_i16(m_slenv.u[2]);
+			v1 = v1.min_i16(m_slenv.v[2]);
 		}
 
 		GSVector4i addr00 = v0.sll16(8) | u0;
@@ -270,6 +300,11 @@ void GPUDrawScanline::SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin
 		{
 			u = (u & m_slenv.u[0]).add16(m_slenv.u[1]);
 			v = (v & m_slenv.v[0]).add16(m_slenv.v[1]);
+		}
+		else
+		{
+			u = u.min_i16(m_slenv.u[2]);
+			v = v.min_i16(m_slenv.v[2]);
 		}
 
 		GSVector4i addr = v.sll16(8) | u;

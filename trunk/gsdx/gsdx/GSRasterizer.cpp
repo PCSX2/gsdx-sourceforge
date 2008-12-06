@@ -168,7 +168,7 @@ void GSRasterizer::DrawTriangleTop(Vertex* v, const GSVector4i& scissor)
 			r += dr * dy;
 		}
 
-		m_ds->SetupScanline(dscan);
+		m_ds->SetupPrim(IDrawScanline::Triangle, v, dscan);
 
 		DrawTriangleSection(top, bottom, l, dl, r, dr, dscan, scissor);
 	}
@@ -215,8 +215,8 @@ void GSRasterizer::DrawTriangleBottom(Vertex* v, const GSVector4i& scissor)
 			l += dl * dy;
 			r += dr * dy;
 		}
-
-		m_ds->SetupScanline(dscan);
+		
+		m_ds->SetupPrim(IDrawScanline::Triangle, v, dscan);
 
 		DrawTriangleSection(top, bottom, l, dl, r, dr, dscan, scissor);
 	}
@@ -238,7 +238,7 @@ void GSRasterizer::DrawTriangleTopBottom(Vertex* v, const GSVector4i& scissor)
 
 	Vertex dscan = longest * longest.p.xxxx().rcp();
 
-	m_ds->SetupScanline(dscan);
+	m_ds->SetupPrim(IDrawScanline::Triangle, v, dscan);
 
 	Vertex& l = v[0];
 	GSVector4 r = v[0].p;
@@ -446,7 +446,7 @@ void GSRasterizer::DrawSprite(Vertex* vertices, const GSVector4i& scissor, bool 
 	if(scan.p.y < (float)top) scan.t += dedge.t * ((float)top - scan.p.y);
 	if(scan.p.x < (float)left) scan.t += dscan.t * ((float)left - scan.p.x);
 
-	m_ds->SetupScanline(dscan);
+	m_ds->SetupPrim(IDrawScanline::Sprite, v, dscan);
 
 	IDrawScanline::DrawScanlinePtr dsf = m_ds->GetDrawScanlinePtr();
 

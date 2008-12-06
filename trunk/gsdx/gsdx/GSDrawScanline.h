@@ -151,7 +151,7 @@ public:
 	// IDrawScanline
 
 	void SetupDraw(Vertex* vertices, int count, const void* texture);
-	void SetupScanline(const Vertex& dv);
+	void SetupPrim(PrimitiveType type, const Vertex* vertices, const Vertex& dv);
 	void DrawScanline(int top, int left, int right, const Vertex& v);
 	void FillRect(const GSVector4i& r, const Vertex& v);
 	DrawScanlinePtr GetDrawScanlinePtr();

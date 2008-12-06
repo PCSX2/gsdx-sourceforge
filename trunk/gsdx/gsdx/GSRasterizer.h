@@ -31,10 +31,12 @@ public:
 	typedef GSVertexSW Vertex;
 	typedef void (IDrawScanline::*DrawScanlinePtr)(int top, int left, int right, const Vertex& v);
 
+	enum PrimitiveType {Point, Line, Triangle, Sprite};
+
 	virtual ~IDrawScanline() {}
 
 	virtual void SetupDraw(Vertex* vertices, int count, const void* texture) = 0;
-	virtual void SetupScanline(const Vertex& dv) = 0;
+	virtual void SetupPrim(PrimitiveType type, const Vertex* vertices, const Vertex& dscan) = 0;
 	virtual void DrawScanline(int top, int left, int right, const Vertex& v) = 0;
 	virtual void FillRect(const GSVector4i& r, const Vertex& v) = 0;
 	virtual DrawScanlinePtr GetDrawScanlinePtr() = 0;
