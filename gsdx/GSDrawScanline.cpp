@@ -250,7 +250,7 @@ void GSDrawScanline::SetupDraw(Vertex* vertices, int count, const void* texture)
 	}
 }
 
-void GSDrawScanline::SetupScanline(const Vertex& dv)
+void GSDrawScanline::SetupPrim(PrimitiveType type, const Vertex* vertices, const Vertex& dv)
 {
 	GSVector4 ps0123 = GSVector4::ps0123();
 	

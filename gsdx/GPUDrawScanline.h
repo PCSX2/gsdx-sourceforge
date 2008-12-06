@@ -64,8 +64,8 @@ class GPUDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 		const void* tex;
 		const WORD* clut;
 
-		GSVector4i u[2];
-		GSVector4i v[2];
+		GSVector4i u[3];
+		GSVector4i v[3];
 
 		GSVector4i a;
 		GSVector4i md; // similar to gs fba
@@ -105,7 +105,7 @@ public:
 	// IDrawScanline
 
 	void SetupDraw(Vertex* vertices, int count, const void* texture);
-	void SetupScanline(const Vertex& dv);
+	void SetupPrim(PrimitiveType type, const Vertex* vertices, const Vertex& dscan);
 	void DrawScanline(int top, int left, int right, const Vertex& v);
 	void FillRect(const GSVector4i& r, const Vertex& v);
 	DrawScanlinePtr GetDrawScanlinePtr();
