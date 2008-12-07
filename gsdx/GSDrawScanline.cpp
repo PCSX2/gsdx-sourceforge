@@ -173,8 +173,8 @@ void GSDrawScanline::SetupDraw(Vertex* vertices, int count, const void* texture)
 	m_slenv.aref = GSVector4i((int)context->TEST.AREF + (m_sel.atst == ATST_LESS ? -1 : m_sel.atst == ATST_GREATER ? +1 : 0));
 	m_slenv.afix = GSVector4i((int)context->ALPHA.FIX << 16);
 	m_slenv.afix2 = m_slenv.afix << 1;
-	m_slenv.frb = GSVector4i((int)env.FOGCOL.ai32[0] & 0x00ff00ff).xxxx();
-	m_slenv.fga = GSVector4i((int)(env.FOGCOL.ai32[0] >> 8) & 0x00ff00ff).xxxx();
+	m_slenv.frb = GSVector4i((int)env.FOGCOL.ai32[0] & 0x00ff00ff);
+	m_slenv.fga = GSVector4i((int)(env.FOGCOL.ai32[0] >> 8) & 0x00ff00ff);
 
 	if(m_sel.fpsm == 1)
 	{
@@ -250,13 +250,13 @@ void GSDrawScanline::SetupDraw(Vertex* vertices, int count, const void* texture)
 	}
 }
 
-void GSDrawScanline::SetupPrim(PrimitiveType type, const Vertex* vertices, const Vertex& dv)
+void GSDrawScanline::SetupPrim(PrimitiveType type, const Vertex* vertices, const Vertex& dscan)
 {
 	GSVector4 ps0123 = GSVector4::ps0123();
 	
-	GSVector4 dp = dv.p;
-	GSVector4 dt = dv.t;
-	GSVector4 dc = dv.c;
+	GSVector4 dp = dscan.p;
+	GSVector4 dt = dscan.t;
+	GSVector4 dc = dscan.c;
 
 	// p
 
@@ -628,16 +628,10 @@ bool GSDrawScanline::TestZ(DWORD zpsm, DWORD ztst, const GSVector4i& zs, const G
 	{
 		GSVector4i zd = ReadZBufX(zpsm, za);
 
-		GSVector4i zso = zs;
-		GSVector4i zdo = zd;
+		GSVector4i o = GSVector4i::x80000000(zs);
 
-		if(zpsm == 0)
-		{
-			GSVector4i o = GSVector4i::x80000000(zs);
-
-			zso = zs - o;
-			zdo = zd - o;
-		}
+		GSVector4i zso = zs - o;
+		GSVector4i zdo = zd - o;
 
 		switch(ztst)
 		{
@@ -2316,7 +2310,7 @@ void GSDrawScanline::DrawScanlineT(int top, int left, int right, const Vertex& v
 	{
 		do
 		{
-			GSVector4i za = za_base + GSVector4i::load<true>(za_offset);
+			GSVector4i za = za_base + *za_offset;
 			
 			GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::x00000001(za));
 
@@ -2370,7 +2364,7 @@ void GSDrawScanline::DrawScanlineT(int top, int left, int right, const Vertex& v
 				Fog(f, c[0], c[1]);
 			}
 
-			GSVector4i fa = fa_base + GSVector4i::load<true>(fa_offset);
+			GSVector4i fa = fa_base + *fa_offset;
 
 			GSVector4i d = GSVector4i::zero();
 
@@ -2567,7 +2561,7 @@ void GSDrawScanline::DrawScanlineExT(int top, int left, int right, const Vertex&
 	{
 		do
 		{
-			GSVector4i za = za_base + GSVector4i::load<true>(za_offset);
+			GSVector4i za = za_base + *za_offset;
 			
 			GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::x00000001(za));
 
@@ -2621,7 +2615,7 @@ void GSDrawScanline::DrawScanlineExT(int top, int left, int right, const Vertex&
 				Fog(f, c[0], c[1]);
 			}
 
-			GSVector4i fa = fa_base + GSVector4i::load<true>(fa_offset);
+			GSVector4i fa = fa_base + *fa_offset;
 
 			GSVector4i d = GSVector4i::zero();
 

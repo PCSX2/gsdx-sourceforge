@@ -222,7 +222,7 @@ bool GSDevice7::Create(int type, Texture& t, int w, int h, int format)
 	case GSTexture::Offscreen:
 		desc.ddsCaps.dwCaps = DDSCAPS_OFFSCREENPLAIN | DDSCAPS_VIDEOMEMORY;
 		if(FAILED(hr = m_dd->CreateSurface(&desc, &system, NULL))) return false;
-		t = Texture(type, system, video);
+		t = Texture(type, system);
 		break;
 	}
 
