@@ -95,7 +95,7 @@ public:
 	{
 		if(m_wndproc)
 		{
-			SetWindowLongPtr(m_hWnd, GWL_WNDPROC, (LONG_PTR)m_wndproc);
+			SetWindowLongPtr(m_hWnd, GWLP_WNDPROC, (LONG_PTR)m_wndproc);
 
 			m_wnd2gpu.RemoveKey(m_hWnd);
 		}
@@ -105,8 +105,8 @@ public:
 	{
 		m_hWnd = hWnd;
 
-		m_wndproc = (WNDPROC)GetWindowLongPtr(hWnd, GWL_WNDPROC);
-		SetWindowLongPtr(hWnd, GWL_WNDPROC, (LONG_PTR)WndProc);
+		m_wndproc = (WNDPROC)GetWindowLongPtr(hWnd, GWLP_WNDPROC);
+		SetWindowLongPtr(hWnd, GWLP_WNDPROC, (LONG_PTR)WndProc);
 		m_wnd2gpu.SetAt(hWnd, this);
 
 		DWORD style = GetWindowLong(hWnd, GWL_STYLE);
