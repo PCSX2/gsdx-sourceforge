@@ -566,11 +566,11 @@ int GSRasterizerList::Draw(GSVertexSW* vertices, int count, const void* texture)
 
 	int prims = 0;
 
-	POSITION pos = GetHeadPosition();
+	POSITION pos = GetTailPosition();
 
 	while(pos)
 	{
-		GSRasterizerMT* r = GetNext(pos);
+		GSRasterizerMT* r = GetPrev(pos);
 
 		prims += r->Draw(vertices, count, texture);
 	}
