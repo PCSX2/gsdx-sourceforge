@@ -166,8 +166,8 @@ void GPUDrawScanline::SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin
 		GSVector4i u1 = u0.add16(GSVector4i::x0001());
 		GSVector4i v1 = v0.add16(GSVector4i::x0001());
 
-		GSVector4i uf = u & GSVector4i::x00ff();
-		GSVector4i vf = v & GSVector4i::x00ff();
+		GSVector4i uf = (u & GSVector4i::x00ff()) << 7;
+		GSVector4i vf = (v & GSVector4i::x00ff()) << 7;
 
 		if(twin)
 		{
@@ -247,41 +247,41 @@ void GPUDrawScanline::SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin
 
 		#endif
 
-		GSVector4i r00 = (c00 & 0x001f001f) << 2;
-		GSVector4i r01 = (c01 & 0x001f001f) << 2;
-		GSVector4i r10 = (c10 & 0x001f001f) << 2;
-		GSVector4i r11 = (c11 & 0x001f001f) << 2;
+		GSVector4i r00 = (c00 & 0x001f001f) << 3;
+		GSVector4i r01 = (c01 & 0x001f001f) << 3;
+		GSVector4i r10 = (c10 & 0x001f001f) << 3;
+		GSVector4i r11 = (c11 & 0x001f001f) << 3;
 
-		r00 = r00.add16(r01.sub16(r00).mul16l(uf).sra16(8));
-		r10 = r10.add16(r11.sub16(r10).mul16l(uf).sra16(8));
-		c[0] = r00.add16(r10.sub16(r00).mul16l(vf).sra16(8)) << 1;
+		r00 = r00.lerp16<0>(r01, uf);
+		r10 = r10.lerp16<0>(r11, uf);
+		c[0] = r00.lerp16<0>(r10, vf);
 
-		GSVector4i g00 = (c00 & 0x03e003e0) >> 3;
-		GSVector4i g01 = (c01 & 0x03e003e0) >> 3;
-		GSVector4i g10 = (c10 & 0x03e003e0) >> 3;
-		GSVector4i g11 = (c11 & 0x03e003e0) >> 3;
+		GSVector4i g00 = (c00 & 0x03e003e0) >> 2;
+		GSVector4i g01 = (c01 & 0x03e003e0) >> 2;
+		GSVector4i g10 = (c10 & 0x03e003e0) >> 2;
+		GSVector4i g11 = (c11 & 0x03e003e0) >> 2;
 
-		g00 = g00.add16(g01.sub16(g00).mul16l(uf).sra16(8));
-		g10 = g10.add16(g11.sub16(g10).mul16l(uf).sra16(8));
-		c[1] = g00.add16(g10.sub16(g00).mul16l(vf).sra16(8)) << 1;
+		g00 = g00.lerp16<0>(g01, uf);
+		g10 = g10.lerp16<0>(g11, uf);
+		c[1] = g00.lerp16<0>(g10, vf);
 
-		GSVector4i b00 = (c00 & 0x7c007c00) >> 8;
-		GSVector4i b01 = (c01 & 0x7c007c00) >> 8;
-		GSVector4i b10 = (c10 & 0x7c007c00) >> 8;
-		GSVector4i b11 = (c11 & 0x7c007c00) >> 8;
+		GSVector4i b00 = (c00 & 0x7c007c00) >> 7;
+		GSVector4i b01 = (c01 & 0x7c007c00) >> 7;
+		GSVector4i b10 = (c10 & 0x7c007c00) >> 7;
+		GSVector4i b11 = (c11 & 0x7c007c00) >> 7;
 
-		b00 = b00.add16(b01.sub16(b00).mul16l(uf).sra16(8));
-		b10 = b10.add16(b11.sub16(b10).mul16l(uf).sra16(8));
-		c[2] = b00.add16(b10.sub16(b00).mul16l(vf).sra16(8)) << 1;
+		b00 = b00.lerp16<0>(b01, uf);
+		b10 = b10.lerp16<0>(b11, uf);
+		c[2] = b00.lerp16<0>(b10, vf);
 
-		GSVector4i a00 = (c00 & 0x80008000) >> 9;
-		GSVector4i a01 = (c01 & 0x80008000) >> 9;
-		GSVector4i a10 = (c10 & 0x80008000) >> 9;
-		GSVector4i a11 = (c11 & 0x80008000) >> 9;
+		GSVector4i a00 = (c00 & 0x80008000) >> 8;
+		GSVector4i a01 = (c01 & 0x80008000) >> 8;
+		GSVector4i a10 = (c10 & 0x80008000) >> 8;
+		GSVector4i a11 = (c11 & 0x80008000) >> 8;
 
-		a00 = a00.add16(a01.sub16(a00).mul16l(uf).sra16(8));
-		a10 = a10.add16(a11.sub16(a10).mul16l(uf).sra16(8));
-		c[3] = a00.add16(a10.sub16(a00).mul16l(vf).sra16(8)).gt16(GSVector4i::zero());
+		a00 = a00.lerp16<0>(a01, uf);
+		a10 = a10.lerp16<0>(a11, uf);
+		c[3] = a00.lerp16<0>(a10, vf).gt16(GSVector4i::zero());
 
 		// mask out blank pixels (not perfect)
 
@@ -375,9 +375,9 @@ void GPUDrawScanline::ColorTFX(DWORD tfx, const GSVector4i& r, const GSVector4i&
 		c[2] = b.srl16(7);
 		break;
 	case 2: // modulate (tfx = tme | tge)
-		c[0] = c[0].sll16(2).mul16hu(r).clamp8();
-		c[1] = c[1].sll16(2).mul16hu(g).clamp8();
-		c[2] = c[2].sll16(2).mul16hu(b).clamp8();
+		c[0] = c[0].modulate16<1>(r).clamp8();
+		c[1] = c[1].modulate16<1>(g).clamp8();
+		c[2] = c[2].modulate16<1>(b).clamp8();
 		break;
 	case 3: // decal (tfx = tme)
 		break;
