@@ -409,7 +409,7 @@ void GSDrawScanline::SampleTexture(int pixels, DWORD ztst, DWORD ltf, DWORD tlu,
 	GSVector4i ui = GSVector4i(u); 
 	GSVector4i vi = GSVector4i(v);
 
-	GSVector4i uv = (ui.sra32(12)).ps32(vi.sra32(12));
+	GSVector4i uv = ui.sra32(15).ps32(vi.sra32(15));
 
 	GSVector4i uv0, uv1;
 	GSVector4i addr00, addr01, addr10, addr11;
@@ -417,17 +417,24 @@ void GSDrawScanline::SampleTexture(int pixels, DWORD ztst, DWORD ltf, DWORD tlu,
 
 	if(ltf)
 	{
-		GSVector4i uvf = (ui & GSVector4i::x00000fff()).ps32(vi & GSVector4i::x00000fff());
+		GSVector4i mask = GSVector4i::x00007fff();
+
+		GSVector4i uvf = (ui & mask).ps32(vi & mask);
 		GSVector4i uf = uvf.upl16(uvf);
 		GSVector4i vf = uvf.uph16(uvf);
 
 		uv0 = Wrap(uv);
 		uv1 = Wrap(uv.add16(GSVector4i::x0001()));
 
-		addr00 = (uv0.uph16() << tw) + uv0.upl16();
-		addr01 = (uv0.uph16() << tw) + uv1.upl16();
-		addr10 = (uv1.uph16() << tw) + uv0.upl16();
-		addr11 = (uv1.uph16() << tw) + uv1.upl16();
+		GSVector4i y0 = uv0.uph16() << tw;
+		GSVector4i y1 = uv1.uph16() << tw;
+		GSVector4i x0 = uv0.upl16();
+		GSVector4i x1 = uv1.upl16();
+
+		addr00 = y0 + x0;
+		addr01 = y0 + x1;
+		addr10 = y1 + x0;
+		addr11 = y1 + x1;
 
 		#if _M_SSE >= 0x401
 
@@ -485,23 +492,25 @@ void GSDrawScanline::SampleTexture(int pixels, DWORD ztst, DWORD ltf, DWORD tlu,
 
 		#endif
 
-		GSVector4i rb00 = c00 & GSVector4i::x00ff();
-		GSVector4i rb01 = c01 & GSVector4i::x00ff();
-		GSVector4i rb10 = c10 & GSVector4i::x00ff();
-		GSVector4i rb11 = c11 & GSVector4i::x00ff();
+		mask = GSVector4i::x00ff();
 
-		GSVector4i ga00 = (c00 >> 8) & GSVector4i::x00ff();
-		GSVector4i ga01 = (c01 >> 8) & GSVector4i::x00ff();
-		GSVector4i ga10 = (c10 >> 8) & GSVector4i::x00ff();
-		GSVector4i ga11 = (c11 >> 8) & GSVector4i::x00ff();
+		GSVector4i rb00 = c00 & mask;
+		GSVector4i rb01 = c01 & mask;
+		GSVector4i rb10 = c10 & mask;
+		GSVector4i rb11 = c11 & mask;
 
-		rb00 = rb00.add16(rb01.sub16(rb00).sll16(4).mul16hs(uf));
-		rb10 = rb10.add16(rb11.sub16(rb10).sll16(4).mul16hs(uf));
-		rb00 = rb00.add16(rb10.sub16(rb00).sll16(4).mul16hs(vf));
+		GSVector4i ga00 = (c00 >> 8) & mask;
+		GSVector4i ga01 = (c01 >> 8) & mask;
+		GSVector4i ga10 = (c10 >> 8) & mask;
+		GSVector4i ga11 = (c11 >> 8) & mask;
 
-		ga00 = ga00.add16(ga01.sub16(ga00).sll16(4).mul16hs(uf));
-		ga10 = ga10.add16(ga11.sub16(ga10).sll16(4).mul16hs(uf));
-		ga00 = ga00.add16(ga10.sub16(ga00).sll16(4).mul16hs(vf));
+		rb00 = rb00.lerp16<0>(rb01, uf);
+		rb10 = rb10.lerp16<0>(rb11, uf);
+		rb00 = rb00.lerp16<0>(rb10, vf);
+
+		ga00 = ga00.lerp16<0>(ga01, uf);
+		ga10 = ga10.lerp16<0>(ga11, uf);
+		ga00 = ga00.lerp16<0>(ga10, vf);
 
 		c[0] = rb00;
 		c[1] = ga00;
@@ -556,8 +565,10 @@ void GSDrawScanline::SampleTexture(int pixels, DWORD ztst, DWORD ltf, DWORD tlu,
 
 		#endif
 
-		c[0] = c00 & GSVector4i::x00ff();
-		c[1] = (c00 >> 8) & GSVector4i::x00ff();
+		GSVector4i mask = GSVector4i::x00ff();
+
+		c[0] = c00 & mask;
+		c[1] = (c00 >> 8) & mask;
 	}
 }
 
@@ -568,15 +579,15 @@ void GSDrawScanline::ColorTFX(DWORD tfx, const GSVector4i& rbf, const GSVector4i
 	switch(tfx)
 	{
 	case TFX_MODULATE:
-		rbt = rbt.sll16(2).mul16hu(rbf).clamp8();
+		rbt = rbt.modulate16<1>(rbf).clamp8();
 		break;
 	case TFX_DECAL:
 		break;
 	case TFX_HIGHLIGHT:
 	case TFX_HIGHLIGHT2:
-		af = gaf.srl16(7).yywwl().yywwh();
-		rbt = rbt.sll16(2).mul16hu(rbf).add16(af).clamp8();
-		gat = gat.sll16(2).mul16hu(gaf).add16(af).clamp8().mix16(gat);
+		af = gaf.yywwl().yywwh().srl16(7);
+		rbt = rbt.modulate16<1>(rbf).add16(af).clamp8();
+		gat = gat.modulate16<1>(rbf).add16(af).clamp8().mix16(gat);
 		break;
 	case TFX_NONE:
 		rbt = rbf.srl16(7);
@@ -591,7 +602,7 @@ void GSDrawScanline::AlphaTFX(DWORD tfx, DWORD tcc, const GSVector4i& gaf, GSVec
 	switch(tfx)
 	{
 	case TFX_MODULATE:
-		gat = gat.sll16(2).mul16hu(gaf).clamp8();
+		gat = gat.modulate16<1>(gaf).clamp8();
 		if(!tcc) gat = gat.mix16(gaf.srl16(7));
 		break;
 	case TFX_DECAL: 
@@ -613,13 +624,8 @@ void GSDrawScanline::AlphaTFX(DWORD tfx, DWORD tcc, const GSVector4i& gaf, GSVec
 
 void GSDrawScanline::Fog(const GSVector4i& f, GSVector4i& rb, GSVector4i& ga)
 {
-	GSVector4i frb = m_slenv.frb;
-	GSVector4i fga = m_slenv.fga;
-
-	GSVector4i fog = f.srl16(3);
-
-	rb = frb.add16(rb.sub16(frb).sll16(4).mul16hs(fog));
-	ga = fga.add16(ga.sub16(fga).sll16(4).mul16hs(fog)).mix16(ga);
+	rb = m_slenv.frb.lerp16<0>(rb, f);
+	ga = m_slenv.fga.lerp16<0>(ga, f).mix16(ga);
 }
 
 bool GSDrawScanline::TestZ(DWORD zpsm, DWORD ztst, const GSVector4i& zs, const GSVector4i& za, GSVector4i& test)
@@ -2339,8 +2345,8 @@ void GSDrawScanline::DrawScanlineT(int top, int left, int right, const Vertex& v
 
 					if(m_sel.ltf)
 					{
-						u -= 2048.0f;
-						v -= 2048.0f;
+						u -= 0x4000;
+						v -= 0x4000;
 					}
 				}
 
@@ -2388,8 +2394,10 @@ void GSDrawScanline::DrawScanlineT(int top, int left, int right, const Vertex& v
 
 			if(m_sel.abe != 255)
 			{
-				c[2] = d & GSVector4i::x00ff();
-				c[3] = (d >> 8) & GSVector4i::x00ff();
+				GSVector4i mask = GSVector4i::x00ff();
+
+				c[2] = d & mask;
+				c[3] = (d >> 8) & mask;
 
 				if(fpsm == 1)
 				{
@@ -2404,13 +2412,10 @@ void GSDrawScanline::DrawScanlineT(int top, int left, int right, const Vertex& v
 				DWORD abec = m_sel.abec;
 				DWORD abed = m_sel.abed;
 
-				GSVector4i a = c[abec * 2 + 1].yywwl().yywwh().sll16(5);
+				GSVector4i a = c[abec * 2 + 1].yywwl().yywwh().sll16(7);
 
-				GSVector4i drb = c[abea * 2 + 0].sub16(c[abeb * 2 + 0]);
-				GSVector4i dga = c[abea * 2 + 1].sub16(c[abeb * 2 + 1]);
-
-				GSVector4i rb = drb.sll16(4).mul16hs(a).add16(c[abed * 2 + 0]);
-				GSVector4i ga = dga.sll16(4).mul16hs(a).add16(c[abed * 2 + 1]);
+				GSVector4i rb = GSVector4i::lerp16<1>(c[abea * 2 + 0], c[abeb * 2 + 0], a, c[abed * 2 + 0]);
+				GSVector4i ga = GSVector4i::lerp16<1>(c[abea * 2 + 1], c[abeb * 2 + 1], a, c[abed * 2 + 1]);
 
 				if(m_sel.pabe)
 				{
@@ -2590,8 +2595,8 @@ void GSDrawScanline::DrawScanlineExT(int top, int left, int right, const Vertex&
 
 					if(ltf)
 					{
-						u -= 2048.0f;
-						v -= 2048.0f;
+						u -= 0x4000;
+						v -= 0x4000;
 					}
 				}
 
@@ -2639,8 +2644,10 @@ void GSDrawScanline::DrawScanlineExT(int top, int left, int right, const Vertex&
 
 			if(abe != 255)
 			{
-				c[2] = d & GSVector4i::x00ff();
-				c[3] = (d >> 8) & GSVector4i::x00ff();
+				GSVector4i mask = GSVector4i::x00ff();
+
+				c[2] = d & mask;
+				c[3] = (d >> 8) & mask;
 
 				if(fpsm == 1)
 				{
@@ -2650,13 +2657,10 @@ void GSDrawScanline::DrawScanlineExT(int top, int left, int right, const Vertex&
 				c[4] = GSVector4::zero();
 				c[5] = m_slenv.afix;
 
-				GSVector4i a = c[abec * 2 + 1].yywwl().yywwh().sll16(5);
+				GSVector4i a = c[abec * 2 + 1].yywwl().yywwh().sll16(7);
 /*
-				GSVector4i drb = c[abea * 2 + 0].sub16(c[abeb * 2 + 0]).sll16(4);
-				GSVector4i dga = c[abea * 2 + 1].sub16(c[abeb * 2 + 1]).sll16(4);
-
-				GSVector4i rb = drb.mul16hs(a).add16(c[abed * 2 + 0]);
-				GSVector4i ga = dga.mul16hs(a).add16(c[abed * 2 + 1]);
+				GSVector4i rb = GSVector4i::lerp16<1>(c[abea * 2 + 0], c[abeb * 2 + 0], a, c[abed * 2 + 0]);
+				GSVector4i ga = GSVector4i::lerp16<1>(c[abea * 2 + 1], c[abeb * 2 + 1], a, c[abed * 2 + 1]);
 */
 				GSVector4i rb, ga;
 
@@ -2673,8 +2677,8 @@ void GSDrawScanline::DrawScanlineExT(int top, int left, int right, const Vertex&
 
 					if(!(fpsm == 1 && abec == 1))
 					{
-						rb = rb.sll16(4).mul16hs(a);
-						ga = ga.sll16(4).mul16hs(a);
+						rb = rb.sll16(2).mul16hs(a);
+						ga = ga.sll16(2).mul16hs(a);
 
 						/* TODO
 

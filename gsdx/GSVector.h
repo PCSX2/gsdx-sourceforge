@@ -680,6 +680,75 @@ public:
 
 	#endif
 
+	template<int shift> GSVector4i lerp16(const GSVector4i& a, const GSVector4i& f) const
+	{
+		// (a - this) * f << shift + this
+
+		GSVector4i v = a.sub16(*this);
+
+		#if _M_SSE >= 0x301
+
+		if(shift > 0) v = v.sll16(shift);
+
+		v = v.mul16hrs(f);
+
+		#else
+
+		v = v.sll16(shift + 1);
+
+		v = v.mul16hs(f);
+
+		#endif
+
+		return add16(v);
+	}
+
+	template<int shift> static GSVector4i lerp16(const GSVector4i& a, const GSVector4i& b, const GSVector4i& c, const GSVector4i& d)
+	{
+		// (a - b) * c << shift + d
+
+		GSVector4i v = a.sub16(b);
+
+		#if _M_SSE >= 0x301
+
+		if(shift > 0) v = v.sll16(shift);
+
+		v = v.mul16hrs(c);
+
+		#else
+
+		v = v.sll16(shift + 1);
+
+		v = v.mul16hs(c);
+
+		#endif
+
+		return d.add16(v);
+	}
+
+	template<int shift> GSVector4i modulate16(const GSVector4i& f) const
+	{
+		// a * f << shift
+
+		GSVector4i v = *this;
+
+		#if _M_SSE >= 0x301
+
+		if(shift > 0) v = v.sll16(shift);
+
+		v = v.mul16hrs(f);
+
+		#else
+
+		v = v.sll16(shift + 1);
+
+		v = v.mul16hs(f);
+
+		#endif
+
+		return v;
+	}
+
 	GSVector4i eq8(const GSVector4i& v) const
 	{
 		return GSVector4i(_mm_cmpeq_epi8(m, v.m));
