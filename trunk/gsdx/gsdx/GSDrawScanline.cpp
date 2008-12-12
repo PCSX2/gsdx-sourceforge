@@ -440,10 +440,10 @@ void GSDrawScanline::SampleTexture(int pixels, DWORD ztst, DWORD ltf, DWORD tlu,
 
 		if(tlu)
 		{
-			c00 = addr00.gather32_32((const BYTE*)tex).gather32_32(clut);
-			c01 = addr01.gather32_32((const BYTE*)tex).gather32_32(clut);
-			c10 = addr10.gather32_32((const BYTE*)tex).gather32_32(clut);
-			c11 = addr11.gather32_32((const BYTE*)tex).gather32_32(clut);
+			c00 = addr00.gather32_32((const BYTE*)tex, clut);
+			c01 = addr01.gather32_32((const BYTE*)tex, clut);
+			c10 = addr10.gather32_32((const BYTE*)tex, clut);
+			c11 = addr11.gather32_32((const BYTE*)tex, clut);
 		}
 		else
 		{
@@ -525,7 +525,7 @@ void GSDrawScanline::SampleTexture(int pixels, DWORD ztst, DWORD ltf, DWORD tlu,
 
 		if(tlu)
 		{
-			c00 = addr00.gather32_32((const BYTE*)tex).gather32_32(clut);
+			c00 = addr00.gather32_32((const BYTE*)tex, clut);
 		}
 		else
 		{
