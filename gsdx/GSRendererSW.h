@@ -133,14 +133,14 @@ protected:
 			{
 				v.t.x = (float)(int)m_v.UV.U;
 				v.t.y = (float)(int)m_v.UV.V;
-				v.t *= 0x8000 >> 4;
+				v.t *= 0x10000 >> 4;
 				v.t.z = 1.0f;
 			}
 			else
 			{
 				v.t.x = m_v.ST.S;
 				v.t.y = m_v.ST.T;
-				v.t *= GSVector4((float)(0x8000 << m_context->TEX0.TW), (float)(0x8000 << m_context->TEX0.TH));
+				v.t *= GSVector4((float)(0x10000 << m_context->TEX0.TW), (float)(0x10000 << m_context->TEX0.TH));
 				v.t.z = m_v.RGBAQ.Q;
 			}
 		}

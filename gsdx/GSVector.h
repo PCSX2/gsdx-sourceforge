@@ -684,46 +684,14 @@ public:
 	{
 		// (a - this) * f << shift + this
 
-		GSVector4i v = a.sub16(*this);
-
-		#if _M_SSE >= 0x301
-
-		if(shift > 0) v = v.sll16(shift);
-
-		v = v.mul16hrs(f);
-
-		#else
-
-		v = v.sll16(shift + 1);
-
-		v = v.mul16hs(f);
-
-		#endif
-
-		return add16(v);
+		return add16(a.sub16(*this).modulate16<shift>(f));
 	}
 
 	template<int shift> static GSVector4i lerp16(const GSVector4i& a, const GSVector4i& b, const GSVector4i& c, const GSVector4i& d)
 	{
 		// (a - b) * c << shift + d
 
-		GSVector4i v = a.sub16(b);
-
-		#if _M_SSE >= 0x301
-
-		if(shift > 0) v = v.sll16(shift);
-
-		v = v.mul16hrs(c);
-
-		#else
-
-		v = v.sll16(shift + 1);
-
-		v = v.mul16hs(c);
-
-		#endif
-
-		return d.add16(v);
+		return d.add16(a.sub16(b).modulate16<shift>(c));
 	}
 
 	template<int shift> GSVector4i modulate16(const GSVector4i& f) const
