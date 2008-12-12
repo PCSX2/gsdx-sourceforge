@@ -582,7 +582,7 @@ void GSDrawScanline::ColorTFX(DWORD tfx, const GSVector4i& rbf, const GSVector4i
 	case TFX_HIGHLIGHT2:
 		af = gaf.yywwl().yywwh().srl16(7);
 		rbt = rbt.modulate16<1>(rbf).add16(af).clamp8();
-		gat = gat.modulate16<1>(rbf).add16(af).clamp8().mix16(gat);
+		gat = gat.modulate16<1>(gat).add16(af).clamp8().mix16(gat);
 		break;
 	case TFX_NONE:
 		rbt = rbf.srl16(7);
@@ -597,7 +597,7 @@ void GSDrawScanline::AlphaTFX(DWORD tfx, DWORD tcc, const GSVector4i& gaf, GSVec
 	switch(tfx)
 	{
 	case TFX_MODULATE:
-		gat = gat.modulate16<1>(gaf).clamp8();
+		gat = gat.modulate16<1>(gaf).clamp8(); // mul16hrs rounds and breaks fogging in resident evil 4 (only modulate16<0> uses mul16hrs, but watch out)
 		if(!tcc) gat = gat.mix16(gaf.srl16(7));
 		break;
 	case TFX_DECAL: 
@@ -1118,6 +1118,10 @@ void GSDrawScanline::Init()
 	m_dsmap.SetAt(0xe445b464, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xe445b464>);
 	m_dsmap.SetAt(0xe445d464, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xe445d464>);
 	m_dsmap.SetAt(0xe485b464, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xe485b464>);
+	m_dsmap.SetAt(0xa4611454, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xa4611454>);
+	m_dsmap.SetAt(0xa4831c24, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xa4831c24>);
+	m_dsmap.SetAt(0xcff0b464, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xcff0b464>);
+	m_dsmap.SetAt(0xcff42464, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xcff42464>);
 
 	// kingdom hearts
 
@@ -1160,6 +1164,23 @@ void GSDrawScanline::Init()
 	m_dsmap.SetAt(0xe4802c14, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xe4802c14>);
 	m_dsmap.SetAt(0xe480dc14, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xe480dc14>);
 	m_dsmap.SetAt(0xe480dc54, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xe480dc54>);
+	m_dsmap.SetAt(0x24402804, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0x24402804>);
+	m_dsmap.SetAt(0x2440c274, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0x2440c274>);
+	m_dsmap.SetAt(0x2ff10224, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0x2ff10224>);
+	m_dsmap.SetAt(0x4ff03814, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0x4ff03814>);
+	m_dsmap.SetAt(0x64403814, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0x64403814>);
+	m_dsmap.SetAt(0xa420d404, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xa420d404>);
+	m_dsmap.SetAt(0xa420d434, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xa420d434>);
+	m_dsmap.SetAt(0xa420d444, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xa420d444>);
+	m_dsmap.SetAt(0xa420d474, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xa420d474>);
+	m_dsmap.SetAt(0xa420dc34, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xa420dc34>);
+	m_dsmap.SetAt(0xa440d404, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xa440d404>);
+	m_dsmap.SetAt(0xa440dc34, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xa440dc34>);
+	m_dsmap.SetAt(0xa460d474, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xa460d474>);
+	m_dsmap.SetAt(0xa480d404, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xa480d404>);
+	m_dsmap.SetAt(0xa480dc04, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xa480dc04>);
+	m_dsmap.SetAt(0xa484d444, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xa484d444>);
+	m_dsmap.SetAt(0xe440d414, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xe440d414>);
 
 	// dbzbt3
 
@@ -2229,6 +2250,25 @@ void GSDrawScanline::Init()
 	m_dsmap.SetAt(0xa4802c09, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xa4802c09>);
 	m_dsmap.SetAt(0xa485bc29, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xa485bc29>);
 	m_dsmap.SetAt(0xe441bc29, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xe441bc29>);
+
+	// gradius 5
+
+	m_dsmap.SetAt(0x2440c248, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0x2440c248>);
+	m_dsmap.SetAt(0x2440c448, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0x2440c448>);
+	m_dsmap.SetAt(0x2480c268, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0x2480c268>);
+	m_dsmap.SetAt(0x2ff0c248, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0x2ff0c248>);
+	m_dsmap.SetAt(0x2ff0d448, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0x2ff0d448>);
+	m_dsmap.SetAt(0xa440c448, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xa440c448>);
+	m_dsmap.SetAt(0xa440d448, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xa440d448>);
+	m_dsmap.SetAt(0xa440d468, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xa440d468>);
+	m_dsmap.SetAt(0xa480d448, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xa480d448>);
+	m_dsmap.SetAt(0xa480d468, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xa480d468>);
+	m_dsmap.SetAt(0xaff0c448, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xaff0c448>);
+	m_dsmap.SetAt(0xaff0d468, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xaff0d468>);
+	m_dsmap.SetAt(0xcff4d468, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xcff4d468>);
+	m_dsmap.SetAt(0xeff0d468, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xeff0d468>);
+	m_dsmap.SetAt(0xeff4d468, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xeff4d468>);
+	m_dsmap.SetAt(0xeffcd468, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0xeffcd468>);
 
 	#endif
 /*
