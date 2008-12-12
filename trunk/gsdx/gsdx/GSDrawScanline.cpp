@@ -86,7 +86,7 @@ void GSDrawScanline::SetupDraw(Vertex* vertices, int count, const void* texture)
 		{
 			// if q is constant we can do the half pel shift for bilinear sampling on the vertices
 
-			GSVector4 half((float)0x4000, (float)0x4000, 0.0f, 0.0f);
+			GSVector4 half((float)0x8000, (float)0x8000, 0.0f, 0.0f);
 
 			for(int i = 0; i < count; i++)
 			{
@@ -172,7 +172,7 @@ void GSDrawScanline::SetupDraw(Vertex* vertices, int count, const void* texture)
 	m_slenv.fba = GSVector4i(context->FBA.FBA ? 0x80000000 : 0);
 	m_slenv.aref = GSVector4i((int)context->TEST.AREF + (m_sel.atst == ATST_LESS ? -1 : m_sel.atst == ATST_GREATER ? +1 : 0));
 	m_slenv.afix = GSVector4i((int)context->ALPHA.FIX << 16);
-	m_slenv.afix2 = m_slenv.afix << 1;
+	m_slenv.afix2 = m_slenv.afix.yywwl().yywwh().sll16(7);
 	m_slenv.frb = GSVector4i((int)env.FOGCOL.ai32[0] & 0x00ff00ff);
 	m_slenv.fga = GSVector4i((int)(env.FOGCOL.ai32[0] >> 8) & 0x00ff00ff);
 
@@ -409,32 +409,27 @@ void GSDrawScanline::SampleTexture(int pixels, DWORD ztst, DWORD ltf, DWORD tlu,
 	GSVector4i ui = GSVector4i(u); 
 	GSVector4i vi = GSVector4i(v);
 
-	GSVector4i uv = ui.sra32(15).ps32(vi.sra32(15));
+	GSVector4i uv = ui.sra32(16).ps32(vi.sra32(16));
 
-	GSVector4i uv0, uv1;
-	GSVector4i addr00, addr01, addr10, addr11;
 	GSVector4i c00, c01, c10, c11;
 
 	if(ltf)
 	{
-		GSVector4i mask = GSVector4i::x00007fff();
+		GSVector4i uf = ui.xxzzl().xxzzh().srl16(1);
+		GSVector4i vf = vi.xxzzl().xxzzh().srl16(1);
 
-		GSVector4i uvf = (ui & mask).ps32(vi & mask);
-		GSVector4i uf = uvf.upl16(uvf);
-		GSVector4i vf = uvf.uph16(uvf);
-
-		uv0 = Wrap(uv);
-		uv1 = Wrap(uv.add16(GSVector4i::x0001()));
+		GSVector4i uv0 = Wrap(uv);
+		GSVector4i uv1 = Wrap(uv.add16(GSVector4i::x0001()));
 
 		GSVector4i y0 = uv0.uph16() << tw;
 		GSVector4i y1 = uv1.uph16() << tw;
 		GSVector4i x0 = uv0.upl16();
 		GSVector4i x1 = uv1.upl16();
 
-		addr00 = y0 + x0;
-		addr01 = y0 + x1;
-		addr10 = y1 + x0;
-		addr11 = y1 + x1;
+		GSVector4i addr00 = y0 + x0;
+		GSVector4i addr01 = y0 + x1;
+		GSVector4i addr10 = y1 + x0;
+		GSVector4i addr11 = y1 + x1;
 
 		#if _M_SSE >= 0x401
 
@@ -492,7 +487,7 @@ void GSDrawScanline::SampleTexture(int pixels, DWORD ztst, DWORD ltf, DWORD tlu,
 
 		#endif
 
-		mask = GSVector4i::x00ff();
+		GSVector4i mask = GSVector4i::x00ff();
 
 		GSVector4i rb00 = c00 & mask;
 		GSVector4i rb01 = c01 & mask;
@@ -517,9 +512,9 @@ void GSDrawScanline::SampleTexture(int pixels, DWORD ztst, DWORD ltf, DWORD tlu,
 	}
 	else
 	{
-		uv0 = Wrap(uv);
+		GSVector4i uv0 = Wrap(uv);
 
-		addr00 = (uv0.uph16() << tw) + uv0.upl16();
+		GSVector4i addr00 = (uv0.uph16() << tw) + uv0.upl16();
 
 		#if _M_SSE >= 0x401
 
@@ -2345,8 +2340,8 @@ void GSDrawScanline::DrawScanlineT(int top, int left, int right, const Vertex& v
 
 					if(m_sel.ltf)
 					{
-						u -= 0x4000;
-						v -= 0x4000;
+						u -= 0x8000;
+						v -= 0x8000;
 					}
 				}
 
@@ -2595,8 +2590,8 @@ void GSDrawScanline::DrawScanlineExT(int top, int left, int right, const Vertex&
 
 					if(ltf)
 					{
-						u -= 0x4000;
-						v -= 0x4000;
+						u -= 0x8000;
+						v -= 0x8000;
 					}
 				}
 
@@ -2649,19 +2644,9 @@ void GSDrawScanline::DrawScanlineExT(int top, int left, int right, const Vertex&
 				c[2] = d & mask;
 				c[3] = (d >> 8) & mask;
 
-				if(fpsm == 1)
-				{
-					c[3] = c[3].mix16(GSVector4i(0x00800000));
-				}
-
 				c[4] = GSVector4::zero();
-				c[5] = m_slenv.afix;
+				c[5] = GSVector4::zero();
 
-				GSVector4i a = c[abec * 2 + 1].yywwl().yywwh().sll16(7);
-/*
-				GSVector4i rb = GSVector4i::lerp16<1>(c[abea * 2 + 0], c[abeb * 2 + 0], a, c[abed * 2 + 0]);
-				GSVector4i ga = GSVector4i::lerp16<1>(c[abea * 2 + 1], c[abeb * 2 + 1], a, c[abed * 2 + 1]);
-*/
 				GSVector4i rb, ga;
 
 				if(abea != abeb)
@@ -2677,25 +2662,10 @@ void GSDrawScanline::DrawScanlineExT(int top, int left, int right, const Vertex&
 
 					if(!(fpsm == 1 && abec == 1))
 					{
-						rb = rb.sll16(2).mul16hs(a);
-						ga = ga.sll16(2).mul16hs(a);
+						GSVector4i a = abec < 2 ? c[abec * 2 + 1].yywwl().yywwh().sll16(7) : m_slenv.afix2;
 
-						/* TODO
-
-						if(abec == 2)
-						{
-							r *= m_slenv.afix2;
-							g *= m_slenv.afix2;
-							b *= m_slenv.afix2;
-						}
-						else
-						{
-							r = r.mod2x(c[abec*4 + 3]);
-							g = g.mod2x(c[abec*4 + 3]);
-							b = b.mod2x(c[abec*4 + 3]);
-						}
-
-						*/
+						rb = rb.modulate16<1>(a);
+						ga = ga.modulate16<1>(a);
 					}
 
 					if(abed < 2)
