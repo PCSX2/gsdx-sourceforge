@@ -1020,6 +1020,22 @@ public:
 		return v;
 	}
 
+	template<class T1, class T2>__forceinline GSVector4i gather16_16(const T1* ptr1, const T2* ptr2) const
+	{
+		GSVector4i v;
+
+		v = load((int)ptr2[ptr1[extract16<0>()]]);
+		v = v.insert16<1>((int)ptr2[ptr1[extract16<1>()]]);
+		v = v.insert16<2>((int)ptr2[ptr1[extract16<2>()]]);
+		v = v.insert16<3>((int)ptr2[ptr1[extract16<3>()]]);
+		v = v.insert16<4>((int)ptr2[ptr1[extract16<4>()]]);
+		v = v.insert16<5>((int)ptr2[ptr1[extract16<5>()]]);
+		v = v.insert16<6>((int)ptr2[ptr1[extract16<6>()]]);
+		v = v.insert16<7>((int)ptr2[ptr1[extract16<7>()]]);
+
+		return v;
+	}
+
 	template<int dst, class T> __forceinline GSVector4i gather16_32(const T* ptr, const GSVector4i& a) const
 	{
 		GSVector4i v = a;
@@ -1075,6 +1091,18 @@ public:
 		v = v.insert32<1>((int)ptr[extract32<1>()]);
 		v = v.insert32<2>((int)ptr[extract32<2>()]);
 		v = v.insert32<3>((int)ptr[extract32<3>()]);
+
+		return v;
+	}
+
+	template<class T1, class T2> __forceinline GSVector4i gather32_32(const T1* ptr1, const T2* ptr2) const
+	{
+		GSVector4i v;
+
+		v = load((int)ptr2[ptr1[extract32<0>()]]);
+		v = v.insert32<1>((int)ptr2[ptr1[extract32<1>()]]);
+		v = v.insert32<2>((int)ptr2[ptr1[extract32<2>()]]);
+		v = v.insert32<3>((int)ptr2[ptr1[extract32<3>()]]);
 
 		return v;
 	}

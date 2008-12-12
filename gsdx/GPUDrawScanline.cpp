@@ -195,10 +195,10 @@ void GPUDrawScanline::SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin
 
 		if(tlu)
 		{
-			c00 = addr00.gather16_16((const BYTE*)tex).gather16_16(clut);
-			c01 = addr01.gather16_16((const BYTE*)tex).gather16_16(clut);
-			c10 = addr10.gather16_16((const BYTE*)tex).gather16_16(clut);
-			c11 = addr11.gather16_16((const BYTE*)tex).gather16_16(clut);
+			c00 = addr00.gather16_16((const BYTE*)tex, clut);
+			c01 = addr01.gather16_16((const BYTE*)tex, clut);
+			c10 = addr10.gather16_16((const BYTE*)tex, clut);
+			c11 = addr11.gather16_16((const BYTE*)tex, clut);
 		}
 		else
 		{
@@ -315,7 +315,7 @@ void GPUDrawScanline::SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin
 
 		if(tlu)
 		{
-			c00 = addr.gather16_16((const BYTE*)tex).gather16_16(clut);
+			c00 = addr.gather16_16((const BYTE*)tex, clut);
 		}
 		else
 		{
