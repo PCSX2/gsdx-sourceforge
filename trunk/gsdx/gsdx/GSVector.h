@@ -698,23 +698,16 @@ public:
 	{
 		// a * f << shift
 
-		GSVector4i v = *this;
-
 		#if _M_SSE >= 0x301
 
-		if(shift > 0) v = v.sll16(shift);
-
-		v = v.mul16hrs(f);
-
-		#else
-
-		v = v.sll16(shift + 1);
-
-		v = v.mul16hs(f);
+		if(shift == 0) 
+		{
+			return mul16hrs(f);
+		}
 
 		#endif
 
-		return v;
+		return sll16(shift + 1).mul16hs(f);
 	}
 
 	GSVector4i eq8(const GSVector4i& v) const
