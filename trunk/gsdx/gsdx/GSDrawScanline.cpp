@@ -582,7 +582,7 @@ void GSDrawScanline::ColorTFX(DWORD tfx, const GSVector4i& rbf, const GSVector4i
 	case TFX_HIGHLIGHT2:
 		af = gaf.yywwl().yywwh().srl16(7);
 		rbt = rbt.modulate16<1>(rbf).add16(af).clamp8();
-		gat = gat.modulate16<1>(gat).add16(af).clamp8().mix16(gat);
+		gat = gat.modulate16<1>(gaf).add16(af).clamp8().mix16(gat);
 		break;
 	case TFX_NONE:
 		rbt = rbf.srl16(7);
