@@ -86,7 +86,7 @@ void GSDrawScanline::SetupDraw(Vertex* vertices, int count, const void* texture)
 		{
 			// if q is constant we can do the half pel shift for bilinear sampling on the vertices
 
-			GSVector4 half(2048.0f, 2048.0f, 0.0f, 0.0f);
+			GSVector4 half((float)0x4000, (float)0x4000, 0.0f, 0.0f);
 
 			for(int i = 0; i < count; i++)
 			{
