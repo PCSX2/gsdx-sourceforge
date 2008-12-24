@@ -25,10 +25,8 @@
 #include "GPUDrawScanline.h"
 
 template <class Device>
-class GPURendererSW : public GPURenderer<Device, GSVertexSW>, public IDrawAsync
+class GPURendererSW : public GPURenderer<Device, GSVertexSW>
 {
-	typedef GSVertexSW Vertex;
-
 protected:
 	GSRasterizerList m_rl;
 	Texture m_texture;
@@ -73,7 +71,7 @@ protected:
 
 	void VertexKick()
 	{
-		Vertex& v = m_vl.AddTail();
+		GSVertexSW& v = m_vl.AddTail();
 
 		// TODO: x/y + off.x/y should wrap around at +/-1024
 
@@ -92,17 +90,17 @@ protected:
 		__super::VertexKick();
 	}
 
-	void DrawingKickTriangle(Vertex* v, int& count)
+	void DrawingKickTriangle(GSVertexSW* v, int& count)
 	{
 		// TODO
 	}
 
-	void DrawingKickLine(Vertex* v, int& count)
+	void DrawingKickLine(GSVertexSW* v, int& count)
 	{
 		// TODO
 	}
 
-	void DrawingKickSprite(Vertex* v, int& count)
+	void DrawingKickSprite(GSVertexSW* v, int& count)
 	{
 		// TODO
 	}
@@ -121,31 +119,52 @@ protected:
 
 	void Draw()
 	{
-		const void* texture = NULL;
+		const GPUDrawingEnvironment& env = m_env;
 
-		if(m_env.PRIM.TME)
+		//
+
+		GPUScanlineParam p;
+
+		p.sel.dw = 0;
+		p.sel.iip = env.PRIM.IIP;
+		p.sel.me = env.STATUS.ME;
+		p.sel.abe = env.PRIM.ABE;
+		p.sel.abr = env.STATUS.ABR;
+		p.sel.tge = env.PRIM.TGE;
+		p.sel.tme = env.PRIM.TME;
+		p.sel.tlu = env.STATUS.TP < 2;
+		p.sel.twin = (env.TWIN.ai32 & 0xfffff) != 0;
+		p.sel.dtd = m_dither ? env.STATUS.DTD : 0;
+		p.sel.ltf = m_filter == 1 && env.PRIM.TYPE == GPU_POLYGON || m_filter == 2 ? 1 : 0;
+
+		if(env.PRIM.TME)
 		{
-			texture = m_mem.GetTexture(m_env.STATUS.TP, m_env.STATUS.TX, m_env.STATUS.TY);
+			const void* t = m_mem.GetTexture(env.STATUS.TP, env.STATUS.TX, env.STATUS.TY);
 
-			if(!texture) {ASSERT(0); return;}
+			if(!t) {ASSERT(0); return;}
+
+			p.tex = t;
+			p.clut = m_mem.GetCLUT(env.STATUS.TP, env.CLUT.X, env.CLUT.Y);
 		}
 
 		//
 
+		GSRasterizerData data;
+
+		data.scissor = GetScissor();
+		data.vertices = m_vertices;
+		data.count = m_count;
+		data.param = &p;
+
+		switch(env.PRIM.TYPE)
 		{
-			POSITION pos = m_rl.GetHeadPosition();
-
-			while(pos)
-			{
-				GSRasterizerMT* r = m_rl.GetNext(pos);
-
-				GPUDrawScanline* ds = (GPUDrawScanline*)r->GetDrawScanline();
-
-				ds->SetOptions(m_filter, m_dither);
-			}
+		case GPU_POLYGON: data.primclass = GS_TRIANGLE_CLASS; break;
+		case GPU_LINE: data.primclass = GS_LINE_CLASS; break;
+		case GPU_SPRITE: data.primclass = GS_SPRITE_CLASS; break;
+		default: __assume(0);
 		}
 
-		int prims = m_rl.Draw(m_vertices, m_count, texture);
+		int prims = m_rl.Draw(&data);
 	
 		m_perfmon.Put(GSPerfMon::Prim, prims);
 		m_perfmon.Put(GSPerfMon::Draw, 1);
@@ -168,7 +187,7 @@ protected:
 				br = br.maxv(p);
 			}
 
-			GSVector4i scissor = GetScissor();
+			GSVector4i scissor = data.scissor;
 
 			CRect r;
 
@@ -217,7 +236,7 @@ public:
 	GPURendererSW(const GPURendererSettings& rs, int threads)
 		: GPURenderer(rs)
 	{
-		m_rl.Create<GPUDrawScanline>(this, this, threads);
+		m_rl.Create<GPUDrawScanline>(this, threads);
 
 		m_fpDrawingKickHandlers[GPU_POLYGON] = (DrawingKickHandler)&GPURendererSW::DrawingKickTriangle;
 		m_fpDrawingKickHandlers[GPU_LINE] = (DrawingKickHandler)&GPURendererSW::DrawingKickLine;

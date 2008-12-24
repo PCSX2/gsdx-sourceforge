@@ -33,14 +33,14 @@ static struct GSUtilMaps
 
 	struct GSUtilMaps()
 	{
-		PrimClassField[GS_POINTLIST] = 0;
-		PrimClassField[GS_LINELIST] = 1;
-		PrimClassField[GS_LINESTRIP] = 1;
-		PrimClassField[GS_TRIANGLELIST] = 2;
-		PrimClassField[GS_TRIANGLESTRIP] = 2;
-		PrimClassField[GS_TRIANGLEFAN] = 2;
-		PrimClassField[GS_SPRITE] = 3;
-		PrimClassField[GS_INVALID] = (BYTE)-1;
+		PrimClassField[GS_POINTLIST] = GS_POINT_CLASS;
+		PrimClassField[GS_LINELIST] = GS_LINE_CLASS;
+		PrimClassField[GS_LINESTRIP] = GS_LINE_CLASS;
+		PrimClassField[GS_TRIANGLELIST] = GS_TRIANGLE_CLASS;
+		PrimClassField[GS_TRIANGLESTRIP] = GS_TRIANGLE_CLASS;
+		PrimClassField[GS_TRIANGLEFAN] = GS_TRIANGLE_CLASS;
+		PrimClassField[GS_SPRITE] = GS_SPRITE_CLASS;
+		PrimClassField[GS_INVALID] = GS_INVALID_CLASS;
 
 		PrimVertexCount[GS_POINTLIST] = 1;
 		PrimVertexCount[GS_LINELIST] = 2;
@@ -82,9 +82,9 @@ static struct GSUtilMaps
 
 } s_maps;
 
-DWORD GSUtil::GetPrimClass(DWORD prim)
+GS_PRIM_CLASS GSUtil::GetPrimClass(DWORD prim)
 {
-	return s_maps.PrimClassField[prim];
+	return (GS_PRIM_CLASS)s_maps.PrimClassField[prim];
 }
 
 DWORD GSUtil::GetPrimVertexCount(DWORD prim)

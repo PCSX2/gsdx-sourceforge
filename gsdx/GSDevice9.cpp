@@ -848,43 +848,6 @@ void GSDevice9::DrawPrimitive()
 	m_dev->DrawPrimitiveUP(m_topology, prims, m_vb_vertices, m_vb_stride);
 }
 
-bool GSDevice9::SaveToFileD24S8(IDirect3DSurface9* ds, LPCTSTR fn)
-{
-	HRESULT hr;
-
-	D3DSURFACE_DESC desc;
-
-	ds->GetDesc(&desc);
-
-	if(desc.Format != D3DFMT_D32F_LOCKABLE)
-		return false;
-
-	CComPtr<IDirect3DSurface9> surface;
-	
-	hr = m_dev->CreateOffscreenPlainSurface(desc.Width, desc.Height, D3DFMT_A8R8G8B8, D3DPOOL_SYSTEMMEM, &surface, NULL);
-
-	D3DLOCKED_RECT slr, dlr;
-
-	hr = ds->LockRect(&slr, NULL, 0);;
-	hr = surface->LockRect(&dlr, NULL, 0);
-
-	BYTE* s = (BYTE*)slr.pBits;
-	BYTE* d = (BYTE*)dlr.pBits;
-
-	for(UINT y = 0; y < desc.Height; y++, s += slr.Pitch, d += dlr.Pitch)
-	{
-		for(UINT x = 0; x < desc.Width; x++)
-		{
-			((float*)d)[x] = ((float*)s)[x];
-		}
-	}
-
-	ds->UnlockRect();
-	surface->UnlockRect();
-
-	return SUCCEEDED(D3DXSaveSurfaceToFile(fn, D3DXIFF_BMP, surface, NULL, NULL));
-}
-
 void GSDevice9::StretchRect(Texture& st, Texture& dt, const GSVector4& dr, bool linear)
 {
 	StretchRect(st, GSVector4(0, 0, 1, 1), dt, dr, linear);

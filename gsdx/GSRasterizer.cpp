@@ -35,7 +35,45 @@ GSRasterizer::~GSRasterizer()
 	delete m_ds;
 }
 
-void GSRasterizer::DrawPoint(Vertex* v, const GSVector4i& scissor)
+int GSRasterizer::Draw(const GSRasterizerData* data)
+{
+	bool solid = m_ds->SetupDraw(data);
+
+	const GSVector4i scissor = data->scissor;
+	const GSVertexSW* vertices = data->vertices;
+	const int count = data->count;
+
+	int prims = 0;
+
+	switch(data->primclass)
+	{
+	case GS_POINT_CLASS:
+		prims = count;
+		for(int i = 0; i < count; i++) DrawPoint(&vertices[i], scissor);
+		break;
+	case GS_LINE_CLASS:
+		ASSERT(!(count & 1));
+		prims = count / 2;
+		for(int i = 0; i < count; i += 2) DrawLine(&vertices[i], scissor);
+		break;
+	case GS_TRIANGLE_CLASS:
+		ASSERT(!(count % 3));
+		prims = count / 3;
+		for(int i = 0; i < count; i += 3) DrawTriangle(&vertices[i], scissor);
+		break;
+	case GS_SPRITE_CLASS:
+		ASSERT(!(count & 1));
+		prims = count / 2;
+		for(int i = 0; i < count; i += 2) DrawSprite(&vertices[i], scissor, solid);
+		break;
+	default:
+		__assume(0);
+	}
+
+	return prims;
+}
+
+void GSRasterizer::DrawPoint(const GSVertexSW* v, const GSVector4i& scissor)
 {
 	// TODO: round to closest for point, prestep for line
 
@@ -52,19 +90,50 @@ void GSRasterizer::DrawPoint(Vertex* v, const GSVector4i& scissor)
 	}
 }
 
-void GSRasterizer::DrawLine(Vertex* v, const GSVector4i& scissor)
+void GSRasterizer::DrawLine(const GSVertexSW* v, const GSVector4i& scissor)
 {
-	Vertex dv = v[1] - v[0];
+	GSVertexSW dv = v[1] - v[0];
 
 	GSVector4 dp = dv.p.abs();
 	GSVector4i dpi(dp);
 
-	if(dpi.x == 0 && dpi.y == 0) return;
+	if(dpi.y == 0)
+	{
+		if(dpi.x > 0)
+		{
+			// shortcut for horizontal lines
+
+			GSVector4 mask = (v[0].p > v[1].p).xxxx();
+
+			GSVertexSW l, dl;
+
+			l.p = v[0].p.blend8(v[1].p, mask);
+			l.t = v[0].t.blend8(v[1].t, mask);
+			l.c = v[0].c.blend8(v[1].c, mask);
+
+			GSVector4 r, dr;
+
+			r = v[1].p.blend8(v[0].p, mask);
+
+			GSVertexSW dscan = dv / dv.p.xxxx();
+
+			GSVector4i p(l.p);
+
+			if(scissor.y <= p.y && p.y < scissor.w)
+			{
+				m_ds->SetupPrim(GS_LINE_CLASS, v, dscan);
+
+				DrawTriangleSection(p.y, p.y + 1, l, dl, r, dr, dscan, scissor);
+			}
+		}
+
+		return;
+	}
 
 	int i = dpi.x > dpi.y ? 0 : 1;
 
-	Vertex edge = v[0];
-	Vertex dedge = dv / dp.v[i];
+	GSVertexSW edge = v[0];
+	GSVertexSW dedge = dv / dp.v[i];
 
 	// TODO: prestep + clip with the scissor
 
@@ -90,9 +159,9 @@ static const int s_abc[8][4] =
 	{2, 1, 0, 0},
 };
 
-void GSRasterizer::DrawTriangle(Vertex* vertices, const GSVector4i& scissor)
+void GSRasterizer::DrawTriangle(const GSVertexSW* vertices, const GSVector4i& scissor)
 {
-	Vertex v[3];
+	GSVertexSW v[3];
 
 	GSVector4 aabb = vertices[0].p.yyyy(vertices[1].p);
 	GSVector4 bccb = vertices[1].p.yyyy(vertices[2].p).xzzx();
@@ -126,26 +195,26 @@ void GSRasterizer::DrawTriangle(Vertex* vertices, const GSVector4i& scissor)
 	}
 }
 
-void GSRasterizer::DrawTriangleTop(Vertex* v, const GSVector4i& scissor)
+void GSRasterizer::DrawTriangleTop(GSVertexSW* v, const GSVector4i& scissor)
 {
-	Vertex longest = v[2] - v[1];
+	GSVertexSW longest = v[2] - v[1];
 	
 	if((longest.p == GSVector4::zero()).mask() & 1)
 	{
 		return;
 	}
 
-	Vertex dscan = longest * longest.p.xxxx().rcp();
+	GSVertexSW dscan = longest * longest.p.xxxx().rcp();
 
 	int i = (longest.p > GSVector4::zero()).mask() & 1;
 
-	Vertex& l = v[0];
+	GSVertexSW& l = v[0];
 	GSVector4 r = v[0].p;
 
-	Vertex vl = v[2 - i] - l;
+	GSVertexSW vl = v[2 - i] - l;
 	GSVector4 vr = v[1 + i].p - r;
 
-	Vertex dl = vl / vl.p.yyyy();
+	GSVertexSW dl = vl / vl.p.yyyy();
 	GSVector4 dr = vr / vr.yyyy();
 
 	GSVector4i tb(l.p.xyxy(v[2].p).ceil());
@@ -168,32 +237,32 @@ void GSRasterizer::DrawTriangleTop(Vertex* v, const GSVector4i& scissor)
 			r += dr * dy;
 		}
 
-		m_ds->SetupPrim(IDrawScanline::Triangle, v, dscan);
+		m_ds->SetupPrim(GS_TRIANGLE_CLASS, v, dscan);
 
 		DrawTriangleSection(top, bottom, l, dl, r, dr, dscan, scissor);
 	}
 }
 
-void GSRasterizer::DrawTriangleBottom(Vertex* v, const GSVector4i& scissor)
+void GSRasterizer::DrawTriangleBottom(GSVertexSW* v, const GSVector4i& scissor)
 {
-	Vertex longest = v[1] - v[0];
+	GSVertexSW longest = v[1] - v[0];
 	
 	if((longest.p == GSVector4::zero()).mask() & 1)
 	{
 		return;
 	}
 	
-	Vertex dscan = longest * longest.p.xxxx().rcp();
+	GSVertexSW dscan = longest * longest.p.xxxx().rcp();
 
 	int i = (longest.p > GSVector4::zero()).mask() & 1;
 
-	Vertex& l = v[1 - i];
+	GSVertexSW& l = v[1 - i];
 	GSVector4& r = v[i].p;
 
-	Vertex vl = v[2] - l;
+	GSVertexSW vl = v[2] - l;
 	GSVector4 vr = v[2].p - r;
 
-	Vertex dl = vl / vl.p.yyyy();
+	GSVertexSW dl = vl / vl.p.yyyy();
 	GSVector4 dr = vr / vr.yyyy();
 
 	GSVector4i tb(l.p.xyxy(v[2].p).ceil());
@@ -216,34 +285,34 @@ void GSRasterizer::DrawTriangleBottom(Vertex* v, const GSVector4i& scissor)
 			r += dr * dy;
 		}
 		
-		m_ds->SetupPrim(IDrawScanline::Triangle, v, dscan);
+		m_ds->SetupPrim(GS_TRIANGLE_CLASS, v, dscan);
 
 		DrawTriangleSection(top, bottom, l, dl, r, dr, dscan, scissor);
 	}
 }
 
-void GSRasterizer::DrawTriangleTopBottom(Vertex* v, const GSVector4i& scissor)
+void GSRasterizer::DrawTriangleTopBottom(GSVertexSW* v, const GSVector4i& scissor)
 {
-	Vertex v01, v02, v12;
+	GSVertexSW v01, v02, v12;
 
 	v01 = v[1] - v[0];
 	v02 = v[2] - v[0];
 
-	Vertex longest = v[0] + v02 * (v01.p / v02.p).yyyy() - v[1];
+	GSVertexSW longest = v[0] + v02 * (v01.p / v02.p).yyyy() - v[1];
 
 	if((longest.p == GSVector4::zero()).mask() & 1)
 	{
 		return;
 	}
 
-	Vertex dscan = longest * longest.p.xxxx().rcp();
+	GSVertexSW dscan = longest * longest.p.xxxx().rcp();
 
-	m_ds->SetupPrim(IDrawScanline::Triangle, v, dscan);
+	m_ds->SetupPrim(GS_TRIANGLE_CLASS, v, dscan);
 
-	Vertex& l = v[0];
+	GSVertexSW& l = v[0];
 	GSVector4 r = v[0].p;
 
-	Vertex dl;
+	GSVertexSW dl;
 	GSVector4 dr;
 
 	bool b = (longest.p > GSVector4::zero()).mask() & 1;
@@ -319,7 +388,7 @@ void GSRasterizer::DrawTriangleTopBottom(Vertex* v, const GSVector4i& scissor)
 	}
 }
 
-void GSRasterizer::DrawTriangleSection(int top, int bottom, Vertex& l, const Vertex& dl, GSVector4& r, const GSVector4& dr, const Vertex& dscan, const GSVector4i& scissor)
+void GSRasterizer::DrawTriangleSection(int top, int bottom, GSVertexSW& l, const GSVertexSW& dl, GSVector4& r, const GSVector4& dr, const GSVertexSW& dscan, const GSVector4i& scissor)
 {
 	ASSERT(top < bottom);
 
@@ -361,7 +430,7 @@ void GSRasterizer::DrawTriangleSection(int top, int bottom, Vertex& l, const Ver
 				{
 					m_pixels += pixels;
 
-					Vertex scan = l;
+					GSVertexSW scan = l;
 
 					float px = (float)left - l.p.x;
 
@@ -380,9 +449,9 @@ void GSRasterizer::DrawTriangleSection(int top, int bottom, Vertex& l, const Ver
 	}
 }
 
-void GSRasterizer::DrawSprite(Vertex* vertices, const GSVector4i& scissor, bool solid)
+void GSRasterizer::DrawSprite(const GSVertexSW* vertices, const GSVector4i& scissor, bool solid)
 {
-	Vertex v[2];
+	GSVertexSW v[2];
 
 	GSVector4 mask = vertices[0].p > vertices[1].p;
 
@@ -419,13 +488,15 @@ void GSRasterizer::DrawSprite(Vertex* vertices, const GSVector4i& scissor, bool 
 
 	#endif
 
-	Vertex scan = v[0];
+	GSVertexSW scan = v[0];
 
 	if(solid)
 	{
 		if(m_id == 0)
 		{
-			m_ds->FillRect(r, scan);
+			m_ds->DrawSolidRect(r, scan);
+
+			m_pixels += (r.z - r.x) * (r.w - r.y);
 		}
 
 		return;
@@ -433,12 +504,12 @@ void GSRasterizer::DrawSprite(Vertex* vertices, const GSVector4i& scissor, bool 
 
 	GSVector4 zero = GSVector4::zero();
 
-	Vertex dedge, dscan;
+	GSVertexSW dedge, dscan;
 
 	dedge.p = zero;
 	dscan.p = zero;
 
-	Vertex dv = v[1] - v[0];
+	GSVertexSW dv = v[1] - v[0];
 
 	dedge.t = (dv.t / dv.p.yyyy()).xyxy(zero).wyww();
 	dscan.t = (dv.t / dv.p.xxxx()).xyxy(zero).xwww();
@@ -446,7 +517,7 @@ void GSRasterizer::DrawSprite(Vertex* vertices, const GSVector4i& scissor, bool 
 	if(scan.p.y < (float)top) scan.t += dedge.t * ((float)top - scan.p.y);
 	if(scan.p.x < (float)left) scan.t += dscan.t * ((float)left - scan.p.x);
 
-	m_ds->SetupPrim(IDrawScanline::Sprite, v, dscan);
+	m_ds->SetupPrim(GS_SPRITE_CLASS, v, dscan);
 
 	IDrawScanline::DrawScanlinePtr dsf = m_ds->GetDrawScanlinePtr();
 
@@ -463,13 +534,13 @@ void GSRasterizer::DrawSprite(Vertex* vertices, const GSVector4i& scissor, bool 
 
 //
 
-GSRasterizerMT::GSRasterizerMT(IDrawScanline* ds, int id, int threads, IDrawAsync* da, long* sync)
+GSRasterizerMT::GSRasterizerMT(IDrawScanline* ds, int id, int threads, long* sync)
 	: GSRasterizer(ds, id, threads)
-	, m_da(da)
 	, m_sync(sync)
 	, m_exit(false)
 	, m_ThreadId(0)
 	, m_hThread(NULL)
+	, m_data(NULL)
 {
 	if(id > 0)
 	{
@@ -492,18 +563,18 @@ GSRasterizerMT::~GSRasterizerMT()
 	}
 }
 
-int GSRasterizerMT::Draw(Vertex* vertices, int count, const void* texture)
+int GSRasterizerMT::Draw(const GSRasterizerData* data)
 {
-	m_ds->SetupDraw(vertices, count, texture);
-
 	int prims = 0;
 
 	if(m_id == 0)
 	{
-		prims = m_da->DrawAsync(this);
+		prims = __super::Draw(data);
 	}
 	else
 	{
+		m_data = data;
+
 		InterlockedBitTestAndSet(m_sync, m_id);
 	}
 
@@ -523,7 +594,7 @@ DWORD GSRasterizerMT::ThreadProc()
 	{
 		if(*m_sync & (1 << m_id))
 		{
-			m_da->DrawAsync(this);
+			__super::Draw(m_data);
 
 			InterlockedBitTestAndReset(m_sync, m_id);
 		}
@@ -560,7 +631,7 @@ void GSRasterizerList::FreeRasterizers()
 	}
 }
 
-int GSRasterizerList::Draw(GSVertexSW* vertices, int count, const void* texture)
+int GSRasterizerList::Draw(const GSRasterizerData* data)
 {
 	*m_sync = 0;
 
@@ -570,9 +641,7 @@ int GSRasterizerList::Draw(GSVertexSW* vertices, int count, const void* texture)
 
 	while(pos)
 	{
-		GSRasterizerMT* r = GetPrev(pos);
-
-		prims += r->Draw(vertices, count, texture);
+		prims += GetPrev(pos)->Draw(data);
 	}
 
 	while(*m_sync)
