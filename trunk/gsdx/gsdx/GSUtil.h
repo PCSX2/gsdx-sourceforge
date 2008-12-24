@@ -26,7 +26,7 @@
 class GSUtil
 {
 public:
-	static DWORD GetPrimClass(DWORD prim);
+	static GS_PRIM_CLASS GetPrimClass(DWORD prim);
 	static DWORD GetPrimVertexCount(DWORD prim);
 
 	static bool HasSharedBits(DWORD spsm, DWORD dpsm);

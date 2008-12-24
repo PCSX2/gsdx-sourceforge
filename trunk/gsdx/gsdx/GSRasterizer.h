@@ -21,83 +21,93 @@
 
 #pragma once
 
+#include "GS.h"
 #include "GSVertexSW.h"
 
 #define FAST_DRAWSCANLINE
 
+__declspec(align(16)) class GSRasterizerData
+{
+public:
+	GSVector4i scissor;
+	GS_PRIM_CLASS primclass;
+	const GSVertexSW* vertices;
+	int count;
+	const void* param;
+};
+
+class IRasterizer
+{
+public:
+	virtual int Draw(const GSRasterizerData* data) = 0;
+	virtual int GetPixels() = 0;
+};
+
 class IDrawScanline
 {
 public:
-	typedef GSVertexSW Vertex;
-	typedef void (IDrawScanline::*DrawScanlinePtr)(int top, int left, int right, const Vertex& v);
-
-	enum PrimitiveType {Point, Line, Triangle, Sprite};
+	typedef void (IDrawScanline::*DrawScanlinePtr)(int top, int left, int right, const GSVertexSW& v);
 
 	virtual ~IDrawScanline() {}
 
-	virtual void SetupDraw(Vertex* vertices, int count, const void* texture) = 0;
-	virtual void SetupPrim(PrimitiveType type, const Vertex* vertices, const Vertex& dscan) = 0;
-	virtual void DrawScanline(int top, int left, int right, const Vertex& v) = 0;
-	virtual void FillRect(const GSVector4i& r, const Vertex& v) = 0;
+	virtual bool SetupDraw(const GSRasterizerData* data) = 0;
+	virtual void SetupPrim(GS_PRIM_CLASS primclass, const GSVertexSW* vertices, const GSVertexSW& dscan) = 0;
+	virtual void DrawScanline(int top, int left, int right, const GSVertexSW& v) = 0;
+	virtual void DrawSolidRect(const GSVector4i& r, const GSVertexSW& v) = 0;
 	virtual DrawScanlinePtr GetDrawScanlinePtr() = 0;
 };
 
-class GSRasterizer
+class GSRasterizer : public IRasterizer
 {
 protected:
-	typedef GSVertexSW Vertex;
-
 	IDrawScanline* m_ds;
 	int m_id;
 	int m_threads;
 	int m_pixels;
 
-	void DrawTriangleTop(Vertex* v, const GSVector4i& scissor);
-	void DrawTriangleBottom(Vertex* v, const GSVector4i& scissor);
-	void DrawTriangleTopBottom(Vertex* v, const GSVector4i& scissor);
+	void DrawPoint(const GSVertexSW* v, const GSVector4i& scissor);
+	void DrawLine(const GSVertexSW* v, const GSVector4i& scissor);
+	void DrawTriangle(const GSVertexSW* v, const GSVector4i& scissor);
+	void DrawSprite(const GSVertexSW* v, const GSVector4i& scissor, bool solid);
 
-	__forceinline void DrawTriangleSection(int top, int bottom, Vertex& l, const Vertex& dl, GSVector4& r, const GSVector4& dr, const Vertex& dscan, const GSVector4i& scissor);
+	void DrawTriangleTop(GSVertexSW* v, const GSVector4i& scissor);
+	void DrawTriangleBottom(GSVertexSW* v, const GSVector4i& scissor);
+	void DrawTriangleTopBottom(GSVertexSW* v, const GSVector4i& scissor);
+
+	__forceinline void DrawTriangleSection(int top, int bottom, GSVertexSW& l, const GSVertexSW& dl, GSVector4& r, const GSVector4& dr, const GSVertexSW& dscan, const GSVector4i& scissor);
 
 public:
 	GSRasterizer(IDrawScanline* ds, int id = 0, int threads = 0);
 	virtual ~GSRasterizer();
 
-	void DrawPoint(Vertex* v, const GSVector4i& scissor);
-	void DrawLine(Vertex* v, const GSVector4i& scissor);
-	void DrawTriangle(Vertex* v, const GSVector4i& scissor);
-	void DrawSprite(Vertex* v, const GSVector4i& scissor, bool solid);
+	// IRasterizer
 
-	IDrawScanline* GetDrawScanline() {return m_ds;}
-
+	int Draw(const GSRasterizerData* data);
 	int GetPixels() {int pixels = m_pixels; m_pixels = 0; return pixels;}
-};
-
-interface IDrawAsync
-{
-public:
-	virtual int DrawAsync(GSRasterizer* r) = 0;
 };
 
 class GSRasterizerMT : public GSRasterizer
 {
-	IDrawAsync* m_da;
 	long* m_sync;
 	bool m_exit;
     DWORD m_ThreadId;
     HANDLE m_hThread;
+	const GSRasterizerData* m_data;
 
 	static DWORD WINAPI StaticThreadProc(LPVOID lpParam);
 
 	DWORD ThreadProc();
 
 public:
-	GSRasterizerMT(IDrawScanline* ds, int id, int threads, IDrawAsync* da, long* sync);
+	GSRasterizerMT(IDrawScanline* ds, int id, int threads, long* sync);
 	virtual ~GSRasterizerMT();
 
-	int Draw(Vertex* vertices, int count, const void* texture);
+	// IRasterizer
+
+	int Draw(const GSRasterizerData* data);
 };
 
-class GSRasterizerList : public CAtlList<GSRasterizerMT*>
+class GSRasterizerList : public CAtlList<GSRasterizerMT*>, public IRasterizer
 {
 	long* m_sync;
 
@@ -107,7 +117,7 @@ public:
 	GSRasterizerList();
 	virtual ~GSRasterizerList();
 
-	template<class DS, class T> void Create(T* parent, IDrawAsync* da, int threads)
+	template<class DS, class T> void Create(T* parent, int threads)
 	{
 		FreeRasterizers();
 
@@ -115,10 +125,12 @@ public:
 
 		for(int i = 0; i < threads; i++) 
 		{
-			AddTail(new GSRasterizerMT(new DS(parent), i, threads, da, m_sync));
+			AddTail(new GSRasterizerMT(new DS(parent), i, threads, m_sync));
 		}
 	}
 
-	int Draw(GSVertexSW* vertices, int count, const void* texture);
+	// IRasterizer
+
+	int Draw(const GSRasterizerData* data);
 	int GetPixels();
 };

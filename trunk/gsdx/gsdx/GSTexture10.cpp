@@ -111,7 +111,60 @@ void GSTexture10::Unmap()
 
 bool GSTexture10::Save(CString fn, bool dds)
 {
-	return SUCCEEDED(D3DX10SaveTextureToFile(m_texture, dds ? D3DX10_IFF_DDS : D3DX10_IFF_BMP, fn));
+	CComPtr<ID3D10Resource> res;
+
+	if(m_desc.BindFlags & D3D10_BIND_DEPTH_STENCIL)
+	{
+		HRESULT hr;
+
+		D3D10_TEXTURE2D_DESC desc;
+
+		memset(&desc, 0, sizeof(desc));
+
+		m_texture->GetDesc(&desc);
+
+		desc.Usage = D3D10_USAGE_STAGING;
+		desc.BindFlags = 0;
+		desc.CPUAccessFlags = D3D10_CPU_ACCESS_READ;
+
+		CComPtr<ID3D10Texture2D> src, dst;
+
+		hr = m_dev->CreateTexture2D(&desc, NULL, &src);
+
+		m_dev->CopyResource(src, m_texture);
+
+		desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		desc.CPUAccessFlags = D3D10_CPU_ACCESS_WRITE;
+
+		hr = m_dev->CreateTexture2D(&desc, NULL, &dst);
+
+		D3D10_MAPPED_TEXTURE2D sm, dm;
+
+		hr = src->Map(0, D3D10_MAP_READ, 0, &sm);
+		hr = dst->Map(0, D3D10_MAP_WRITE, 0, &dm);
+
+		BYTE* s = (BYTE*)sm.pData;
+		BYTE* d = (BYTE*)dm.pData;
+
+		for(UINT y = 0; y < desc.Height; y++, s += sm.RowPitch, d += dm.RowPitch)
+		{
+			for(UINT x = 0; x < desc.Width; x++)
+			{
+				((UINT*)d)[x] = (UINT)(((float*)s)[x*2] * UINT_MAX);
+			}
+		}
+
+		src->Unmap(0);
+		dst->Unmap(0);
+
+		res = dst;
+	}
+	else
+	{
+		res = m_texture;
+	}
+
+	return SUCCEEDED(D3DX10SaveTextureToFile(res, dds ? D3DX10_IFF_DDS : D3DX10_IFF_BMP, fn));
 }
 
 ID3D10Texture2D* GSTexture10::operator->()

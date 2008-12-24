@@ -96,19 +96,19 @@ public:
 			(int)SCISSOR.SCAY1);
 	}
 
-	bool DepthRead()
+	bool DepthRead() const
 	{
 		return TEST.ZTE && TEST.ZTST >= 2;
 	}
 
-	bool DepthWrite()
+	bool DepthWrite() const
 	{
-		if(TEST.ATE && TEST.ATST == 0 && TEST.AFAIL != 2) // alpha test, all pixels fail, z buffer is not updated
+		if(TEST.ATE && TEST.ATST == ATST_NEVER && TEST.AFAIL != AFAIL_ZB_ONLY) // alpha test, all pixels fail, z buffer is not updated
 		{
 			return false;
 		}
 
-		return ZBUF.ZMSK == 0;
+		return ZBUF.ZMSK == 0 && TEST.ZTE != 0; // ZTE == 0 is bug on the real hardware, write is blocked then
 	}
 };
 

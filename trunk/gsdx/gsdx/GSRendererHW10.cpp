@@ -220,7 +220,22 @@ void GSRendererHW10::Draw(int prim, Texture& rt, Texture& ds, GSTextureCache<Dev
 {
 	GSDrawingEnvironment& env = m_env;
 	GSDrawingContext* context = m_context;
+/*
+	if(s_dump)
+	{
+		TRACE(_T("\n"));
 
+		TRACE(_T("PRIM = %d, ZMSK = %d, ZTE = %d, ZTST = %d, ATE = %d, ATST = %d, AFAIL = %d, AREF = %02x\n"), 
+			PRIM->PRIM, context->ZBUF.ZMSK, 
+			context->TEST.ZTE, context->TEST.ZTST,
+			context->TEST.ATE, context->TEST.ATST, context->TEST.AFAIL, context->TEST.AREF);
+
+		for(int i = 0; i < m_count; i++)
+		{
+			TRACE(_T("[%d] %3.0f %3.0f %3.0f %3.0f\n"), i, (float)m_vertices[i].p.x / 16, (float)m_vertices[i].p.y / 16, (float)m_vertices[i].p.z, (float)m_vertices[i].a);
+		}
+	}
+*/
 	D3D10_PRIMITIVE_TOPOLOGY topology;
 	int prims = 0;
 

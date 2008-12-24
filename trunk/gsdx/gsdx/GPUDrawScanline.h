@@ -25,66 +25,74 @@
 #include "GSRasterizer.h"
 #include "GSAlignedClass.h"
 
+union GPUScanlineSelector
+{
+	struct
+	{
+		DWORD iip:1; // 0
+		DWORD me:1; // 1
+		DWORD abe:1; // 2
+		DWORD abr:2; // 3
+		DWORD tge:1; // 5
+		DWORD tme:1; // 6
+		DWORD twin:1; // 7
+		DWORD tlu:1; // 8
+		DWORD dtd:1; // 9
+		DWORD ltf:1; // 10
+		// DWORD dte:1: // 11
+	};
+
+	struct
+	{
+		DWORD _pad1:1; // 0
+		DWORD rfb:2; // 1
+		DWORD _pad2:2; // 3
+		DWORD tfx:2; // 5
+	};
+
+	DWORD dw;
+
+	operator DWORD() {return dw & 0xff;}
+};
+
+__declspec(align(16)) struct GPUScanlineEnvironment
+{
+	GPUScanlineSelector sel;
+
+	GPULocalMemory* mem;
+	const void* tex;
+	const WORD* clut;
+
+	GSVector4i u[3];
+	GSVector4i v[3];
+
+	GSVector4i a;
+	GSVector4i md; // similar to gs fba
+
+	GSVector4i ds, dt, dst8;
+	GSVector4i dr, dg, db, dc8;
+};
+
+__declspec(align(16)) struct GPUScanlineParam
+{
+	GPUScanlineSelector sel;
+
+	const void* tex;
+	const WORD* clut;
+};
+
 class GPUDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 {
-	union ScanlineSelector
-	{
-		struct
-		{
-			DWORD iip:1; // 0
-			DWORD me:1; // 1
-			DWORD abe:1; // 2
-			DWORD abr:2; // 3
-			DWORD tge:1; // 5
-			DWORD tme:1; // 6
-			DWORD twin:1; // 7
-			DWORD tlu:1; // 8
-			DWORD dtd:1; // 9
-			DWORD ltf:1; // 10
-			// DWORD dte:1: // 11
-		};
-
-		struct
-		{
-			DWORD _pad1:1; // 0
-			DWORD rfb:2; // 1
-			DWORD _pad2:2; // 3
-			DWORD tfx:2; // 5
-		};
-
-		DWORD dw;
-
-		operator DWORD() {return dw & 0xff;}
-	};
-	
-	__declspec(align(16)) struct ScanlineEnvironment
-	{
-		GPULocalMemory* mem;
-
-		const void* tex;
-		const WORD* clut;
-
-		GSVector4i u[3];
-		GSVector4i v[3];
-
-		GSVector4i a;
-		GSVector4i md; // similar to gs fba
-
-		GSVector4i ds, dt, dst8;
-		GSVector4i dr, dg, db, dc8;
-	};
-
-	ScanlineSelector m_sel;
-	ScanlineEnvironment m_slenv;
+	GPUScanlineEnvironment m_env;
 
 	DrawScanlinePtr m_ds[2048], m_dsf;
 
 	void Init();
 
-	void DrawScanlineT(int top, int left, int right, const Vertex& v);
+	void DrawScanlineT(int top, int left, int right, const GSVertexSW& v);
 
 	template<DWORD sel>
-	void DrawScanlineExT(int top, int left, int right, const Vertex& v);
+	void DrawScanlineExT(int top, int left, int right, const GSVertexSW& v);
 
 	__forceinline void SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin, GSVector4i& test, const GSVector4i& s, const GSVector4i& t, GSVector4i* c);
 	__forceinline void ColorTFX(DWORD tfx, const GSVector4i& r, const GSVector4i& g, const GSVector4i& b, GSVector4i* c);
@@ -100,13 +108,11 @@ public:
 	GPUDrawScanline(GPUState* state);
 	virtual ~GPUDrawScanline();
 
-	void SetOptions(int filter, int dither);
-
 	// IDrawScanline
 
-	void SetupDraw(Vertex* vertices, int count, const void* texture);
-	void SetupPrim(PrimitiveType type, const Vertex* vertices, const Vertex& dscan);
-	void DrawScanline(int top, int left, int right, const Vertex& v);
-	void FillRect(const GSVector4i& r, const Vertex& v);
+	bool SetupDraw(const GSRasterizerData* data);
+	void SetupPrim(GS_PRIM_CLASS primclass, const GSVertexSW* vertices, const GSVertexSW& dscan);
+	void DrawScanline(int top, int left, int right, const GSVertexSW& v);
+	void DrawSolidRect(const GSVector4i& r, const GSVertexSW& v);
 	DrawScanlinePtr GetDrawScanlinePtr();
 };

@@ -24,8 +24,6 @@
 
 GPUDrawScanline::GPUDrawScanline(GPUState* state)
 	: m_state(state)
-	, m_filter(0)
-	, m_dither(1)
 {
 	Init();
 }
@@ -34,83 +32,67 @@ GPUDrawScanline::~GPUDrawScanline()
 {
 }
 
-void GPUDrawScanline::SetOptions(int filter, int dither)
-{
-	m_filter = filter;
-	m_dither = dither;
-}
-
 // IDrawScanline
 
-void GPUDrawScanline::SetupDraw(Vertex* vertices, int count, const void* texture)
+bool GPUDrawScanline::SetupDraw(const GSRasterizerData* data)
 {
 	GPUDrawingEnvironment& env = m_state->m_env;
 
-	// m_sel
+	const GPUScanlineParam* p = (const GPUScanlineParam*)data->param;
 
-	m_sel.dw = 0;
-	m_sel.iip = env.PRIM.IIP;
-	m_sel.me = env.STATUS.ME;
-	m_sel.abe = env.PRIM.ABE;
-	m_sel.abr = env.STATUS.ABR;
-	m_sel.tge = env.PRIM.TGE;
-	m_sel.tme = env.PRIM.TME;
-	m_sel.tlu = env.STATUS.TP < 2;
-	m_sel.twin = (env.TWIN.ai32 & 0xfffff) != 0;
-	m_sel.dtd = m_dither ? env.STATUS.DTD : 0;
-	m_sel.ltf = m_filter == 1 && env.PRIM.TYPE == GPU_POLYGON || m_filter == 2 ? 1 : 0;
+	m_env.sel = p->sel;
 
-	m_dsf = m_ds[m_sel];
+	m_env.mem = &m_state->m_mem;
 
-	// m_slenv
-
-	m_slenv.mem = &m_state->m_mem;
-
-	if(m_sel.tme)
+	if(m_env.sel.tme)
 	{
-		m_slenv.tex = texture;
-		m_slenv.clut = m_state->m_mem.GetCLUT(env.STATUS.TP, env.CLUT.X, env.CLUT.Y);
+		m_env.tex = p->tex;
+		m_env.clut = p->clut;
 
-		if(m_sel.twin)
+		if(m_env.sel.twin)
 		{
 			DWORD u, v;
 
 			u = ~(env.TWIN.TWW << 3) & 0xff;
 			v = ~(env.TWIN.TWH << 3) & 0xff;
 
-			m_slenv.u[0] = GSVector4i((u << 16) | u);
-			m_slenv.v[0] = GSVector4i((v << 16) | v);
+			m_env.u[0] = GSVector4i((u << 16) | u);
+			m_env.v[0] = GSVector4i((v << 16) | v);
 
 			u = env.TWIN.TWX << 3;
 			v = env.TWIN.TWY << 3;
 			
-			m_slenv.u[1] = GSVector4i((u << 16) | u) & ~m_slenv.u[0];
-			m_slenv.v[1] = GSVector4i((v << 16) | v) & ~m_slenv.v[0];
+			m_env.u[1] = GSVector4i((u << 16) | u) & ~m_env.u[0];
+			m_env.v[1] = GSVector4i((v << 16) | v) & ~m_env.v[0];
 		}
 	}
 
-	m_slenv.a = GSVector4i(env.PRIM.ABE ? 0xffffffff : 0);
-	m_slenv.md = GSVector4i(env.STATUS.MD ? 0x80008000 : 0);
+	m_env.a = GSVector4i(env.PRIM.ABE ? 0xffffffff : 0);
+	m_env.md = GSVector4i(env.STATUS.MD ? 0x80008000 : 0);
+
+	m_dsf = m_ds[m_env.sel];
+
+	return false;
 }
 
-void GPUDrawScanline::SetupPrim(PrimitiveType type, const Vertex* vertices, const Vertex& dscan)
+void GPUDrawScanline::SetupPrim(GS_PRIM_CLASS primclass, const GSVertexSW* vertices, const GSVertexSW& dscan)
 {
-	if(m_sel.tme && !m_sel.twin)
+	if(m_env.sel.tme && !m_env.sel.twin)
 	{
 		GSVector4i t;
 
-		switch(type)
+		switch(primclass)
 		{
-		case Sprite:
+		case GS_SPRITE_CLASS:
 			t = (GSVector4i(vertices[1].t) >> 8) - GSVector4i::x00000001();
 			t = t.ps32(t);
 			t = t.upl16(t);
-			m_slenv.u[2] = t.xxxx();
-			m_slenv.v[2] = t.yyyy();
+			m_env.u[2] = t.xxxx();
+			m_env.v[2] = t.yyyy();
 			break;
 		default:
-			m_slenv.u[2] = GSVector4i::x00ff();
-			m_slenv.v[2] = GSVector4i::x00ff();
+			m_env.u[2] = GSVector4i::x00ff();
+			m_env.v[2] = GSVector4i::x00ff();
 			break;
 		}
 	}
@@ -125,22 +107,22 @@ void GPUDrawScanline::SetupPrim(PrimitiveType type, const Vertex* vertices, cons
 
 	GSVector4i dtc8 = GSVector4i(dt * 8.0f).ps32(GSVector4i(dc * 8.0f));
 
-	m_slenv.ds = GSVector4i(dt.xxxx() * ps0123).ps32(GSVector4i(dt.xxxx() * ps4567));
-	m_slenv.dt = GSVector4i(dt.yyyy() * ps0123).ps32(GSVector4i(dt.yyyy() * ps4567));
-	m_slenv.dst8 = dtc8.upl16(dtc8);
+	m_env.ds = GSVector4i(dt.xxxx() * ps0123).ps32(GSVector4i(dt.xxxx() * ps4567));
+	m_env.dt = GSVector4i(dt.yyyy() * ps0123).ps32(GSVector4i(dt.yyyy() * ps4567));
+	m_env.dst8 = dtc8.upl16(dtc8);
 
-	m_slenv.dr = GSVector4i(dc.xxxx() * ps0123).ps32(GSVector4i(dc.xxxx() * ps4567));
-	m_slenv.dg = GSVector4i(dc.yyyy() * ps0123).ps32(GSVector4i(dc.yyyy() * ps4567));
-	m_slenv.db = GSVector4i(dc.zzzz() * ps0123).ps32(GSVector4i(dc.zzzz() * ps4567));
-	m_slenv.dc8 = dtc8.uph16(dtc8);
+	m_env.dr = GSVector4i(dc.xxxx() * ps0123).ps32(GSVector4i(dc.xxxx() * ps4567));
+	m_env.dg = GSVector4i(dc.yyyy() * ps0123).ps32(GSVector4i(dc.yyyy() * ps4567));
+	m_env.db = GSVector4i(dc.zzzz() * ps0123).ps32(GSVector4i(dc.zzzz() * ps4567));
+	m_env.dc8 = dtc8.uph16(dtc8);
 }
 
-void GPUDrawScanline::DrawScanline(int top, int left, int right, const Vertex& v)	
+void GPUDrawScanline::DrawScanline(int top, int left, int right, const GSVertexSW& v)	
 {
 	(this->*m_dsf)(top, left, right, v);
 }
 
-void GPUDrawScanline::FillRect(const GSVector4i& r, const Vertex& v)
+void GPUDrawScanline::DrawSolidRect(const GSVector4i& r, const GSVertexSW& v)
 {
 	ASSERT(0);
 }
@@ -152,8 +134,8 @@ IDrawScanline::DrawScanlinePtr GPUDrawScanline::GetDrawScanlinePtr()
 
 void GPUDrawScanline::SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin, GSVector4i& test, const GSVector4i& s, const GSVector4i& t, GSVector4i* c)
 {
-	const void* RESTRICT tex = m_slenv.tex;
-	const WORD* RESTRICT clut = m_slenv.clut;
+	const void* RESTRICT tex = m_env.tex;
+	const WORD* RESTRICT clut = m_env.clut;
 
 	if(ltf)
 	{
@@ -171,17 +153,17 @@ void GPUDrawScanline::SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin
 
 		if(twin)
 		{
-			u0 = (u0 & m_slenv.u[0]).add16(m_slenv.u[1]);
-			v0 = (v0 & m_slenv.v[0]).add16(m_slenv.v[1]);
-			u1 = (u1 & m_slenv.u[0]).add16(m_slenv.u[1]);
-			v1 = (v1 & m_slenv.v[0]).add16(m_slenv.v[1]);
+			u0 = (u0 & m_env.u[0]).add16(m_env.u[1]);
+			v0 = (v0 & m_env.v[0]).add16(m_env.v[1]);
+			u1 = (u1 & m_env.u[0]).add16(m_env.u[1]);
+			v1 = (v1 & m_env.v[0]).add16(m_env.v[1]);
 		}
 		else
 		{
-			u0 = u0.min_i16(m_slenv.u[2]);
-			v0 = v0.min_i16(m_slenv.v[2]);
-			u1 = u1.min_i16(m_slenv.u[2]);
-			v1 = v1.min_i16(m_slenv.v[2]);
+			u0 = u0.min_i16(m_env.u[2]);
+			v0 = v0.min_i16(m_env.v[2]);
+			u1 = u1.min_i16(m_env.u[2]);
+			v1 = v1.min_i16(m_env.v[2]);
 		}
 
 		GSVector4i addr00 = v0.sll16(8) | u0;
@@ -298,13 +280,13 @@ void GPUDrawScanline::SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin
 
 		if(twin)
 		{
-			u = (u & m_slenv.u[0]).add16(m_slenv.u[1]);
-			v = (v & m_slenv.v[0]).add16(m_slenv.v[1]);
+			u = (u & m_env.u[0]).add16(m_env.u[1]);
+			v = (v & m_env.v[0]).add16(m_env.v[1]);
 		}
 		else
 		{
-			u = u.min_i16(m_slenv.u[2]);
-			v = v.min_i16(m_slenv.v[2]);
+			u = u.min_i16(m_env.u[2]);
+			v = v.min_i16(m_env.v[2]);
 		}
 
 		GSVector4i addr = v.sll16(8) | u;
@@ -440,7 +422,7 @@ void GPUDrawScanline::WriteFrame(WORD* RESTRICT fb, const GSVector4i& test, cons
 	GSVector4i b = (c[2] & 0x00f800f8) << 7;
 	GSVector4i a = (c[3] & 0x00800080) << 8;
 
-	GSVector4i s = r | g | b | a | m_slenv.md;
+	GSVector4i s = r | g | b | a | m_env.md;
 
 	int i = 0;
 
@@ -733,17 +715,17 @@ __declspec(align(16)) static WORD s_dither[4][16] =
 	{4, 3, 5, 2, 4, 3, 5, 2, 4, 3, 5, 2, 4, 3, 5, 2}, 
 };
 
-void GPUDrawScanline::DrawScanlineT(int top, int left, int right, const Vertex& v)	
+void GPUDrawScanline::DrawScanlineT(int top, int left, int right, const GSVertexSW& v)	
 {
 	GSVector4i s, t;
 	GSVector4i r, g, b;
 
-	if(m_sel.tme)
+	if(m_env.sel.tme)
 	{
 		GSVector4i vt = GSVector4i(v.t).xxzzl();
 
-		s = vt.xxxx().add16(m_slenv.ds);
-		t = vt.yyyy().add16(m_slenv.dt);
+		s = vt.xxxx().add16(m_env.ds);
+		t = vt.yyyy().add16(m_env.dt);
 	}
 
 	GSVector4i vc = GSVector4i(v.c).xxzzl().xxzzh();
@@ -752,23 +734,23 @@ void GPUDrawScanline::DrawScanlineT(int top, int left, int right, const Vertex& 
 	g = vc.yyyy();
 	b = vc.zzzz();
 
-	if(m_sel.iip)
+	if(m_env.sel.iip)
 	{
-		r = r.add16(m_slenv.dr);
-		g = g.add16(m_slenv.dg);
-		b = b.add16(m_slenv.db);
+		r = r.add16(m_env.dr);
+		g = g.add16(m_env.dg);
+		b = b.add16(m_env.db);
 	}
 
 	GSVector4i dither;
 
-	if(m_sel.dtd)
+	if(m_env.sel.dtd)
 	{
 		dither = GSVector4i::load<false>(&s_dither[top & 3][left & 3]);
 	}
 
 	int steps = right - left;
 
-	WORD* fb = m_slenv.mem->GetPixelAddress(left, top);
+	WORD* fb = m_env.mem->GetPixelAddress(left, top);
 
 	while(1)
 	{
@@ -780,11 +762,11 @@ void GPUDrawScanline::DrawScanlineT(int top, int left, int right, const Vertex& 
 
 			GSVector4i d = GSVector4i::zero();
 
-			if(m_sel.rfb) // me | abe
+			if(m_env.sel.rfb) // me | abe
 			{
 				d = GSVector4i::load<false>(fb);
 
-				if(m_sel.me)
+				if(m_env.sel.me)
 				{
 					test = d.sra16(15);
 
@@ -797,19 +779,19 @@ void GPUDrawScanline::DrawScanlineT(int top, int left, int right, const Vertex& 
 
 			GSVector4i c[4];
 
-			if(m_sel.tme)
+			if(m_env.sel.tme)
 			{
-				SampleTexture(pixels, m_sel.ltf, m_sel.tlu, m_sel.twin, test, s, t, c);
+				SampleTexture(pixels, m_env.sel.ltf, m_env.sel.tlu, m_env.sel.twin, test, s, t, c);
 			}
 
-			ColorTFX(m_sel.tfx, r, g, b, c);
+			ColorTFX(m_env.sel.tfx, r, g, b, c);
 
-			if(m_sel.abe)
+			if(m_env.sel.abe)
 			{
-				AlphaBlend(m_sel.abr, m_sel.tme, d, c);
+				AlphaBlend(m_env.sel.abr, m_env.sel.tme, d, c);
 			}
 
-			if(m_sel.dtd)
+			if(m_env.sel.dtd)
 			{
 				c[0] = c[0].addus8(dither);
 				c[1] = c[1].addus8(dither);
@@ -826,17 +808,17 @@ void GPUDrawScanline::DrawScanlineT(int top, int left, int right, const Vertex& 
 
 		fb += 8;
 
-		if(m_sel.tme)
+		if(m_env.sel.tme)
 		{
-			GSVector4i dst8 = m_slenv.dst8;
+			GSVector4i dst8 = m_env.dst8;
 
 			s = s.add16(dst8.xxxx());
 			t = t.add16(dst8.yyyy());
 		}
 
-		if(m_sel.iip)
+		if(m_env.sel.iip)
 		{
-			GSVector4i dc8 = m_slenv.dc8;
+			GSVector4i dc8 = m_env.dc8;
 
 			r = r.add16(dc8.xxxx());
 			g = g.add16(dc8.yyyy());
@@ -846,7 +828,7 @@ void GPUDrawScanline::DrawScanlineT(int top, int left, int right, const Vertex& 
 }
 
 template<DWORD sel>
-void GPUDrawScanline::DrawScanlineExT(int top, int left, int right, const Vertex& v)
+void GPUDrawScanline::DrawScanlineExT(int top, int left, int right, const GSVertexSW& v)
 {
 	DWORD iip = (sel >> 0) & 1;
 	DWORD me = (sel >> 1) & 1;
@@ -865,8 +847,8 @@ void GPUDrawScanline::DrawScanlineExT(int top, int left, int right, const Vertex
 	{
 		GSVector4i vt = GSVector4i(v.t).xxzzl();
 
-		s = vt.xxxx().add16(m_slenv.ds);
-		t = vt.yyyy().add16(m_slenv.dt);
+		s = vt.xxxx().add16(m_env.ds);
+		t = vt.yyyy().add16(m_env.dt);
 	}
 
 	GSVector4i vc = GSVector4i(v.c).xxzzl().xxzzh();
@@ -877,21 +859,21 @@ void GPUDrawScanline::DrawScanlineExT(int top, int left, int right, const Vertex
 
 	if(iip)
 	{
-		r = r.add16(m_slenv.dr);
-		g = g.add16(m_slenv.dg);
-		b = b.add16(m_slenv.db);
+		r = r.add16(m_env.dr);
+		g = g.add16(m_env.dg);
+		b = b.add16(m_env.db);
 	}
 
 	GSVector4i dither;
 
-	if(m_sel.dtd)
+	if(m_env.sel.dtd)
 	{
 		dither = GSVector4i::load<false>(&s_dither[top & 3][left & 3]);
 	}
 
 	int steps = right - left;
 
-	WORD* fb = m_slenv.mem->GetPixelAddress(left, top);
+	WORD* fb = m_env.mem->GetPixelAddress(left, top);
 
 	while(1)
 	{
@@ -922,7 +904,7 @@ void GPUDrawScanline::DrawScanlineExT(int top, int left, int right, const Vertex
 
 			if(tme)
 			{
-				SampleTexture(pixels, m_sel.ltf, m_sel.tlu, twin, test, s, t, c);
+				SampleTexture(pixels, m_env.sel.ltf, m_env.sel.tlu, twin, test, s, t, c);
 			}
 
 			ColorTFX(tfx, r, g, b, c);
@@ -932,7 +914,7 @@ void GPUDrawScanline::DrawScanlineExT(int top, int left, int right, const Vertex
 				AlphaBlend(abr, tme, d, c);
 			}
 
-			if(m_sel.dtd)
+			if(m_env.sel.dtd)
 			{
 				c[0] = c[0].addus8(dither);
 				c[1] = c[1].addus8(dither);
@@ -951,7 +933,7 @@ void GPUDrawScanline::DrawScanlineExT(int top, int left, int right, const Vertex
 
 		if(tme)
 		{
-			GSVector4i dst8 = m_slenv.dst8;
+			GSVector4i dst8 = m_env.dst8;
 
 			s = s.add16(dst8.xxxx());
 			t = t.add16(dst8.yyyy());
@@ -959,7 +941,7 @@ void GPUDrawScanline::DrawScanlineExT(int top, int left, int right, const Vertex
 
 		if(iip)
 		{
-			GSVector4i dc8 = m_slenv.dc8;
+			GSVector4i dc8 = m_env.dc8;
 
 			r = r.add16(dc8.xxxx());
 			g = g.add16(dc8.yyyy());

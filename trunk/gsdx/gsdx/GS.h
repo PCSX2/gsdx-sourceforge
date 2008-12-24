@@ -26,7 +26,7 @@
 
 #pragma once
 
-#define PLUGIN_VERSION 12
+#define PLUGIN_VERSION 13
 
 #include "GSVector.h"
 
@@ -70,6 +70,15 @@ enum GS_PRIM
 	GS_TRIANGLEFAN		= 5,
 	GS_SPRITE			= 6,
 	GS_INVALID			= 7,
+};
+
+enum GS_PRIM_CLASS
+{
+	GS_POINT_CLASS		= 0,
+	GS_LINE_CLASS		= 1,
+	GS_TRIANGLE_CLASS	= 2,
+	GS_SPRITE_CLASS		= 3,
+	GS_INVALID_CLASS	= 7,
 };
 
 enum GIF_REG
@@ -508,7 +517,9 @@ REG64_(GIFReg, ALPHA)
 	UINT32 _PAD1:24;
 	UINT32 FIX:8;
 	UINT32 _PAD2:24;
-REG_END
+REG_END2
+	bool IsOpaque() const {return (A == B || C == 2 && FIX == 0) && D == 0 || (A == 0 && B == 2 && C == 2 && D == 2 && FIX == 0x80);} // output will be Cs/As
+REG_END2
 
 REG64_(GIFReg, BITBLTBUF)
 	UINT32 SBP:14;
@@ -806,7 +817,15 @@ REG64_(GIFReg, TEX1)
 	UINT32 _PAD3:11;
 	UINT32 K:12;
 	UINT32 _PAD4:20;
-REG_END
+REG_END2
+	bool IsLinear() const 
+	{
+		bool mmag = (MMAG & 1);
+		bool mmin = (MMIN == 1) || (MMIN & 4);
+
+		return !LCM ? mmag || mmin : K <= 0 ? mmag : mmin;
+	}
+REG_END2
 
 REG64_(GIFReg, TEX2)
 	UINT32 _PAD1:20;

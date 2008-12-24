@@ -85,6 +85,11 @@ public:
 			);
 	}
 
+	GSVector4i(int x, int y) 
+	{
+		m = _mm_unpacklo_epi32(_mm_cvtsi32_si128(x), _mm_cvtsi32_si128(y));
+	}
+
 	GSVector4i(char b0, char b1, char b2, char b3, char b4, char b5, char b6, char b7, char b8, char b9, char b10, char b11, char b12, char b13, char b14, char b15) 
 	{
 		m = _mm_set_epi8(b15, b14, b13, b12, b11, b10, b9, b8, b7, b6, b5, b4, b3, b2, b1, b0);
@@ -1865,6 +1870,11 @@ public:
 		m = _mm_cvtepi32_ps(_mm_set_epi32(w, z, y, x));
 	}
 
+	GSVector4(int x, int y)
+	{
+		m = _mm_cvtepi32_ps(_mm_unpacklo_epi32(_mm_cvtsi32_si128(x), _mm_cvtsi32_si128(y)));
+	}
+
 	GSVector4(const GSVector4& v) 
 	{
 		m = v.m;
@@ -2123,6 +2133,11 @@ public:
 	static GSVector4 zero() 
 	{
 		return GSVector4(_mm_setzero_ps());
+	}
+
+	static GSVector4 invzero() 
+	{
+		return zero() == zero();
 	}
 
 	static GSVector4 ps0123()
