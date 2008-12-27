@@ -96,7 +96,7 @@ public:
 
 		#else
 
-		const DWORD* d = &columnTable32[(i & 3) << 1][0];
+		const BYTE* d = &columnTable32[(i & 3) << 1][0];
 
 		for(int j = 0; j < 2; j++, d += 8, src += srcpitch)
 		{
@@ -138,7 +138,7 @@ public:
 
 		#else
 
-		const DWORD* d = &columnTable16[(i & 3) << 1][0];
+		const BYTE* d = &columnTable16[(i & 3) << 1][0];
 
 		for(int j = 0; j < 2; j++, d += 16, src += srcpitch)
 		{
@@ -182,7 +182,7 @@ public:
 
 		#else
 
-		const DWORD* d = &columnTable8[(i & 3) << 2][0];
+		const BYTE* d = &columnTable8[(i & 3) << 2][0];
 
 		for(int j = 0; j < 4; j++, d += 16, src += srcpitch)
 		{
@@ -229,7 +229,7 @@ public:
 
 		#else
 
-		const DWORD* d = &columnTable4[(i & 3) << 2][0];
+		const WORD* d = &columnTable4[(i & 3) << 2][0];
 
 		for(int j = 0; j < 4; j++, d += 32, src += srcpitch)
 		{
@@ -307,7 +307,7 @@ public:
 
 		#else
 
-		const DWORD* d = &columnTable32[0][0];
+		const BYTE* d = &columnTable32[0][0];
 
 		for(int j = 0; j < 8; j++, d += 8, src += srcpitch)
 		{
@@ -341,7 +341,7 @@ public:
 
 		#else
 
-		const DWORD* d = &columnTable16[0][0];
+		const BYTE* d = &columnTable16[0][0];
 
 		for(int j = 0; j < 8; j++, d += 16, src += srcpitch)
 		{
@@ -368,7 +368,7 @@ public:
 
 		#else
 
-		const DWORD* d = &columnTable8[0][0];
+		const BYTE* d = &columnTable8[0][0];
 
 		for(int j = 0; j < 16; j++, d += 16, src += srcpitch)
 		{
@@ -395,7 +395,7 @@ public:
 
 		#else
 
-		const DWORD* d = &columnTable4[0][0];
+		const WORD* d = &columnTable4[0][0];
 
 		for(int j = 0; j < 16; j++, d += 32, src += srcpitch)
 		{
@@ -434,7 +434,7 @@ public:
 
 		#else
 
-		const DWORD* s = &columnTable32[(i & 3) << 1][0];
+		const BYTE* s = &columnTable32[(i & 3) << 1][0];
 
 		for(int j = 0; j < 2; j++, s += 8, dst += dstpitch)
 		{
@@ -492,7 +492,7 @@ public:
 
 		#else
 
-		const DWORD* s = &columnTable16[(i & 3) << 1][0];
+		const BYTE* s = &columnTable16[(i & 3) << 1][0];
 
 		for(int j = 0; j < 2; j++, s += 16, dst += dstpitch)
 		{
@@ -573,7 +573,7 @@ public:
 
 		#else
 
-		const DWORD* s = &columnTable8[(i & 3) << 2][0];
+		const BYTE* s = &columnTable8[(i & 3) << 2][0];
 
 		for(int j = 0; j < 4; j++, s += 16, dst += dstpitch)
 		{
@@ -660,7 +660,7 @@ public:
 
 		#else
 
-		const DWORD* s = &columnTable4[(i & 3) << 2][0];
+		const WORD* s = &columnTable4[(i & 3) << 2][0];
 
 		for(int j = 0; j < 4; j++, s += 32, dst += dstpitch)
 		{
@@ -738,7 +738,7 @@ public:
 
 		#else
 
-		const DWORD* s = &columnTable32[0][0];
+		const BYTE* s = &columnTable32[0][0];
 
 		for(int j = 0; j < 8; j++, s += 8, dst += dstpitch)
 		{
@@ -765,7 +765,7 @@ public:
 
 		#else
 
-		const DWORD* s = &columnTable16[0][0];
+		const BYTE* s = &columnTable16[0][0];
 
 		for(int j = 0; j < 8; j++, s += 16, dst += dstpitch)
 		{
@@ -792,7 +792,7 @@ public:
 
 		#else
 
-		const DWORD* s = &columnTable8[0][0];
+		const BYTE* s = &columnTable8[0][0];
 
 		for(int j = 0; j < 16; j++, s += 16, dst += dstpitch)
 		{
@@ -819,7 +819,7 @@ public:
 
 		#else
 
-		const DWORD* s = &columnTable4[0][0];
+		const WORD* s = &columnTable4[0][0];
 
 		for(int j = 0; j < 16; j++, s += 32, dst += dstpitch)
 		{
@@ -935,7 +935,7 @@ public:
 
 		#else
 
-		const DWORD* s = &columnTable32[0][0];
+		const BYTE* s = &columnTable32[0][0];
 
 		for(int j = 0; j < 8; j++, s += 8, dst += dstpitch)
 		{
@@ -980,7 +980,7 @@ public:
 
 		#else
 
-		const DWORD* s = &columnTable32[0][0];
+		const BYTE* s = &columnTable32[0][0];
 
 		for(int j = 0; j < 8; j++, s += 8, dst += dstpitch)
 		{
@@ -1023,7 +1023,7 @@ public:
 
 		#else
 
-		const DWORD* s = &columnTable32[0][0];
+		const BYTE* s = &columnTable32[0][0];
 
 		for(int j = 0; j < 8; j++, s += 8, dst += dstpitch)
 		{
@@ -1624,7 +1624,7 @@ public:
 
 		#else 
 
-		const DWORD* d = &columnTable32[0][0];
+		const BYTE* d = &columnTable32[0][0];
 
 		for(int j = 0, diff = srcpitch - 8 * 3; j < 8; j++, src += diff, d += 8)
 		{
@@ -1689,7 +1689,7 @@ public:
 
 		#else
 
-		const DWORD* d = &columnTable32[0][0];
+		const BYTE* d = &columnTable32[0][0];
 
 		for(int j = 0; j < 8; j++, src += srcpitch, dst += 8)
 		{
@@ -1816,7 +1816,7 @@ public:
 
 		#else
 
-		const DWORD* d = &columnTable32[0][0];
+		const BYTE* d = &columnTable32[0][0];
 
 		for(int j = 0; j < 8; j++, d += 8, src += srcpitch)
 		{
@@ -1944,7 +1944,7 @@ public:
 
 		#else
 
-		const DWORD* d = &columnTable32[0][0];
+		const BYTE* d = &columnTable32[0][0];
 
 		for(int j = 0; j < 8; j++, d += 8, src += srcpitch)
 		{
@@ -2004,7 +2004,7 @@ public:
 
 		DWORD TA0 = TEXA.TA0 << 24;
 
-		const DWORD* s = &columnTable32[0][0];
+		const BYTE* s = &columnTable32[0][0];
 
 		for(int j = 0; j < 8; j++, s += 8, dst += dstpitch)
 		{
@@ -2082,7 +2082,7 @@ public:
 
 		#else
 
-		const DWORD* s = &columnTable8[0][0];
+		const BYTE* s = &columnTable8[0][0];
 
 		for(int j = 0; j < 16; j++, s += 16, dst += dstpitch)
 		{
@@ -2169,14 +2169,14 @@ public:
 
 		#else
 
-		const DWORD* s = &columnTable4[0][0];
+		const WORD* s = &columnTable4[0][0];
 
 		for(int j = 0; j < 16; j++, s += 32, dst += dstpitch)
 		{
 			for(int i = 0; i < 16; i++)
 			{
-				DWORD a0 = s[i * 2 + 0];
-				DWORD a1 = s[i * 2 + 1];
+				BYTE a0 = s[i * 2 + 0];
+				BYTE a1 = s[i * 2 + 1];
 
 				BYTE c0 = (src[a0 >> 1] >> ((a0 & 1) << 2)) & 0x0f;
 				BYTE c1 = (src[a1 >> 1] >> ((a1 & 1) << 2)) & 0x0f;
@@ -2228,7 +2228,7 @@ public:
 
 		#else
 
-		const DWORD* s = &columnTable32[0][0];
+		const BYTE* s = &columnTable32[0][0];
 
 		for(int j = 0; j < 8; j++, s += 8, dst += dstpitch)
 		{
@@ -2281,7 +2281,7 @@ public:
 
 		#else
 
-		const DWORD* s = &columnTable32[0][0];
+		const BYTE* s = &columnTable32[0][0];
 
 		for(int j = 0; j < 8; j++, s += 8, dst += dstpitch)
 		{
@@ -2334,7 +2334,7 @@ public:
 
 		#else
 
-		const DWORD* s = &columnTable32[0][0];
+		const BYTE* s = &columnTable32[0][0];
 
 		for(int j = 0; j < 8; j++, s += 8, dst += dstpitch)
 		{

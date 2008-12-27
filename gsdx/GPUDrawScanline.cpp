@@ -22,8 +22,9 @@
 #include "StdAfx.h"
 #include "GPUDrawScanline.h"
 
-GPUDrawScanline::GPUDrawScanline(GPUState* state)
+GPUDrawScanline::GPUDrawScanline(GPUState* state, int id)
 	: m_state(state)
+	, m_id(id)
 {
 	Init();
 }
@@ -34,7 +35,7 @@ GPUDrawScanline::~GPUDrawScanline()
 
 // IDrawScanline
 
-bool GPUDrawScanline::SetupDraw(const GSRasterizerData* data)
+bool GPUDrawScanline::BeginDraw(const GSRasterizerData* data)
 {
 	GPUDrawingEnvironment& env = m_state->m_env;
 

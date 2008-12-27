@@ -100,29 +100,29 @@ __declspec(align(16)) struct GSScanlineParam
 	const DWORD* clut;
 	DWORD tw;
 
+	GSLocalMemory::Offset* fbo;
+	GSLocalMemory::Offset* zbo;
+
 	DWORD fm, zm;
 };
 
 class GSDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 {
-	GSScanlineEnvironment m_env;
-
-	struct Offset
+	struct ActiveDrawScanlinePtr
 	{
-		GSVector4i row[1024];
-		int* col[4];
-		DWORD hash;
+		UINT64 frame;
+		UINT64 frames;
+		__int64 ticks;
+		__int64 pixels;
+		DrawScanlinePtr dsf;
 	};
 
-	CRBMapC<DWORD, Offset*> m_omap;
-	Offset* m_fbo;
-	Offset* m_zbo;
+	GSScanlineEnvironment m_env;
 
-	void SetupOffset(Offset*& co, DWORD bp, DWORD bw, DWORD psm);
-	void FreeOffsets();
-
-	DrawScanlinePtr m_ds[4][4][4][2], m_dsf;
-	CRBMap<DWORD, DrawScanlinePtr> m_dsmap, m_dsmap2;
+	DrawScanlinePtr m_ds[4][4][4][2];
+	CRBMap<DWORD, DrawScanlinePtr> m_dsmap;
+	CRBMap<DWORD, ActiveDrawScanlinePtr*> m_dsmap_active;
+	ActiveDrawScanlinePtr* m_dsf;
 
 	void Init();
 
@@ -153,18 +153,31 @@ class GSDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 	__forceinline GSVector4i ReadZBufX(int psm, const GSVector4i& addr) const;
 	__forceinline void WriteFrameAndZBufX(int fpsm, const GSVector4i& fa, const GSVector4i& fm, const GSVector4i& f, int zpsm, const GSVector4i& za, const GSVector4i& zm, const GSVector4i& z, int pixels);
 
+	template<class T, bool masked> 
+	void DrawSolidRectT(const GSVector4i* row, int* col, const GSVector4i& r, DWORD c, DWORD m);
+
+	template<class T, bool masked> 
+	__forceinline void FillRect(const GSVector4i* row, int* col, const GSVector4i& r, const GSVector4i& c, const GSVector4i& m);
+
+	template<class T, bool masked> 
+	__forceinline void FillBlock(const GSVector4i* row, int* col, const GSVector4i& r, const GSVector4i& c, const GSVector4i& m);
+
 protected:
 	GSState* m_state;
+	int m_id;
 
 public:
-	GSDrawScanline(GSState* state);
+	GSDrawScanline(GSState* state, int id);
 	virtual ~GSDrawScanline();
 
 	// IDrawScanline
 
-	bool SetupDraw(const GSRasterizerData* data);
+	bool BeginDraw(const GSRasterizerData* data);
+	void EndDraw(const GSRasterizerStats& stats);
 	void SetupPrim(GS_PRIM_CLASS primclass, const GSVertexSW* vertices, const GSVertexSW& dscan);
 	void DrawScanline(int top, int left, int right, const GSVertexSW& v);
 	void DrawSolidRect(const GSVector4i& r, const GSVertexSW& v);
 	DrawScanlinePtr GetDrawScanlinePtr();
+
+	void PrintStats();
 };

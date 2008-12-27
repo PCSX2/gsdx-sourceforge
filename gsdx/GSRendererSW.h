@@ -35,6 +35,8 @@ protected:
 	GSTextureCacheSW* m_tc;
 	Texture m_texture[2];
 	bool m_reset;
+	GSLocalMemory::Offset* m_fbo;
+	GSLocalMemory::Offset* m_zbo;
 
 	__declspec(align(16)) struct VertexTrace
 	{
@@ -83,6 +85,8 @@ protected:
 
 			m_reset = false;
 		}
+
+		if((m_perfmon.GetFrame() & 255) == 0) m_rl.PrintStats();
 	}
 
 	void ResetDevice() 
@@ -272,6 +276,12 @@ protected:
 		GSScanlineParam p;
 
 		p.vm = m_mem.m_vm32;
+
+		m_fbo = m_mem.GetOffset(context->FRAME.Block(), context->FRAME.FBW, context->FRAME.PSM, m_fbo);
+		m_zbo = m_mem.GetOffset(context->ZBUF.Block(), context->FRAME.FBW, context->ZBUF.PSM, m_zbo);
+
+		p.fbo = m_fbo;
+		p.zbo = m_zbo;
 
 		p.sel.dw = 0;
 
@@ -574,19 +584,19 @@ __int64 start = __rdtsc();
 		data.count = m_count;
 		data.param = &p;
 
-		int prims = m_rl.Draw(&data);
-		
-		m_perfmon.Put(GSPerfMon::Prim, prims);
+		m_rl.Draw(&data);
+
+		GSRasterizerStats stats;
+
+		m_rl.GetStats(stats);
+	
 		m_perfmon.Put(GSPerfMon::Draw, 1);
-		
-		int pixels = m_rl.GetPixels();
-
-		m_perfmon.Put(GSPerfMon::Fillrate, pixels);
-
+		m_perfmon.Put(GSPerfMon::Prim, stats.prims);
+		m_perfmon.Put(GSPerfMon::Fillrate, stats.pixels);
 /*
 __int64 diff = __rdtsc() - start;
 s_total += diff;
-//if(pixels > 50000)
+if(pixels >= 50000)
 fprintf(s_fp, "[%I64d, %d, %d, %d] %08x, diff = %I64d /prim = %I64d /pixel = %I64d \n", frame, PRIM->PRIM, prims, pixels, p.sel, diff, diff / prims, pixels > 0 ? diff / pixels : 0);
 */
 		// TODO
@@ -636,7 +646,7 @@ fprintf(s_fp, "[%I64d, %d, %d, %d] %08x, diff = %I64d /prim = %I64d /pixel = %I6
 		if(s_dump)
 		{
 			CString str;
-			str.Format(_T("c:\\temp1\\_%05d_f%I64d_rt1_%05x_%d_%d.bmp"), s_n++, m_perfmon.GetFrame(), m_context->FRAME.Block(), m_context->FRAME.PSM);
+			str.Format(_T("c:\\temp1\\_%05d_f%I64d_rt1_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), m_context->FRAME.Block(), m_context->FRAME.PSM);
 			if(s_save) {m_mem.SaveBMP(str, m_context->FRAME.Block(), m_context->FRAME.FBW, m_context->FRAME.PSM, GetFrameSize(1).cx, 512);}//GetFrameSize(1).cy);
 			str.Format(_T("c:\\temp1\\_%05d_f%I64d_rz1_%05x_%d.bmp"), s_n-1, m_perfmon.GetFrame(), m_context->ZBUF.Block(), m_context->ZBUF.PSM);
 			if(s_savez) {m_mem.SaveBMP(str, m_context->ZBUF.Block(), m_context->FRAME.FBW, m_context->ZBUF.PSM, GetFrameSize(1).cx, 512);}
@@ -651,6 +661,8 @@ fprintf(s_fp, "[%I64d, %d, %d, %d] %08x, diff = %I64d /prim = %I64d /pixel = %I6
 public:
 	GSRendererSW(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs, int threads)
 		: GSRendererT(base, mt, irq, nloophack, rs)
+		, m_fbo(NULL)
+		, m_zbo(NULL)
 	{
 		m_rl.Create<GSDrawScanline>(this, threads);
 

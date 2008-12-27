@@ -26,7 +26,6 @@ GSRasterizer::GSRasterizer(IDrawScanline* ds, int id, int threads)
 	: m_ds(ds)
 	, m_id(id)
 	, m_threads(threads)
-	, m_pixels(0)
 {
 }
 
@@ -35,42 +34,51 @@ GSRasterizer::~GSRasterizer()
 	delete m_ds;
 }
 
-int GSRasterizer::Draw(const GSRasterizerData* data)
+void GSRasterizer::Draw(const GSRasterizerData* data)
 {
-	bool solid = m_ds->SetupDraw(data);
+	bool solid = m_ds->BeginDraw(data);
 
 	const GSVector4i scissor = data->scissor;
 	const GSVertexSW* vertices = data->vertices;
 	const int count = data->count;
 
-	int prims = 0;
+	m_stats.Reset();
+
+	__int64 start = __rdtsc();
 
 	switch(data->primclass)
 	{
 	case GS_POINT_CLASS:
-		prims = count;
+		m_stats.prims = count;
 		for(int i = 0; i < count; i++) DrawPoint(&vertices[i], scissor);
 		break;
 	case GS_LINE_CLASS:
 		ASSERT(!(count & 1));
-		prims = count / 2;
+		m_stats.prims = count / 2;
 		for(int i = 0; i < count; i += 2) DrawLine(&vertices[i], scissor);
 		break;
 	case GS_TRIANGLE_CLASS:
 		ASSERT(!(count % 3));
-		prims = count / 3;
+		m_stats.prims = count / 3;
 		for(int i = 0; i < count; i += 3) DrawTriangle(&vertices[i], scissor);
 		break;
 	case GS_SPRITE_CLASS:
 		ASSERT(!(count & 1));
-		prims = count / 2;
+		m_stats.prims = count / 2;
 		for(int i = 0; i < count; i += 2) DrawSprite(&vertices[i], scissor, solid);
 		break;
 	default:
 		__assume(0);
 	}
 
-	return prims;
+	m_stats.ticks = __rdtsc() - start;
+
+	m_ds->EndDraw(m_stats);
+}
+
+void GSRasterizer::GetStats(GSRasterizerStats& stats)
+{
+	stats = m_stats;
 }
 
 void GSRasterizer::DrawPoint(const GSVertexSW* v, const GSVector4i& scissor)
@@ -85,7 +93,7 @@ void GSRasterizer::DrawPoint(const GSVertexSW* v, const GSVector4i& scissor)
 		{
 			m_ds->DrawScanline(p.y, p.x, p.x + 1, *v);
 
-			m_pixels++;
+			m_stats.pixels++;
 		}
 	}
 }
@@ -224,7 +232,7 @@ void GSRasterizer::DrawTriangleTop(GSVertexSW* v, const GSVector4i& scissor)
 
 	if(top < scissor.y) top = scissor.y;
 	if(bottom > scissor.w) bottom = scissor.w;
-			
+
 	if(top < bottom)
 	{
 		float py = (float)top - l.p.y;
@@ -316,7 +324,7 @@ void GSRasterizer::DrawTriangleTopBottom(GSVertexSW* v, const GSVector4i& scisso
 	GSVector4 dr;
 
 	bool b = (longest.p > GSVector4::zero()).mask() & 1;
-	
+
 	if(b)
 	{
 		dl = v01 / v01.p.yyyy();
@@ -428,7 +436,7 @@ void GSRasterizer::DrawTriangleSection(int top, int bottom, GSVertexSW& l, const
 
 				if(pixels > 0)
 				{
-					m_pixels += pixels;
+					m_stats.pixels += pixels;
 
 					GSVertexSW scan = l;
 
@@ -496,7 +504,7 @@ void GSRasterizer::DrawSprite(const GSVertexSW* vertices, const GSVector4i& scis
 		{
 			m_ds->DrawSolidRect(r, scan);
 
-			m_pixels += (r.z - r.x) * (r.w - r.y);
+			m_stats.pixels += (r.z - r.x) * (r.w - r.y);
 		}
 
 		return;
@@ -527,7 +535,7 @@ void GSRasterizer::DrawSprite(const GSVertexSW* vertices, const GSVector4i& scis
 		{
 			(m_ds->*dsf)(top, left, right, scan);
 
-			m_pixels += right - left;
+			m_stats.pixels += right - left;
 		}
 	}
 }
@@ -563,13 +571,11 @@ GSRasterizerMT::~GSRasterizerMT()
 	}
 }
 
-int GSRasterizerMT::Draw(const GSRasterizerData* data)
+void GSRasterizerMT::Draw(const GSRasterizerData* data)
 {
-	int prims = 0;
-
 	if(m_id == 0)
 	{
-		prims = __super::Draw(data);
+		__super::Draw(data);
 	}
 	else
 	{
@@ -577,8 +583,6 @@ int GSRasterizerMT::Draw(const GSRasterizerData* data)
 
 		InterlockedBitTestAndSet(m_sync, m_id);
 	}
-
-	return prims;
 }
 
 DWORD WINAPI GSRasterizerMT::StaticThreadProc(LPVOID lpParam)
@@ -631,17 +635,19 @@ void GSRasterizerList::FreeRasterizers()
 	}
 }
 
-int GSRasterizerList::Draw(const GSRasterizerData* data)
+void GSRasterizerList::Draw(const GSRasterizerData* data)
 {
 	*m_sync = 0;
 
-	int prims = 0;
+	m_stats.Reset();
+
+	__int64 start = __rdtsc();
 
 	POSITION pos = GetTailPosition();
 
 	while(pos)
 	{
-		prims += GetPrev(pos)->Draw(data);
+		GetPrev(pos)->Draw(data);
 	}
 
 	while(*m_sync)
@@ -649,19 +655,22 @@ int GSRasterizerList::Draw(const GSRasterizerData* data)
 		_mm_pause();
 	}
 
-	return prims;
-}
+	m_stats.ticks = __rdtsc() - start;
 
-int GSRasterizerList::GetPixels()
-{
-	int pixels = 0;
-	
-	POSITION pos = GetHeadPosition();
+	pos = GetHeadPosition();
 
 	while(pos)
 	{
-		pixels += GetNext(pos)->GetPixels();
-	}
+		GSRasterizerStats s;
 
-	return pixels;
+		GetNext(pos)->GetStats(s);
+
+		m_stats.pixels += s.pixels;
+		m_stats.prims = max(m_stats.prims, s.prims);
+	}
+}
+
+void GSRasterizerList::GetStats(GSRasterizerStats& stats)
+{
+	stats = m_stats;
 }
