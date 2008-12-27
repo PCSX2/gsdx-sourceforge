@@ -164,14 +164,15 @@ protected:
 		default: __assume(0);
 		}
 
-		int prims = m_rl.Draw(&data);
+		m_rl.Draw(&data);
+
+		GSRasterizerStats stats;
+
+		m_rl.GetStats(stats);
 	
-		m_perfmon.Put(GSPerfMon::Prim, prims);
 		m_perfmon.Put(GSPerfMon::Draw, 1);
-
-		int pixels = m_rl.GetPixels();
-
-		m_perfmon.Put(GSPerfMon::Fillrate, pixels); 
+		m_perfmon.Put(GSPerfMon::Prim, stats.prims);
+		m_perfmon.Put(GSPerfMon::Fillrate, stats.pixels); 
 
 		// TODO
 

@@ -416,12 +416,7 @@ void GSState::GIFPackedRegHandlerSTQ(GIFPackedReg* r)
 
 void GSState::GIFPackedRegHandlerUV(GIFPackedReg* r)
 {
-	#if _M_SSE >= 0x401
-
-	GSVector4i v = GSVector4i::loadl(r);
-	m_v.UV.ai32[0] = (UINT32)GSVector4i::store(v.pu32(v)) & 0x3fff3fff;
-
-	#elif _M_SSE >= 0x200
+	#if _M_SSE >= 0x200
 
 	GSVector4i v = GSVector4i::loadl(r) & GSVector4i::x00003fff();
 	m_v.UV.ai32[0] = (UINT32)GSVector4i::store(v.ps32(v));

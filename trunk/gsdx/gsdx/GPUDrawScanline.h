@@ -101,18 +101,20 @@ class GPUDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 
 protected:
 	GPUState* m_state;
-	int m_filter;
-	int m_dither;
+	int m_id;
 
 public:
-	GPUDrawScanline(GPUState* state);
+	GPUDrawScanline(GPUState* state, int id);
 	virtual ~GPUDrawScanline();
 
 	// IDrawScanline
 
-	bool SetupDraw(const GSRasterizerData* data);
+	bool BeginDraw(const GSRasterizerData* data);
+	void EndDraw(const GSRasterizerStats& stats) {}
 	void SetupPrim(GS_PRIM_CLASS primclass, const GSVertexSW* vertices, const GSVertexSW& dscan);
 	void DrawScanline(int top, int left, int right, const GSVertexSW& v);
 	void DrawSolidRect(const GSVector4i& r, const GSVertexSW& v);
 	DrawScanlinePtr GetDrawScanlinePtr();
+
+	void PrintStats() {}
 };

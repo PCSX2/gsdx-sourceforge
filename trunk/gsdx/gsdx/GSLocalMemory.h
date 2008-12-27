@@ -75,6 +75,13 @@ public:
 
 	GSClut m_clut;
 
+	struct Offset
+	{
+		GSVector4i row[2048];
+		int* col[4];
+		DWORD hash;
+	};
+
 protected:
 	static DWORD pageOffset32[32][32][64];
 	static DWORD pageOffset32Z[32][32][64];
@@ -108,9 +115,15 @@ protected:
 
 	friend class GSClut;
 
+	//
+
+	CRBMapC<DWORD, Offset*> m_omap;
+
 public:
 	GSLocalMemory();
 	virtual ~GSLocalMemory();
+
+	Offset* GetOffset(DWORD bp, DWORD bw, DWORD psm, Offset* o = NULL);
 
 	// address
 

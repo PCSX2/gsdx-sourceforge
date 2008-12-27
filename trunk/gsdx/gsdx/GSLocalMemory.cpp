@@ -386,6 +386,67 @@ GSLocalMemory::GSLocalMemory()
 GSLocalMemory::~GSLocalMemory()
 {
 	VirtualFree(m_vm8, 0, MEM_RELEASE);
+
+	POSITION pos = m_omap.GetHeadPosition();
+
+	while(pos)
+	{
+		Offset* o = m_omap.GetNextValue(pos);
+
+		for(int i = 0; i < countof(o->col); i++)
+		{
+			_aligned_free(o->col);
+		}
+
+		_aligned_free(o);
+	}
+
+	m_omap.RemoveAll();
+}
+
+GSLocalMemory::Offset* GSLocalMemory::GetOffset(DWORD bp, DWORD bw, DWORD psm, Offset* o)
+{
+	if(bw == 0) {ASSERT(0); return NULL;}
+
+	ASSERT(m_psm[psm].trbpp > 8); // only for 16/24/32/8h/4hh/4hl formats where all columns are the same
+
+	DWORD hash = bp | (bw << 14) | (psm << 20);
+
+	if(!o || o->hash != hash)
+	{
+		CRBMap<DWORD, Offset*>::CPair* pair = m_omap.Lookup(hash);
+
+		if(pair)
+		{
+			o = pair->m_value;
+		}
+		else
+		{
+			o = (Offset*)_aligned_malloc(sizeof(Offset), 16);
+
+			o->hash = hash;
+
+			pixelAddress pa = m_psm[psm].pa;
+
+			for(int i = 0, j = 2048; i < j; i++)
+			{
+				o->row[i] = GSVector4i((int)pa(0, i, bp, bw));
+			}
+
+			int* p = (int*)_aligned_malloc(sizeof(int) * (2048 + 3) * 4, 16);
+
+			for(int i = 0; i < 4; i++)
+			{
+				o->col[i] = &p[2048 * i + ((4 - (i & 3)) & 3)];
+
+				memcpy(o->col[i], m_psm[psm].rowOffset[0], sizeof(int) * 2048);
+			}
+
+			m_omap.SetAt(hash, o);
+		}
+	}
+
+	return o;
 }
 
 bool GSLocalMemory::FillRect(const GSVector4i& r, DWORD c, DWORD psm, DWORD bp, DWORD bw)
