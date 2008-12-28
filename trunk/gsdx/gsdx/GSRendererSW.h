@@ -86,7 +86,7 @@ protected:
 			m_reset = false;
 		}
 
-		if((m_perfmon.GetFrame() & 255) == 0) m_rl.PrintStats();
+		// if((m_perfmon.GetFrame() & 255) == 0) m_rl.PrintStats();
 	}
 
 	void ResetDevice() 
