@@ -230,7 +230,7 @@ bool GSDrawScanline::BeginDraw(const GSRasterizerData* data)
 	{
 		CRBMap<DWORD, DrawScanlinePtr>::CPair* pair = m_dsmap.Lookup(m_env.sel);
 
-		ActiveDrawScanlinePtr* p = new ActiveDrawScanlinePtr(); // TODO: delete in destructor
+		ActiveDrawScanlinePtr* p = new ActiveDrawScanlinePtr();
 
 		memset(p, 0, sizeof(*p));
 
@@ -2561,13 +2561,18 @@ void GSDrawScanline::Init()
 	m_dsmap.SetAt(0x490049e8, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0x490049e8>); //   3.33%
 	m_dsmap.SetAt(0x552041e8, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0x552041e8>); //  10.89%
 
+	// remember 11
+
+	m_dsmap.SetAt(0x48819068, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0x48819068>); //  13.06%
+	m_dsmap.SetAt(0x48839068, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0x48839068>); //  43.44%
+	m_dsmap.SetAt(0x4c818068, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0x4c818068>); //  22.85%
+	m_dsmap.SetAt(0x4c819068, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineExT<0x4c819068>); //  22.51%
+
 	// prince of tennis
 
 	// ar tonelico
 
 	// dbz sagas
-
-	// remember 11
 
 	// tourist trophy
 
@@ -2584,36 +2589,6 @@ void GSDrawScanline::Init()
 	// god of war
 
 	#endif
-
-	POSITION pos = m_dsmap.GetHeadPosition();
-	
-	while(pos)
-	{
-		CRBMap<DWORD, DrawScanlinePtr>::CPair* pair = m_dsmap.GetNext(pos);
-
-		GSScanlineSelector sel;
-
-		sel.dw = pair->m_key;
-
-		if(sel.atst == ATST_LESS)
-		{
-			sel.atst = ATST_LEQUAL;
-			
-			if(m_dsmap.Lookup(sel))
-			{
-				printf("*** %08x\n", sel.dw);
-			}
-		}
-		else if(sel.atst == ATST_GREATER)
-		{
-			sel.atst = ATST_GEQUAL;
-			
-			if(m_dsmap.Lookup(sel))
-			{
-				printf("*** %08x\n", sel.dw);
-			}
-		}
-	}
 }
 
 template<DWORD fpsm, DWORD zpsm, DWORD ztst, DWORD iip>

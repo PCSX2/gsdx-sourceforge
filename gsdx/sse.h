@@ -103,8 +103,6 @@
 
 #else
 
-	#define _mm_cvtepu8_epi32(a) _mm_unpacklo_epi16(_mm_unpacklo_epi8(a, _mm_setzero_si128()), _mm_setzero_si128())
-
 	// not an equal replacement for sse4's blend but for our needs it is ok
 
 	#define _mm_blendv_ps(a, b, mask) _mm_or_ps(_mm_andnot_ps(mask, a), _mm_and_ps(mask, b))

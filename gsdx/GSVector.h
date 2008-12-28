@@ -76,18 +76,20 @@ public:
 	GSVector4i(int x, int y, int z, int w) 
 	{
 		// 4 gprs
+
 		// m = _mm_set_epi32(w, z, y, x); 
 
 		// 2 gprs
-		m = _mm_unpacklo_epi32(
-			_mm_unpacklo_epi32(_mm_cvtsi32_si128(x), _mm_cvtsi32_si128(z)),
-			_mm_unpacklo_epi32(_mm_cvtsi32_si128(y), _mm_cvtsi32_si128(w))
-			);
+
+		GSVector4i xz = load(x).upl32(load(z));
+		GSVector4i yw = load(y).upl32(load(w));
+
+		*this = xz.upl32(yw);
 	}
 
 	GSVector4i(int x, int y) 
 	{
-		m = _mm_unpacklo_epi32(_mm_cvtsi32_si128(x), _mm_cvtsi32_si128(y));
+		*this = load(x).upl32(load(y));
 	}
 
 	GSVector4i(char b0, char b1, char b2, char b3, char b4, char b5, char b6, char b7, char b8, char b9, char b10, char b11, char b12, char b13, char b14, char b15) 
@@ -110,9 +112,9 @@ public:
 		this->m = m;
 	}
 
-	explicit GSVector4i(CRect r) 
+	explicit GSVector4i(const CRect& r) 
 	{
-		m = _mm_set_epi32(r.bottom, r.right, r.top, r.left);
+		*this = GSVector4i(r.left, r.top, r.right, r.bottom);
 	}
 
 	explicit GSVector4i(const GSVector4& v)
@@ -137,9 +139,9 @@ public:
 		this->m = m;
 	}
 
-	void operator = (CRect r)
+	void operator = (const CRect& r)
 	{
-		m = _mm_set_epi32(r.bottom, r.right, r.top, r.left);
+		m = GSVector4i(r);
 	}
 
 	operator __m128i() const 
@@ -154,29 +156,12 @@ public:
 
 	UINT32 rgba32() const
 	{
-		__m128i r = m; 
-		#if _M_SSE >= 0x401
-		r = _mm_packus_epi32(r, r); 
-		#else
-		r = _mm_packs_epi32(r, r); // good enough for colors...
-		#endif
-		r = _mm_packus_epi16(r, r); 
-		return (UINT32)_mm_cvtsi128_si32(r);
-	}
+		GSVector4i v = *this;
 
-	UINT64 rgba64() const
-	{
-		__m128i r = m; 
-		#if _M_SSE >= 0x401
-		r = _mm_packus_epi32(r, r); 
-		#else
-		r = _mm_packs_epi32(r, r); // good enough for colors...
-		#endif
-		#ifdef _M_AMD64
-		return _mm_cvtsi128_si64(r);
-		#else
-		return *(UINT64*)&r;
-		#endif
+		v = v.ps32(v);
+		v = v.pu16(v);
+
+		return (UINT32)store(v);
 	}
 
 	static GSVector4i cast(const GSVector4& v);
@@ -185,60 +170,60 @@ public:
 
 	GSVector4i sat_i8(const GSVector4i& a, const GSVector4i& b) const 
 	{
-		return GSVector4i(_mm_min_epi8(_mm_max_epi8(m, a), b));
+		return max_i8(a).min_i8(b);
 	}
 
 	GSVector4i sat_i8(const GSVector4i& a) const 
 	{
-		return GSVector4i(_mm_min_epi8(_mm_max_epi8(m, a.xyxy()), a.zwzw()));
+		return max_i8(a.xyxy()).min_i8(a.zwzw());
 	}
 
 	#endif
 
 	GSVector4i sat_i16(const GSVector4i& a, const GSVector4i& b) const 
 	{
-		return GSVector4i(_mm_min_epi16(_mm_max_epi16(m, a), b));
+		return max_i16(a).min_i16(b);
 	}
 
 	GSVector4i sat_i16(const GSVector4i& a) const 
 	{
-		return GSVector4i(_mm_min_epi16(_mm_max_epi16(m, a.xyxy()), a.zwzw()));
+		return max_i16(a.xyxy()).min_i16(a.zwzw());
 	}
 
 	#if _M_SSE >= 0x401
 
 	GSVector4i sat_i32(const GSVector4i& a, const GSVector4i& b) const 
 	{
-		return GSVector4i(_mm_min_epi32(_mm_max_epi32(m, a), b));
+		return max_i32(a).min_i32(b);
 	}
 
 	GSVector4i sat_i32(const GSVector4i& a) const 
 	{
-		return GSVector4i(_mm_min_epi32(_mm_max_epi32(m, a.xyxy()), a.zwzw()));
+		return max_i32(a.xyxy()).min_i32(a.zwzw());
 	}
 
 	#endif
 
 	GSVector4i sat_u8(const GSVector4i& a, const GSVector4i& b) const 
 	{
-		return GSVector4i(_mm_min_epu8(_mm_max_epu8(m, a), b));
+		return max_u8(a).min_u8(b);
 	}
 
 	GSVector4i sat_u8(const GSVector4i& a) const 
 	{
-		return GSVector4i(_mm_min_epu8(_mm_max_epu8(m, a.xyxy()), a.zwzw()));
+		return max_u8(a.xyxy()).min_u8(a.zwzw());
 	}
 
 	#if _M_SSE >= 0x401
 
 	GSVector4i sat_u16(const GSVector4i& a, const GSVector4i& b) const 
 	{
-		return GSVector4i(_mm_min_epu16(_mm_max_epu16(m, a), b));
+		return max_u16(a).min_u16(b);
 	}
 
 	GSVector4i sat_u16(const GSVector4i& a) const 
 	{
-		return GSVector4i(_mm_min_epu16(_mm_max_epu16(m, a.xyxy()), a.zwzw()));
+		return max_u16(a.xyxy()).min_u16(a.zwzw());
 	}
 
 	#endif
@@ -247,12 +232,12 @@ public:
 
 	GSVector4i sat_u32(const GSVector4i& a, const GSVector4i& b) const 
 	{
-		return GSVector4i(_mm_min_epu32(_mm_max_epu32(m, a), b));
+		return max_u32(a).min_u32(b);
 	}
 
 	GSVector4i sat_u32(const GSVector4i& a) const 
 	{
-		return GSVector4i(_mm_min_epu32(_mm_max_epu32(m, a.xyxy()), a.zwzw()));
+		return max_u32(a.xyxy()).min_u32(a.zwzw());
 	}
 
 	#endif
@@ -503,6 +488,102 @@ public:
 	{
 		return GSVector4i(_mm_unpackhi_epi64(m, _mm_setzero_si128()));
 	}
+
+	#if _M_SSE >= 0x401
+
+	GSVector4i i8to16() const
+	{
+		return GSVector4i(_mm_cvtepi8_epi16(m));
+	}
+
+	GSVector4i u8to16() const
+	{
+		return GSVector4i(_mm_cvtepu8_epi16(m));
+	}
+
+	GSVector4i i8to32() const
+	{
+		return GSVector4i(_mm_cvtepi8_epi32(m));
+	}
+
+	GSVector4i u8to32() const
+	{
+		return GSVector4i(_mm_cvtepu8_epi32(m));
+	}
+
+	GSVector4i i8to64() const
+	{
+		return GSVector4i(_mm_cvtepi8_epi64(m));
+	}
+
+	GSVector4i u8to64() const
+	{
+		return GSVector4i(_mm_cvtepu16_epi64(m));
+	}
+
+	GSVector4i i16to32() const
+	{
+		return GSVector4i(_mm_cvtepi16_epi32(m));
+	}
+
+	GSVector4i u16to32() const
+	{
+		return GSVector4i(_mm_cvtepu16_epi32(m));
+	}
+
+	GSVector4i i16to64() const
+	{
+		return GSVector4i(_mm_cvtepi16_epi64(m));
+	}
+
+	GSVector4i u16to64() const
+	{
+		return GSVector4i(_mm_cvtepu16_epi64(m));
+	}
+
+	GSVector4i i32to64() const
+	{
+		return GSVector4i(_mm_cvtepi32_epi64(m));
+	}
+
+	GSVector4i u32to64() const
+	{
+		return GSVector4i(_mm_cvtepu32_epi64(m));
+	}
+
+	#else
+
+	GSVector4i u8to16() const
+	{
+		return upl8();
+	}
+
+	GSVector4i u8to32() const
+	{
+		return upl8().upl16();
+	}
+
+	GSVector4i u8to64() const
+	{
+		return upl8().upl16().upl32();
+	}
+
+	GSVector4i u16to32() const
+	{
+		return upl16();
+	}
+
+	GSVector4i u16to64() const
+	{
+		return upl16().upl32();
+	}
+
+	GSVector4i u32to64() const
+	{
+		return upl32();
+	}
+
+	#endif
 
 	template<int i> GSVector4i srl() const
 	{
@@ -1902,7 +1983,7 @@ public:
 
 	explicit GSVector4(DWORD dw)
 	{
-		m = _mm_cvtepi32_ps(_mm_cvtepu8_epi32(_mm_cvtsi32_si128(dw)));
+		*this = GSVector4(GSVector4i::load((int)dw).u8to32());
 	}
 
 	explicit GSVector4(const GSVector4i& v)
@@ -1929,12 +2010,12 @@ public:
 
 	void operator = (DWORD dw)
 	{
-		m = _mm_cvtepi32_ps(_mm_cvtepu8_epi32(_mm_cvtsi32_si128(dw)));
+		*this = GSVector4(GSVector4i::load((int)dw).u8to32());
 	}
 
 	void operator = (CRect r)
 	{
-		m = _mm_set_ps((float)r.bottom, (float)r.right, (float)r.top, (float)r.left);
+		*this = GSVector4(GSVector4i(r.left, r.top, r.right, r.bottom));
 	}
 
 	operator __m128() const 
@@ -1945,11 +2026,6 @@ public:
 	UINT32 rgba32() const
 	{
 		return GSVector4i(*this).rgba32();
-	}
-
-	UINT64 rgba64() const
-	{
-		return GSVector4i(*this).rgba64();
 	}
 
 	static GSVector4 cast(const GSVector4i& v);
