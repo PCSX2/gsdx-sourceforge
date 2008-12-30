@@ -89,10 +89,10 @@ class GPUDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 
 	void Init();
 
-	void DrawScanlineT(int top, int left, int right, const GSVertexSW& v);
+	void DrawScanline(int top, int left, int right, const GSVertexSW& v);
 
 	template<DWORD sel>
-	void DrawScanlineExT(int top, int left, int right, const GSVertexSW& v);
+	void DrawScanlineEx(int top, int left, int right, const GSVertexSW& v);
 
 	__forceinline void SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin, GSVector4i& test, const GSVector4i& s, const GSVector4i& t, GSVector4i* c);
 	__forceinline void ColorTFX(DWORD tfx, const GSVector4i& r, const GSVector4i& g, const GSVector4i& b, GSVector4i* c);
@@ -109,12 +109,8 @@ public:
 
 	// IDrawScanline
 
-	bool BeginDraw(const GSRasterizerData* data);
+	void BeginDraw(const GSRasterizerData* data, DrawScanlinePtr* dsf, DrawSolidRectPtr* dsrf);
 	void EndDraw(const GSRasterizerStats& stats) {}
 	void SetupPrim(GS_PRIM_CLASS primclass, const GSVertexSW* vertices, const GSVertexSW& dscan);
-	void DrawScanline(int top, int left, int right, const GSVertexSW& v);
-	void DrawSolidRect(const GSVector4i& r, const GSVertexSW& v);
-	DrawScanlinePtr GetDrawScanlinePtr();
-
 	void PrintStats() {}
 };

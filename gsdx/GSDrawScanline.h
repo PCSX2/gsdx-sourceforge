@@ -127,10 +127,10 @@ class GSDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 	void Init();
 
 	template<DWORD fpsm, DWORD zpsm, DWORD ztst, DWORD iip>
-	void DrawScanlineT(int top, int left, int right, const GSVertexSW& v);
+	void DrawScanline(int top, int left, int right, const GSVertexSW& v);
 
 	template<DWORD sel> 
-	void DrawScanlineExT(int top, int left, int right, const GSVertexSW& v);
+	void DrawScanlineEx(int top, int left, int right, const GSVertexSW& v);
 
 	__forceinline GSVector4i Wrap(const GSVector4i& t);
 
@@ -153,6 +153,8 @@ class GSDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 	__forceinline GSVector4i ReadZBufX(int psm, const GSVector4i& addr) const;
 	__forceinline void WriteFrameAndZBufX(int fpsm, const GSVector4i& fa, const GSVector4i& fm, const GSVector4i& f, int zpsm, const GSVector4i& za, const GSVector4i& zm, const GSVector4i& z, int pixels);
 
+	void DrawSolidRect(const GSVector4i& r, const GSVertexSW& v);
+
 	template<class T, bool masked> 
 	void DrawSolidRectT(const GSVector4i* row, int* col, const GSVector4i& r, DWORD c, DWORD m);
 
@@ -172,12 +174,8 @@ public:
 
 	// IDrawScanline
 
-	bool BeginDraw(const GSRasterizerData* data);
+	void BeginDraw(const GSRasterizerData* data, DrawScanlinePtr* dsf, DrawSolidRectPtr* dsrf);
 	void EndDraw(const GSRasterizerStats& stats);
 	void SetupPrim(GS_PRIM_CLASS primclass, const GSVertexSW* vertices, const GSVertexSW& dscan);
-	void DrawScanline(int top, int left, int right, const GSVertexSW& v);
-	void DrawSolidRect(const GSVector4i& r, const GSVertexSW& v);
-	DrawScanlinePtr GetDrawScanlinePtr();
-
 	void PrintStats();
 };

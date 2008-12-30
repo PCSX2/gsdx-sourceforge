@@ -61,6 +61,7 @@ CRC::Game CRC::m_games[] =
 	{0xAA31B5BF, MetalGearSolid3, Unknown, false},
 	{0x9F185CE1, MetalGearSolid3, Unknown, false},
 	{0x98D4BC93, MetalGearSolid3, EU, false},
+	{0x86BC3040, MetalGearSolid3, US, false}, //Subsistance disc 1
 	{0x278722BF, DBZBT2, US, false},
 	{0xFE961D28, DBZBT2, US, false},
 	{0x0393B6BE, DBZBT2, EU, false},
@@ -84,6 +85,7 @@ CRC::Game CRC::m_games[] =
 	{0xC164550A, WildArms5, JPUNDUB, false},
 	{0xC1640D2C, WildArms5, US, false},
 	{0x0FCF8FE4, WildArms5, EU, false},
+	{0x2294D322, WildArms5, JP, false}, 
 	{0x8B029334, Manhunt2, Unknown, false},
 	{0x09F49E37, CrashBandicootWoC, Unknown, false},
 	{0x013E349D, ResidentEvil4, US, false},
@@ -108,6 +110,7 @@ CRC::Game CRC::m_games[] =
 	{0xF442260C, MajokkoALaMode2, JP, false},
 	{0x14FE77F7, TalesOfAbyss, US, false},
 	{0x045D77E9, TalesOfAbyss, US, false}, // undub
+	{0xAA5EC3A3, TalesOfAbyss, JP, false}, 
 };
 
 CAtlMap<DWORD, CRC::Game*> CRC::m_map;

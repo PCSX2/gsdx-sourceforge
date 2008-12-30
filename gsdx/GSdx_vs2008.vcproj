@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="windows-1250"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9.00"
+	Version="9,00"
 	Name="GSdx"
 	ProjectGUID="{18E42F6F-3A62-41EE-B42F-79366C4F1E95}"
 	RootNamespace="GSdx"
@@ -1110,14 +1110,6 @@
 						AssemblerOutput="4"
 					/>
 				</FileConfiguration>
-				<FileConfiguration
-					Name="Release SSE4|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						AssemblerOutput="4"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\GSCaptureDlg.cpp"
@@ -1126,14 +1118,6 @@
 			<File
 				RelativePath=".\GSClut.cpp"
 				>
-				<FileConfiguration
-					Name="Release SSE4|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						AssemblerOutput="4"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\GSCrc.cpp"
@@ -1223,14 +1207,6 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release SSE4|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						AssemblerOutput="4"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="Release SSE4|x64"
 					>
 					<Tool
@@ -1256,14 +1232,6 @@
 				</FileConfiguration>
 				<FileConfiguration
 					Name="Release SSSE3|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						AssemblerOutput="4"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release SSE4|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1306,14 +1274,6 @@
 						AssemblerOutput="4"
 					/>
 				</FileConfiguration>
-				<FileConfiguration
-					Name="Release SSE4|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						AssemblerOutput="4"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\GSRendererHW9.cpp"
@@ -1328,14 +1288,6 @@
 				</FileConfiguration>
 				<FileConfiguration
 					Name="Release SSSE3|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						AssemblerOutput="4"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release SSE4|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
