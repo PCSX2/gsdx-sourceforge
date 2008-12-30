@@ -50,24 +50,24 @@ struct GSRasterizerStats
 class IRasterizer
 {
 public:
+	virtual ~IRasterizer() {}
+
 	virtual void Draw(const GSRasterizerData* data) = 0;
 	virtual void GetStats(GSRasterizerStats& stats) = 0;
+	virtual void PrintStats() = 0;
 };
 
 class IDrawScanline
 {
 public:
 	typedef void (IDrawScanline::*DrawScanlinePtr)(int top, int left, int right, const GSVertexSW& v);
+	typedef void (IDrawScanline::*DrawSolidRectPtr)(const GSVector4i& r, const GSVertexSW& v);
 
 	virtual ~IDrawScanline() {}
 
-	virtual bool BeginDraw(const GSRasterizerData* data) = 0;
+	virtual void BeginDraw(const GSRasterizerData* data, DrawScanlinePtr* dsf, DrawSolidRectPtr* dsrf) = 0;
 	virtual void EndDraw(const GSRasterizerStats& stats) = 0;
 	virtual void SetupPrim(GS_PRIM_CLASS primclass, const GSVertexSW* vertices, const GSVertexSW& dscan) = 0;
-	virtual void DrawScanline(int top, int left, int right, const GSVertexSW& v) = 0;
-	virtual void DrawSolidRect(const GSVector4i& r, const GSVertexSW& v) = 0;
-	virtual DrawScanlinePtr GetDrawScanlinePtr() = 0;
-
 	virtual void PrintStats() = 0;
 };
 
@@ -75,6 +75,8 @@ class GSRasterizer : public IRasterizer
 {
 protected:
 	IDrawScanline* m_ds;
+	IDrawScanline::DrawScanlinePtr m_dsf;
+	IDrawScanline::DrawSolidRectPtr m_dsrf;
 	int m_id;
 	int m_threads;
 	GSRasterizerStats m_stats;
@@ -82,7 +84,7 @@ protected:
 	void DrawPoint(const GSVertexSW* v, const GSVector4i& scissor);
 	void DrawLine(const GSVertexSW* v, const GSVector4i& scissor);
 	void DrawTriangle(const GSVertexSW* v, const GSVector4i& scissor);
-	void DrawSprite(const GSVertexSW* v, const GSVector4i& scissor, bool solid);
+	void DrawSprite(const GSVertexSW* v, const GSVector4i& scissor);
 
 	void DrawTriangleTop(GSVertexSW* v, const GSVector4i& scissor);
 	void DrawTriangleBottom(GSVertexSW* v, const GSVector4i& scissor);
@@ -98,7 +100,6 @@ public:
 
 	void Draw(const GSRasterizerData* data);
 	void GetStats(GSRasterizerStats& stats);
-
 	void PrintStats() {m_ds->PrintStats();}
 };
 
@@ -123,7 +124,7 @@ public:
 	void Draw(const GSRasterizerData* data);
 };
 
-class GSRasterizerList : public CAtlList<GSRasterizerMT*>, public IRasterizer
+class GSRasterizerList : protected CAtlList<IRasterizer*>, public IRasterizer
 {
 	long* m_sync;
 	GSRasterizerStats m_stats;
@@ -150,6 +151,5 @@ public:
 
 	void Draw(const GSRasterizerData* data);
 	void GetStats(GSRasterizerStats& stats);
-
-	void PrintStats() {GetHead()->PrintStats();}
+	void PrintStats();
 };
