@@ -75,6 +75,8 @@ __declspec(align(16)) struct GSScanlineEnvironment
 	GSVector4i* zbr;
 	int** fbc;
 	int** zbc;
+	GSVector4i* fzbr;
+	GSVector4i* fzbc;
 
 	GSVector4i fm, zm;
 	struct {GSVector4i min, max, mask;} t; // [u] x 4 [v] x 4
@@ -85,10 +87,9 @@ __declspec(align(16)) struct GSScanlineEnvironment
 	GSVector4i afix, afix2;
 	GSVector4i frb, fga;
 
-	GSVector4 dz, dz4;
-	GSVector4i df, df4;
-	GSVector4 dt, dt4;
-	GSVector4i drb, dga, dc4;
+	struct {GSVector4 z, s, t, q; GSVector4i f, rb, ga, _pad;} d[4];
+	struct {GSVector4 z, stq; GSVector4i f, c;} d4;
+	GSVector4i rb, ga;
 };
 
 __declspec(align(16)) struct GSScanlineParam
@@ -102,56 +103,53 @@ __declspec(align(16)) struct GSScanlineParam
 
 	GSLocalMemory::Offset* fbo;
 	GSLocalMemory::Offset* zbo;
+	GSLocalMemory::Offset4* fzbo;
 
 	DWORD fm, zm;
 };
 
 class GSDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 {
-	struct ActiveDrawScanlinePtr
-	{
-		UINT64 frame;
-		UINT64 frames;
-		__int64 ticks;
-		__int64 pixels;
-		DrawScanlinePtr dsf;
-	};
-
 	GSScanlineEnvironment m_env;
 
-	DrawScanlinePtr m_ds[4][4][4][2];
-	CRBMap<DWORD, DrawScanlinePtr> m_dsmap;
-	CRBMap<DWORD, ActiveDrawScanlinePtr*> m_dsmap_active;
-	ActiveDrawScanlinePtr* m_dsf;
+	class GSFunctionMap : public IDrawScanline::FunctionMap
+	{
+	public:
+		DrawScanlinePtr f[4][4][4][2];
+
+		virtual DrawScanlinePtr GetDefaultFunction(DWORD dw)
+		{
+			GSScanlineSelector sel;
+			sel.dw = dw;
+			return f[sel.fpsm][sel.zpsm][sel.ztst][sel.iip];
+		}
+	};
+	
+	GSFunctionMap m_ds;
+
+	static const GSVector4 s_ps0123[4];
+	static const GSVector4i s_test[9];
 
 	void Init();
 
-	template<DWORD fpsm, DWORD zpsm, DWORD ztst, DWORD iip>
-	void DrawScanline(int top, int left, int right, const GSVertexSW& v);
-
-	template<DWORD sel> 
-	void DrawScanlineEx(int top, int left, int right, const GSVertexSW& v);
-
 	__forceinline GSVector4i Wrap(const GSVector4i& t);
 
-	__forceinline void SampleTexture(int pixels, DWORD ztst, DWORD fst, DWORD ltf, DWORD tlu, const GSVector4i& test, const GSVector4& s, const GSVector4& t, const GSVector4& q, GSVector4i* c);
+	__forceinline void SampleTexture(DWORD ztst, DWORD fst, DWORD ltf, DWORD tlu, const GSVector4i& test, const GSVector4& s, const GSVector4& t, const GSVector4& q, GSVector4i* c);
 	__forceinline void ColorTFX(DWORD tfx, const GSVector4i& rbf, const GSVector4i& gaf, GSVector4i& rbt, GSVector4i& gat);
 	__forceinline void AlphaTFX(DWORD tfx, DWORD tcc, const GSVector4i& gaf, GSVector4i& gat);
 	__forceinline void Fog(DWORD fge, const GSVector4i& f, GSVector4i& rb, GSVector4i& ga);
-	__forceinline bool TestZ(DWORD zpsm, DWORD ztst, const GSVector4i& zs, const GSVector4i& za, GSVector4i& test);
+	__forceinline bool TestZ(DWORD zpsm, DWORD ztst, const GSVector4i& zs, const GSVector4i& zd, GSVector4i& test);
 	__forceinline bool TestAlpha(DWORD atst, DWORD afail, const GSVector4i& ga, GSVector4i& fm, GSVector4i& zm, GSVector4i& test);
 	__forceinline bool TestDestAlpha(DWORD fpsm, DWORD date, const GSVector4i& d, GSVector4i& test);
 
-	__forceinline static DWORD ReadPixel32(DWORD* RESTRICT vm, DWORD addr);
-	__forceinline static DWORD ReadPixel24(DWORD* RESTRICT vm, DWORD addr);
-	__forceinline static DWORD ReadPixel16(WORD* RESTRICT vm, DWORD addr);
 	__forceinline static void WritePixel32(DWORD* RESTRICT vm, DWORD addr, DWORD c);
 	__forceinline static void WritePixel24(DWORD* RESTRICT vm, DWORD addr, DWORD c);
 	__forceinline static void WritePixel16(WORD* RESTRICT vm, DWORD addr, DWORD c);
-
+	
 	__forceinline GSVector4i ReadFrameX(int psm, const GSVector4i& addr) const;
 	__forceinline GSVector4i ReadZBufX(int psm, const GSVector4i& addr) const;
-	__forceinline void WriteFrameAndZBufX(int fpsm, const GSVector4i& fa, const GSVector4i& fm, const GSVector4i& f, int zpsm, const GSVector4i& za, const GSVector4i& zm, const GSVector4i& z, int pixels);
+	__forceinline void WriteFrameX(int fpsm, int rfb, GSVector4i* c, const GSVector4i& fd, const GSVector4i& fm, const GSVector4i& fza, int fzm);
+	__forceinline void WriteZBufX(int zpsm, int ztst, const GSVector4i& z, const GSVector4i& zd, const GSVector4i& zm, const GSVector4i& fza, int fzm);
 
 	void DrawSolidRect(const GSVector4i& r, const GSVertexSW& v);
 
@@ -164,6 +162,12 @@ class GSDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 	template<class T, bool masked> 
 	__forceinline void FillBlock(const GSVector4i* row, int* col, const GSVector4i& r, const GSVector4i& c, const GSVector4i& m);
 
+	template<DWORD fpsm, DWORD zpsm, DWORD ztst, DWORD iip>
+	void DrawScanline(int top, int left, int right, const GSVertexSW& v);
+
+	template<DWORD sel>
+	void DrawScanlineEx(int top, int left, int right, const GSVertexSW& v);
+
 protected:
 	GSState* m_state;
 	int m_id;
@@ -174,8 +178,8 @@ public:
 
 	// IDrawScanline
 
-	void BeginDraw(const GSRasterizerData* data, DrawScanlinePtr* dsf, DrawSolidRectPtr* dsrf);
+	void BeginDraw(const GSRasterizerData* data, Functions* f);
 	void EndDraw(const GSRasterizerStats& stats);
 	void SetupPrim(GS_PRIM_CLASS primclass, const GSVertexSW* vertices, const GSVertexSW& dscan);
-	void PrintStats();
+	void PrintStats() {m_ds.PrintStats();}
 };

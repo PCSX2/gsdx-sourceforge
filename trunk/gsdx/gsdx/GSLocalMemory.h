@@ -77,8 +77,15 @@ public:
 
 	struct Offset
 	{
-		GSVector4i row[2048];
-		int* col[4];
+		GSVector4i row[2048]; // 0 | 0 | 0 | 0
+		int* col[4]; // x | x+1 | x+2 | x+3
+		DWORD hash;
+	};
+
+	struct Offset4
+	{
+		GSVector4i row[2048]; // f 0 | f 0 | z 0 | z 0
+		GSVector4i col[512]; // f x | f x+2 | z x | z x+2 ((x & 3) == 0)
 		DWORD hash;
 	};
 
@@ -118,12 +125,14 @@ protected:
 	//
 
 	CRBMapC<DWORD, Offset*> m_omap;
+	CRBMapC<DWORD, Offset4*> m_o4map;
 
 public:
 	GSLocalMemory();
 	virtual ~GSLocalMemory();
 
 	Offset* GetOffset(DWORD bp, DWORD bw, DWORD psm, Offset* o = NULL);
+	Offset4* GetOffset4(const GIFRegFRAME& FRAME, const GIFRegZBUF& ZBUF, Offset4* o = NULL);
 
 	// address
 

@@ -1357,20 +1357,7 @@ public:
 	{
 		for(int j = 0; j < 16; j++, dst += dstpitch)
 		{
-			#if _M_SSE >= 0x401
-
-			const GSVector4i* s = (const GSVector4i*)src;
-
-			s[j].gather32_8(pal, (GSVector4i*)dst);
-
-			#else
-
-			for(int i = 0; i < 16; i++)
-			{
-				((DWORD*)dst)[i] = pal[src[j * 16 + i]];
-			}
-
-			#endif
+			((const GSVector4i*)src)[j].gather32_8(pal, (GSVector4i*)dst);
 		}
 	}
 
@@ -1378,20 +1365,7 @@ public:
 	{
 		for(int j = 0; j < 16; j++, dst += dstpitch)
 		{
-			#if _M_SSE >= 0x401
-
-			const GSVector4i* s = (const GSVector4i*)src;
-
-			s[j].gather16_8(pal, (GSVector4i*)dst);
-
-			#else
-
-			for(int i = 0; i < 16; i++)
-			{
-				((WORD*)dst)[i] = (WORD)pal[src[j * 16 + i]];
-			}
-
-			#endif
+			((const GSVector4i*)src)[j].gather16_8(pal, (GSVector4i*)dst);
 		}
 	}
 
@@ -1399,20 +1373,7 @@ public:
 	{
 		for(int j = 0; j < 16; j++, dst += dstpitch)
 		{
-			#if _M_SSE >= 0x401
-
-			const GSVector4i* s = (const GSVector4i*)src;
-
-			s[j].gather64_8(pal, (GSVector4i*)dst);
-
-			#else
-
-			for(int i = 0; i < 32 / 2; i++)
-			{
-				((UINT64*)dst)[i] = pal[src[j * 16 + i]];
-			}
-
-			#endif
+			((const GSVector4i*)src)[j].gather64_8(pal, (GSVector4i*)dst);
 		}
 	}
 
@@ -1420,20 +1381,7 @@ public:
 	{
 		for(int j = 0; j < 16; j++, dst += dstpitch)
 		{
-			#if _M_SSE >= 0x401
-
-			const GSVector4i* s = (const GSVector4i*)src;
-
-			s[j].gather32_8(pal, (GSVector4i*)dst);
-
-			#else
-
-			for(int i = 0; i < 32 / 2; i++)
-			{
-				((DWORD*)dst)[i] = (DWORD)pal[src[j * 16 + i]];
-			}
-
-			#endif
+			((const GSVector4i*)src)[j].gather32_8(pal, (GSVector4i*)dst);
 		}
 	}
 
@@ -1441,21 +1389,10 @@ public:
 	{
 		for(int j = 0; j < 8; j++, dst += dstpitch)
 		{
-			#if _M_SSE >= 0x401
-
 			const GSVector4i* s = (const GSVector4i*)src;
 
 			((GSVector4i*)dst)[0] = (s[j * 2 + 0] >> 24).gather32_32<>(pal);
 			((GSVector4i*)dst)[1] = (s[j * 2 + 1] >> 24).gather32_32<>(pal);
-
-			#else
-
-			for(int i = 0; i < 8; i++)
-			{
-				((DWORD*)dst)[i] = pal[src[j * 8 + i] >> 24];
-			}
-
-			#endif
 		}
 	}
 
@@ -1487,21 +1424,10 @@ public:
 	{
 		for(int j = 0; j < 8; j++, dst += dstpitch)
 		{
-			#if _M_SSE >= 0x401
-
 			const GSVector4i* s = (const GSVector4i*)src;
 
 			((GSVector4i*)dst)[0] = ((s[j * 2 + 0] >> 24) & 0xf).gather32_32<>(pal);
 			((GSVector4i*)dst)[1] = ((s[j * 2 + 1] >> 24) & 0xf).gather32_32<>(pal);
-
-			#else
-
-			for(int i = 0; i < 8; i++)
-			{
-				((DWORD*)dst)[i] = pal[(src[j * 8 + i] >> 24) & 0xf];
-			}
-
-			#endif
 		}
 	}
 
@@ -1533,23 +1459,12 @@ public:
 	{
 		for(int j = 0; j < 8; j++, dst += dstpitch)
 		{
-			#if _M_SSE >= 0x401
-
 			const GSVector4i* s = (const GSVector4i*)src;
 
 			((GSVector4i*)dst)[0] = (s[j * 2 + 0] >> 28).gather32_32<>(pal);
 			((GSVector4i*)dst)[1] = (s[j * 2 + 1] >> 28).gather32_32<>(pal);
-
-			#else
-
-			for(int i = 0; i < 8; i++)
-			{
-				((DWORD*)dst)[i] = pal[src[j * 8 + i] >> 28];
-			}
-
-			#endif
 		}
-		}
+	}
 
 	__forceinline static void ExpandBlock4HH_16(DWORD* RESTRICT src, BYTE* RESTRICT dst, int dstpitch, const DWORD* RESTRICT pal)
 	{

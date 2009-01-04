@@ -590,10 +590,10 @@ void GSRendererHW10::SetupDATE(Texture& rt, Texture& ds)
 
 	GSVertexPT1 vertices[] =
 	{
-		{GSVector4(mm.x, -mm.y), GSVector2(uv.x, uv.y)},
-		{GSVector4(mm.z, -mm.y), GSVector2(uv.z, uv.y)},
-		{GSVector4(mm.x, -mm.w), GSVector2(uv.x, uv.w)},
-		{GSVector4(mm.z, -mm.w), GSVector2(uv.z, uv.w)},
+		{GSVector4(mm.x, -mm.y, 0.5f, 1.0f), GSVector2(uv.x, uv.y)},
+		{GSVector4(mm.z, -mm.y, 0.5f, 1.0f), GSVector2(uv.z, uv.y)},
+		{GSVector4(mm.x, -mm.w, 0.5f, 1.0f), GSVector2(uv.x, uv.w)},
+		{GSVector4(mm.z, -mm.w, 0.5f, 1.0f), GSVector2(uv.z, uv.w)},
 	};
 
 	D3D10_BOX box = {0, 0, 0, sizeof(vertices), 1, 1};

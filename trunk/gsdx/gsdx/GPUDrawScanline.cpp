@@ -35,7 +35,7 @@ GPUDrawScanline::~GPUDrawScanline()
 
 // IDrawScanline
 
-void GPUDrawScanline::BeginDraw(const GSRasterizerData* data, DrawScanlinePtr* dsf, DrawSolidRectPtr* dsrf)
+void GPUDrawScanline::BeginDraw(const GSRasterizerData* data, Functions* f)
 {
 	GPUDrawingEnvironment& env = m_state->m_env;
 
@@ -71,8 +71,8 @@ void GPUDrawScanline::BeginDraw(const GSRasterizerData* data, DrawScanlinePtr* d
 	m_env.a = GSVector4i(env.PRIM.ABE ? 0xffffffff : 0);
 	m_env.md = GSVector4i(env.STATUS.MD ? 0x80008000 : 0);
 
-	*dsf = m_ds[m_env.sel];
-	*dsrf = NULL; // TODO
+	f->sl = m_ds[m_env.sel];
+	f->sr = NULL; // TODO
 }
 
 void GPUDrawScanline::SetupPrim(GS_PRIM_CLASS primclass, const GSVertexSW* vertices, const GSVertexSW& dscan)
@@ -118,7 +118,7 @@ void GPUDrawScanline::SetupPrim(GS_PRIM_CLASS primclass, const GSVertexSW* verti
 }
 
 
-void GPUDrawScanline::SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin, GSVector4i& test, const GSVector4i& s, const GSVector4i& t, GSVector4i* c)
+void GPUDrawScanline::SampleTexture(DWORD ltf, DWORD tlu, DWORD twin, GSVector4i& test, const GSVector4i& s, const GSVector4i& t, GSVector4i* c)
 {
 	const void* RESTRICT tex = m_env.tex;
 	const WORD* RESTRICT clut = m_env.clut;
@@ -159,8 +159,6 @@ void GPUDrawScanline::SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin
 
 		GSVector4i c00, c01, c10, c11;
 
-		#if _M_SSE >= 0x401
-
 		if(tlu)
 		{
 			c00 = addr00.gather16_16((const BYTE*)tex, clut);
@@ -175,45 +173,6 @@ void GPUDrawScanline::SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin
 			c10 = addr00.gather16_16((const WORD*)tex);
 			c11 = addr01.gather16_16((const WORD*)tex);
 		}
-
-		#else
-
-		int i = 0;
-
-		if(tlu)
-		{
-			do
-			{
-				if(test.u16[i]) // me && 
-				{
-					continue;
-				}
-
-				c00.u16[i] = clut[((const BYTE*)tex)[addr00.u16[i]]];
-				c01.u16[i] = clut[((const BYTE*)tex)[addr01.u16[i]]];
-				c10.u16[i] = clut[((const BYTE*)tex)[addr10.u16[i]]];
-				c11.u16[i] = clut[((const BYTE*)tex)[addr11.u16[i]]];
-			}
-			while(++i < pixels);
-		}
-		else
-		{
-			do
-			{
-				if(test.u16[i]) // me && 
-				{
-					continue;
-				}
-
-				c00.u16[i] = ((const WORD*)tex)[addr00.u16[i]];
-				c01.u16[i] = ((const WORD*)tex)[addr01.u16[i]];
-				c10.u16[i] = ((const WORD*)tex)[addr10.u16[i]];
-				c11.u16[i] = ((const WORD*)tex)[addr11.u16[i]];
-			}
-			while(++i < pixels);
-		}
-
-		#endif
 
 		GSVector4i r00 = (c00 & 0x001f001f) << 3;
 		GSVector4i r01 = (c01 & 0x001f001f) << 3;
@@ -279,8 +238,6 @@ void GPUDrawScanline::SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin
 
 		GSVector4i c00;
 
-		#if _M_SSE >= 0x401
-
 		if(tlu)
 		{
 			c00 = addr.gather16_16((const BYTE*)tex, clut);
@@ -289,39 +246,6 @@ void GPUDrawScanline::SampleTexture(int pixels, DWORD ltf, DWORD tlu, DWORD twin
 		{
 			c00 = addr.gather16_16((const WORD*)tex);
 		}
-
-		#else
-
-		int i = 0;
-
-		if(tlu)
-		{
-			do
-			{
-				if(test.u16[i]) // me && 
-				{
-					continue;
-				}
-
-				c00.u16[i] = clut[((const BYTE*)tex)[addr.u16[i]]];
-			}
-			while(++i < pixels);
-		}
-		else
-		{
-			do
-			{
-				if(test.u16[i]) // me && 
-				{
-					continue;
-				}
-
-				c00.u16[i] = ((const WORD*)tex)[addr.u16[i]];
-			}
-			while(++i < pixels);
-		}
-
-		#endif
 
 		test |= c00.eq16(GSVector4i::zero()); // mask out blank pixels
 
@@ -767,7 +691,7 @@ void GPUDrawScanline::DrawScanline(int top, int left, int right, const GSVertexS
 
 			if(m_env.sel.tme)
 			{
-				SampleTexture(pixels, m_env.sel.ltf, m_env.sel.tlu, m_env.sel.twin, test, s, t, c);
+				SampleTexture(m_env.sel.ltf, m_env.sel.tlu, m_env.sel.twin, test, s, t, c);
 			}
 
 			ColorTFX(m_env.sel.tfx, r, g, b, c);
@@ -890,7 +814,7 @@ void GPUDrawScanline::DrawScanlineEx(int top, int left, int right, const GSVerte
 
 			if(tme)
 			{
-				SampleTexture(pixels, m_env.sel.ltf, m_env.sel.tlu, twin, test, s, t, c);
+				SampleTexture(m_env.sel.ltf, m_env.sel.tlu, twin, test, s, t, c);
 			}
 
 			ColorTFX(tfx, r, g, b, c);
