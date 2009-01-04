@@ -996,6 +996,7 @@ void GSDrawScanline::Init()
 	InitDS_Sel(0x4d078075); //  10.02%
 	InitDS_Sel(0x54204055); //  13.26%
 	InitDS_Sel(0x55204055); //  28.55%
+	InitDS_Sel(0x488791e5);
 
 	// ffx-2
 
