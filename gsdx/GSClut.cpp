@@ -256,6 +256,7 @@ void GSClut::Read32(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA)
 		m_read.TEX0 = TEX0;
 		m_read.TEXA = TEXA;
 		m_read.dirty = false;
+		m_read.adirty = true;
 
 		WORD* clut = m_clut + (TEX0.CSA << 4);
 
@@ -294,6 +295,60 @@ void GSClut::Read32(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA)
 			}
 		}
 	}
+}
+
+void GSClut::GetAlphaMinMax32(int& amin, int& amax)
+{
+	// call only after Read32
+
+	ASSERT(!m_read.dirty);
+
+	if(m_read.adirty)
+	{
+		m_read.adirty = false;
+
+		// DWORD bpp = GSLocalMemory::m_psm[m_read.TEX0.PSM].trbpp;
+		DWORD cbpp = GSLocalMemory::m_psm[m_read.TEX0.CPSM].trbpp;
+		DWORD pal = GSLocalMemory::m_psm[m_read.TEX0.PSM].pal;
+
+		if(cbpp == 24 && m_read.TEXA.AEM == 0)
+		{
+			m_read.amin = m_read.TEXA.TA0;
+			m_read.amax = m_read.TEXA.TA0;
+		}
+		else
+		{
+			int amin = 255;
+			int amax = 0;
+
+			const GSVector4i* p = (const GSVector4i*)m_buff32;
+
+			for(int i = 0, j = pal >> 4; i < j; i++)
+			{
+				GSVector4i v0 = (p[i * 4 + 0] >> 24).ps32(p[i * 4 + 1] >> 24);
+				GSVector4i v1 = (p[i * 4 + 2] >> 24).ps32(p[i * 4 + 3] >> 24);
+
+				GSVector4i v2 = v0.min_i16(v1);
+				GSVector4i v3 = v0.max_i16(v1);
+
+				v2 = v2.min_i16(v2.zwxy());
+				v3 = v3.max_i16(v3.zwxy());
+				v2 = v2.min_i16(v2.zwxyl());
+				v3 = v3.max_i16(v3.zwxyl());
+				v2 = v2.min_i16(v2.yxwzl());
+				v3 = v3.max_i16(v3.yxwzl());
+
+				amin = min(amin, v2.extract16<0>());
+				amax = max(amax, v3.extract16<0>());
+			}
+
+			m_read.amin = amin;
+			m_read.amax = amax;
+		}
+	}
+
+	amin = m_read.amin;
+	amax = m_read.amax;
 }
 
 //

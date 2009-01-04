@@ -402,6 +402,15 @@ GSLocalMemory::~GSLocalMemory()
 	}
 
 	m_omap.RemoveAll();
+
+	pos = m_o4map.GetHeadPosition();
+
+	while(pos)
+	{
+		_aligned_free(m_o4map.GetNextValue(pos));
+	}
+
+	m_o4map.RemoveAll();
 }
 
 GSLocalMemory::Offset* GSLocalMemory::GetOffset(DWORD bp, DWORD bw, DWORD psm, Offset* o)
@@ -428,7 +437,7 @@ GSLocalMemory::Offset* GSLocalMemory::GetOffset(DWORD bp, DWORD bw, DWORD psm, O
 
 			pixelAddress pa = m_psm[psm].pa;
 
-			for(int i = 0, j = 2048; i < j; i++)
+			for(int i = 0; i < 2048; i++)
 			{
 				o->row[i] = GSVector4i((int)pa(0, i, bp, bw));
 			}
@@ -443,6 +452,57 @@ GSLocalMemory::Offset* GSLocalMemory::GetOffset(DWORD bp, DWORD bw, DWORD psm, O
 			}
 
 			m_omap.SetAt(hash, o);
+		}
+	}
+
+	return o;
+}
+
+GSLocalMemory::Offset4* GSLocalMemory::GetOffset4(const GIFRegFRAME& FRAME, const GIFRegZBUF& ZBUF, Offset4* o)
+{
+	DWORD fbp = FRAME.Block();
+	DWORD zbp = ZBUF.Block();
+	DWORD fpsm = FRAME.PSM;
+	DWORD zpsm = ZBUF.PSM;
+	DWORD bw = FRAME.FBW;
+
+	ASSERT(m_psm[fpsm].bpp > 8 || m_psm[zpsm].bpp > 8); // only for 16/24/32 formats
+
+	DWORD hash = (FRAME.FBP << 0) | (ZBUF.ZBP << 9) | (bw << 18) | (((fpsm & 3) | (fpsm >> 3)) << 24) | (((zpsm & 3) | (zpsm >> 3)) << 28);
+
+	if(!o || o->hash != hash)
+	{
+		CRBMap<DWORD, Offset4*>::CPair* pair = m_o4map.Lookup(hash);
+
+		if(pair)
+		{
+			o = pair->m_value;
+		}
+		else
+		{
+			o = (Offset4*)_aligned_malloc(sizeof(Offset4), 16);
+
+			o->hash = hash;
+
+			pixelAddress fpa = m_psm[fpsm].pa;
+			pixelAddress zpa = m_psm[zpsm].pa;
+
+			for(int i = 0; i < 2048; i++)
+			{
+				o->row[i] = GSVector4i((int)fpa(0, i, fbp, bw), (int)zpa(0, i, zbp, bw)).xxyy();
+			}
+
+			for(int i = 0; i < 512; i++)
+			{
+				int f0 = m_psm[fpsm].rowOffset[0][i * 4 + 0];
+				int f2 = m_psm[fpsm].rowOffset[0][i * 4 + 2];
+				int z0 = m_psm[zpsm].rowOffset[0][i * 4 + 0];
+				int z2 = m_psm[zpsm].rowOffset[0][i * 4 + 2];
+
+				o->col[i] = GSVector4i(f0, f2, z0, z2);
+			}
+
+			m_o4map.SetAt(hash, o);
 		}
 	}
 

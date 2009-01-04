@@ -50,6 +50,8 @@ __declspec(align(16)) class GSClut : public GSAlignedClass<16>
 		GIFRegTEX0 TEX0;
 		GIFRegTEXA TEXA;
 		bool dirty;
+		bool adirty;
+		int amin, amax;
 		bool IsDirty(const GIFRegTEX0& TEX0);
 		bool IsDirty(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA);
 	} m_read;
@@ -99,6 +101,7 @@ public:
 	void Write(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT);
 	void Read(const GIFRegTEX0& TEX0);
 	void Read32(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA);
+	void GetAlphaMinMax32(int& amin, int& amax);
 
 	DWORD operator [] (size_t i) const {return m_buff32[i];}
 

@@ -63,9 +63,40 @@ public:
 	typedef void (IDrawScanline::*DrawScanlinePtr)(int top, int left, int right, const GSVertexSW& v);
 	typedef void (IDrawScanline::*DrawSolidRectPtr)(const GSVector4i& r, const GSVertexSW& v);
 
+	struct Functions
+	{
+		DrawScanlinePtr sl;
+		DrawSolidRectPtr sr;
+	};
+
+	class FunctionMap
+	{
+		struct ActiveDrawScanlinePtr
+		{
+			UINT64 frame, frames;
+			__int64 ticks, pixels;
+			DrawScanlinePtr f;
+		};
+
+		CRBMap<DWORD, DrawScanlinePtr> m_map;
+		CRBMap<DWORD, ActiveDrawScanlinePtr*> m_map_active;
+		ActiveDrawScanlinePtr* m_active;
+
+	protected:
+		virtual DrawScanlinePtr GetDefaultFunction(DWORD sel) = 0;
+
+	public:
+		FunctionMap();
+		virtual ~FunctionMap();
+		void SetAt(DWORD sel, DrawScanlinePtr f);
+		DrawScanlinePtr Lookup(DWORD sel);
+		void UpdateStats(const GSRasterizerStats& stats, UINT64 frame);
+		void PrintStats();
+	};
+
 	virtual ~IDrawScanline() {}
 
-	virtual void BeginDraw(const GSRasterizerData* data, DrawScanlinePtr* dsf, DrawSolidRectPtr* dsrf) = 0;
+	virtual void BeginDraw(const GSRasterizerData* data, Functions* dsf) = 0;
 	virtual void EndDraw(const GSRasterizerStats& stats) = 0;
 	virtual void SetupPrim(GS_PRIM_CLASS primclass, const GSVertexSW* vertices, const GSVertexSW& dscan) = 0;
 	virtual void PrintStats() = 0;
@@ -75,8 +106,7 @@ class GSRasterizer : public IRasterizer
 {
 protected:
 	IDrawScanline* m_ds;
-	IDrawScanline::DrawScanlinePtr m_dsf;
-	IDrawScanline::DrawSolidRectPtr m_dsrf;
+	IDrawScanline::Functions m_dsf;
 	int m_id;
 	int m_threads;
 	GSRasterizerStats m_stats;
@@ -91,6 +121,8 @@ protected:
 	void DrawTriangleTopBottom(GSVertexSW* v, const GSVector4i& scissor);
 
 	__forceinline void DrawTriangleSection(int top, int bottom, GSVertexSW& l, const GSVertexSW& dl, GSVector4& r, const GSVector4& dr, const GSVertexSW& dscan, const GSVector4i& scissor);
+	__forceinline void DrawTriangleSection(int top, int bottom, GSVertexSW& l, const GSVertexSW& dl, const GSVertexSW& dscan, const GSVector4i& scissor);
+	__forceinline void DrawScanline(int top, int left, int right, const GSVertexSW& scan, const GSVertexSW& dscan);
 
 public:
 	GSRasterizer(IDrawScanline* ds, int id = 0, int threads = 0);

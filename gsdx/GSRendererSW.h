@@ -37,10 +37,12 @@ protected:
 	bool m_reset;
 	GSLocalMemory::Offset* m_fbo;
 	GSLocalMemory::Offset* m_zbo;
+	GSLocalMemory::Offset4* m_fzbo;
 
 	__declspec(align(16)) struct VertexTrace
 	{
-		GSVertexSW v; 
+		GSVector4 tmin, tmax;
+		GSVector4 cmin, cmax;
 
 		union
 		{
@@ -49,12 +51,12 @@ protected:
 			struct {DWORD stq:4, rgba:4;};
 		} eq;
 
-		bool first;
-
 		void Reset()
 		{
-			first = true;
-			eq.value = 0xffffffff;
+			tmin = GSVector4(FLT_MAX);
+			tmax = GSVector4(-FLT_MAX);
+			cmin = GSVector4(FLT_MAX);
+			cmax = GSVector4::zero();
 		}
 
 		VertexTrace() {Reset();}
@@ -86,8 +88,7 @@ protected:
 			m_reset = false;
 		}
 
-		// 
-		if((m_perfmon.GetFrame() & 255) == 0) m_rl.PrintStats();
+		// if((m_perfmon.GetFrame() & 255) == 0) m_rl.PrintStats();
 	}
 
 	void ResetDevice() 
@@ -154,30 +155,29 @@ protected:
 
 		v.c = GSVector4((DWORD)m_v.RGBAQ.ai32[0]) * 128.0f;
 
+		m_vtrace.cmin = m_vtrace.cmin.minv(v.c);
+		m_vtrace.cmax = m_vtrace.cmax.maxv(v.c);
+		
 		if(PRIM->TME)
 		{
+			float q;
+
 			if(PRIM->FST)
 			{
-				v.t = GSVector4(GSVector4i((int)m_v.UV.U, (int)m_v.UV.V) << (16 - 4));
-				v.t.z = 1.0f;
+				v.t = GSVector4(GSVector4i((int)m_v.UV.U, (int)m_v.UV.V, 0, 0) << (16 - 4));
+				q = 1.0f;
 			}
 			else
 			{
 				v.t = GSVector4(m_v.ST.S, m_v.ST.T, 0.0f, 0.0f);
-				v.t *= GSVector4((float)(0x10000 << m_context->TEX0.TW), (float)(0x10000 << m_context->TEX0.TH));
-				v.t.z = m_v.RGBAQ.Q;
+				v.t *= GSVector4(0x10000 << m_context->TEX0.TW, 0x10000 << m_context->TEX0.TH);
+				q = m_v.RGBAQ.Q;
 			}
-		}
 
-		if(m_vtrace.first)
-		{
-			m_vtrace.v.t = v.t;
-			m_vtrace.v.c = v.c;
-			m_vtrace.first = false;
-		}
-		else
-		{
-			m_vtrace.eq.value &= (m_vtrace.v.t == v.t).mask() | ((m_vtrace.v.c == v.c).mask() << 4); // v.p not needed
+			v.t = v.t.xyxy(GSVector4::load(q));
+
+			m_vtrace.tmin = m_vtrace.tmin.minv(v.t);
+			m_vtrace.tmax = m_vtrace.tmax.maxv(v.t);
 		}
 
 		m_vl.AddTail() = v;
@@ -265,6 +265,136 @@ protected:
 		return v;
 	}
 
+	bool TryAlphaTest(DWORD& fm, DWORD& zm)
+	{
+		const GSDrawingEnvironment& env = m_env;
+		const GSDrawingContext* context = m_context;
+
+		bool pass = true;
+
+		if(context->TEST.ATST == ATST_NEVER)
+		{
+			pass = false;
+		}
+		else if(context->TEST.ATST != ATST_ALWAYS)
+		{
+			GSVector4i a = GSVector4i(m_vtrace.cmin.wwww(m_vtrace.cmax)) >> 7;
+
+			int amin, amax;
+
+			if(PRIM->TME && (context->TEX0.TCC || context->TEX0.TFX == TFX_DECAL))
+			{
+				DWORD bpp = GSLocalMemory::m_psm[context->TEX0.PSM].trbpp;
+				DWORD cbpp = GSLocalMemory::m_psm[context->TEX0.CPSM].trbpp;
+				DWORD pal = GSLocalMemory::m_psm[context->TEX0.PSM].pal;
+
+				if(bpp == 32)
+				{
+					return false;
+				}
+				else if(bpp == 24)
+				{
+					amin = env.TEXA.AEM ? 0 : env.TEXA.TA0;
+					amax = env.TEXA.TA0;
+				}
+				else if(bpp == 16)
+				{
+					amin = env.TEXA.AEM ? 0 : min(env.TEXA.TA0, env.TEXA.TA1);
+					amax = max(env.TEXA.TA0, env.TEXA.TA1);
+				}
+				else
+				{
+					m_mem.m_clut.GetAlphaMinMax32(amin, amax);
+				}
+
+				switch(context->TEX0.TFX)
+				{
+				case TFX_MODULATE:
+					amin = (amin * a.x) >> 7;
+					amax = (amax * a.z) >> 7;
+					if(amin > 255) amin = 255;
+					if(amax > 255) amax = 255;
+					break;
+				case TFX_DECAL:
+					break;
+				case TFX_HIGHLIGHT:
+					amin = amin + a.x;
+					amax = amax + a.z;
+					if(amin > 255) amin = 255;
+					if(amax > 255) amax = 255;
+					break;
+				case TFX_HIGHLIGHT2:
+					break;
+				default:
+					__assume(0);
+				}
+			}
+			else
+			{
+				amin = a.x;
+				amax = a.z;
+			}
+
+			int aref = context->TEST.AREF;
+
+			switch(context->TEST.ATST)
+			{
+			case ATST_NEVER: 
+				pass = false; 
+				break;
+			case ATST_ALWAYS: 
+				pass = true; 
+				break;
+			case ATST_LESS: 
+				if(amax < aref) pass = true;
+				else if(amin >= aref) pass = false;
+				else return false;
+				break;
+			case ATST_LEQUAL: 
+				if(amax <= aref) pass = true;
+				else if(amin > aref) pass = false;
+				else return false;
+				break;
+			case ATST_EQUAL: 
+				if(amin == aref && amax == aref) pass = true;
+				else if(amin > aref || amax < aref) pass = false;
+				else return false;
+				break;
+			case ATST_GEQUAL: 
+				if(amin >= aref) pass = true;
+				else if(amax < aref) pass = false;
+				else return false;
+				break;
+			case ATST_GREATER: 
+				if(amin > aref) pass = true;
+				else if(amax <= aref) pass = false;
+				else return false;
+				break;
+			case ATST_NOTEQUAL: 
+				if(amin == aref && amax == aref) pass = false;
+				else if(amin > aref || amax < aref) pass = true;
+				else return false;
+				break;
+			default: 
+				__assume(0);
+			}
+		}
+
+		if(!pass)
+		{
+			switch(context->TEST.AFAIL)
+			{
+			case AFAIL_KEEP: fm = zm = 0xffffffff; break;
+			case AFAIL_FB_ONLY: zm = 0xffffffff; break;
+			case AFAIL_ZB_ONLY: fm = 0xffffffff; break;
+			case AFAIL_RGB_ONLY: fm |= 0xff000000; zm = 0xffffffff; break;
+			default: __assume(0);
+			}
+		}
+
+		return true;
+	}
+
 	void Draw()
 	{
 		const GSDrawingEnvironment& env = m_env;
@@ -274,15 +404,28 @@ protected:
 
 		//
 
+		m_vtrace.eq.value = ((m_vtrace.tmin == m_vtrace.tmax).mask() | ((m_vtrace.cmin == m_vtrace.cmax).mask() << 4));
+
+		//
+
+		if(PRIM->TME)
+		{
+			m_mem.m_clut.Read32(context->TEX0, env.TEXA);
+		}
+
+		//
+
 		GSScanlineParam p;
 
 		p.vm = m_mem.m_vm32;
 
 		m_fbo = m_mem.GetOffset(context->FRAME.Block(), context->FRAME.FBW, context->FRAME.PSM, m_fbo);
 		m_zbo = m_mem.GetOffset(context->ZBUF.Block(), context->FRAME.FBW, context->ZBUF.PSM, m_zbo);
+		m_fzbo = m_mem.GetOffset4(context->FRAME, context->ZBUF, m_fzbo);
 
 		p.fbo = m_fbo;
 		p.zbo = m_zbo;
+		p.fzbo = m_fzbo;
 
 		p.sel.dw = 0;
 
@@ -297,8 +440,6 @@ protected:
 		p.fm = context->FRAME.FBMSK;
 		p.zm = context->ZBUF.ZMSK || context->TEST.ZTE == 0 ? 0xffffffff : 0;
 
-		// 
-
 		if(context->TEST.ZTE && context->TEST.ZTST == ZTST_NEVER)
 		{
 			p.fm = 0xffffffff;
@@ -307,46 +448,7 @@ protected:
 
 		if(context->TEST.ATE)
 		{
-			bool pass = context->TEST.ATST != ATST_NEVER;
-
-			if((!PRIM->TME || !context->TEX0.TCC && context->TEX0.TFX != TFX_DECAL) && m_vtrace.eq.a)
-			{
-				// surprisingly large number of games leave alpha test on when alpha is constant
-
-				DWORD a = (DWORD)((int)m_vtrace.v.c.a >> 7);
-				DWORD aref = context->TEST.AREF;
-
-				switch(context->TEST.ATST)
-				{
-				case ATST_NEVER: pass = false; break;
-				case ATST_ALWAYS: pass = true; break;
-				case ATST_LESS: pass = a < aref; break;
-				case ATST_LEQUAL: pass = a <= aref; break;
-				case ATST_EQUAL: pass = a == aref; break;
-				case ATST_GEQUAL: pass = a >= aref; break;
-				case ATST_GREATER: pass = a > aref; break;
-				case ATST_NOTEQUAL: pass = a != aref; break;
-				default: __assume(0);
-				}
-			}
-
-			if(!pass)
-			{
-				switch(context->TEST.AFAIL)
-				{
-				case AFAIL_KEEP: p.fm = p.zm = 0xffffffff; break;
-				case AFAIL_FB_ONLY: p.zm = 0xffffffff; break;
-				case AFAIL_ZB_ONLY: p.fm = 0xffffffff; break;
-				case AFAIL_RGB_ONLY: p.fm |= 0xff000000; p.zm = 0xffffffff; break;
-				default: __assume(0);
-				}
-
-				// "don't care" values
-
-				p.sel.atst = ATST_ALWAYS;
-				p.sel.afail = 0;
-			}
-			else
+			if(!TryAlphaTest(p.fm, p.zm))
 			{
 				p.sel.atst = context->TEST.ATST;
 				p.sel.afail = context->TEST.AFAIL;
@@ -375,12 +477,17 @@ protected:
 
 				if(p.sel.iip == 0 && p.sel.tfx == TFX_MODULATE && p.sel.tcc)
 				{
-					if(m_vtrace.eq.rgba == 15 && (m_vtrace.v.c == GSVector4(128.0f * 128.0f)).alltrue())
+					if(m_vtrace.eq.rgba == 15 && (m_vtrace.cmin == GSVector4(128.0f * 128.0f)).alltrue())
 					{
 						// modulate does not do anything when vertex color is 0x80
 
 						p.sel.tfx = TFX_DECAL;
 					}
+				}
+
+				if(p.sel.tfx == TFX_DECAL)
+				{
+					p.sel.tcc = 1;
 				}
 
 				if(p.sel.fst == 0)
@@ -418,11 +525,13 @@ protected:
 				{
 					// if q is constant we can do the half pel shift for bilinear sampling on the vertices
 
+					GSVertexSW* v = m_vertices;
+
 					GSVector4 half((float)0x8000, (float)0x8000, 0.0f, 0.0f);
 
-					for(int i = 0; i < m_count; i++)
+					for(int i = 0, j = m_count; i < j; i++)
 					{
-						m_vertices[i].t -= half;
+						v[i].t -= half;
 					}
 				}
 
@@ -481,8 +590,6 @@ protected:
 
 				if(!t) {ASSERT(0); return;}
 
-				m_mem.m_clut.Read32(context->TEX0, env.TEXA);
-
 				p.tex = t->m_buff;
 				p.clut = m_mem.m_clut;
 				p.tw = t->m_tw;
@@ -514,9 +621,11 @@ protected:
 			}
 
 			if(p.sel.date 
-			|| p.sel.abe != 255 
+			|| p.sel.abea == 1 || p.sel.abeb == 1 || p.sel.abec == 1 || p.sel.abed == 1
 			|| p.sel.atst != ATST_ALWAYS && p.sel.afail == AFAIL_RGB_ONLY 
-			|| p.fm != 0 && p.fm != 0xffffffff)
+			|| p.sel.fpsm == 0 && p.fm != 0 && p.fm != 0xffffffff
+			|| p.sel.fpsm == 1 && (p.fm & 0x00ffffff) != 0 && (p.fm & 0x00ffffff) != 0x00ffffff
+			|| p.sel.fpsm == 2 && (p.fm & 0x80f8f8f8) != 0 && (p.fm & 0x80f8f8f8) != 0x80f8f8f8)
 			{
 				p.sel.rfb = 1;
 			}
@@ -597,8 +706,8 @@ __int64 start = __rdtsc();
 /*
 __int64 diff = __rdtsc() - start;
 s_total += diff;
-if(pixels >= 50000)
-fprintf(s_fp, "[%I64d, %d, %d, %d] %08x, diff = %I64d /prim = %I64d /pixel = %I64d \n", frame, PRIM->PRIM, prims, pixels, p.sel, diff, diff / prims, pixels > 0 ? diff / pixels : 0);
+if(stats.pixels >= 50000)
+fprintf(s_fp, "[%I64d, %d, %d, %d] %08x, diff = %I64d /prim = %I64d /pixel = %I64d \n", frame, PRIM->PRIM, stats.prims, stats.pixels, p.sel, diff, diff / stats.prims, stats.pixels > 0 ? diff / stats.pixels : 0);
 */
 		// TODO
 
@@ -664,6 +773,7 @@ public:
 		: GSRendererT(base, mt, irq, nloophack, rs)
 		, m_fbo(NULL)
 		, m_zbo(NULL)
+		, m_fzbo(NULL)
 	{
 		m_rl.Create<GSDrawScanline>(this, threads);
 

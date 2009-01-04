@@ -882,10 +882,10 @@ void GSDevice9::StretchRect(Texture& st, const GSVector4& sr, Texture& dt, const
 
 	GSVertexPT1 vertices[] =
 	{
-		{GSVector4(left, top), GSVector2(sr.x, sr.y)},
-		{GSVector4(right, top), GSVector2(sr.z, sr.y)},
-		{GSVector4(left, bottom), GSVector2(sr.x, sr.w)},
-		{GSVector4(right, bottom), GSVector2(sr.z, sr.w)},
+		{GSVector4(left, top, 0.5f, 1.0f), GSVector2(sr.x, sr.y)},
+		{GSVector4(right, top, 0.5f, 1.0f), GSVector2(sr.z, sr.y)},
+		{GSVector4(left, bottom, 0.5f, 1.0f), GSVector2(sr.x, sr.w)},
+		{GSVector4(right, bottom, 0.5f, 1.0f), GSVector2(sr.z, sr.w)},
 	};
 
 	for(int i = 0; i < countof(vertices); i++)
