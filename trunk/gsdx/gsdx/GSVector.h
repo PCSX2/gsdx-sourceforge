@@ -885,7 +885,7 @@ public:
 		#if _M_SSE >= 0x401
 		return _mm_extract_epi8(m, i);
 		#else
-		return (int)i8[i];
+		return (int)u8[i];
 		#endif
 	}
 
