@@ -84,8 +84,10 @@ public:
 
 	struct Offset4
 	{
-		GSVector4i row[2048]; // f 0 | f 0 | z 0 | z 0
-		GSVector4i col[512]; // f x | f x+2 | z x | z x+2 ((x & 3) == 0)
+		// 16 bit offsets (m_vm16[...])
+
+		GSVector2i row[2048]; // f yn | z yn (n = 0 1 2 ...)
+		GSVector2i col[512]; // f xn | z xn (n = 0 4 8 ...)
 		DWORD hash;
 	};
 

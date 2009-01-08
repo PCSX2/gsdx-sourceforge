@@ -548,6 +548,8 @@ protected:
 
 				CRect r = CRect(0, 0, w, h);
 
+				// TODO: use m_vtrace.tmin/tmax to narrow the needed texture area even more
+
 				switch(wms)
 				{
 				case CLAMP_REPEAT: // TODO
