@@ -4,48 +4,39 @@
 
 #pragma pack(push, 1)
 
-__declspec(align(8)) class GSVector2
+template<class T> class GSVector2T
 {
 public:
 	union 
 	{
-		struct {float x, y;}; 
-		struct {float r, g;}; 
-		struct {float v[2];};
+		struct {T x, y;}; 
+		struct {T r, g;}; 
+		struct {T v[2];};
 	};
 
-	GSVector2()
+	GSVector2T()
 	{
 	}
-
-	GSVector2(float x, float y) 
+	
+	GSVector2T(T x, T y) 
 	{
 		this->x = x; 
 		this->y = y;
 	}
-};
 
-class GSVector3
-{
-public:
-	union 
+	GSVector2T(const GSVector2T& v) 
 	{
-		struct {float x, y, z;}; 
-		struct {float r, g, b;}; 
-		struct {float v[3];};
-	};
-
-	GSVector3()
-	{
+		*this = v;
 	}
 
-	GSVector3(float x, float y, float z) 
+	void operator = (const GSVector2T& v) 
 	{
-		this->x = x; 
-		this->y = y; 
-		this->z = z;
+		_mm_storel_epi64((__m128i*)this, _mm_loadl_epi64((__m128i*)&v));
 	}
 };
+
+typedef __declspec(align(8)) GSVector2T<float> GSVector2;
+typedef __declspec(align(8)) GSVector2T<int> GSVector2i;
 
 class GSVector4;
 
@@ -100,6 +91,11 @@ public:
 	GSVector4i(const GSVector4i& v) 
 	{
 		m = v.m;
+	}
+
+	explicit GSVector4i(const GSVector2i& v)
+	{
+		m = _mm_loadl_epi64((__m128i*)&v);
 	}
 
 	explicit GSVector4i(int i) 

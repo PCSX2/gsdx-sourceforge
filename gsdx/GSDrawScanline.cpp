@@ -52,8 +52,8 @@ void GSDrawScanline::BeginDraw(const GSRasterizerData* data, Functions* f)
 	m_env.zbr = p->zbo->row;
 	m_env.fbc = p->fbo->col;
 	m_env.zbc = p->zbo->col;
-	m_env.fzbc = p->fzbo->col;
 	m_env.fzbr = p->fzbo->row;
+	m_env.fzbc = p->fzbo->col;
 	m_env.fm = GSVector4i(p->fm);
 	m_env.zm = GSVector4i(p->zm);
 	m_env.datm = GSVector4i(context->TEST.DATM ? 0x80000000 : 0);
@@ -722,72 +722,30 @@ bool GSDrawScanline::TestDestAlpha(DWORD fpsm, DWORD date, const GSVector4i& d, 
 	return true;
 }
 
-void GSDrawScanline::WritePixel32(DWORD* RESTRICT vm, DWORD addr, DWORD c) 
+void GSDrawScanline::ReadPixel(int psm, int addr, GSVector4i& c) const
 {
-	vm[addr] = c;
+	WORD* vm16 = (WORD*)m_env.vm;
+
+	if(psm != 3)
+	{
+		c = GSVector4i::load(&vm16[addr], &vm16[addr + 8]);
+	}
 }
 
-void GSDrawScanline::WritePixel24(DWORD* RESTRICT vm, DWORD addr, DWORD c) 
+void GSDrawScanline::WritePixel(int psm, WORD* RESTRICT vm16, DWORD c) 
 {
-	vm[addr] = (vm[addr] & 0xff000000) | (c & 0x00ffffff);
-}
-
-void GSDrawScanline::WritePixel16(WORD* RESTRICT vm, DWORD addr, DWORD c) 
-{
-	vm[addr] = (WORD)c;
-}
-
-GSVector4i GSDrawScanline::ReadFrameX(int psm, const GSVector4i& addr) const
-{
-	DWORD* RESTRICT vm32 = (DWORD*)m_env.vm;
-	WORD* RESTRICT vm16 = (WORD*)m_env.vm;
-
-	GSVector4i c, r, g, b, a;
+	DWORD* RESTRICT vm32 = (DWORD*)vm16;
 
 	switch(psm)
 	{
-	case 0:
-	case 1:
-		c = addr.gather64_32<0>(vm32);
-		break;
-	case 2:
-		c = addr.gather64_32<0>(vm16);
-		break;
-	case 3:
-		c = GSVector4i::zero();
-		break;
+	case 0: *vm32 = c; break;
+	case 1: *vm32 = (*vm32 & 0xff000000) | (c & 0x00ffffff); break;
+	case 2: *vm16 = (WORD)c; break;
 	}
-	
-	return c;
 }
 
-GSVector4i GSDrawScanline::ReadZBufX(int psm, const GSVector4i& addr) const
+void GSDrawScanline::WriteFrame(int fpsm, int rfb, GSVector4i* c, const GSVector4i& fd, const GSVector4i& fm, int addr, int fzm)
 {
-	DWORD* RESTRICT vm32 = (DWORD*)m_env.vm;
-	WORD* RESTRICT vm16 = (WORD*)m_env.vm;
-
-	GSVector4i z;
-
-	switch(psm)
-	{
-	case 0: 
-	case 1: 
-		z = addr.gather64_32<2>(vm32);
-		break;
-	case 2:
-		z = addr.gather64_32<2>(vm16);
-		break;
-	case 3:
-		z = GSVector4i::zero();
-		break;
-	}
-
-	return z;
-}
-
-void GSDrawScanline::WriteFrameX(int fpsm, int rfb, GSVector4i* c, const GSVector4i& fd, const GSVector4i& fm, const GSVector4i& fza, int fzm)
-{
-	DWORD* RESTRICT vm32 = (DWORD*)m_env.vm;
 	WORD* RESTRICT vm16 = (WORD*)m_env.vm;
 
 	c[0] &= m_env.colclamp;
@@ -814,79 +772,44 @@ void GSDrawScanline::WriteFrameX(int fpsm, int rfb, GSVector4i* c, const GSVecto
 
 		if(fpsm < 2)
 		{
-			if(fzm & 0x000a) GSVector4i::storel(&vm32[fza.u32[0] + 0], fs); 
-			if(fzm & 0x00a0) GSVector4i::storeh(&vm32[fza.u32[0] + 4], fs); 
+			if(fzm & 0x000a) GSVector4i::storel(&vm16[addr + 0], fs); 
+			if(fzm & 0x00a0) GSVector4i::storeh(&vm16[addr + 8], fs); 
 
 			return;
 		}
 	}
 
-	switch(fpsm)
-	{
-	case 0: 
-		if(fzm & 0x0002) WritePixel32(vm32, fza.u32[0] + 0, fs.extract32<0>()); 
-		if(fzm & 0x0008) WritePixel32(vm32, fza.u32[0] + 1, fs.extract32<1>());
-		if(fzm & 0x0020) WritePixel32(vm32, fza.u32[0] + 4, fs.extract32<2>()); 
-		if(fzm & 0x0080) WritePixel32(vm32, fza.u32[0] + 5, fs.extract32<3>());
-		break;
-	case 1: 
-		if(fzm & 0x0002) WritePixel24(vm32, fza.u32[0] + 0, fs.extract32<0>()); 
-		if(fzm & 0x0008) WritePixel24(vm32, fza.u32[0] + 1, fs.extract32<1>()); 
-		if(fzm & 0x0020) WritePixel24(vm32, fza.u32[0] + 4, fs.extract32<2>()); 
-		if(fzm & 0x0080) WritePixel24(vm32, fza.u32[0] + 5, fs.extract32<3>()); 
-		break;
-	case 2: 
-		if(fzm & 0x0002) WritePixel16(vm16, fza.u32[0] + 0, fs.extract16<0 * 2>()); 
-		if(fzm & 0x0008) WritePixel16(vm16, fza.u32[0] + 2, fs.extract16<1 * 2>()); 
-		if(fzm & 0x0020) WritePixel16(vm16, fza.u32[0] + 8, fs.extract16<2 * 2>()); 
-		if(fzm & 0x0080) WritePixel16(vm16, fza.u32[0] + 10, fs.extract16<3 * 2>()); 
-		break;
-	}
+	if(fzm & 0x0002) WritePixel(fpsm, &vm16[addr + 0], fs.extract32<0>()); 
+	if(fzm & 0x0008) WritePixel(fpsm, &vm16[addr + 2], fs.extract32<1>());
+	if(fzm & 0x0020) WritePixel(fpsm, &vm16[addr + 8], fs.extract32<2>()); 
+	if(fzm & 0x0080) WritePixel(fpsm, &vm16[addr + 10], fs.extract32<3>());
 }
 
-void GSDrawScanline::WriteZBufX(int zpsm, int ztst, const GSVector4i& z, const GSVector4i& zd, const GSVector4i& zm, const GSVector4i& fza, int fzm)
+void GSDrawScanline::WriteZBuf(int zpsm, int ztst, const GSVector4i& z, const GSVector4i& zd, const GSVector4i& zm, int addr, int fzm)
 {
 	if(ztst == 0) return;
 
-	DWORD* RESTRICT vm32 = (DWORD*)m_env.vm;
 	WORD* RESTRICT vm16 = (WORD*)m_env.vm;
 
 	GSVector4i zs = z;
 
 	if(ztst > 1)
 	{
-		zs = zs.blend8(zd, zm);
-
 		if(zpsm < 2)
 		{
-			if(fzm & 0x0a00) GSVector4i::storel(&vm32[fza.u32[2] + 0], zs); 
-			if(fzm & 0xa000) GSVector4i::storeh(&vm32[fza.u32[2] + 4], zs); 
+			zs = zs.blend8(zd, zm);
+
+			if(fzm & 0x0a00) GSVector4i::storel(&vm16[addr + 0], zs); 
+			if(fzm & 0xa000) GSVector4i::storeh(&vm16[addr + 8], zs); 
 
 			return;
 		}
 	}
 
-	switch(zpsm)
-	{
-	case 0: 
-		if(fzm & 0x0200) WritePixel32(vm32, fza.u32[2] + 0, zs.extract32<0>()); 
-		if(fzm & 0x0800) WritePixel32(vm32, fza.u32[2] + 1, zs.extract32<1>()); 
-		if(fzm & 0x2000) WritePixel32(vm32, fza.u32[2] + 4, zs.extract32<2>()); 
-		if(fzm & 0x8000) WritePixel32(vm32, fza.u32[2] + 5, zs.extract32<3>()); 
-		break;
-	case 1: 
-		if(fzm & 0x0200) WritePixel24(vm32, fza.u32[2] + 0, zs.extract32<0>()); 
-		if(fzm & 0x0800) WritePixel24(vm32, fza.u32[2] + 1, zs.extract32<1>()); 
-		if(fzm & 0x2000) WritePixel24(vm32, fza.u32[2] + 4, zs.extract32<2>()); 
-		if(fzm & 0x8000) WritePixel24(vm32, fza.u32[2] + 5, zs.extract32<3>()); 
-		break;
-	case 2: 
-		if(fzm & 0x0200) WritePixel16(vm16, fza.u32[2] + 0, zs.extract16<0 * 2>()); 
-		if(fzm & 0x0800) WritePixel16(vm16, fza.u32[2] + 2, zs.extract16<1 * 2>()); 
-		if(fzm & 0x2000) WritePixel16(vm16, fza.u32[2] + 8, zs.extract16<2 * 2>()); 
-		if(fzm & 0x8000) WritePixel16(vm16, fza.u32[2] + 10, zs.extract16<3 * 2>()); 
-		break;
-	}
+	if(fzm & 0x0200) WritePixel(zpsm, &vm16[addr + 0], zs.extract32<0>()); 
+	if(fzm & 0x0800) WritePixel(zpsm, &vm16[addr + 2], zs.extract32<1>());
+	if(fzm & 0x2000) WritePixel(zpsm, &vm16[addr + 8], zs.extract32<2>()); 
+	if(fzm & 0x8000) WritePixel(zpsm, &vm16[addr + 10], zs.extract32<3>());
 }
 
 //
@@ -2121,8 +2044,8 @@ void GSDrawScanline::DrawScanline(int top, int left, int right, const GSVertexSW
 
 	//
 
-	GSVector4i fza_base;
-	GSVector4i* fza_offset;
+	GSVector2i fza_base;
+	GSVector2i* fza_offset;
 
 	GSVector4 z, s, t, q;
 	GSVector4i f, rb, ga;
@@ -2170,14 +2093,15 @@ void GSDrawScanline::DrawScanline(int top, int left, int right, const GSVertexSW
 	{
 		do
 		{
-			GSVector4i fza = fza_base + *fza_offset;
+			int fa = fza_base.x + fza_offset->x;
+			int za = fza_base.y + fza_offset->y;
 			
 			GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::x00000001());
-			GSVector4i zd = GSVector4i::zero();
+			GSVector4i zd;
 
 			if(ztst > 1)
 			{
-				zd = ReadZBufX(zpsm, fza);
+				ReadPixel(zpsm, za, zd);
 
 				if(!TestZ(zpsm, ztst, zs, zd, test))
 				{
@@ -2206,11 +2130,11 @@ void GSDrawScanline::DrawScanline(int top, int left, int right, const GSVertexSW
 
 			Fog(m_env.sel.fge, f, c[0], c[1]);
 
-			GSVector4i fd = GSVector4i::zero();
+			GSVector4i fd;
 
 			if(m_env.sel.rfb)
 			{
-				fd = ReadFrameX(fpsm, fza);
+				ReadPixel(fpsm, fa, fd);
 
 				if(!TestDestAlpha(fpsm, m_env.sel.date, fd, test))
 				{
@@ -2223,7 +2147,7 @@ void GSDrawScanline::DrawScanline(int top, int left, int right, const GSVertexSW
 
 			int fzm = ~(fm == GSVector4i::xffffffff()).ps32(zm == GSVector4i::xffffffff()).mask();
 
-			WriteZBufX(zpsm, ztst, zs, zd, zm, fza, fzm);
+			WriteZBuf(zpsm, ztst, zs, zd, zm, za, fzm);
 
 			if(m_env.sel.abe != 255)
 			{
@@ -2271,7 +2195,7 @@ void GSDrawScanline::DrawScanline(int top, int left, int right, const GSVertexSW
 				c[1] = ga.mix16(c[1]);
 			}
 
-			WriteFrameX(fpsm, m_env.sel.rfb, c, fd, fm, fza, fzm);
+			WriteFrame(fpsm, m_env.sel.rfb, c, fd, fm, fa, fzm);
 		}
 		while(0);
 
@@ -2338,8 +2262,8 @@ void GSDrawScanline::DrawScanlineEx(int top, int left, int right, const GSVertex
 
 	//
 
-	GSVector4i fza_base;
-	GSVector4i* fza_offset;
+	GSVector2i fza_base;
+	GSVector2i* fza_offset;
 
 	GSVector4 z, s, t, q;
 	GSVector4i f, rb, ga;
@@ -2387,14 +2311,15 @@ void GSDrawScanline::DrawScanlineEx(int top, int left, int right, const GSVertex
 	{
 		do
 		{
-			GSVector4i fza = fza_base + *fza_offset;
-			
+			int fa = fza_base.x + fza_offset->x;
+			int za = fza_base.y + fza_offset->y;
+
 			GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::x00000001());
-			GSVector4i zd = GSVector4i::zero();
+			GSVector4i zd;
 
 			if(ztst > 1)
 			{
-				zd = ReadZBufX(zpsm, fza);
+				ReadPixel(zpsm, za, zd);
 
 				if(!TestZ(zpsm, ztst, zs, zd, test))
 				{
@@ -2423,11 +2348,11 @@ void GSDrawScanline::DrawScanlineEx(int top, int left, int right, const GSVertex
 
 			Fog(fge, f, c[0], c[1]);
 
-			GSVector4i fd = GSVector4i::zero();
+			GSVector4i fd;
 
 			if(rfb)
 			{
-				fd = ReadFrameX(fpsm, fza);
+				ReadPixel(fpsm, fa, fd);
 
 				if(!TestDestAlpha(fpsm, date, fd, test))
 				{
@@ -2440,7 +2365,7 @@ void GSDrawScanline::DrawScanlineEx(int top, int left, int right, const GSVertex
 
 			int fzm = ~(fm == GSVector4i::xffffffff()).ps32(zm == GSVector4i::xffffffff()).mask();
 
-			WriteZBufX(zpsm, ztst, zs, zd, zm, fza, fzm);
+			WriteZBuf(zpsm, ztst, zs, zd, zm, za, fzm);
 
 			if(abe != 255)
 			{
@@ -2507,7 +2432,7 @@ void GSDrawScanline::DrawScanlineEx(int top, int left, int right, const GSVertex
 				c[1] = ga.mix16(c[1]);
 			}
 
-			WriteFrameX(fpsm, rfb, c, fd, fm, fza, fzm);
+			WriteFrame(fpsm, rfb, c, fd, fm, fa, fzm);
 		}
 		while(0);
 

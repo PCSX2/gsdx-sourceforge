@@ -487,19 +487,19 @@ GSLocalMemory::Offset4* GSLocalMemory::GetOffset4(const GIFRegFRAME& FRAME, cons
 			pixelAddress fpa = m_psm[fpsm].pa;
 			pixelAddress zpa = m_psm[zpsm].pa;
 
+			int fs = m_psm[fpsm].bpp >> 5;
+			int zs = m_psm[zpsm].bpp >> 5;
+
 			for(int i = 0; i < 2048; i++)
 			{
-				o->row[i] = GSVector4i((int)fpa(0, i, fbp, bw), (int)zpa(0, i, zbp, bw)).xxyy();
+				o->row[i].x = (int)fpa(0, i, fbp, bw) << fs;
+				o->row[i].y = (int)zpa(0, i, zbp, bw) << zs;
 			}
 
 			for(int i = 0; i < 512; i++)
 			{
-				int f0 = m_psm[fpsm].rowOffset[0][i * 4 + 0];
-				int f2 = m_psm[fpsm].rowOffset[0][i * 4 + 2];
-				int z0 = m_psm[zpsm].rowOffset[0][i * 4 + 0];
-				int z2 = m_psm[zpsm].rowOffset[0][i * 4 + 2];
-
-				o->col[i] = GSVector4i(f0, f2, z0, z2);
+				o->col[i].x = m_psm[fpsm].rowOffset[0][i * 4] << fs;
+				o->col[i].y = m_psm[zpsm].rowOffset[0][i * 4] << zs;
 			}
 
 			m_o4map.SetAt(hash, o);

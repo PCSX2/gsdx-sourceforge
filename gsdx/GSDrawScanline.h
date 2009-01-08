@@ -75,8 +75,8 @@ __declspec(align(16)) struct GSScanlineEnvironment
 	GSVector4i* zbr;
 	int** fbc;
 	int** zbc;
-	GSVector4i* fzbr;
-	GSVector4i* fzbc;
+	GSVector2i* fzbr;
+	GSVector2i* fzbc;
 
 	GSVector4i fm, zm;
 	struct {GSVector4i min, max, mask;} t; // [u] x 4 [v] x 4
@@ -142,14 +142,10 @@ class GSDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 	__forceinline bool TestAlpha(DWORD atst, DWORD afail, const GSVector4i& ga, GSVector4i& fm, GSVector4i& zm, GSVector4i& test);
 	__forceinline bool TestDestAlpha(DWORD fpsm, DWORD date, const GSVector4i& d, GSVector4i& test);
 
-	__forceinline static void WritePixel32(DWORD* RESTRICT vm, DWORD addr, DWORD c);
-	__forceinline static void WritePixel24(DWORD* RESTRICT vm, DWORD addr, DWORD c);
-	__forceinline static void WritePixel16(WORD* RESTRICT vm, DWORD addr, DWORD c);
-	
-	__forceinline GSVector4i ReadFrameX(int psm, const GSVector4i& addr) const;
-	__forceinline GSVector4i ReadZBufX(int psm, const GSVector4i& addr) const;
-	__forceinline void WriteFrameX(int fpsm, int rfb, GSVector4i* c, const GSVector4i& fd, const GSVector4i& fm, const GSVector4i& fza, int fzm);
-	__forceinline void WriteZBufX(int zpsm, int ztst, const GSVector4i& z, const GSVector4i& zd, const GSVector4i& zm, const GSVector4i& fza, int fzm);
+	__forceinline void ReadPixel(int psm, int addr, GSVector4i& c) const;
+	__forceinline static void WritePixel(int psm, WORD* RESTRICT vm16, DWORD c);
+	__forceinline void WriteFrame(int fpsm, int rfb, GSVector4i* c, const GSVector4i& fd, const GSVector4i& fm, int addr, int fzm);
+	__forceinline void WriteZBuf(int zpsm, int ztst, const GSVector4i& z, const GSVector4i& zd, const GSVector4i& zm, int addr, int fzm);
 
 	void DrawSolidRect(const GSVector4i& r, const GSVertexSW& v);
 
