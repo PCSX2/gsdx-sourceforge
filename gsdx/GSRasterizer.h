@@ -23,6 +23,7 @@
 
 #include "GS.h"
 #include "GSVertexSW.h"
+#include "GSFunctionMap.h"
 
 // 
 #define FAST_DRAWSCANLINE
@@ -35,16 +36,6 @@ public:
 	const GSVertexSW* vertices;
 	int count;
 	const void* param;
-};
-
-struct GSRasterizerStats
-{
-	__int64 ticks;
-	int prims;
-	int pixels;
-
-	GSRasterizerStats() {Reset();}
-	void Reset() {ticks = 0; pixels = prims = 0;}
 };
 
 class IRasterizer
@@ -62,43 +53,19 @@ class IDrawScanline
 public:
 	typedef void (IDrawScanline::*DrawScanlinePtr)(int top, int left, int right, const GSVertexSW& v);
 	typedef void (IDrawScanline::*DrawSolidRectPtr)(const GSVector4i& r, const GSVertexSW& v);
+	typedef void (IDrawScanline::*SetupPrimPtr)(const GSVertexSW* vertices, const GSVertexSW& dscan);
 
 	struct Functions
 	{
 		DrawScanlinePtr sl;
 		DrawSolidRectPtr sr;
-	};
-
-	class FunctionMap
-	{
-		struct ActiveDrawScanlinePtr
-		{
-			UINT64 frame, frames;
-			__int64 ticks, pixels;
-			DrawScanlinePtr f;
-		};
-
-		CRBMap<DWORD, DrawScanlinePtr> m_map;
-		CRBMap<DWORD, ActiveDrawScanlinePtr*> m_map_active;
-		ActiveDrawScanlinePtr* m_active;
-
-	protected:
-		virtual DrawScanlinePtr GetDefaultFunction(DWORD sel) = 0;
-
-	public:
-		FunctionMap();
-		virtual ~FunctionMap();
-		void SetAt(DWORD sel, DrawScanlinePtr f);
-		DrawScanlinePtr Lookup(DWORD sel);
-		void UpdateStats(const GSRasterizerStats& stats, UINT64 frame);
-		void PrintStats();
+		SetupPrimPtr sp;
 	};
 
 	virtual ~IDrawScanline() {}
 
 	virtual void BeginDraw(const GSRasterizerData* data, Functions* dsf) = 0;
 	virtual void EndDraw(const GSRasterizerStats& stats) = 0;
-	virtual void SetupPrim(GS_PRIM_CLASS primclass, const GSVertexSW* vertices, const GSVertexSW& dscan) = 0;
 	virtual void PrintStats() = 0;
 };
 

@@ -164,20 +164,20 @@ protected:
 
 		switch(wms)
 		{
-		case 0:
+		case CLAMP_REPEAT:
 			v = wm[0];
 			if(v.x == 0 && v.z != w) v.z = w; // FIXME
 			vr.x = v.x;
 			vr.z = v.z;
 			break;
-		case 1:
-		case 2:
+		case CLAMP_CLAMP:
+		case CLAMP_REGION_CLAMP:
 			v = wm[wms];
 			if(v.x > v.z) v.x = v.z;
 			vr.x = v.x;
 			vr.z = v.z;
 			break;
-		case 3:
+		case CLAMP_REGION_REPEAT:
 			if(m_psrr) {vr.x = maxu; vr.z = vr.x + (minu + 1);}
 			//else {vr.x = 0; vr.z = w;}
 			break;
@@ -187,20 +187,20 @@ protected:
 
 		switch(wmt)
 		{
-		case 0:
+		case CLAMP_REPEAT:
 			v = wm[0];
 			if(v.y == 0 && v.w != h) v.w = h; // FIXME
 			vr.y = v.y;
 			vr.w = v.w;
 			break;
-		case 1:
-		case 2:
+		case CLAMP_CLAMP:
+		case CLAMP_REGION_CLAMP:
 			v = wm[wmt];
 			if(v.y > v.w) v.y = v.w;
 			vr.y = v.y;
 			vr.w = v.w;
 			break;
-		case 3:
+		case CLAMP_REGION_REPEAT:
 			if(m_psrr) {vr.y = maxv; vr.w = vr.y + (minv + 1);}
 			//else {r.y = 0; r.w = w;}
 			break;

@@ -85,19 +85,50 @@ class GPUDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 {
 	GPUScanlineEnvironment m_env;
 
-	DrawScanlinePtr m_ds[2048], m_dsf;
+	//
 
-	void Init();
+	class GPUDrawScanlineMap : public GSFunctionMap<DrawScanlinePtr>
+	{
+		DrawScanlinePtr m_default[256];
 
-	void DrawScanline(int top, int left, int right, const GSVertexSW& v);
+	public:
+		GPUDrawScanlineMap();
 
-	template<DWORD sel>
-	void DrawScanlineEx(int top, int left, int right, const GSVertexSW& v);
+		DrawScanlinePtr GetDefaultFunction(DWORD dw);
+	};
+	
+	GPUDrawScanlineMap m_ds;
+
+	//
+
+	class GPUSetupPrimMap : public GSFunctionMap<SetupPrimPtr>
+	{
+		SetupPrimPtr m_default[2][2][2];
+
+	public:
+		GPUSetupPrimMap();
+
+		SetupPrimPtr GetDefaultFunction(DWORD dw);
+	};
+	
+	GPUSetupPrimMap m_sp;
+
+	//
+
+	template<DWORD sprite, DWORD tme, DWORD iip>
+	void SetupPrim(const GSVertexSW* vertices, const GSVertexSW& dscan);
+
+	//
 
 	__forceinline void SampleTexture(DWORD ltf, DWORD tlu, DWORD twin, GSVector4i& test, const GSVector4i& s, const GSVector4i& t, GSVector4i* c);
 	__forceinline void ColorTFX(DWORD tfx, const GSVector4i& r, const GSVector4i& g, const GSVector4i& b, GSVector4i* c);
 	__forceinline void AlphaBlend(UINT32 abr, UINT32 tme, const GSVector4i& d, GSVector4i* c);
 	__forceinline void WriteFrame(WORD* RESTRICT fb, const GSVector4i& test, const GSVector4i* c, int pixels);
+
+	void DrawScanline(int top, int left, int right, const GSVertexSW& v);
+
+	template<DWORD sel>
+	void DrawScanlineEx(int top, int left, int right, const GSVertexSW& v);
 
 protected:
 	GPUState* m_state;
@@ -111,6 +142,5 @@ public:
 
 	void BeginDraw(const GSRasterizerData* data, Functions* f);
 	void EndDraw(const GSRasterizerStats& stats) {}
-	void SetupPrim(GS_PRIM_CLASS primclass, const GSVertexSW* vertices, const GSVertexSW& dscan);
 	void PrintStats() {}
 };
