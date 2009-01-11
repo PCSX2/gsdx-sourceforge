@@ -155,9 +155,6 @@ protected:
 
 		v.c = GSVector4((DWORD)m_v.RGBAQ.ai32[0]) * 128.0f;
 
-		m_vtrace.cmin = m_vtrace.cmin.minv(v.c);
-		m_vtrace.cmax = m_vtrace.cmax.maxv(v.c);
-		
 		if(PRIM->TME)
 		{
 			float q;
@@ -175,9 +172,6 @@ protected:
 			}
 
 			v.t = v.t.xyxy(GSVector4::load(q));
-
-			m_vtrace.tmin = m_vtrace.tmin.minv(v.t);
-			m_vtrace.tmax = m_vtrace.tmax.maxv(v.t);
 		}
 
 		m_vl.AddTail() = v;
@@ -185,72 +179,70 @@ protected:
 		__super::VertexKick(skip);
 	}
 
-	__forceinline int ScissorTest(const GSVector4& p0, const GSVector4& p1)
+	template<int primclass>
+	void DrawingKick(GSVertexSW* v, int& count)
 	{
+		GSVector4 p0, p1;
+
+		switch(primclass)
+		{
+		case GS_POINT_CLASS:
+			p0 = v[0].p;
+			p1 = v[0].p;
+			break;
+		case GS_LINE_CLASS:
+			p0 = v[0].p.maxv(v[1].p);
+			p1 = v[0].p.minv(v[1].p);
+			break;
+		case GS_TRIANGLE_CLASS:
+			p0 = v[0].p.maxv(v[1].p).maxv(v[2].p);
+			p1 = v[0].p.minv(v[1].p).minv(v[2].p);
+			break;
+		case GS_SPRITE_CLASS:
+			p0 = v[0].p.maxv(v[1].p);
+			p1 = v[0].p.minv(v[1].p);
+			break;
+		}
+
 		GSVector4 scissor = m_context->scissor.ex;
 
 		GSVector4 v0 = p0 < scissor;
 		GSVector4 v1 = p1 > scissor.zwxy();
 
-		return (v0 | v1).mask() & 3;
-	}
-
-	void DrawingKickPoint(GSVertexSW* v, int& count)
-	{
-		GSVector4 p0 = v[0].p;
-		GSVector4 p1 = v[0].p;
-
-		if(ScissorTest(p0, p1))
-		{
-			count = 0;
-			return;
-		}
-	}
-	
-	void DrawingKickLine(GSVertexSW* v, int& count)
-	{
-		GSVector4 p0 = v[0].p.maxv(v[1].p);
-		GSVector4 p1 = v[0].p.minv(v[1].p);
-
-		if(ScissorTest(p0, p1))
+		if((v0 | v1).mask() & 3)
 		{
 			count = 0;
 			return;
 		}
 
-		if(PRIM->IIP == 0)
+		switch(primclass)
 		{
-			v[0].c = v[1].c;
-		}
-	}
-
-	void DrawingKickTriangle(GSVertexSW* v, int& count)
-	{
-		GSVector4 p0 = v[0].p.maxv(v[1].p).maxv(v[2].p);
-		GSVector4 p1 = v[0].p.minv(v[1].p).minv(v[2].p);
-
-		if(ScissorTest(p0, p1))
-		{
-			count = 0;
-			return;
-		}
-
-		if(PRIM->IIP == 0)
-		{
-			v[0].c = v[2].c;
-			v[1].c = v[2].c;
-		}
-	}
-
-	void DrawingKickSprite(GSVertexSW* v, int& count)
-	{
-		GSVector4 p0 = v[0].p.maxv(v[1].p);
-		GSVector4 p1 = v[0].p.minv(v[1].p);
-
-		if(ScissorTest(p0, p1))
-		{
-			count = 0;
-			return;
+		case GS_POINT_CLASS:
+			m_vtrace.cmin = m_vtrace.cmin.minv(v[0].c);
+			m_vtrace.cmax = m_vtrace.cmax.maxv(v[0].c);
+			m_vtrace.tmin = m_vtrace.tmin.minv(v[0].t);
+			m_vtrace.tmax = m_vtrace.tmax.maxv(v[0].t);
+			break;
+		case GS_LINE_CLASS:
+			if(PRIM->IIP == 0) {v[0].c = v[1].c;}
+			m_vtrace.cmin = m_vtrace.cmin.minv(v[0].c).minv(v[1].c);
+			m_vtrace.cmax = m_vtrace.cmax.maxv(v[0].c).maxv(v[1].c);
+			m_vtrace.tmin = m_vtrace.tmin.minv(v[0].t).minv(v[1].t);
+			m_vtrace.tmax = m_vtrace.tmax.maxv(v[0].t).maxv(v[1].t);
+			break;
+		case GS_TRIANGLE_CLASS:
+			if(PRIM->IIP == 0) {v[0].c = v[2].c; v[1].c = v[2].c;}
+			m_vtrace.cmin = m_vtrace.cmin.minv(v[0].c).minv(v[1].c).minv(v[2].c);
+			m_vtrace.cmax = m_vtrace.cmax.maxv(v[0].c).maxv(v[1].c).maxv(v[2].c);
+			m_vtrace.tmin = m_vtrace.tmin.minv(v[0].t).minv(v[1].t).minv(v[2].t);
+			m_vtrace.tmax = m_vtrace.tmax.maxv(v[0].t).maxv(v[1].t).maxv(v[2].t);
+			break;
+		case GS_SPRITE_CLASS:
+			m_vtrace.cmin = m_vtrace.cmin.minv(v[1].c);
+			m_vtrace.cmax = m_vtrace.cmax.maxv(v[1].c);
+			m_vtrace.tmin = m_vtrace.tmin.minv(v[0].t).minv(v[1].t);
+			m_vtrace.tmax = m_vtrace.tmax.maxv(v[0].t).maxv(v[1].t);
+			break;
 		}
 	}
 
@@ -527,7 +519,7 @@ protected:
 
 					GSVertexSW* v = m_vertices;
 
-					GSVector4 half((float)0x8000, (float)0x8000, 0.0f, 0.0f);
+					GSVector4 half(0x8000, 0x8000, 0, 0);
 
 					for(int i = 0, j = m_count; i < j; i++)
 					{
@@ -535,58 +527,12 @@ protected:
 					}
 				}
 
+				CRect r;
+				
 				int w = 1 << context->TEX0.TW;
 				int h = 1 << context->TEX0.TH;
 
-				int wms = context->CLAMP.WMS;
-				int wmt = context->CLAMP.WMT;
-
-				int minu = (int)context->CLAMP.MINU;
-				int minv = (int)context->CLAMP.MINV;
-				int maxu = (int)context->CLAMP.MAXU;
-				int maxv = (int)context->CLAMP.MAXV;
-
-				CRect r = CRect(0, 0, w, h);
-
-				// TODO: use m_vtrace.tmin/tmax to narrow the needed texture area even more
-
-				switch(wms)
-				{
-				case CLAMP_REPEAT: // TODO
-					break;
-				case CLAMP_CLAMP: // TODO
-					break;
-				case CLAMP_REGION_REPEAT:
-					if(r.left < minu) r.left = minu;
-					if(r.right > maxu + 1) r.right = maxu + 1;
-					break;
-				case CLAMP_REGION_CLAMP:
-					r.left = maxu; 
-					r.right = r.left + (minu + 1);
-					break;
-				default: 
-					__assume(0);
-				}
-
-				switch(wmt)
-				{
-				case CLAMP_REPEAT: // TODO
-					break;
-				case CLAMP_CLAMP: // TODO
-					break;
-				case CLAMP_REGION_REPEAT:
-					if(r.top < minv) r.top = minv;
-					if(r.bottom > maxv + 1) r.bottom = maxv + 1;
-					break;
-				case CLAMP_REGION_CLAMP:
-					r.top = maxv; 
-					r.bottom = r.top + (minv + 1);
-					break;
-				default:
-					__assume(0);
-				}
-
-				r &= CRect(0, 0, w, h);
+				MinMaxUV(w, h, r, p.sel.fst);
 
 				const GSTextureCacheSW::GSTexture* t = m_tc->Lookup(context->TEX0, env.TEXA, &r);
 
@@ -708,8 +654,10 @@ __int64 start = __rdtsc();
 /*
 __int64 diff = __rdtsc() - start;
 s_total += diff;
-if(stats.pixels >= 50000)
-fprintf(s_fp, "[%I64d, %d, %d, %d] %08x, diff = %I64d /prim = %I64d /pixel = %I64d \n", frame, PRIM->PRIM, stats.prims, stats.pixels, p.sel, diff, diff / stats.prims, stats.pixels > 0 ? diff / stats.pixels : 0);
+if(PRIM->TME)
+if(stats.pixels >= 50000 || diff >= 1000000)
+fprintf(s_fp, "[%I64d, %d, %d, %d, %d] %08x, diff = %I64d /prim = %I64d /pixel = %I64d\n", 
+		frame, PRIM->PRIM, stats.prims, stats.pixels, s_n, p.sel, diff, diff / stats.prims, stats.pixels > 0 ? diff / stats.pixels : 0);
 */
 		// TODO
 
@@ -770,6 +718,96 @@ fprintf(s_fp, "[%I64d, %d, %d, %d] %08x, diff = %I64d /prim = %I64d /pixel = %I6
 		m_tc->InvalidateVideoMem(BITBLTBUF, r);
 	}
 
+	void MinMaxUV(int w, int h, CRect& r, bool fst)
+	{
+		const GSDrawingContext* context = m_context;
+
+		int wms = context->CLAMP.WMS;
+		int wmt = context->CLAMP.WMT;
+
+		int minu = (int)context->CLAMP.MINU;
+		int minv = (int)context->CLAMP.MINV;
+		int maxu = (int)context->CLAMP.MAXU;
+		int maxv = (int)context->CLAMP.MAXV;
+
+		GSVector4i vr(0, 0, w, h);
+
+		switch(wms)
+		{
+		case CLAMP_REPEAT:
+			break;
+		case CLAMP_CLAMP:
+			break;
+		case CLAMP_REGION_CLAMP:
+			if(vr.x < minu) vr.x = minu;
+			if(vr.z > maxu + 1) vr.z = maxu + 1;
+			break;
+		case CLAMP_REGION_REPEAT:
+			vr.x = maxu; 
+			vr.z = vr.x + (minu + 1);
+			break;
+		default: 
+			__assume(0);
+		}
+
+		switch(wmt)
+		{
+		case CLAMP_REPEAT:
+			break;
+		case CLAMP_CLAMP:
+			break;
+		case CLAMP_REGION_CLAMP:
+			if(vr.y < minv) vr.y = minv;
+			if(vr.w > maxv + 1) vr.w = maxv + 1;
+			break;
+		case CLAMP_REGION_REPEAT:
+			vr.y = maxv; 
+			vr.w = vr.y + (minv + 1);
+			break;
+		default:
+			__assume(0);
+		}
+
+		if(fst)
+		{
+			GSVector4i v = GSVector4i(m_vtrace.tmin.xyxy(m_vtrace.tmax) / (m_vtrace.tmin.zzzz() * 0x10000));
+
+			switch(wms)
+			{
+			case CLAMP_REPEAT: // TODO
+				break;
+			case CLAMP_CLAMP:
+			case CLAMP_REGION_CLAMP:
+				if(vr.x < v.x) vr.x = v.x;
+				if(vr.z > v.z + 1) vr.z = v.z + 1;
+				break;
+			case CLAMP_REGION_REPEAT: // TODO
+				break;
+			default:
+				__assume(0);
+			}
+
+			switch(wmt)
+			{
+			case CLAMP_REPEAT: // TODO
+				break;
+			case CLAMP_CLAMP:
+			case CLAMP_REGION_CLAMP:
+				if(vr.y < v.y) vr.y = v.y;
+				if(vr.w > v.w + 1) vr.w = v.w + 1;
+				break;
+			case CLAMP_REGION_REPEAT: // TODO
+				break;
+			default:
+				__assume(0);
+			}
+		}
+
+		r = vr;
+
+		r &= CRect(0, 0, w, h);
+	}
+
 public:
 	GSRendererSW(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs, int threads)
 		: GSRendererT(base, mt, irq, nloophack, rs)
@@ -781,13 +819,13 @@ public:
 
 		m_tc = new GSTextureCacheSW(this);
 
-		m_fpDrawingKickHandlers[GS_POINTLIST] = (DrawingKickHandler)&GSRendererSW::DrawingKickPoint;
-		m_fpDrawingKickHandlers[GS_LINELIST] = (DrawingKickHandler)&GSRendererSW::DrawingKickLine;
-		m_fpDrawingKickHandlers[GS_LINESTRIP] = (DrawingKickHandler)&GSRendererSW::DrawingKickLine;
-		m_fpDrawingKickHandlers[GS_TRIANGLELIST] = (DrawingKickHandler)&GSRendererSW::DrawingKickTriangle;
-		m_fpDrawingKickHandlers[GS_TRIANGLESTRIP] = (DrawingKickHandler)&GSRendererSW::DrawingKickTriangle;
-		m_fpDrawingKickHandlers[GS_TRIANGLEFAN] = (DrawingKickHandler)&GSRendererSW::DrawingKickTriangle;
-		m_fpDrawingKickHandlers[GS_SPRITE] = (DrawingKickHandler)&GSRendererSW::DrawingKickSprite;
+		m_fpDrawingKickHandlers[GS_POINTLIST] = (DrawingKickHandler)&GSRendererSW::DrawingKick<GS_POINT_CLASS>;
+		m_fpDrawingKickHandlers[GS_LINELIST] = (DrawingKickHandler)&GSRendererSW::DrawingKick<GS_LINE_CLASS>;
+		m_fpDrawingKickHandlers[GS_LINESTRIP] = (DrawingKickHandler)&GSRendererSW::DrawingKick<GS_LINE_CLASS>;
+		m_fpDrawingKickHandlers[GS_TRIANGLELIST] = (DrawingKickHandler)&GSRendererSW::DrawingKick<GS_TRIANGLE_CLASS>;
+		m_fpDrawingKickHandlers[GS_TRIANGLESTRIP] = (DrawingKickHandler)&GSRendererSW::DrawingKick<GS_TRIANGLE_CLASS>;
+		m_fpDrawingKickHandlers[GS_TRIANGLEFAN] = (DrawingKickHandler)&GSRendererSW::DrawingKick<GS_TRIANGLE_CLASS>;
+		m_fpDrawingKickHandlers[GS_SPRITE] = (DrawingKickHandler)&GSRendererSW::DrawingKick<GS_SPRITE_CLASS>;
 	}
 
 	virtual ~GSRendererSW()

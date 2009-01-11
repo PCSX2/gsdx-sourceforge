@@ -1188,6 +1188,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\GSFunctionMap.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\GSLocalMemory.cpp"
 				>
 				<FileConfiguration
@@ -1663,6 +1667,10 @@
 			</File>
 			<File
 				RelativePath=".\GSdx.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GSFunctionMap.h"
 				>
 			</File>
 			<File

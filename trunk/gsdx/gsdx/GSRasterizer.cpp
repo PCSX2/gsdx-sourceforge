@@ -38,6 +38,7 @@ void GSRasterizer::Draw(const GSRasterizerData* data)
 {
 	m_dsf.sl = NULL;
 	m_dsf.sr = NULL;
+	m_dsf.sp = NULL;
 
 	m_ds->BeginDraw(data, &m_dsf);
 
@@ -94,7 +95,7 @@ void GSRasterizer::DrawPoint(const GSVertexSW* v, const GSVector4i& scissor)
 	{
 		if((p.y % m_threads) == m_id) 
 		{
-			m_ds->SetupPrim(GS_POINT_CLASS, v, *v);
+			(m_ds->*m_dsf.sp)(v, *v);
 
 			(m_ds->*m_dsf.sl)(p.y, p.x, p.x + 1, *v);
 
@@ -124,19 +125,21 @@ void GSRasterizer::DrawLine(const GSVertexSW* v, const GSVector4i& scissor)
 			l.t = v[0].t.blend8(v[1].t, mask);
 			l.c = v[0].c.blend8(v[1].c, mask);
 
-			GSVector4 r, dr;
+			GSVector4 r;
 
 			r = v[1].p.blend8(v[0].p, mask);
-
-			GSVertexSW dscan = dv / dv.p.xxxx();
 
 			GSVector4i p(l.p);
 
 			if(scissor.y <= p.y && p.y < scissor.w)
 			{
-				m_ds->SetupPrim(GS_LINE_CLASS, v, dscan);
+				GSVertexSW dscan = dv / dv.p.xxxx();
 
-				DrawTriangleSection(p.y, p.y + 1, l, dl, r, dr, dscan, scissor);
+				(m_ds->*m_dsf.sp)(v, dscan);
+
+				l.p = l.p.upl(r).xyzw(l.p); // r.x => l.y
+
+				DrawTriangleSection(p.y, p.y + 1, l, dl, dscan, scissor);
 			}
 		}
 
@@ -250,7 +253,7 @@ void GSRasterizer::DrawTriangleTop(GSVertexSW* v, const GSVector4i& scissor)
 
 	if(py > 0) l += dl * py;
 
-	m_ds->SetupPrim(GS_TRIANGLE_CLASS, v, dscan);
+	(m_ds->*m_dsf.sp)(v, dscan);
 
 	DrawTriangleSection(top, bottom, l, dl, dscan, scissor);
 }
@@ -297,7 +300,7 @@ void GSRasterizer::DrawTriangleBottom(GSVertexSW* v, const GSVector4i& scissor)
 
 	if(py > 0) l += dl * py;
 
-	m_ds->SetupPrim(GS_TRIANGLE_CLASS, v, dscan);
+	(m_ds->*m_dsf.sp)(v, dscan);
 
 	DrawTriangleSection(top, bottom, l, dl, dscan, scissor);
 }
@@ -319,7 +322,7 @@ void GSRasterizer::DrawTriangleTopBottom(GSVertexSW* v, const GSVector4i& scisso
 
 	GSVertexSW dscan = longest * longest.p.xxxx().rcp();
 
-	m_ds->SetupPrim(GS_TRIANGLE_CLASS, v, dscan);
+	(m_ds->*m_dsf.sp)(v, dscan);
 
 	GSVertexSW& l = v[0];
 	GSVector4 r = v[0].p;
@@ -564,7 +567,7 @@ void GSRasterizer::DrawSprite(const GSVertexSW* vertices, const GSVector4i& scis
 	if(scan.p.y < (float)top) scan.t += dedge.t * ((float)top - scan.p.y);
 	if(scan.p.x < (float)left) scan.t += dscan.t * ((float)left - scan.p.x);
 
-	m_ds->SetupPrim(GS_SPRITE_CLASS, v, dscan);
+	(m_ds->*m_dsf.sp)(v, dscan);
 
 	for(; top < bottom; top++, scan.t += dedge.t)
 	{
@@ -719,138 +722,5 @@ void GSRasterizerList::PrintStats()
 	if(!IsEmpty())
 	{
 		GetHead()->PrintStats();
-	}
-}
-
-//
-
-IDrawScanline::FunctionMap::FunctionMap() 
-	: m_active(NULL) 
-{
-}
-
-IDrawScanline::FunctionMap::~FunctionMap()
-{
-	POSITION pos = m_map_active.GetHeadPosition();
-
-	while(pos)
-	{
-		delete m_map_active.GetNextValue(pos);
-	}
-
-	m_map_active.RemoveAll();
-}
-
-void IDrawScanline::FunctionMap::SetAt(DWORD sel, DrawScanlinePtr f)
-{
-	m_map.SetAt(sel, f);
-}
-
-IDrawScanline::DrawScanlinePtr IDrawScanline::FunctionMap::Lookup(DWORD sel)
-{
-	m_active = NULL;
-
-	if(!m_map_active.Lookup(sel, m_active))
-	{
-		CRBMap<DWORD, DrawScanlinePtr>::CPair* pair = m_map.Lookup(sel);
-
-		ActiveDrawScanlinePtr* p = new ActiveDrawScanlinePtr();
-
-		memset(p, 0, sizeof(*p));
-
-		p->frame = (UINT64)-1;
-
-		p->f = pair ? pair->m_value : GetDefaultFunction(sel);
-
-		m_map_active.SetAt(sel, p);
-
-		m_active = p;
-	}
-
-	return m_active->f;
-}
-
-void IDrawScanline::FunctionMap::UpdateStats(const GSRasterizerStats& stats, UINT64 frame)
-{
-	if(m_active)
-	{
-		if(m_active->frame != frame)
-		{
-			m_active->frame = frame;
-			m_active->frames++;
-		}
-
-		m_active->pixels += stats.pixels;
-		m_active->ticks += stats.ticks;
-	}
-}
-
-void IDrawScanline::FunctionMap::PrintStats()
-{
-	if(FILE* fp = fopen("c:\\1.txt", "w"))
-	{
-		POSITION pos = m_map_active.GetHeadPosition();
-
-		while(pos)
-		{
-			DWORD sel;
-			ActiveDrawScanlinePtr* p;
-			
-			m_map_active.GetNextAssoc(pos, sel, p);
-
-			if(m_map.Lookup(sel))
-			{
-				continue;
-			}
-
-			if(p->frames > 30)
-			{
-				int tpf = (int)((p->ticks / p->frames) * 10000 / (3000000000 / 60)); // 3 GHz, 60 fps
-
-				if(tpf >= 500)
-				{
-					_ftprintf(fp, _T("InitDS_Sel(0x%08x); // %6.2f%%\n"), sel, (float)tpf / 100);
-				}
-			}
-		}
-
-		fclose(fp);
-	}
-
-	{
-		__int64 ttpf = 0;
-
-		POSITION pos = m_map_active.GetHeadPosition();
-
-		while(pos)
-		{
-			ActiveDrawScanlinePtr* p = m_map_active.GetNextValue(pos);
-			
-			ttpf += p->ticks / p->frames;
-		}
-
-		pos = m_map_active.GetHeadPosition();
-
-		while(pos)
-		{
-			DWORD sel;
-			ActiveDrawScanlinePtr* p;
-
-			m_map_active.GetNextAssoc(pos, sel, p);
-
-			if(p->frames > 0)
-			{
-				__int64 tpp = p->pixels > 0 ? p->ticks / p->pixels : 0;
-				__int64 tpf = p->frames > 0 ? p->ticks / p->frames : 0;
-				__int64 ppf = p->frames > 0 ? p->pixels / p->frames : 0;
-
-				printf("[%08x]%c %6.2f%% | %5.2f%% | f %4I64d | p %10I64d | tpp %4I64d | tpf %9I64d | ppf %7I64d\n", 
-					sel, !m_map.Lookup(sel) ? '*' : ' ',
-					(float)(tpf * 10000 / 50000000) / 100, 
-					(float)(tpf * 10000 / ttpf) / 100, 
-					p->frames, p->pixels, 
-					tpp, tpf, ppf);
-			}
-		}
 	}
 }

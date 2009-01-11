@@ -208,13 +208,13 @@ public:
 
 		if((i & 1) == 0)
 		{
-			v2 = v2.yxwzl().yxwzh();
-			v3 = v3.yxwzl().yxwzh();
+			v2 = v2.yxwzlh();
+			v3 = v3.yxwzlh();
 		}
 		else
 		{
-			v0 = v0.yxwzl().yxwzh();
-			v1 = v1.yxwzl().yxwzh();
+			v0 = v0.yxwzlh();
+			v1 = v1.yxwzlh();
 		}
 
 		GSVector4i::sw4(v0, v2, v1, v3);
@@ -644,13 +644,13 @@ public:
 
 		if((i & 1) == 0)
 		{
-			v2 = v2.yxwzl().yxwzh();
-			v3 = v3.yxwzl().yxwzh();
+			v2 = v2.yxwzlh();
+			v3 = v3.yxwzlh();
 		}
 		else
 		{
-			v0 = v0.yxwzl().yxwzh();
-			v1 = v1.yxwzl().yxwzh();
+			v0 = v0.yxwzlh();
+			v1 = v1.yxwzlh();
 		}
 
 		GSVector4i::store<aligned>(&dst[dstpitch * 0], v0);

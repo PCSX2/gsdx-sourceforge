@@ -111,8 +111,7 @@ bool GSClut::WriteTest(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)
 	default: __assume(0);
 	}
 
-	// FIXME: return m_write.IsDirty(TEX0, TEXCLUT);
-	return m_write.dirty || !(GSVector4i::load<true>(&m_write) == GSVector4i::load(&TEX0, &TEXCLUT)).alltrue();
+	return m_write.IsDirty(TEX0, TEXCLUT);
 }
 
 void GSClut::Write(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)

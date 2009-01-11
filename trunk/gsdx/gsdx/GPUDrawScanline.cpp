@@ -26,14 +26,11 @@ GPUDrawScanline::GPUDrawScanline(GPUState* state, int id)
 	: m_state(state)
 	, m_id(id)
 {
-	Init();
 }
 
 GPUDrawScanline::~GPUDrawScanline()
 {
 }
-
-// IDrawScanline
 
 void GPUDrawScanline::BeginDraw(const GSRasterizerData* data, Functions* f)
 {
@@ -71,33 +68,41 @@ void GPUDrawScanline::BeginDraw(const GSRasterizerData* data, Functions* f)
 	m_env.a = GSVector4i(env.PRIM.ABE ? 0xffffffff : 0);
 	m_env.md = GSVector4i(env.STATUS.MD ? 0x80008000 : 0);
 
-	f->sl = m_ds[m_env.sel];
+	f->sl = m_ds.Lookup(m_env.sel);
+
 	f->sr = NULL; // TODO
+	
+	DWORD sel = 0;
+
+	sel |= (data->primclass == GS_SPRITE_CLASS ? 1 : 0) << 0;
+	sel |= m_env.sel.tme << 1;
+	sel |= m_env.sel.iip << 2;
+
+	f->sp = m_sp.Lookup(sel);
 }
 
-void GPUDrawScanline::SetupPrim(GS_PRIM_CLASS primclass, const GSVertexSW* vertices, const GSVertexSW& dscan)
+template<DWORD sprite, DWORD tme, DWORD iip>
+void GPUDrawScanline::SetupPrim(const GSVertexSW* vertices, const GSVertexSW& dscan)
 {
 	if(m_env.sel.tme && !m_env.sel.twin)
 	{
-		GSVector4i t;
-
-		switch(primclass)
+		if(sprite)
 		{
-		case GS_SPRITE_CLASS:
+			GSVector4i t;
+
 			t = (GSVector4i(vertices[1].t) >> 8) - GSVector4i::x00000001();
 			t = t.ps32(t);
 			t = t.upl16(t);
+
 			m_env.u[2] = t.xxxx();
 			m_env.v[2] = t.yyyy();
-			break;
-		default:
+		}
+		else
+		{
 			m_env.u[2] = GSVector4i::x00ff();
 			m_env.v[2] = GSVector4i::x00ff();
-			break;
 		}
 	}
-
-	// we could use integers here but it's more accurate to multiply a float than a 8.8 fixed point number
 
 	GSVector4 ps0123 = GSVector4::ps0123();
 	GSVector4 ps4567 = GSVector4::ps4567();
@@ -107,17 +112,23 @@ void GPUDrawScanline::SetupPrim(GS_PRIM_CLASS primclass, const GSVertexSW* verti
 
 	GSVector4i dtc8 = GSVector4i(dt * 8.0f).ps32(GSVector4i(dc * 8.0f));
 
-	m_env.ds = GSVector4i(dt.xxxx() * ps0123).ps32(GSVector4i(dt.xxxx() * ps4567));
-	m_env.dt = GSVector4i(dt.yyyy() * ps0123).ps32(GSVector4i(dt.yyyy() * ps4567));
-	m_env.dst8 = dtc8.upl16(dtc8);
+	if(tme)
+	{
+		m_env.dst8 = dtc8.upl16(dtc8);
 
-	m_env.dr = GSVector4i(dc.xxxx() * ps0123).ps32(GSVector4i(dc.xxxx() * ps4567));
-	m_env.dg = GSVector4i(dc.yyyy() * ps0123).ps32(GSVector4i(dc.yyyy() * ps4567));
-	m_env.db = GSVector4i(dc.zzzz() * ps0123).ps32(GSVector4i(dc.zzzz() * ps4567));
-	m_env.dc8 = dtc8.uph16(dtc8);
+		m_env.ds = GSVector4i(dt.xxxx() * ps0123).ps32(GSVector4i(dt.xxxx() * ps4567));
+		m_env.dt = GSVector4i(dt.yyyy() * ps0123).ps32(GSVector4i(dt.yyyy() * ps4567));
+	}
+
+	if(iip)
+	{
+		m_env.dc8 = dtc8.uph16(dtc8);
+
+		m_env.dr = GSVector4i(dc.xxxx() * ps0123).ps32(GSVector4i(dc.xxxx() * ps4567));
+		m_env.dg = GSVector4i(dc.yyyy() * ps0123).ps32(GSVector4i(dc.yyyy() * ps4567));
+		m_env.db = GSVector4i(dc.zzzz() * ps0123).ps32(GSVector4i(dc.zzzz() * ps4567));
+	}
 }
-
-
 void GPUDrawScanline::SampleTexture(DWORD ltf, DWORD tlu, DWORD twin, GSVector4i& test, const GSVector4i& s, const GSVector4i& t, GSVector4i* c)
 {
 	const void* RESTRICT tex = m_env.tex;
@@ -348,275 +359,6 @@ void GPUDrawScanline::WriteFrame(WORD* RESTRICT fb, const GSVector4i& test, cons
 
 //
 
-void GPUDrawScanline::Init()
-{
-	for(int i = 0; i < countof(m_ds); i++)
-	{
-		m_ds[i] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanline;
-	}
-
-	#ifdef FAST_DRAWSCANLINE
-
-	m_ds[0x00] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x00>;
-	m_ds[0x01] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x01>;
-	m_ds[0x02] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x02>;
-	m_ds[0x03] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x03>;
-	m_ds[0x04] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x04>;
-	m_ds[0x05] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x05>;
-	m_ds[0x06] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x06>;
-	m_ds[0x07] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x07>;
-	m_ds[0x08] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x08>;
-	m_ds[0x09] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x09>;
-	m_ds[0x0a] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x0a>;
-	m_ds[0x0b] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x0b>;
-	m_ds[0x0c] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x0c>;
-	m_ds[0x0d] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x0d>;
-	m_ds[0x0e] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x0e>;
-	m_ds[0x0f] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x0f>;
-	m_ds[0x10] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x10>;
-	m_ds[0x11] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x11>;
-	m_ds[0x12] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x12>;
-	m_ds[0x13] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x13>;
-	m_ds[0x14] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x14>;
-	m_ds[0x15] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x15>;
-	m_ds[0x16] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x16>;
-	m_ds[0x17] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x17>;
-	m_ds[0x18] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x18>;
-	m_ds[0x19] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x19>;
-	m_ds[0x1a] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x1a>;
-	m_ds[0x1b] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x1b>;
-	m_ds[0x1c] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x1c>;
-	m_ds[0x1d] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x1d>;
-	m_ds[0x1e] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x1e>;
-	m_ds[0x1f] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x1f>;
-	m_ds[0x20] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x20>;
-	m_ds[0x21] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x21>;
-	m_ds[0x22] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x22>;
-	m_ds[0x23] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x23>;
-	m_ds[0x24] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x24>;
-	m_ds[0x25] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x25>;
-	m_ds[0x26] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x26>;
-	m_ds[0x27] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x27>;
-	m_ds[0x28] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x28>;
-	m_ds[0x29] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x29>;
-	m_ds[0x2a] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x2a>;
-	m_ds[0x2b] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x2b>;
-	m_ds[0x2c] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x2c>;
-	m_ds[0x2d] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x2d>;
-	m_ds[0x2e] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x2e>;
-	m_ds[0x2f] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x2f>;
-	m_ds[0x30] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x30>;
-	m_ds[0x31] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x31>;
-	m_ds[0x32] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x32>;
-	m_ds[0x33] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x33>;
-	m_ds[0x34] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x34>;
-	m_ds[0x35] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x35>;
-	m_ds[0x36] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x36>;
-	m_ds[0x37] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x37>;
-	m_ds[0x38] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x38>;
-	m_ds[0x39] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x39>;
-	m_ds[0x3a] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x3a>;
-	m_ds[0x3b] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x3b>;
-	m_ds[0x3c] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x3c>;
-	m_ds[0x3d] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x3d>;
-	m_ds[0x3e] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x3e>;
-	m_ds[0x3f] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x3f>;
-	m_ds[0x40] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x40>;
-	m_ds[0x41] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x41>;
-	m_ds[0x42] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x42>;
-	m_ds[0x43] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x43>;
-	m_ds[0x44] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x44>;
-	m_ds[0x45] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x45>;
-	m_ds[0x46] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x46>;
-	m_ds[0x47] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x47>;
-	m_ds[0x48] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x48>;
-	m_ds[0x49] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x49>;
-	m_ds[0x4a] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x4a>;
-	m_ds[0x4b] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x4b>;
-	m_ds[0x4c] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x4c>;
-	m_ds[0x4d] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x4d>;
-	m_ds[0x4e] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x4e>;
-	m_ds[0x4f] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x4f>;
-	m_ds[0x50] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x50>;
-	m_ds[0x51] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x51>;
-	m_ds[0x52] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x52>;
-	m_ds[0x53] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x53>;
-	m_ds[0x54] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x54>;
-	m_ds[0x55] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x55>;
-	m_ds[0x56] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x56>;
-	m_ds[0x57] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x57>;
-	m_ds[0x58] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x58>;
-	m_ds[0x59] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x59>;
-	m_ds[0x5a] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x5a>;
-	m_ds[0x5b] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x5b>;
-	m_ds[0x5c] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x5c>;
-	m_ds[0x5d] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x5d>;
-	m_ds[0x5e] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x5e>;
-	m_ds[0x5f] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x5f>;
-	m_ds[0x60] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x60>;
-	m_ds[0x61] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x61>;
-	m_ds[0x62] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x62>;
-	m_ds[0x63] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x63>;
-	m_ds[0x64] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x64>;
-	m_ds[0x65] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x65>;
-	m_ds[0x66] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x66>;
-	m_ds[0x67] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x67>;
-	m_ds[0x68] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x68>;
-	m_ds[0x69] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x69>;
-	m_ds[0x6a] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x6a>;
-	m_ds[0x6b] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x6b>;
-	m_ds[0x6c] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x6c>;
-	m_ds[0x6d] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x6d>;
-	m_ds[0x6e] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x6e>;
-	m_ds[0x6f] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x6f>;
-	m_ds[0x70] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x70>;
-	m_ds[0x71] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x71>;
-	m_ds[0x72] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x72>;
-	m_ds[0x73] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x73>;
-	m_ds[0x74] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x74>;
-	m_ds[0x75] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x75>;
-	m_ds[0x76] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x76>;
-	m_ds[0x77] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x77>;
-	m_ds[0x78] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x78>;
-	m_ds[0x79] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x79>;
-	m_ds[0x7a] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x7a>;
-	m_ds[0x7b] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x7b>;
-	m_ds[0x7c] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x7c>;
-	m_ds[0x7d] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x7d>;
-	m_ds[0x7e] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x7e>;
-	m_ds[0x7f] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x7f>;
-	m_ds[0x80] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x80>;
-	m_ds[0x81] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x81>;
-	m_ds[0x82] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x82>;
-	m_ds[0x83] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x83>;
-	m_ds[0x84] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x84>;
-	m_ds[0x85] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x85>;
-	m_ds[0x86] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x86>;
-	m_ds[0x87] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x87>;
-	m_ds[0x88] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x88>;
-	m_ds[0x89] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x89>;
-	m_ds[0x8a] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x8a>;
-	m_ds[0x8b] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x8b>;
-	m_ds[0x8c] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x8c>;
-	m_ds[0x8d] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x8d>;
-	m_ds[0x8e] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x8e>;
-	m_ds[0x8f] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x8f>;
-	m_ds[0x90] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x90>;
-	m_ds[0x91] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x91>;
-	m_ds[0x92] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x92>;
-	m_ds[0x93] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x93>;
-	m_ds[0x94] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x94>;
-	m_ds[0x95] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x95>;
-	m_ds[0x96] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x96>;
-	m_ds[0x97] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x97>;
-	m_ds[0x98] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x98>;
-	m_ds[0x99] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x99>;
-	m_ds[0x9a] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x9a>;
-	m_ds[0x9b] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x9b>;
-	m_ds[0x9c] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x9c>;
-	m_ds[0x9d] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x9d>;
-	m_ds[0x9e] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x9e>;
-	m_ds[0x9f] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x9f>;
-	m_ds[0xa0] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xa0>;
-	m_ds[0xa1] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xa1>;
-	m_ds[0xa2] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xa2>;
-	m_ds[0xa3] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xa3>;
-	m_ds[0xa4] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xa4>;
-	m_ds[0xa5] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xa5>;
-	m_ds[0xa6] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xa6>;
-	m_ds[0xa7] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xa7>;
-	m_ds[0xa8] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xa8>;
-	m_ds[0xa9] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xa9>;
-	m_ds[0xaa] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xaa>;
-	m_ds[0xab] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xab>;
-	m_ds[0xac] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xac>;
-	m_ds[0xad] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xad>;
-	m_ds[0xae] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xae>;
-	m_ds[0xaf] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xaf>;
-	m_ds[0xb0] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xb0>;
-	m_ds[0xb1] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xb1>;
-	m_ds[0xb2] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xb2>;
-	m_ds[0xb3] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xb3>;
-	m_ds[0xb4] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xb4>;
-	m_ds[0xb5] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xb5>;
-	m_ds[0xb6] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xb6>;
-	m_ds[0xb7] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xb7>;
-	m_ds[0xb8] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xb8>;
-	m_ds[0xb9] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xb9>;
-	m_ds[0xba] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xba>;
-	m_ds[0xbb] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xbb>;
-	m_ds[0xbc] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xbc>;
-	m_ds[0xbd] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xbd>;
-	m_ds[0xbe] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xbe>;
-	m_ds[0xbf] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xbf>;
-	m_ds[0xc0] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xc0>;
-	m_ds[0xc1] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xc1>;
-	m_ds[0xc2] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xc2>;
-	m_ds[0xc3] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xc3>;
-	m_ds[0xc4] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xc4>;
-	m_ds[0xc5] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xc5>;
-	m_ds[0xc6] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xc6>;
-	m_ds[0xc7] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xc7>;
-	m_ds[0xc8] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xc8>;
-	m_ds[0xc9] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xc9>;
-	m_ds[0xca] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xca>;
-	m_ds[0xcb] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xcb>;
-	m_ds[0xcc] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xcc>;
-	m_ds[0xcd] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xcd>;
-	m_ds[0xce] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xce>;
-	m_ds[0xcf] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xcf>;
-	m_ds[0xd0] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xd0>;
-	m_ds[0xd1] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xd1>;
-	m_ds[0xd2] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xd2>;
-	m_ds[0xd3] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xd3>;
-	m_ds[0xd4] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xd4>;
-	m_ds[0xd5] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xd5>;
-	m_ds[0xd6] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xd6>;
-	m_ds[0xd7] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xd7>;
-	m_ds[0xd8] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xd8>;
-	m_ds[0xd9] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xd9>;
-	m_ds[0xda] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xda>;
-	m_ds[0xdb] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xdb>;
-	m_ds[0xdc] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xdc>;
-	m_ds[0xdd] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xdd>;
-	m_ds[0xde] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xde>;
-	m_ds[0xdf] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xdf>;
-	m_ds[0xe0] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xe0>;
-	m_ds[0xe1] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xe1>;
-	m_ds[0xe2] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xe2>;
-	m_ds[0xe3] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xe3>;
-	m_ds[0xe4] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xe4>;
-	m_ds[0xe5] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xe5>;
-	m_ds[0xe6] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xe6>;
-	m_ds[0xe7] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xe7>;
-	m_ds[0xe8] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xe8>;
-	m_ds[0xe9] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xe9>;
-	m_ds[0xea] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xea>;
-	m_ds[0xeb] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xeb>;
-	m_ds[0xec] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xec>;
-	m_ds[0xed] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xed>;
-	m_ds[0xee] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xee>;
-	m_ds[0xef] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xef>;
-	m_ds[0xf0] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xf0>;
-	m_ds[0xf1] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xf1>;
-	m_ds[0xf2] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xf2>;
-	m_ds[0xf3] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xf3>;
-	m_ds[0xf4] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xf4>;
-	m_ds[0xf5] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xf5>;
-	m_ds[0xf6] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xf6>;
-	m_ds[0xf7] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xf7>;
-	m_ds[0xf8] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xf8>;
-	m_ds[0xf9] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xf9>;
-	m_ds[0xfa] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xfa>;
-	m_ds[0xfb] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xfb>;
-	m_ds[0xfc] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xfc>;
-	m_ds[0xfd] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xfd>;
-	m_ds[0xfe] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xfe>;
-	m_ds[0xff] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xff>;
-
-	#endif
-}
-
 __declspec(align(16)) static WORD s_dither[4][16] = 
 {
 	{7, 0, 6, 1, 7, 0, 6, 1, 7, 0, 6, 1, 7, 0, 6, 1},
@@ -638,7 +380,7 @@ void GPUDrawScanline::DrawScanline(int top, int left, int right, const GSVertexS
 		t = vt.yyyy().add16(m_env.dt);
 	}
 
-	GSVector4i vc = GSVector4i(v.c).xxzzl().xxzzh();
+	GSVector4i vc = GSVector4i(v.c).xxzzlh();
 
 	r = vc.xxxx();
 	g = vc.yyyy();
@@ -761,7 +503,7 @@ void GPUDrawScanline::DrawScanlineEx(int top, int left, int right, const GSVerte
 		t = vt.yyyy().add16(m_env.dt);
 	}
 
-	GSVector4i vc = GSVector4i(v.c).xxzzl().xxzzh();
+	GSVector4i vc = GSVector4i(v.c).xxzzlh();
 
 	r = vc.xxxx();
 	g = vc.yyyy();
@@ -859,3 +601,310 @@ void GPUDrawScanline::DrawScanlineEx(int top, int left, int right, const GSVerte
 		}
 	}
 }
+
+GPUDrawScanline::GPUDrawScanlineMap::GPUDrawScanlineMap()
+{
+	for(int i = 0; i < countof(m_default); i++)
+	{
+		m_default[i] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanline;
+	}
+
+	#ifdef FAST_DRAWSCANLINE
+
+	m_default[0x00] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x00>;
+	m_default[0x01] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x01>;
+	m_default[0x02] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x02>;
+	m_default[0x03] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x03>;
+	m_default[0x04] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x04>;
+	m_default[0x05] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x05>;
+	m_default[0x06] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x06>;
+	m_default[0x07] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x07>;
+	m_default[0x08] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x08>;
+	m_default[0x09] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x09>;
+	m_default[0x0a] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x0a>;
+	m_default[0x0b] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x0b>;
+	m_default[0x0c] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x0c>;
+	m_default[0x0d] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x0d>;
+	m_default[0x0e] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x0e>;
+	m_default[0x0f] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x0f>;
+	m_default[0x10] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x10>;
+	m_default[0x11] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x11>;
+	m_default[0x12] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x12>;
+	m_default[0x13] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x13>;
+	m_default[0x14] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x14>;
+	m_default[0x15] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x15>;
+	m_default[0x16] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x16>;
+	m_default[0x17] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x17>;
+	m_default[0x18] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x18>;
+	m_default[0x19] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x19>;
+	m_default[0x1a] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x1a>;
+	m_default[0x1b] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x1b>;
+	m_default[0x1c] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x1c>;
+	m_default[0x1d] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x1d>;
+	m_default[0x1e] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x1e>;
+	m_default[0x1f] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x1f>;
+	m_default[0x20] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x20>;
+	m_default[0x21] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x21>;
+	m_default[0x22] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x22>;
+	m_default[0x23] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x23>;
+	m_default[0x24] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x24>;
+	m_default[0x25] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x25>;
+	m_default[0x26] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x26>;
+	m_default[0x27] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x27>;
+	m_default[0x28] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x28>;
+	m_default[0x29] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x29>;
+	m_default[0x2a] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x2a>;
+	m_default[0x2b] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x2b>;
+	m_default[0x2c] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x2c>;
+	m_default[0x2d] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x2d>;
+	m_default[0x2e] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x2e>;
+	m_default[0x2f] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x2f>;
+	m_default[0x30] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x30>;
+	m_default[0x31] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x31>;
+	m_default[0x32] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x32>;
+	m_default[0x33] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x33>;
+	m_default[0x34] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x34>;
+	m_default[0x35] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x35>;
+	m_default[0x36] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x36>;
+	m_default[0x37] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x37>;
+	m_default[0x38] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x38>;
+	m_default[0x39] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x39>;
+	m_default[0x3a] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x3a>;
+	m_default[0x3b] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x3b>;
+	m_default[0x3c] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x3c>;
+	m_default[0x3d] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x3d>;
+	m_default[0x3e] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x3e>;
+	m_default[0x3f] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x3f>;
+	m_default[0x40] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x40>;
+	m_default[0x41] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x41>;
+	m_default[0x42] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x42>;
+	m_default[0x43] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x43>;
+	m_default[0x44] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x44>;
+	m_default[0x45] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x45>;
+	m_default[0x46] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x46>;
+	m_default[0x47] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x47>;
+	m_default[0x48] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x48>;
+	m_default[0x49] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x49>;
+	m_default[0x4a] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x4a>;
+	m_default[0x4b] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x4b>;
+	m_default[0x4c] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x4c>;
+	m_default[0x4d] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x4d>;
+	m_default[0x4e] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x4e>;
+	m_default[0x4f] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x4f>;
+	m_default[0x50] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x50>;
+	m_default[0x51] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x51>;
+	m_default[0x52] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x52>;
+	m_default[0x53] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x53>;
+	m_default[0x54] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x54>;
+	m_default[0x55] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x55>;
+	m_default[0x56] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x56>;
+	m_default[0x57] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x57>;
+	m_default[0x58] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x58>;
+	m_default[0x59] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x59>;
+	m_default[0x5a] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x5a>;
+	m_default[0x5b] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x5b>;
+	m_default[0x5c] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x5c>;
+	m_default[0x5d] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x5d>;
+	m_default[0x5e] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x5e>;
+	m_default[0x5f] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x5f>;
+	m_default[0x60] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x60>;
+	m_default[0x61] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x61>;
+	m_default[0x62] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x62>;
+	m_default[0x63] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x63>;
+	m_default[0x64] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x64>;
+	m_default[0x65] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x65>;
+	m_default[0x66] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x66>;
+	m_default[0x67] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x67>;
+	m_default[0x68] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x68>;
+	m_default[0x69] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x69>;
+	m_default[0x6a] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x6a>;
+	m_default[0x6b] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x6b>;
+	m_default[0x6c] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x6c>;
+	m_default[0x6d] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x6d>;
+	m_default[0x6e] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x6e>;
+	m_default[0x6f] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x6f>;
+	m_default[0x70] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x70>;
+	m_default[0x71] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x71>;
+	m_default[0x72] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x72>;
+	m_default[0x73] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x73>;
+	m_default[0x74] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x74>;
+	m_default[0x75] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x75>;
+	m_default[0x76] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x76>;
+	m_default[0x77] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x77>;
+	m_default[0x78] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x78>;
+	m_default[0x79] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x79>;
+	m_default[0x7a] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x7a>;
+	m_default[0x7b] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x7b>;
+	m_default[0x7c] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x7c>;
+	m_default[0x7d] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x7d>;
+	m_default[0x7e] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x7e>;
+	m_default[0x7f] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x7f>;
+	m_default[0x80] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x80>;
+	m_default[0x81] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x81>;
+	m_default[0x82] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x82>;
+	m_default[0x83] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x83>;
+	m_default[0x84] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x84>;
+	m_default[0x85] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x85>;
+	m_default[0x86] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x86>;
+	m_default[0x87] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x87>;
+	m_default[0x88] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x88>;
+	m_default[0x89] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x89>;
+	m_default[0x8a] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x8a>;
+	m_default[0x8b] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x8b>;
+	m_default[0x8c] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x8c>;
+	m_default[0x8d] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x8d>;
+	m_default[0x8e] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x8e>;
+	m_default[0x8f] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x8f>;
+	m_default[0x90] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x90>;
+	m_default[0x91] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x91>;
+	m_default[0x92] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x92>;
+	m_default[0x93] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x93>;
+	m_default[0x94] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x94>;
+	m_default[0x95] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x95>;
+	m_default[0x96] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x96>;
+	m_default[0x97] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x97>;
+	m_default[0x98] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x98>;
+	m_default[0x99] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x99>;
+	m_default[0x9a] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x9a>;
+	m_default[0x9b] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x9b>;
+	m_default[0x9c] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x9c>;
+	m_default[0x9d] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x9d>;
+	m_default[0x9e] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x9e>;
+	m_default[0x9f] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0x9f>;
+	m_default[0xa0] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xa0>;
+	m_default[0xa1] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xa1>;
+	m_default[0xa2] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xa2>;
+	m_default[0xa3] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xa3>;
+	m_default[0xa4] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xa4>;
+	m_default[0xa5] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xa5>;
+	m_default[0xa6] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xa6>;
+	m_default[0xa7] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xa7>;
+	m_default[0xa8] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xa8>;
+	m_default[0xa9] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xa9>;
+	m_default[0xaa] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xaa>;
+	m_default[0xab] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xab>;
+	m_default[0xac] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xac>;
+	m_default[0xad] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xad>;
+	m_default[0xae] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xae>;
+	m_default[0xaf] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xaf>;
+	m_default[0xb0] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xb0>;
+	m_default[0xb1] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xb1>;
+	m_default[0xb2] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xb2>;
+	m_default[0xb3] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xb3>;
+	m_default[0xb4] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xb4>;
+	m_default[0xb5] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xb5>;
+	m_default[0xb6] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xb6>;
+	m_default[0xb7] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xb7>;
+	m_default[0xb8] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xb8>;
+	m_default[0xb9] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xb9>;
+	m_default[0xba] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xba>;
+	m_default[0xbb] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xbb>;
+	m_default[0xbc] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xbc>;
+	m_default[0xbd] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xbd>;
+	m_default[0xbe] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xbe>;
+	m_default[0xbf] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xbf>;
+	m_default[0xc0] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xc0>;
+	m_default[0xc1] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xc1>;
+	m_default[0xc2] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xc2>;
+	m_default[0xc3] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xc3>;
+	m_default[0xc4] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xc4>;
+	m_default[0xc5] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xc5>;
+	m_default[0xc6] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xc6>;
+	m_default[0xc7] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xc7>;
+	m_default[0xc8] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xc8>;
+	m_default[0xc9] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xc9>;
+	m_default[0xca] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xca>;
+	m_default[0xcb] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xcb>;
+	m_default[0xcc] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xcc>;
+	m_default[0xcd] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xcd>;
+	m_default[0xce] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xce>;
+	m_default[0xcf] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xcf>;
+	m_default[0xd0] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xd0>;
+	m_default[0xd1] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xd1>;
+	m_default[0xd2] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xd2>;
+	m_default[0xd3] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xd3>;
+	m_default[0xd4] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xd4>;
+	m_default[0xd5] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xd5>;
+	m_default[0xd6] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xd6>;
+	m_default[0xd7] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xd7>;
+	m_default[0xd8] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xd8>;
+	m_default[0xd9] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xd9>;
+	m_default[0xda] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xda>;
+	m_default[0xdb] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xdb>;
+	m_default[0xdc] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xdc>;
+	m_default[0xdd] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xdd>;
+	m_default[0xde] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xde>;
+	m_default[0xdf] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xdf>;
+	m_default[0xe0] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xe0>;
+	m_default[0xe1] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xe1>;
+	m_default[0xe2] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xe2>;
+	m_default[0xe3] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xe3>;
+	m_default[0xe4] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xe4>;
+	m_default[0xe5] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xe5>;
+	m_default[0xe6] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xe6>;
+	m_default[0xe7] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xe7>;
+	m_default[0xe8] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xe8>;
+	m_default[0xe9] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xe9>;
+	m_default[0xea] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xea>;
+	m_default[0xeb] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xeb>;
+	m_default[0xec] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xec>;
+	m_default[0xed] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xed>;
+	m_default[0xee] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xee>;
+	m_default[0xef] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xef>;
+	m_default[0xf0] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xf0>;
+	m_default[0xf1] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xf1>;
+	m_default[0xf2] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xf2>;
+	m_default[0xf3] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xf3>;
+	m_default[0xf4] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xf4>;
+	m_default[0xf5] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xf5>;
+	m_default[0xf6] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xf6>;
+	m_default[0xf7] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xf7>;
+	m_default[0xf8] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xf8>;
+	m_default[0xf9] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xf9>;
+	m_default[0xfa] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xfa>;
+	m_default[0xfb] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xfb>;
+	m_default[0xfc] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xfc>;
+	m_default[0xfd] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xfd>;
+	m_default[0xfe] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xfe>;
+	m_default[0xff] = (DrawScanlinePtr)&GPUDrawScanline::DrawScanlineEx<0xff>;
+
+	#endif
+}
+
+IDrawScanline::DrawScanlinePtr GPUDrawScanline::GPUDrawScanlineMap::GetDefaultFunction(DWORD dw)
+{
+	GPUScanlineSelector sel;
+
+	sel.dw = dw;
+
+	return m_default[sel];
+}
+
+//
+
+GPUDrawScanline::GPUSetupPrimMap::GPUSetupPrimMap()
+{
+	#define InitSP_IIP(sprite, tme, iip) \
+		m_default[sprite][tme][iip] = (SetupPrimPtr)&GPUDrawScanline::SetupPrim<sprite, tme, iip>; \
+
+	#define InitSP_TME(sprite, tme) \
+		InitSP_IIP(sprite, tme, 0) \
+		InitSP_IIP(sprite, tme, 1) \
+
+	#define InitSP_SPRITE(sprite) \
+		InitSP_TME(sprite, 0) \
+		InitSP_TME(sprite, 1) \
+
+	InitSP_SPRITE(0);
+	InitSP_SPRITE(1);
+}
+
+IDrawScanline::SetupPrimPtr GPUDrawScanline::GPUSetupPrimMap::GetDefaultFunction(DWORD dw)
+{
+	DWORD sprite = (dw >> 0) & 1;
+	DWORD tme = (dw >> 1) & 1;
+	DWORD iip = (dw >> 2) & 1;
+
+	return m_default[sprite][tme][iip];
+}
+

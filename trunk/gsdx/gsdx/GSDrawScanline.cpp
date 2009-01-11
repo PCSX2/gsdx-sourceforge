@@ -28,15 +28,11 @@ GSDrawScanline::GSDrawScanline(GSState* state, int id)
 	, m_id(id)
 {
 	memset(&m_env, 0, sizeof(m_env));
-
-	Init();
 }
 
 GSDrawScanline::~GSDrawScanline()
 {
 }
-
-// IDrawScanline
 
 void GSDrawScanline::BeginDraw(const GSRasterizerData* data, Functions* f)
 {
@@ -61,7 +57,7 @@ void GSDrawScanline::BeginDraw(const GSRasterizerData* data, Functions* f)
 	m_env.fba = GSVector4i(context->FBA.FBA ? 0x80000000 : 0);
 	m_env.aref = GSVector4i((int)context->TEST.AREF);
 	m_env.afix = GSVector4i((int)context->ALPHA.FIX << 16);
-	m_env.afix2 = m_env.afix.yywwl().yywwh().sll16(7);
+	m_env.afix2 = m_env.afix.yywwlh().sll16(7);
 	m_env.frb = GSVector4i((int)env.FOGCOL.ai32[0] & 0x00ff00ff);
 	m_env.fga = GSVector4i((int)(env.FOGCOL.ai32[0] >> 8) & 0x00ff00ff);
 
@@ -120,12 +116,12 @@ void GSDrawScanline::BeginDraw(const GSRasterizerData* data, Functions* f)
 			m_env.t.max.u16[0] = tw - 1;
 			m_env.t.mask.u32[0] = 0; 
 			break;
-		case CLAMP_REGION_REPEAT: 
+		case CLAMP_REGION_CLAMP: 
 			m_env.t.min.u16[0] = context->CLAMP.MINU;
 			m_env.t.max.u16[0] = context->CLAMP.MAXU;
 			m_env.t.mask.u32[0] = 0; 
 			break;
-		case CLAMP_REGION_CLAMP: 
+		case CLAMP_REGION_REPEAT: 
 			m_env.t.min.u16[0] = context->CLAMP.MINU;
 			m_env.t.max.u16[0] = context->CLAMP.MAXU;
 			m_env.t.mask.u32[0] = 0xffffffff; 
@@ -146,12 +142,12 @@ void GSDrawScanline::BeginDraw(const GSRasterizerData* data, Functions* f)
 			m_env.t.max.u16[4] = th - 1;
 			m_env.t.mask.u32[2] = 0; 
 			break;
-		case CLAMP_REGION_REPEAT: 
+		case CLAMP_REGION_CLAMP: 
 			m_env.t.min.u16[4] = context->CLAMP.MINV;
 			m_env.t.max.u16[4] = context->CLAMP.MAXV;
 			m_env.t.mask.u32[2] = 0; 
 			break;
-		case CLAMP_REGION_CLAMP: 
+		case CLAMP_REGION_REPEAT: 
 			m_env.t.min.u16[4] = context->CLAMP.MINV;
 			m_env.t.max.u16[4] = context->CLAMP.MAXV;
 			m_env.t.mask.u32[2] = 0xffffffff; 
@@ -160,8 +156,8 @@ void GSDrawScanline::BeginDraw(const GSRasterizerData* data, Functions* f)
 			__assume(0);
 		}
 
-		m_env.t.min = m_env.t.min.xxxxl().xxxxh();
-		m_env.t.max = m_env.t.max.xxxxl().xxxxh();
+		m_env.t.min = m_env.t.min.xxxxlh();
+		m_env.t.max = m_env.t.max.xxxxlh();
 		m_env.t.mask = m_env.t.mask.xxzz();
 	}
 
@@ -185,6 +181,20 @@ void GSDrawScanline::BeginDraw(const GSRasterizerData* data, Functions* f)
 			f->sr = NULL;
 		}
 	}
+
+	//
+
+	DWORD sel = 0;
+
+	if(data->primclass != GS_POINT_CLASS)
+	{
+		sel |= (m_env.sel.ztst ? 1 : 0) << 0;
+		sel |= m_env.sel.fge << 1;
+		sel |= (m_env.sel.tfx != TFX_NONE ? 1 : 0) << 2;
+		sel |= m_env.sel.iip << 3;
+	}
+
+	f->sp = m_sp.Lookup(sel);
 }
 
 void GSDrawScanline::EndDraw(const GSRasterizerStats& stats)
@@ -192,67 +202,88 @@ void GSDrawScanline::EndDraw(const GSRasterizerStats& stats)
 	m_ds.UpdateStats(stats, m_state->m_perfmon.GetFrame());
 }
 
-void GSDrawScanline::SetupPrim(GS_PRIM_CLASS primclass, const GSVertexSW* vertices, const GSVertexSW& dscan)
+template<DWORD zbe, DWORD fge, DWORD tme, DWORD iip>
+void GSDrawScanline::SetupPrim(const GSVertexSW* vertices, const GSVertexSW& dscan)
 {
-	if(primclass == GS_POINT_CLASS)
+	// p
+
+	GSVector4 p = dscan.p;
+	
+	GSVector4 dz = p.zzzz();
+	GSVector4 df = p.wwww();
+
+	if(zbe)
 	{
-		GSVector4i c = GSVector4i(vertices[0].c);
-
-		c = c.upl16(c.zwxy());
-
-		m_env.rb = c.xxxx();
-		m_env.ga = c.zzzz();
-
-		return;
+		m_env.d4.z = dz * 4.0f;
 	}
 
-	if(m_env.sel.ztst)
+	if(fge)
 	{
-		GSVector4 z = dscan.p.zzzz();
+		m_env.d4.f = GSVector4i(df * 4.0f).xxzzlh();
+	}
 
-		for(int i = 0; i < 4; i++)
+	for(int i = 0; i < 4; i++)
+	{
+		GSVector4 v = m_shift[i];
+
+		if(zbe)
 		{
-			m_env.d[i].z = z * s_ps0123[i];
+			m_env.d[i].z = dz * v;
 		}
 
-		m_env.d4.z = z * 4.0f;
-	}
-
-	if(m_env.sel.fge)
-	{
-		GSVector4 f = dscan.p.wwww();
-
-		for(int i = 0; i < 4; i++)
+		if(fge)
 		{
-			m_env.d[i].f = GSVector4i(f * s_ps0123[i]).xxzzl().xxzzh();
+			m_env.d[i].f = GSVector4i(df * v).xxzzlh();
 		}
-
-		m_env.d4.f = GSVector4i(f * 4.0f).xxzzl().xxzzh();
 	}
 
-	if(m_env.sel.tfx != TFX_NONE)
+	// t
+
+	if(tme)
 	{
 		GSVector4 t = dscan.t;
 
-		GSVector4 ds = t.xxxx();
-		GSVector4 dt = t.yyyy();
-		GSVector4 dq = t.zzzz();
-
-		for(int i = 0; i < 4; i++)
+		if(m_env.sel.fst)
 		{
-			GSVector4 ps0123 = s_ps0123[i];
+			m_env.d4.st = GSVector4i(t * 4.0f);
 
-			m_env.d[i].s = ds * ps0123;
-			m_env.d[i].t = dt * ps0123;
-			m_env.d[i].q = dq * ps0123;
+			GSVector4 ds = t.xxxx();
+			GSVector4 dt = t.yyyy();
+
+			for(int i = 0; i < 4; i++)
+			{
+				GSVector4 v = m_shift[i];
+
+				m_env.d[i].si = GSVector4i(ds * v);
+				m_env.d[i].ti = GSVector4i(dt * v);
+			}
 		}
+		else
+		{
+			m_env.d4.stq = t * 4.0f;
 
-		m_env.d4.stq = t * 4.0f;
+			GSVector4 ds = t.xxxx();
+			GSVector4 dt = t.yyyy();
+			GSVector4 dq = t.zzzz();
+
+			for(int i = 0; i < 4; i++)
+			{
+				GSVector4 v = m_shift[i];
+
+				m_env.d[i].s = ds * v;
+				m_env.d[i].t = dt * v;
+				m_env.d[i].q = dq * v;
+			}
+		}
 	}
 
-	if(m_env.sel.iip)
+	// c
+
+	if(iip)
 	{
 		GSVector4 c = dscan.c;
+
+		m_env.d4.c = GSVector4i(c * 4.0f).xzyw().ps32();
 
 		GSVector4 dr = c.xxxx();
 		GSVector4 dg = c.yyyy();
@@ -261,191 +292,23 @@ void GSDrawScanline::SetupPrim(GS_PRIM_CLASS primclass, const GSVertexSW* vertic
 
 		for(int i = 0; i < 4; i++)
 		{
-			GSVector4 ps0123 = s_ps0123[i];
+			GSVector4 v = m_shift[i];
 
-			GSVector4i rg = GSVector4i(dr * ps0123).ps32(GSVector4i(dg * ps0123));
-			GSVector4i ba = GSVector4i(db * ps0123).ps32(GSVector4i(da * ps0123));
+			GSVector4i rg = GSVector4i(dr * v).ps32(GSVector4i(dg * v));
+			GSVector4i ba = GSVector4i(db * v).ps32(GSVector4i(da * v));
 
 			m_env.d[i].rb = rg.upl16(ba);
 			m_env.d[i].ga = rg.uph16(ba);
 		}
-
-		m_env.d4.c = GSVector4i(c * 4.0f).xzyw().ps32();
 	}
 	else
 	{
 		GSVector4i c = GSVector4i(vertices[0].c);
-
+		
 		c = c.upl16(c.zwxy());
 
-		m_env.rb = c.xxxx();
-		m_env.ga = c.zzzz();
-	}
-}
-
-void GSDrawScanline::DrawSolidRect(const GSVector4i& r, const GSVertexSW& v)
-{
-/*
-static FILE* s_fp = NULL;
-if(!s_fp) s_fp = fopen("c:\\log2.txt", "w");
-__int64 start = __rdtsc();
-int size = (r.z - r.x) * (r.w - r.y);
-*/
-	ASSERT(r.y >= 0);
-	ASSERT(r.w >= 0);
-
-	DWORD m = m_env.fm.u32[0];
-
-	if(m_env.sel.fpsm == 1)
-	{
-		m |= 0xff000000;
-	}
-
-	if(m != 0xffffffff)
-	{
-		DWORD c = (GSVector4i(v.c) >> 7).rgba32();
-
-		if(m_state->m_context->FBA.FBA)
-		{
-			c |= 0x80000000;
-		}
-		
-		if(m_env.sel.fpsm != 2)
-		{
-			if(m == 0)
-			{
-				DrawSolidRectT<DWORD, false>(m_env.fbr, m_env.fbc[0], r, c, m);
-			}
-			else
-			{
-				DrawSolidRectT<DWORD, true>(m_env.fbr, m_env.fbc[0], r, c, m);
-			}
-		}
-		else
-		{
-			c = ((c & 0xf8) >> 3) | ((c & 0xf800) >> 6) | ((c & 0xf80000) >> 9) | ((c & 0x80000000) >> 16);
-
-			if(m == 0)
-			{
-				DrawSolidRectT<WORD, false>(m_env.fbr, m_env.fbc[0], r, c, m);
-			}
-			else
-			{
-				DrawSolidRectT<WORD, true>(m_env.fbr, m_env.fbc[0], r, c, m);
-			}
-		}
-	}
-
-	m = m_env.zm.u32[0];
-
-	if(m_env.sel.zpsm == 1)
-	{
-		m |= 0xff000000;
-	}
-
-	if(m != 0xffffffff)
-	{
-		DWORD z = (DWORD)(float)v.p.z;
-
-		if(m_env.sel.zpsm != 2)
-		{
-			if(m == 0)
-			{
-				DrawSolidRectT<DWORD, false>(m_env.zbr, m_env.zbc[0], r, z, m);
-			}
-			else
-			{
-				DrawSolidRectT<DWORD, true>(m_env.zbr, m_env.zbc[0], r, z, m);
-			}
-		}
-		else
-		{
-			if(m == 0)
-			{
-				DrawSolidRectT<WORD, false>(m_env.zbr, m_env.zbc[0], r, z, m);
-			}
-			else
-			{
-				DrawSolidRectT<WORD, true>(m_env.zbr, m_env.zbc[0], r, z, m);
-			}
-		}
-	}
-/*
-__int64 stop = __rdtsc();
-fprintf(s_fp, "%I64d => %I64d = %I64d (%d,%d - %d,%d) %d\n", start, stop, stop - start, r.x, r.y, r.z, r.w, size);
-*/
-}
-
-template<class T, bool masked> 
-void GSDrawScanline::DrawSolidRectT(const GSVector4i* row, int* col, const GSVector4i& r, DWORD c, DWORD m)
-{
-	if(m == 0xffffffff) return;
-
-	GSVector4i color((int)c);
-	GSVector4i mask((int)m);
-
-	if(sizeof(T) == sizeof(WORD))
-	{
-		color = color.xxzzl().xxzzh();
-		mask = mask.xxzzl().xxzzh();
-	}
-
-	color = color.andnot(mask);
-
-	GSVector4i bm(8 * 4 / sizeof(T) - 1, 8 - 1);
-	GSVector4i br = (r + bm).andnot(bm.xyxy());
-
-	FillRect<T, masked>(row, col, GSVector4i(r.x, r.y, r.z, br.y), color, mask);
-	FillRect<T, masked>(row, col, GSVector4i(r.x, br.w, r.z, r.w), color, mask);
-
-	if(r.x < br.x || br.z < r.z)
-	{
-		FillRect<T, masked>(row, col, GSVector4i(r.x, br.y, br.x, br.w), color, mask);
-		FillRect<T, masked>(row, col, GSVector4i(br.z, br.y, r.z, br.w), color, mask);
-	}
-
-	FillBlock<T, masked>(row, col, br, color, mask);
-}
-
-template<class T, bool masked> 
-void GSDrawScanline::FillRect(const GSVector4i* row, int* col, const GSVector4i& r, const GSVector4i& c, const GSVector4i& m)
-{
-	if(r.x >= r.z) return;
-
-	for(int y = r.y; y < r.w; y++)
-	{
-		DWORD base = row[y].x;
-
-		for(int x = r.x; x < r.z; x++)
-		{
-			T* p = &((T*)m_env.vm)[base + col[x]];
-
-			*p = (T)(!masked ? c.u32[0] : (c.u32[0] | (*p & m.u32[0])));
-		}
-	}
-}
-
-template<class T, bool masked> 
-void GSDrawScanline::FillBlock(const GSVector4i* row, int* col, const GSVector4i& r, const GSVector4i& c, const GSVector4i& m)
-{
-	if(r.x >= r.z) return;
-
-	for(int y = r.y; y < r.w; y += 8)
-	{
-		DWORD base = row[y].x;
-
-		for(int x = r.x; x < r.z; x += 8 * 4 / sizeof(T))
-		{
-			GSVector4i* p = (GSVector4i*)&((T*)m_env.vm)[base + col[x]];
-
-			for(int i = 0; i < 16; i += 4)
-			{
-				p[i + 0] = !masked ? c : (c | (p[i + 0] & m));
-				p[i + 1] = !masked ? c : (c | (p[i + 1] & m));
-				p[i + 2] = !masked ? c : (c | (p[i + 2] & m));
-				p[i + 3] = !masked ? c : (c | (p[i + 3] & m));
-			}
-		}
+		m_env.c.rb = c.xxxx();
+		m_env.c.ga = c.zzzz();
 	}
 }
 
@@ -457,40 +320,20 @@ GSVector4i GSDrawScanline::Wrap(const GSVector4i& t)
 	return clamp.blend8(repeat, m_env.t.mask);
 }
 
-void GSDrawScanline::SampleTexture(DWORD ztst, DWORD fst, DWORD ltf, DWORD tlu, const GSVector4i& test, const GSVector4& s, const GSVector4& t, const GSVector4& q, GSVector4i* c)
+void GSDrawScanline::SampleTexture(DWORD ltf, DWORD tlu, const GSVector4i& u, const GSVector4i& v, GSVector4i* c)
 {
 	const void* RESTRICT tex = m_env.tex;
 	const DWORD* RESTRICT clut = m_env.clut;
 	const DWORD tw = m_env.tw;
 
-	GSVector4 u = s;
-	GSVector4 v = t;
-
-	if(!fst)
-	{
-		GSVector4 w = q.rcp();
-
-		u *= w;
-		v *= w;
-
-		if(ltf)
-		{
-			u -= 0x8000;
-			v -= 0x8000;
-		}
-	}
-
-	GSVector4i ui = GSVector4i(u); 
-	GSVector4i vi = GSVector4i(v);
-
-	GSVector4i uv = ui.sra32(16).ps32(vi.sra32(16));
+	GSVector4i uv = u.sra32(16).ps32(v.sra32(16));
 
 	GSVector4i c00, c01, c10, c11;
 
 	if(ltf)
 	{
-		GSVector4i uf = ui.xxzzl().xxzzh().srl16(1);
-		GSVector4i vf = vi.xxzzl().xxzzh().srl16(1);
+		GSVector4i uf = u.xxzzlh().srl16(1);
+		GSVector4i vf = v.xxzzlh().srl16(1);
 
 		GSVector4i uv0 = Wrap(uv);
 		GSVector4i uv1 = Wrap(uv.add16(GSVector4i::x0001()));
@@ -578,7 +421,7 @@ void GSDrawScanline::ColorTFX(DWORD tfx, const GSVector4i& rbf, const GSVector4i
 		break;
 	case TFX_HIGHLIGHT:
 	case TFX_HIGHLIGHT2:
-		af = gaf.yywwl().yywwh().srl16(7);
+		af = gaf.yywwlh().srl16(7);
 		rbt = rbt.modulate16<1>(rbf).add16(af).clamp8();
 		gat = gat.modulate16<1>(gaf).add16(af).clamp8().mix16(gat);
 		break;
@@ -698,19 +541,19 @@ bool GSDrawScanline::TestAlpha(DWORD atst, DWORD afail, const GSVector4i& ga, GS
 	return true;
 }
 
-bool GSDrawScanline::TestDestAlpha(DWORD fpsm, DWORD date, const GSVector4i& d, GSVector4i& test)
+bool GSDrawScanline::TestDestAlpha(DWORD fpsm, DWORD date, const GSVector4i& fd, GSVector4i& test)
 {
 	if(date)
 	{
 		switch(fpsm)
 		{
 		case 0:
-			test |= (d ^ m_env.datm).sra32(31);
+			test |= (fd ^ m_env.datm).sra32(31);
 			if(test.alltrue()) return false;
 		case 1:
 			break;
 		case 2:
-			test |= ((d << 16) ^ m_env.datm).sra32(31);
+			test |= ((fd << 16) ^ m_env.datm).sra32(31);
 			if(test.alltrue()) return false;
 		case 3:
 			break;
@@ -812,24 +655,705 @@ void GSDrawScanline::WriteZBuf(int zpsm, int ztst, const GSVector4i& z, const GS
 	if(fzm & 0x8000) WritePixel(zpsm, &vm16[addr + 10], zs.extract32<3>());
 }
 
+
+template<DWORD fpsm, DWORD zpsm, DWORD ztst, DWORD iip>
+void GSDrawScanline::DrawScanline(int top, int left, int right, const GSVertexSW& v)
+{
+	int skip = left & 3;
+
+	left -= skip;
+
+	int steps = right - left - 4;
+
+	GSVector4i test = m_test[skip] | m_test[8 + (steps & (steps >> 31))];
+
+	//
+
+	GSVector2i fza_base;
+	GSVector2i* fza_offset;
+
+	GSVector4 z, s, t, q;
+	GSVector4i si, ti, f, rb, ga;
+
+	// fza
+
+	fza_base = m_env.fzbr[top];
+	fza_offset = &m_env.fzbc[left >> 2];
+
+	// v.p
+
+	GSVector4 vp = v.p;
+
+	z = vp.zzzz() + m_env.d[skip].z;
+	f = GSVector4i(vp).zzzzh().zzzz().add16(m_env.d[skip].f);
+
+	// v.t
+
+	GSVector4 vt = v.t;
+
+	if(m_env.sel.fst)
+	{
+		GSVector4i vti(vt);
+
+		si = vti.xxxx() + m_env.d[skip].si;
+		ti = vti.yyyy() + m_env.d[skip].ti;
+	}
+	else
+	{
+		s = vt.xxxx() + m_env.d[skip].s; 
+		t = vt.yyyy() + m_env.d[skip].t;
+		q = vt.zzzz() + m_env.d[skip].q;
+	}
+
+	// v.c
+
+	if(iip)
+	{
+		GSVector4i vc = GSVector4i(v.c);
+
+		vc = vc.upl16(vc.zwxy());
+
+		rb = vc.xxxx().add16(m_env.d[skip].rb);
+		ga = vc.zzzz().add16(m_env.d[skip].ga);
+	}
+	else
+	{
+		rb = m_env.c.rb;
+		ga = m_env.c.ga;
+	}
+
+	//
+
+	while(1)
+	{
+		do
+		{
+			int fa = fza_base.x + fza_offset->x;
+			int za = fza_base.y + fza_offset->y;
+			
+			GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::x00000001());
+			GSVector4i zd;
+
+			if(ztst > 1)
+			{
+				ReadPixel(zpsm, za, zd);
+
+				if(!TestZ(zpsm, ztst, zs, zd, test))
+				{
+					continue;
+				}
+			}
+
+			GSVector4i c[6];
+
+			if(m_env.sel.tfx != TFX_NONE)
+			{
+				GSVector4i u, v;
+
+				if(m_env.sel.fst)
+				{
+					u = si;
+					v = ti;
+				}
+				else
+				{
+					GSVector4 w = q.rcp();
+
+					u = GSVector4i(s * w);
+					v = GSVector4i(t * w);
+
+					if(m_env.sel.ltf)
+					{
+						u -= 0x8000;
+						v -= 0x8000;
+					}
+				}
+
+				SampleTexture(m_env.sel.ltf, m_env.sel.tlu, u, v, c);
+			}
+
+			AlphaTFX(m_env.sel.tfx, m_env.sel.tcc, ga, c[1]);
+
+			GSVector4i fm = m_env.fm;
+			GSVector4i zm = m_env.zm;
+
+			if(!TestAlpha(m_env.sel.atst, m_env.sel.afail, c[1], fm, zm, test))
+			{
+				continue;
+			}
+
+			ColorTFX(m_env.sel.tfx, rb, ga, c[0], c[1]);
+
+			Fog(m_env.sel.fge, f, c[0], c[1]);
+
+			GSVector4i fd;
+
+			if(m_env.sel.rfb)
+			{
+				ReadPixel(fpsm, fa, fd);
+
+				if(!TestDestAlpha(fpsm, m_env.sel.date, fd, test))
+				{
+					continue;
+				}
+			}
+
+			fm |= test;
+			zm |= test;
+
+			int fzm = ~(fm == GSVector4i::xffffffff()).ps32(zm == GSVector4i::xffffffff()).mask();
+
+			WriteZBuf(zpsm, ztst, zs, zd, zm, za, fzm);
+
+			if(m_env.sel.abe != 255)
+			{
+				GSVector4i mask = GSVector4i::x00ff(fd);
+
+				switch(fpsm)
+				{
+				case 0:
+					c[2] = fd & mask;
+					c[3] = (fd >> 8) & mask;
+					break;
+				case 1:
+					c[2] = fd & mask;
+					c[3] = (fd >> 8) & mask;
+					c[3] = c[3].mix16(GSVector4i(0x00800000));
+					break;
+				case 2:
+					c[2] = ((fd & 0x7c00) << 9) | ((fd & 0x001f) << 3);
+					c[3] = ((fd & 0x8000) << 8) | ((fd & 0x03e0) >> 2);
+					break;
+				}
+
+				c[4] = GSVector4::zero();
+				c[5] = m_env.afix;
+
+				DWORD abea = m_env.sel.abea;
+				DWORD abeb = m_env.sel.abeb;
+				DWORD abec = m_env.sel.abec;
+				DWORD abed = m_env.sel.abed;
+
+				GSVector4i a = c[abec * 2 + 1].yywwlh().sll16(7);
+
+				GSVector4i rb = GSVector4i::lerp16<1>(c[abea * 2 + 0], c[abeb * 2 + 0], a, c[abed * 2 + 0]);
+				GSVector4i ga = GSVector4i::lerp16<1>(c[abea * 2 + 1], c[abeb * 2 + 1], a, c[abed * 2 + 1]);
+
+				if(m_env.sel.pabe)
+				{
+					mask = (c[1] << 8).sra32(31);
+
+					rb = c[0].blend8(rb, mask);
+					ga = c[1].blend8(ga, mask);
+				}
+
+				c[0] = rb;
+				c[1] = ga.mix16(c[1]);
+			}
+
+			WriteFrame(fpsm, m_env.sel.rfb, c, fd, fm, fa, fzm);
+		}
+		while(0);
+
+		if(steps <= 0) break;
+
+		steps -= 4;
+
+		test = m_test[8 + (steps & (steps >> 31))];
+
+		fza_offset++;
+
+		z += m_env.d4.z;
+		f = f.add16(m_env.d4.f);
+
+		if(m_env.sel.fst)
+		{
+			GSVector4i st = m_env.d4.st;
+
+			si += st.xxxx();
+			ti += st.yyyy();
+		}
+		else
+		{
+			GSVector4 stq = m_env.d4.stq;
+
+			s += stq.xxxx();
+			t += stq.yyyy();
+			q += stq.zzzz();
+		}
+
+		if(iip)
+		{
+			GSVector4i c = m_env.d4.c;
+
+			rb = rb.add16(c.xxxx());
+			ga = ga.add16(c.yyyy());
+		}
+	}
+}
+
+template<DWORD sel>
+void GSDrawScanline::DrawScanlineEx(int top, int left, int right, const GSVertexSW& v)
+{
+	const DWORD fpsm = (sel >> 0) & 3;
+	const DWORD zpsm = (sel >> 2) & 3;
+	const DWORD ztst = (sel >> 4) & 3;
+	const DWORD atst = (sel >> 6) & 7;
+	const DWORD afail = (sel >> 9) & 3;
+	const DWORD iip = (sel >> 11) & 1;
+	const DWORD tfx = (sel >> 12) & 7;
+	const DWORD tcc = (sel >> 15) & 1;
+	const DWORD fst = (sel >> 16) & 1;
+	const DWORD ltf = (sel >> 17) & 1;
+	const DWORD tlu = (sel >> 18) & 1;
+	const DWORD fge = (sel >> 19) & 1;
+	const DWORD date = (sel >> 20) & 1;
+	const DWORD abe = (sel >> 21) & 255;
+	const DWORD abea = (sel >> 21) & 3;
+	const DWORD abeb = (sel >> 23) & 3;
+	const DWORD abec = (sel >> 25) & 3;
+	const DWORD abed = (sel >> 27) & 3;
+	const DWORD pabe = (sel >> 29) & 1;
+	const DWORD rfb = (sel >> 30) & 1;
+
+	//
+
+	int skip = left & 3;
+
+	left -= skip;
+
+	int steps = right - left - 4;
+
+	GSVector4i test = m_test[skip] | m_test[8 + (steps & (steps >> 31))];
+
+	//
+
+	GSVector2i fza_base;
+	GSVector2i* fza_offset;
+
+	GSVector4 z, s, t, q;
+	GSVector4i si, ti, f, rb, ga;
+
+	// fza
+
+	fza_base = m_env.fzbr[top];
+	fza_offset = &m_env.fzbc[left >> 2];
+
+	// v.p
+
+	GSVector4 vp = v.p;
+
+	z = vp.zzzz() + m_env.d[skip].z;
+	f = GSVector4i(vp).zzzzh().zzzz().add16(m_env.d[skip].f);
+
+	// v.t
+
+	GSVector4 vt = v.t;
+
+	if(fst)
+	{
+		GSVector4i vti(vt);
+
+		si = vti.xxxx() + m_env.d[skip].si;
+		ti = vti.yyyy() + m_env.d[skip].ti;
+	}
+	else
+	{
+		s = vt.xxxx() + m_env.d[skip].s; 
+		t = vt.yyyy() + m_env.d[skip].t;
+		q = vt.zzzz() + m_env.d[skip].q;
+	}
+
+	// v.c
+
+	if(iip)
+	{
+		GSVector4i vc = GSVector4i(v.c);
+
+		vc = vc.upl16(vc.zwxy());
+
+		rb = vc.xxxx().add16(m_env.d[skip].rb);
+		ga = vc.zzzz().add16(m_env.d[skip].ga);
+	}
+	else
+	{
+		rb = m_env.c.rb;
+		ga = m_env.c.ga;
+	}
+
+	//
+
+	while(1)
+	{
+		do
+		{
+			int fa = fza_base.x + fza_offset->x;
+			int za = fza_base.y + fza_offset->y;
+
+			GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::x00000001());
+			GSVector4i zd;
+
+			if(ztst > 1)
+			{
+				ReadPixel(zpsm, za, zd);
+
+				if(!TestZ(zpsm, ztst, zs, zd, test))
+				{
+					continue;
+				}
+			}
+
+			GSVector4i c[6];
+
+			if(tfx != TFX_NONE)
+			{
+				GSVector4i u, v;
+
+				if(fst)
+				{
+					u = si;
+					v = ti;
+				}
+				else
+				{
+					GSVector4 w = q.rcp();
+
+					u = GSVector4i(s * w);
+					v = GSVector4i(t * w);
+
+					if(ltf)
+					{
+						u -= 0x8000;
+						v -= 0x8000;
+					}
+				}
+
+				SampleTexture(ltf, tlu, u, v, c);
+			}
+
+			AlphaTFX(tfx, tcc, ga, c[1]);
+
+			GSVector4i fm = m_env.fm;
+			GSVector4i zm = m_env.zm;
+
+			if(!TestAlpha(atst, afail, c[1], fm, zm, test))
+			{
+				continue;
+			}
+
+			ColorTFX(tfx, rb, ga, c[0], c[1]);
+
+			Fog(fge, f, c[0], c[1]);
+
+			GSVector4i fd;
+
+			if(rfb)
+			{
+				ReadPixel(fpsm, fa, fd);
+
+				if(!TestDestAlpha(fpsm, date, fd, test))
+				{
+					continue;
+				}
+			}
+
+			fm |= test;
+			zm |= test;
+
+			int fzm = ~(fm == GSVector4i::xffffffff()).ps32(zm == GSVector4i::xffffffff()).mask();
+
+			WriteZBuf(zpsm, ztst, zs, zd, zm, za, fzm);
+
+			if(abe != 255)
+			{
+				GSVector4i mask = GSVector4i::x00ff(fd);
+
+				switch(fpsm)
+				{
+				case 0:
+				case 1:
+					c[2] = fd & mask;
+					c[3] = (fd >> 8) & mask;
+					break;
+				case 2:
+					c[2] = ((fd & 0x7c00) << 9) | ((fd & 0x001f) << 3);
+					c[3] = ((fd & 0x8000) << 8) | ((fd & 0x03e0) >> 2);
+					break;
+				}
+
+				c[4] = GSVector4::zero();
+				c[5] = GSVector4::zero();
+
+				GSVector4i rb, ga;
+
+				if(abea != abeb)
+				{
+					rb = c[abea * 2 + 0];
+					ga = c[abea * 2 + 1];
+
+					if(abeb != 2)
+					{
+						rb = rb.sub16(c[abeb * 2 + 0]);
+						ga = ga.sub16(c[abeb * 2 + 1]);
+					}
+
+					if(!(fpsm == 1 && abec == 1))
+					{
+						GSVector4i a = abec < 2 ? c[abec * 2 + 1].yywwlh().sll16(7) : m_env.afix2;
+
+						rb = rb.modulate16<1>(a);
+						ga = ga.modulate16<1>(a);
+					}
+
+					if(abed < 2)
+					{
+						rb = rb.add16(c[abed * 2 + 0]);
+						ga = ga.add16(c[abed * 2 + 1]);
+					}
+				}
+				else
+				{
+					rb = c[abed * 2 + 0];
+					ga = c[abed * 2 + 1];
+				}
+
+				if(pabe)
+				{
+					mask = (c[1] << 8).sra32(31);
+
+					rb = c[0].blend8(rb, mask);
+					ga = c[1].blend8(ga, mask);
+				}
+
+				c[0] = rb;
+				c[1] = ga.mix16(c[1]);
+			}
+
+			WriteFrame(fpsm, rfb, c, fd, fm, fa, fzm);
+		}
+		while(0);
+
+		if(steps <= 0) break;
+
+		steps -= 4;
+
+		test = m_test[8 + (steps & (steps >> 31))];
+
+		fza_offset++;
+
+		z += m_env.d4.z;
+		f = f.add16(m_env.d4.f);
+
+		if(fst)
+		{
+			GSVector4i st = m_env.d4.st;
+
+			si += st.xxxx();
+			ti += st.yyyy();
+		}
+		else
+		{
+			GSVector4 stq = m_env.d4.stq;
+
+			s += stq.xxxx();
+			t += stq.yyyy();
+			q += stq.zzzz();
+		}
+
+		if(iip)
+		{
+			GSVector4i c = m_env.d4.c;
+
+			rb = rb.add16(c.xxxx());
+			ga = ga.add16(c.yyyy());
+		}
+	}
+}
+
+void GSDrawScanline::DrawSolidRect(const GSVector4i& r, const GSVertexSW& v)
+{
+/*
+static FILE* s_fp = NULL;
+if(!s_fp) s_fp = fopen("c:\\log2.txt", "w");
+__int64 start = __rdtsc();
+int size = (r.z - r.x) * (r.w - r.y);
+*/
+	ASSERT(r.y >= 0);
+	ASSERT(r.w >= 0);
+
+	DWORD m = m_env.fm.u32[0];
+
+	if(m_env.sel.fpsm == 1)
+	{
+		m |= 0xff000000;
+	}
+
+	if(m != 0xffffffff)
+	{
+		DWORD c = (GSVector4i(v.c) >> 7).rgba32();
+
+		if(m_state->m_context->FBA.FBA)
+		{
+			c |= 0x80000000;
+		}
+		
+		if(m_env.sel.fpsm != 2)
+		{
+			if(m == 0)
+			{
+				DrawSolidRectT<DWORD, false>(m_env.fbr, m_env.fbc[0], r, c, m);
+			}
+			else
+			{
+				DrawSolidRectT<DWORD, true>(m_env.fbr, m_env.fbc[0], r, c, m);
+			}
+		}
+		else
+		{
+			c = ((c & 0xf8) >> 3) | ((c & 0xf800) >> 6) | ((c & 0xf80000) >> 9) | ((c & 0x80000000) >> 16);
+
+			if(m == 0)
+			{
+				DrawSolidRectT<WORD, false>(m_env.fbr, m_env.fbc[0], r, c, m);
+			}
+			else
+			{
+				DrawSolidRectT<WORD, true>(m_env.fbr, m_env.fbc[0], r, c, m);
+			}
+		}
+	}
+
+	m = m_env.zm.u32[0];
+
+	if(m_env.sel.zpsm == 1)
+	{
+		m |= 0xff000000;
+	}
+
+	if(m != 0xffffffff)
+	{
+		DWORD z = (DWORD)(float)v.p.z;
+
+		if(m_env.sel.zpsm != 2)
+		{
+			if(m == 0)
+			{
+				DrawSolidRectT<DWORD, false>(m_env.zbr, m_env.zbc[0], r, z, m);
+			}
+			else
+			{
+				DrawSolidRectT<DWORD, true>(m_env.zbr, m_env.zbc[0], r, z, m);
+			}
+		}
+		else
+		{
+			if(m == 0)
+			{
+				DrawSolidRectT<WORD, false>(m_env.zbr, m_env.zbc[0], r, z, m);
+			}
+			else
+			{
+				DrawSolidRectT<WORD, true>(m_env.zbr, m_env.zbc[0], r, z, m);
+			}
+		}
+	}
+/*
+__int64 stop = __rdtsc();
+fprintf(s_fp, "%I64d => %I64d = %I64d (%d,%d - %d,%d) %d\n", start, stop, stop - start, r.x, r.y, r.z, r.w, size);
+*/
+}
+
+template<class T, bool masked> 
+void GSDrawScanline::DrawSolidRectT(const GSVector4i* row, int* col, const GSVector4i& r, DWORD c, DWORD m)
+{
+	if(m == 0xffffffff) return;
+
+	GSVector4i color((int)c);
+	GSVector4i mask((int)m);
+
+	if(sizeof(T) == sizeof(WORD))
+	{
+		color = color.xxzzlh();
+		mask = mask.xxzzlh();
+	}
+
+	color = color.andnot(mask);
+
+	GSVector4i bm(8 * 4 / sizeof(T) - 1, 8 - 1);
+	GSVector4i br = (r + bm).andnot(bm.xyxy());
+
+	FillRect<T, masked>(row, col, GSVector4i(r.x, r.y, r.z, br.y), color, mask);
+	FillRect<T, masked>(row, col, GSVector4i(r.x, br.w, r.z, r.w), color, mask);
+
+	if(r.x < br.x || br.z < r.z)
+	{
+		FillRect<T, masked>(row, col, GSVector4i(r.x, br.y, br.x, br.w), color, mask);
+		FillRect<T, masked>(row, col, GSVector4i(br.z, br.y, r.z, br.w), color, mask);
+	}
+
+	FillBlock<T, masked>(row, col, br, color, mask);
+}
+
+template<class T, bool masked> 
+void GSDrawScanline::FillRect(const GSVector4i* row, int* col, const GSVector4i& r, const GSVector4i& c, const GSVector4i& m)
+{
+	if(r.x >= r.z) return;
+
+	for(int y = r.y; y < r.w; y++)
+	{
+		DWORD base = row[y].x;
+
+		for(int x = r.x; x < r.z; x++)
+		{
+			T* p = &((T*)m_env.vm)[base + col[x]];
+
+			*p = (T)(!masked ? c.u32[0] : (c.u32[0] | (*p & m.u32[0])));
+		}
+	}
+}
+
+template<class T, bool masked> 
+void GSDrawScanline::FillBlock(const GSVector4i* row, int* col, const GSVector4i& r, const GSVector4i& c, const GSVector4i& m)
+{
+	if(r.x >= r.z) return;
+
+	for(int y = r.y; y < r.w; y += 8)
+	{
+		DWORD base = row[y].x;
+
+		for(int x = r.x; x < r.z; x += 8 * 4 / sizeof(T))
+		{
+			GSVector4i* p = (GSVector4i*)&((T*)m_env.vm)[base + col[x]];
+
+			for(int i = 0; i < 16; i += 4)
+			{
+				p[i + 0] = !masked ? c : (c | (p[i + 0] & m));
+				p[i + 1] = !masked ? c : (c | (p[i + 1] & m));
+				p[i + 2] = !masked ? c : (c | (p[i + 2] & m));
+				p[i + 3] = !masked ? c : (c | (p[i + 3] & m));
+			}
+		}
+	}
+}
+
 //
 
-void GSDrawScanline::Init()
+GSDrawScanline::GSDrawScanlineMap::GSDrawScanlineMap()
 {
 	// w00t :P
 
-	#define InitDS_IIP(iFPSM, iZPSM, iZTST, iIIP) \
-		m_ds.f[iFPSM][iZPSM][iZTST][iIIP] = (DrawScanlinePtr)&GSDrawScanline::DrawScanline<iFPSM, iZPSM, iZTST, iIIP>; \
+	#define InitDS_IIP(fpsm, zpsm, ztst, iip) \
+		m_default[fpsm][zpsm][ztst][iip] = (DrawScanlinePtr)&GSDrawScanline::DrawScanline<fpsm, zpsm, ztst, iip>; \
 
-	#define InitDS_ZTST(iFPSM, iZPSM, iZTST) \
-		InitDS_IIP(iFPSM, iZPSM, iZTST, 0) \
-		InitDS_IIP(iFPSM, iZPSM, iZTST, 1) \
+	#define InitDS_ZTST(fpsm, zpsm, ztst) \
+		InitDS_IIP(fpsm, zpsm, ztst, 0) \
+		InitDS_IIP(fpsm, zpsm, ztst, 1) \
 
-	#define InitDS(iFPSM, iZPSM) \
-		InitDS_ZTST(iFPSM, iZPSM, 0) \
-		InitDS_ZTST(iFPSM, iZPSM, 1) \
-		InitDS_ZTST(iFPSM, iZPSM, 2) \
-		InitDS_ZTST(iFPSM, iZPSM, 3) \
+	#define InitDS(fpsm, zpsm) \
+		InitDS_ZTST(fpsm, zpsm, 0) \
+		InitDS_ZTST(fpsm, zpsm, 1) \
+		InitDS_ZTST(fpsm, zpsm, 2) \
+		InitDS_ZTST(fpsm, zpsm, 3) \
 
 	InitDS(0, 0);
 	InitDS(0, 1);
@@ -848,7 +1372,7 @@ void GSDrawScanline::Init()
 	InitDS(3, 2);
 
 	#define InitDS_Sel(sel) \
-		m_ds.SetAt(sel, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineEx<##sel##>); \
+		SetAt(sel, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineEx<##sel##>); \
 
 	#ifdef FAST_DRAWSCANLINE
 
@@ -920,6 +1444,8 @@ void GSDrawScanline::Init()
 	InitDS_Sel(0x54204055); //  13.26%
 	InitDS_Sel(0x55204055); //  28.55%
 	InitDS_Sel(0x488791e5);
+	InitDS_Sel(0x48868065); //   5.11%
+	InitDS_Sel(0x4887914d); //   8.48%
 
 	// ffx-2
 
@@ -2031,439 +2557,51 @@ void GSDrawScanline::Init()
 	#endif
 }
 
-template<DWORD fpsm, DWORD zpsm, DWORD ztst, DWORD iip>
-void GSDrawScanline::DrawScanline(int top, int left, int right, const GSVertexSW& v)
+IDrawScanline::DrawScanlinePtr GSDrawScanline::GSDrawScanlineMap::GetDefaultFunction(DWORD dw)
 {
-	int skip = left & 3;
+	GSScanlineSelector sel;
 
-	left -= skip;
+	sel.dw = dw;
 
-	int steps = right - left;
-
-	GSVector4i test = s_test[skip] | s_test[GSVector4i::min_i16(4, steps) + 4];
-
-	//
-
-	GSVector2i fza_base;
-	GSVector2i* fza_offset;
-
-	GSVector4 z, s, t, q;
-	GSVector4i f, rb, ga;
-
-	// fza
-
-	fza_base = m_env.fzbr[top];
-	fza_offset = &m_env.fzbc[left >> 2];
-
-	// v.p
-
-	GSVector4 vp = v.p;
-
-	z = vp.zzzz() + m_env.d[skip].z;
-	f = GSVector4i(vp).zzzzh().zzzz().add16(m_env.d[skip].f);
-
-	// v.t
-
-	GSVector4 vt = v.t;
-
-	s = vt.xxxx() + m_env.d[skip].s; 
-	t = vt.yyyy() + m_env.d[skip].t;
-	q = vt.zzzz() + m_env.d[skip].q;
-
-	// v.c
-
-	if(iip)
-	{
-		GSVector4i vc = GSVector4i(v.c);
-
-		vc = vc.upl16(vc.zwxy());
-
-		rb = vc.xxxx().add16(m_env.d[skip].rb);
-		ga = vc.zzzz().add16(m_env.d[skip].ga);
-	}
-	else
-	{
-		rb = m_env.rb;
-		ga = m_env.ga;
-	}
-
-	//
-
-	while(1)
-	{
-		do
-		{
-			int fa = fza_base.x + fza_offset->x;
-			int za = fza_base.y + fza_offset->y;
-			
-			GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::x00000001());
-			GSVector4i zd;
-
-			if(ztst > 1)
-			{
-				ReadPixel(zpsm, za, zd);
-
-				if(!TestZ(zpsm, ztst, zs, zd, test))
-				{
-					continue;
-				}
-			}
-
-			GSVector4i c[6];
-
-			if(m_env.sel.tfx != TFX_NONE)
-			{
-				SampleTexture(ztst, m_env.sel.fst, m_env.sel.ltf, m_env.sel.tlu, test, s, t, q, c);
-			}
-
-			AlphaTFX(m_env.sel.tfx, m_env.sel.tcc, ga, c[1]);
-
-			GSVector4i fm = m_env.fm;
-			GSVector4i zm = m_env.zm;
-
-			if(!TestAlpha(m_env.sel.atst, m_env.sel.afail, c[1], fm, zm, test))
-			{
-				continue;
-			}
-
-			ColorTFX(m_env.sel.tfx, rb, ga, c[0], c[1]);
-
-			Fog(m_env.sel.fge, f, c[0], c[1]);
-
-			GSVector4i fd;
-
-			if(m_env.sel.rfb)
-			{
-				ReadPixel(fpsm, fa, fd);
-
-				if(!TestDestAlpha(fpsm, m_env.sel.date, fd, test))
-				{
-					continue;
-				}
-			}
-
-			fm |= test;
-			zm |= test;
-
-			int fzm = ~(fm == GSVector4i::xffffffff()).ps32(zm == GSVector4i::xffffffff()).mask();
-
-			WriteZBuf(zpsm, ztst, zs, zd, zm, za, fzm);
-
-			if(m_env.sel.abe != 255)
-			{
-				GSVector4i mask = GSVector4i::x00ff();
-
-				switch(fpsm)
-				{
-				case 0:
-					c[2] = fd & mask;
-					c[3] = (fd >> 8) & mask;
-					break;
-				case 1:
-					c[2] = fd & mask;
-					c[3] = (fd >> 8) & mask;
-					c[3] = c[3].mix16(GSVector4i(0x00800000));
-					break;
-				case 2:
-					c[2] = ((fd & 0x7c00) << 9) | ((fd & 0x001f) << 3);
-					c[3] = ((fd & 0x8000) << 8) | ((fd & 0x03e0) >> 2);
-					break;
-				}
-
-				c[4] = GSVector4::zero();
-				c[5] = m_env.afix;
-
-				DWORD abea = m_env.sel.abea;
-				DWORD abeb = m_env.sel.abeb;
-				DWORD abec = m_env.sel.abec;
-				DWORD abed = m_env.sel.abed;
-
-				GSVector4i a = c[abec * 2 + 1].yywwl().yywwh().sll16(7);
-
-				GSVector4i rb = GSVector4i::lerp16<1>(c[abea * 2 + 0], c[abeb * 2 + 0], a, c[abed * 2 + 0]);
-				GSVector4i ga = GSVector4i::lerp16<1>(c[abea * 2 + 1], c[abeb * 2 + 1], a, c[abed * 2 + 1]);
-
-				if(m_env.sel.pabe)
-				{
-					mask = (c[1] << 8).sra32(31);
-
-					rb = c[0].blend8(rb, mask);
-					ga = c[1].blend8(ga, mask);
-				}
-
-				c[0] = rb;
-				c[1] = ga.mix16(c[1]);
-			}
-
-			WriteFrame(fpsm, m_env.sel.rfb, c, fd, fm, fa, fzm);
-		}
-		while(0);
-
-		if(steps <= 4) break;
-
-		steps -= 4;
-
-		test = s_test[GSVector4i::min_i16(4, steps) + 4];
-
-		fza_offset++;
-
-		z += m_env.d4.z;
-		f = f.add16(m_env.d4.f);
-
-		GSVector4 stq = m_env.d4.stq;
-
-		s += stq.xxxx();
-		t += stq.yyyy();
-		q += stq.zzzz();
-
-		if(iip)
-		{
-			GSVector4i c = m_env.d4.c;
-
-			rb = rb.add16(c.xxxx());
-			ga = ga.add16(c.yyyy());
-		}
-	}
+	return m_default[sel.fpsm][sel.zpsm][sel.ztst][sel.iip];
 }
 
-template<DWORD sel>
-void GSDrawScanline::DrawScanlineEx(int top, int left, int right, const GSVertexSW& v)
+//
+
+GSDrawScanline::GSSetupPrimMap::GSSetupPrimMap()
 {
-	const DWORD fpsm = (sel >> 0) & 3;
-	const DWORD zpsm = (sel >> 2) & 3;
-	const DWORD ztst = (sel >> 4) & 3;
-	const DWORD atst = (sel >> 6) & 7;
-	const DWORD afail = (sel >> 9) & 3;
-	const DWORD iip = (sel >> 11) & 1;
-	const DWORD tfx = (sel >> 12) & 7;
-	const DWORD tcc = (sel >> 15) & 1;
-	const DWORD fst = (sel >> 16) & 1;
-	const DWORD ltf = (sel >> 17) & 1;
-	const DWORD tlu = (sel >> 18) & 1;
-	const DWORD fge = (sel >> 19) & 1;
-	const DWORD date = (sel >> 20) & 1;
-	const DWORD abe = (sel >> 21) & 255;
-	const DWORD abea = (sel >> 21) & 3;
-	const DWORD abeb = (sel >> 23) & 3;
-	const DWORD abec = (sel >> 25) & 3;
-	const DWORD abed = (sel >> 27) & 3;
-	const DWORD pabe = (sel >> 29) & 1;
-	const DWORD rfb = (sel >> 30) & 1;
+	#define InitSP_IIP(zbe, fge, tme, iip) \
+		m_default[zbe][fge][tme][iip] = (SetupPrimPtr)&GSDrawScanline::SetupPrim<zbe, fge, tme, iip>; \
 
-	//
+	#define InitSP_TME(zbe, fge, tme) \
+		InitSP_IIP(zbe, fge, tme, 0) \
+		InitSP_IIP(zbe, fge, tme, 1) \
 
-	int skip = left & 3;
+	#define InitSP_FGE(zbe, fge) \
+		InitSP_TME(zbe, fge, 0) \
+		InitSP_TME(zbe, fge, 1) \
 
-	left -= skip;
+	#define InitSP_ZBE(zbe) \
+		InitSP_FGE(zbe, 0) \
+		InitSP_FGE(zbe, 1) \
 
-	int steps = right - left;
-
-	GSVector4i test = s_test[skip] | s_test[GSVector4i::min_i16(4, steps) + 4];
-
-	//
-
-	GSVector2i fza_base;
-	GSVector2i* fza_offset;
-
-	GSVector4 z, s, t, q;
-	GSVector4i f, rb, ga;
-
-	// fza
-
-	fza_base = m_env.fzbr[top];
-	fza_offset = &m_env.fzbc[left >> 2];
-
-	// v.p
-
-	GSVector4 vp = v.p;
-
-	z = vp.zzzz() + m_env.d[skip].z;
-	f = GSVector4i(vp).zzzzh().zzzz().add16(m_env.d[skip].f);
-
-	// v.t
-
-	GSVector4 vt = v.t;
-
-	s = vt.xxxx() + m_env.d[skip].s; 
-	t = vt.yyyy() + m_env.d[skip].t;
-	q = vt.zzzz() + m_env.d[skip].q;
-
-	// v.c
-
-	if(iip)
-	{
-		GSVector4i vc = GSVector4i(v.c);
-
-		vc = vc.upl16(vc.zwxy());
-
-		rb = vc.xxxx().add16(m_env.d[skip].rb);
-		ga = vc.zzzz().add16(m_env.d[skip].ga);
-	}
-	else
-	{
-		rb = m_env.rb;
-		ga = m_env.ga;
-	}
-
-	//
-
-	while(1)
-	{
-		do
-		{
-			int fa = fza_base.x + fza_offset->x;
-			int za = fza_base.y + fza_offset->y;
-
-			GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::x00000001());
-			GSVector4i zd;
-
-			if(ztst > 1)
-			{
-				ReadPixel(zpsm, za, zd);
-
-				if(!TestZ(zpsm, ztst, zs, zd, test))
-				{
-					continue;
-				}
-			}
-
-			GSVector4i c[6];
-
-			if(tfx != TFX_NONE)
-			{
-				SampleTexture(ztst, fst, ltf, tlu, test, s, t, q, c);
-			}
-
-			AlphaTFX(tfx, tcc, ga, c[1]);
-
-			GSVector4i fm = m_env.fm;
-			GSVector4i zm = m_env.zm;
-
-			if(!TestAlpha(atst, afail, c[1], fm, zm, test))
-			{
-				continue;
-			}
-
-			ColorTFX(tfx, rb, ga, c[0], c[1]);
-
-			Fog(fge, f, c[0], c[1]);
-
-			GSVector4i fd;
-
-			if(rfb)
-			{
-				ReadPixel(fpsm, fa, fd);
-
-				if(!TestDestAlpha(fpsm, date, fd, test))
-				{
-					continue;
-				}
-			}
-
-			fm |= test;
-			zm |= test;
-
-			int fzm = ~(fm == GSVector4i::xffffffff()).ps32(zm == GSVector4i::xffffffff()).mask();
-
-			WriteZBuf(zpsm, ztst, zs, zd, zm, za, fzm);
-
-			if(abe != 255)
-			{
-				GSVector4i mask = GSVector4i::x00ff();
-
-				switch(fpsm)
-				{
-				case 0:
-				case 1:
-					c[2] = fd & mask;
-					c[3] = (fd >> 8) & mask;
-					break;
-				case 2:
-					c[2] = ((fd & 0x7c00) << 9) | ((fd & 0x001f) << 3);
-					c[3] = ((fd & 0x8000) << 8) | ((fd & 0x03e0) >> 2);
-					break;
-				}
-
-				c[4] = GSVector4::zero();
-				c[5] = GSVector4::zero();
-
-				GSVector4i rb, ga;
-
-				if(abea != abeb)
-				{
-					rb = c[abea * 2 + 0];
-					ga = c[abea * 2 + 1];
-
-					if(abeb != 2)
-					{
-						rb = rb.sub16(c[abeb * 2 + 0]);
-						ga = ga.sub16(c[abeb * 2 + 1]);
-					}
-
-					if(!(fpsm == 1 && abec == 1))
-					{
-						GSVector4i a = abec < 2 ? c[abec * 2 + 1].yywwl().yywwh().sll16(7) : m_env.afix2;
-
-						rb = rb.modulate16<1>(a);
-						ga = ga.modulate16<1>(a);
-					}
-
-					if(abed < 2)
-					{
-						rb = rb.add16(c[abed * 2 + 0]);
-						ga = ga.add16(c[abed * 2 + 1]);
-					}
-				}
-				else
-				{
-					rb = c[abed * 2 + 0];
-					ga = c[abed * 2 + 1];
-				}
-
-				if(pabe)
-				{
-					mask = (c[1] << 8).sra32(31);
-
-					rb = c[0].blend8(rb, mask);
-					ga = c[1].blend8(ga, mask);
-				}
-
-				c[0] = rb;
-				c[1] = ga.mix16(c[1]);
-			}
-
-			WriteFrame(fpsm, rfb, c, fd, fm, fa, fzm);
-		}
-		while(0);
-
-		if(steps <= 4) break;
-
-		steps -= 4;
-
-		test = s_test[GSVector4i::min_i16(4, steps) + 4];
-
-		fza_offset++;
-
-		z += m_env.d4.z;
-		f = f.add16(m_env.d4.f);
-
-		GSVector4 stq = m_env.d4.stq;
-
-		s += stq.xxxx();
-		t += stq.yyyy();
-		q += stq.zzzz();
-
-		if(iip)
-		{
-			GSVector4i c = m_env.d4.c;
-
-			rb = rb.add16(c.xxxx());
-			ga = ga.add16(c.yyyy());
-		}
-	}
+	InitSP_ZBE(0);
+	InitSP_ZBE(1);
 }
 
-const GSVector4 GSDrawScanline::s_ps0123[4] = 
+IDrawScanline::SetupPrimPtr GSDrawScanline::GSSetupPrimMap::GetDefaultFunction(DWORD dw)
+{
+	DWORD zbe = (dw >> 0) & 1;
+	DWORD fge = (dw >> 1) & 1;
+	DWORD tme = (dw >> 2) & 1;
+	DWORD iip = (dw >> 3) & 1;
+
+	return m_default[zbe][fge][tme][iip];
+}
+
+//
+
+const GSVector4 GSDrawScanline::m_shift[4] = 
 {
 	GSVector4(0.0f, 1.0f, 2.0f, 3.0f),
 	GSVector4(-1.0f, 0.0f, 1.0f, 2.0f),
@@ -2471,15 +2609,15 @@ const GSVector4 GSDrawScanline::s_ps0123[4] =
 	GSVector4(-3.0f, -2.0f, -1.0f, 0.0f),
 };
 
-const GSVector4i GSDrawScanline::s_test[9] = 
+const GSVector4i GSDrawScanline::m_test[9] = 
 {
 	GSVector4i::zero(),
-	GSVector4i(0xffffffff, 0, 0, 0),
-	GSVector4i(0xffffffff, 0xffffffff, 0, 0),
-	GSVector4i(0xffffffff, 0xffffffff, 0xffffffff, 0),
+	GSVector4i(0xffffffff, 0x00000000, 0x00000000, 0x00000000),
+	GSVector4i(0xffffffff, 0xffffffff, 0x00000000, 0x00000000),
+	GSVector4i(0xffffffff, 0xffffffff, 0xffffffff, 0x00000000),
 	GSVector4i(0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff),
-	GSVector4i(0, 0xffffffff, 0xffffffff, 0xffffffff),
-	GSVector4i(0, 0, 0xffffffff, 0xffffffff),
-	GSVector4i(0, 0, 0, 0xffffffff),
+	GSVector4i(0x00000000, 0xffffffff, 0xffffffff, 0xffffffff),
+	GSVector4i(0x00000000, 0x00000000, 0xffffffff, 0xffffffff),
+	GSVector4i(0x00000000, 0x00000000, 0x00000000, 0xffffffff),
 	GSVector4i::zero(),
 };
