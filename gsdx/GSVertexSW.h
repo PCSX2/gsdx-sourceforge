@@ -100,3 +100,35 @@ __forceinline GSVertexSW operator / (const GSVertexSW& v, float f)
 	v0.t = v.t / vf;
 	return v0;
 }
+
+__declspec(align(16)) struct GSVertexTrace
+{
+	GSVertexSW min, max;
+
+	union
+	{
+		DWORD value; 
+		struct {DWORD x:1, y:1, z:1, f:1, s:1, t:1, q:1, _pad:1, r:1, g:1, b:1, a:1;};
+		struct {DWORD xyzf:4, stq:4, rgba:4;};
+	} eq;
+
+	GSVertexTrace() 
+	{
+		Reset();
+	}
+
+	void Update()
+	{
+		eq.value = (min.p == max.p).mask() | ((min.t == max.t).mask() << 4) | ((min.c == max.c).mask() << 8);
+	}
+
+	void Reset()
+	{
+		min.p = GSVector4(FLT_MAX);
+		max.p = GSVector4(-FLT_MAX);
+		min.t = GSVector4(FLT_MAX);
+		max.t = GSVector4(-FLT_MAX);
+		min.c = GSVector4(FLT_MAX);
+		max.c = GSVector4::zero();
+	}
+};

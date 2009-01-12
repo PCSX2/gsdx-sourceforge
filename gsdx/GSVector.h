@@ -872,6 +872,11 @@ public:
 		return _mm_movemask_epi8(m) == 0xffff;
 	}
 
+	bool anytrue() const
+	{
+		return _mm_movemask_epi8(m) != 0x0000;
+	}
+
 	#if _M_SSE >= 0x401
 
 	template<int i> GSVector4i insert8(int a) const
@@ -2051,6 +2056,11 @@ public:
 	GSVector4(float x, float y, float z, float w)
 	{
 		m = _mm_set_ps(w, z, y, x);
+	}
+
+	GSVector4(float x, float y)
+	{
+		m = _mm_unpacklo_ps(_mm_load_ss(&x), _mm_load_ss(&y));
 	}
 
 	GSVector4(int x, int y, int z, int w)

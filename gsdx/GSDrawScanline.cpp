@@ -52,9 +52,9 @@ void GSDrawScanline::BeginDraw(const GSRasterizerData* data, Functions* f)
 	m_env.fzbc = p->fzbo->col;
 	m_env.fm = GSVector4i(p->fm);
 	m_env.zm = GSVector4i(p->zm);
-	m_env.datm = GSVector4i(context->TEST.DATM ? 0x80000000 : 0);
-	m_env.colclamp = GSVector4i(env.COLCLAMP.CLAMP ? 0xffffffff : 0x00ff00ff);
-	m_env.fba = GSVector4i(context->FBA.FBA ? 0x80000000 : 0);
+	m_env.datm = context->TEST.DATM ? GSVector4i::x80000000() : GSVector4i::zero();
+	m_env.colclamp = env.COLCLAMP.CLAMP ? GSVector4i::xffffffff() : GSVector4i::x00ff();
+	m_env.fba = context->FBA.FBA ? GSVector4i::x80000000() : GSVector4i::zero();
 	m_env.aref = GSVector4i((int)context->TEST.AREF);
 	m_env.afix = GSVector4i((int)context->ALPHA.FIX << 16);
 	m_env.afix2 = m_env.afix.yywwlh().sll16(7);
@@ -191,7 +191,8 @@ void GSDrawScanline::BeginDraw(const GSRasterizerData* data, Functions* f)
 		sel |= (m_env.sel.ztst ? 1 : 0) << 0;
 		sel |= m_env.sel.fge << 1;
 		sel |= (m_env.sel.tfx != TFX_NONE ? 1 : 0) << 2;
-		sel |= m_env.sel.iip << 3;
+		sel |= m_env.sel.fst << 3;
+		sel |= m_env.sel.iip << 4;
 	}
 
 	f->sp = m_sp.Lookup(sel);
@@ -202,7 +203,7 @@ void GSDrawScanline::EndDraw(const GSRasterizerStats& stats)
 	m_ds.UpdateStats(stats, m_state->m_perfmon.GetFrame());
 }
 
-template<DWORD zbe, DWORD fge, DWORD tme, DWORD iip>
+template<DWORD zbe, DWORD fge, DWORD tme, DWORD fst, DWORD iip>
 void GSDrawScanline::SetupPrim(const GSVertexSW* vertices, const GSVertexSW& dscan)
 {
 	// p
@@ -243,7 +244,7 @@ void GSDrawScanline::SetupPrim(const GSVertexSW* vertices, const GSVertexSW& dsc
 	{
 		GSVector4 t = dscan.t;
 
-		if(m_env.sel.fst)
+		if(fst)
 		{
 			m_env.d4.st = GSVector4i(t * 4.0f);
 
@@ -615,17 +616,17 @@ void GSDrawScanline::WriteFrame(int fpsm, int rfb, GSVector4i* c, const GSVector
 
 		if(fpsm < 2)
 		{
-			if(fzm & 0x000a) GSVector4i::storel(&vm16[addr + 0], fs); 
-			if(fzm & 0x00a0) GSVector4i::storeh(&vm16[addr + 8], fs); 
+			if(fzm & 0x03) GSVector4i::storel(&vm16[addr + 0], fs); 
+			if(fzm & 0x0c) GSVector4i::storeh(&vm16[addr + 8], fs); 
 
 			return;
 		}
 	}
 
-	if(fzm & 0x0002) WritePixel(fpsm, &vm16[addr + 0], fs.extract32<0>()); 
-	if(fzm & 0x0008) WritePixel(fpsm, &vm16[addr + 2], fs.extract32<1>());
-	if(fzm & 0x0020) WritePixel(fpsm, &vm16[addr + 8], fs.extract32<2>()); 
-	if(fzm & 0x0080) WritePixel(fpsm, &vm16[addr + 10], fs.extract32<3>());
+	if(fzm & 0x01) WritePixel(fpsm, &vm16[addr + 0], fs.extract32<0>()); 
+	if(fzm & 0x02) WritePixel(fpsm, &vm16[addr + 2], fs.extract32<1>());
+	if(fzm & 0x04) WritePixel(fpsm, &vm16[addr + 8], fs.extract32<2>()); 
+	if(fzm & 0x08) WritePixel(fpsm, &vm16[addr + 10], fs.extract32<3>());
 }
 
 void GSDrawScanline::WriteZBuf(int zpsm, int ztst, const GSVector4i& z, const GSVector4i& zd, const GSVector4i& zm, int addr, int fzm)
@@ -642,19 +643,18 @@ void GSDrawScanline::WriteZBuf(int zpsm, int ztst, const GSVector4i& z, const GS
 		{
 			zs = zs.blend8(zd, zm);
 
-			if(fzm & 0x0a00) GSVector4i::storel(&vm16[addr + 0], zs); 
-			if(fzm & 0xa000) GSVector4i::storeh(&vm16[addr + 8], zs); 
+			if(fzm & 0x30) GSVector4i::storel(&vm16[addr + 0], zs); 
+			if(fzm & 0xc0) GSVector4i::storeh(&vm16[addr + 8], zs); 
 
 			return;
 		}
 	}
 
-	if(fzm & 0x0200) WritePixel(zpsm, &vm16[addr + 0], zs.extract32<0>()); 
-	if(fzm & 0x0800) WritePixel(zpsm, &vm16[addr + 2], zs.extract32<1>());
-	if(fzm & 0x2000) WritePixel(zpsm, &vm16[addr + 8], zs.extract32<2>()); 
-	if(fzm & 0x8000) WritePixel(zpsm, &vm16[addr + 10], zs.extract32<3>());
+	if(fzm & 0x10) WritePixel(zpsm, &vm16[addr + 0], zs.extract32<0>()); 
+	if(fzm & 0x20) WritePixel(zpsm, &vm16[addr + 2], zs.extract32<1>());
+	if(fzm & 0x40) WritePixel(zpsm, &vm16[addr + 8], zs.extract32<2>()); 
+	if(fzm & 0x80) WritePixel(zpsm, &vm16[addr + 10], zs.extract32<3>());
 }
-
 
 template<DWORD fpsm, DWORD zpsm, DWORD ztst, DWORD iip>
 void GSDrawScanline::DrawScanline(int top, int left, int right, const GSVertexSW& v)
@@ -665,7 +665,7 @@ void GSDrawScanline::DrawScanline(int top, int left, int right, const GSVertexSW
 
 	int steps = right - left - 4;
 
-	GSVector4i test = m_test[skip] | m_test[8 + (steps & (steps >> 31))];
+	GSVector4i test = m_test[skip] | m_test[7 + (steps & (steps >> 31))];
 
 	//
 
@@ -801,7 +801,7 @@ void GSDrawScanline::DrawScanline(int top, int left, int right, const GSVertexSW
 			fm |= test;
 			zm |= test;
 
-			int fzm = ~(fm == GSVector4i::xffffffff()).ps32(zm == GSVector4i::xffffffff()).mask();
+			int fzm = ~(fm == GSVector4i::xffffffff()).ps32(zm == GSVector4i::xffffffff()).ps32().mask();
 
 			WriteZBuf(zpsm, ztst, zs, zd, zm, za, fzm);
 
@@ -859,7 +859,7 @@ void GSDrawScanline::DrawScanline(int top, int left, int right, const GSVertexSW
 
 		steps -= 4;
 
-		test = m_test[8 + (steps & (steps >> 31))];
+		test = m_test[7 + (steps & (steps >> 31))];
 
 		fza_offset++;
 
@@ -924,7 +924,7 @@ void GSDrawScanline::DrawScanlineEx(int top, int left, int right, const GSVertex
 
 	int steps = right - left - 4;
 
-	GSVector4i test = m_test[skip] | m_test[8 + (steps & (steps >> 31))];
+	GSVector4i test = m_test[skip] | m_test[7 + (steps & (steps >> 31))];
 
 	//
 
@@ -1060,7 +1060,7 @@ void GSDrawScanline::DrawScanlineEx(int top, int left, int right, const GSVertex
 			fm |= test;
 			zm |= test;
 
-			int fzm = ~(fm == GSVector4i::xffffffff()).ps32(zm == GSVector4i::xffffffff()).mask();
+			int fzm = ~(fm == GSVector4i::xffffffff()).ps32(zm == GSVector4i::xffffffff()).ps32().mask();
 
 			WriteZBuf(zpsm, ztst, zs, zd, zm, za, fzm);
 
@@ -1137,7 +1137,7 @@ void GSDrawScanline::DrawScanlineEx(int top, int left, int right, const GSVertex
 
 		steps -= 4;
 
-		test = m_test[8 + (steps & (steps >> 31))];
+		test = m_test[7 + (steps & (steps >> 31))];
 
 		fza_offset++;
 
@@ -1282,20 +1282,20 @@ void GSDrawScanline::DrawSolidRectT(const GSVector4i* row, int* col, const GSVec
 	GSVector4i bm(8 * 4 / sizeof(T) - 1, 8 - 1);
 	GSVector4i br = (r + bm).andnot(bm.xyxy());
 
-	FillRect<T, masked>(row, col, GSVector4i(r.x, r.y, r.z, br.y), color, mask);
-	FillRect<T, masked>(row, col, GSVector4i(r.x, br.w, r.z, r.w), color, mask);
+	FillRect<T, masked>(row, col, GSVector4i(r.x, r.y, r.z, br.y), c, m);
+	FillRect<T, masked>(row, col, GSVector4i(r.x, br.w, r.z, r.w), c, m);
 
 	if(r.x < br.x || br.z < r.z)
 	{
-		FillRect<T, masked>(row, col, GSVector4i(r.x, br.y, br.x, br.w), color, mask);
-		FillRect<T, masked>(row, col, GSVector4i(br.z, br.y, r.z, br.w), color, mask);
+		FillRect<T, masked>(row, col, GSVector4i(r.x, br.y, br.x, br.w), c, m);
+		FillRect<T, masked>(row, col, GSVector4i(br.z, br.y, r.z, br.w), c, m);
 	}
 
 	FillBlock<T, masked>(row, col, br, color, mask);
 }
 
 template<class T, bool masked> 
-void GSDrawScanline::FillRect(const GSVector4i* row, int* col, const GSVector4i& r, const GSVector4i& c, const GSVector4i& m)
+void GSDrawScanline::FillRect(const GSVector4i* row, int* col, const GSVector4i& r, DWORD c, DWORD m)
 {
 	if(r.x >= r.z) return;
 
@@ -1307,7 +1307,7 @@ void GSDrawScanline::FillRect(const GSVector4i* row, int* col, const GSVector4i&
 		{
 			T* p = &((T*)m_env.vm)[base + col[x]];
 
-			*p = (T)(!masked ? c.u32[0] : (c.u32[0] | (*p & m.u32[0])));
+			*p = (T)(!masked ? c : (c | (*p & m)));
 		}
 	}
 }
@@ -1446,6 +1446,16 @@ GSDrawScanline::GSDrawScanlineMap::GSDrawScanlineMap()
 	InitDS_Sel(0x488791e5);
 	InitDS_Sel(0x48868065); //   5.11%
 	InitDS_Sel(0x4887914d); //   8.48%
+	InitDS_Sel(0x11028965); //   5.57%
+	InitDS_Sel(0x1fe3914d); //  13.66%
+	InitDS_Sel(0x48468965); //  20.70%
+	InitDS_Sel(0x4880494d); //   5.51%
+	InitDS_Sel(0x48810055); //  15.53%
+	InitDS_Sel(0x48820065); //   9.72%
+	InitDS_Sel(0x48820865); //  10.73%
+	InitDS_Sel(0x48869065); //   6.26%
+	InitDS_Sel(0x488789cd); //   7.70%
+	InitDS_Sel(0x49078065); //   8.15%
 
 	// ffx-2
 
@@ -2074,6 +2084,8 @@ GSDrawScanline::GSDrawScanlineMap::GSDrawScanlineMap()
 	InitDS_Sel(0x490f8075); //  25.85%
 	InitDS_Sel(0x490f8b75); //  31.42%
 	InitDS_Sel(0x490f9075); //  15.09%
+	InitDS_Sel(0x1febb075); //  62.57%
+	InitDS_Sel(0x488e9075); //  11.62%
 
 	// nba 2k8
 
@@ -2570,12 +2582,16 @@ IDrawScanline::DrawScanlinePtr GSDrawScanline::GSDrawScanlineMap::GetDefaultFunc
 
 GSDrawScanline::GSSetupPrimMap::GSSetupPrimMap()
 {
-	#define InitSP_IIP(zbe, fge, tme, iip) \
-		m_default[zbe][fge][tme][iip] = (SetupPrimPtr)&GSDrawScanline::SetupPrim<zbe, fge, tme, iip>; \
+	#define InitSP_IIP(zbe, fge, tme, fst, iip) \
+		m_default[zbe][fge][tme][fst][iip] = (SetupPrimPtr)&GSDrawScanline::SetupPrim<zbe, fge, tme, fst, iip>; \
+
+	#define InitSP_FST(zbe, fge, tme, fst) \
+		InitSP_IIP(zbe, fge, tme, fst, 0) \
+		InitSP_IIP(zbe, fge, tme, fst, 1) \
 
 	#define InitSP_TME(zbe, fge, tme) \
-		InitSP_IIP(zbe, fge, tme, 0) \
-		InitSP_IIP(zbe, fge, tme, 1) \
+		InitSP_FST(zbe, fge, tme, 0) \
+		InitSP_FST(zbe, fge, tme, 1) \
 
 	#define InitSP_FGE(zbe, fge) \
 		InitSP_TME(zbe, fge, 0) \
@@ -2594,9 +2610,10 @@ IDrawScanline::SetupPrimPtr GSDrawScanline::GSSetupPrimMap::GetDefaultFunction(D
 	DWORD zbe = (dw >> 0) & 1;
 	DWORD fge = (dw >> 1) & 1;
 	DWORD tme = (dw >> 2) & 1;
-	DWORD iip = (dw >> 3) & 1;
+	DWORD fst = (dw >> 3) & 1;
+	DWORD iip = (dw >> 4) & 1;
 
-	return m_default[zbe][fge][tme][iip];
+	return m_default[zbe][fge][tme][fst][iip];
 }
 
 //
@@ -2609,13 +2626,12 @@ const GSVector4 GSDrawScanline::m_shift[4] =
 	GSVector4(-3.0f, -2.0f, -1.0f, 0.0f),
 };
 
-const GSVector4i GSDrawScanline::m_test[9] = 
+const GSVector4i GSDrawScanline::m_test[8] = 
 {
 	GSVector4i::zero(),
 	GSVector4i(0xffffffff, 0x00000000, 0x00000000, 0x00000000),
 	GSVector4i(0xffffffff, 0xffffffff, 0x00000000, 0x00000000),
 	GSVector4i(0xffffffff, 0xffffffff, 0xffffffff, 0x00000000),
-	GSVector4i(0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff),
 	GSVector4i(0x00000000, 0xffffffff, 0xffffffff, 0xffffffff),
 	GSVector4i(0x00000000, 0x00000000, 0xffffffff, 0xffffffff),
 	GSVector4i(0x00000000, 0x00000000, 0x00000000, 0xffffffff),
