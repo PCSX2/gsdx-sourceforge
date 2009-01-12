@@ -113,7 +113,7 @@ class GSDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 	GSScanlineEnvironment m_env;
 
 	static const GSVector4 m_shift[4];
-	static const GSVector4i m_test[9];
+	static const GSVector4i m_test[8];
 
 	//
 
@@ -133,7 +133,7 @@ class GSDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 
 	class GSSetupPrimMap : public GSFunctionMap<SetupPrimPtr>
 	{
-		SetupPrimPtr m_default[2][2][2][2];
+		SetupPrimPtr m_default[2][2][2][2][2];
 
 	public:
 		GSSetupPrimMap();
@@ -145,7 +145,7 @@ class GSDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 
 	//
 
-	template<DWORD zbe, DWORD fge, DWORD tme, DWORD iip>
+	template<DWORD zbe, DWORD fge, DWORD tme, DWORD fst, DWORD iip>
 	void SetupPrim(const GSVertexSW* vertices, const GSVertexSW& dscan);
 
 	//
@@ -179,7 +179,7 @@ class GSDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 	void DrawSolidRectT(const GSVector4i* row, int* col, const GSVector4i& r, DWORD c, DWORD m);
 
 	template<class T, bool masked> 
-	__forceinline void FillRect(const GSVector4i* row, int* col, const GSVector4i& r, const GSVector4i& c, const GSVector4i& m);
+	__forceinline void FillRect(const GSVector4i* row, int* col, const GSVector4i& r, DWORD c, DWORD m);
 
 	template<class T, bool masked> 
 	__forceinline void FillBlock(const GSVector4i* row, int* col, const GSVector4i& r, const GSVector4i& c, const GSVector4i& m);

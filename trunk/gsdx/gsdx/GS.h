@@ -26,7 +26,7 @@
 
 #pragma once
 
-#define PLUGIN_VERSION 13
+#define PLUGIN_VERSION 14
 
 #include "GSVector.h"
 

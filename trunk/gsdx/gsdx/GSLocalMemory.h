@@ -133,8 +133,8 @@ public:
 	GSLocalMemory();
 	virtual ~GSLocalMemory();
 
-	Offset* GetOffset(DWORD bp, DWORD bw, DWORD psm, Offset* o = NULL);
-	Offset4* GetOffset4(const GIFRegFRAME& FRAME, const GIFRegZBUF& ZBUF, Offset4* o = NULL);
+	Offset* GetOffset(DWORD bp, DWORD bw, DWORD psm);
+	Offset4* GetOffset4(const GIFRegFRAME& FRAME, const GIFRegZBUF& ZBUF);
 
 	// address
 
