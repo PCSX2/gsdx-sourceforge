@@ -27,23 +27,18 @@
 GSRendererHW10::GSRendererHW10(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs)
 	: GSRendererHW<Device, Vertex, TextureCache>(base, mt, irq, nloophack, rs, true)
 {
-	for(int i = 0; i < countof(m_fpDrawingKickHandlers); i++)
-	{
-		m_fpDrawingKickHandlers[i] = (DrawingKickHandler)&GSRendererHW10::DrawingKick;
-	}
+	m_fpAddVertexHandlers[0][0] = (AddVertexHandler)&GSRendererHW10::AddVertex<0, 0>;
+	m_fpAddVertexHandlers[0][1] = (AddVertexHandler)&GSRendererHW10::AddVertex<0, 0>;
+	m_fpAddVertexHandlers[1][0] = (AddVertexHandler)&GSRendererHW10::AddVertex<1, 0>;
+	m_fpAddVertexHandlers[1][1] = (AddVertexHandler)&GSRendererHW10::AddVertex<1, 1>;
 
-	m_fpDrawingKickHandlers[GS_POINTLIST] = (DrawingKickHandler)&GSRendererHW10::DrawingKickPoint;
-
-	#if _M_SSE >= 0x401
-
-	m_fpDrawingKickHandlers[GS_LINELIST] = (DrawingKickHandler)&GSRendererHW10::DrawingKickLine;
-	m_fpDrawingKickHandlers[GS_LINESTRIP] = (DrawingKickHandler)&GSRendererHW10::DrawingKickLine;
-	m_fpDrawingKickHandlers[GS_TRIANGLELIST] = (DrawingKickHandler)&GSRendererHW10::DrawingKickTriangle;
-	m_fpDrawingKickHandlers[GS_TRIANGLESTRIP] = (DrawingKickHandler)&GSRendererHW10::DrawingKickTriangle;
-	m_fpDrawingKickHandlers[GS_TRIANGLEFAN] = (DrawingKickHandler)&GSRendererHW10::DrawingKickTriangle;
-	m_fpDrawingKickHandlers[GS_SPRITE] = (DrawingKickHandler)&GSRendererHW10::DrawingKickSprite;
-
-	#endif
+	m_fpAddPrimHandlers[GS_POINTLIST] = (AddPrimHandler)&GSRendererHW10::AddPrim<GS_POINT_CLASS>;
+	m_fpAddPrimHandlers[GS_LINELIST] = (AddPrimHandler)&GSRendererHW10::AddPrim<GS_LINE_CLASS>;
+	m_fpAddPrimHandlers[GS_LINESTRIP] = (AddPrimHandler)&GSRendererHW10::AddPrim<GS_LINE_CLASS>;
+	m_fpAddPrimHandlers[GS_TRIANGLELIST] = (AddPrimHandler)&GSRendererHW10::AddPrim<GS_TRIANGLE_CLASS>;
+	m_fpAddPrimHandlers[GS_TRIANGLESTRIP] = (AddPrimHandler)&GSRendererHW10::AddPrim<GS_TRIANGLE_CLASS>;
+	m_fpAddPrimHandlers[GS_TRIANGLEFAN] = (AddPrimHandler)&GSRendererHW10::AddPrim<GS_TRIANGLE_CLASS>;
+	m_fpAddPrimHandlers[GS_SPRITE] = (AddPrimHandler)&GSRendererHW10::AddPrim<GS_SPRITE_CLASS>;
 }
 
 bool GSRendererHW10::Create(LPCTSTR title)
@@ -86,112 +81,76 @@ bool GSRendererHW10::Create(LPCTSTR title)
 	return true;
 }
 
-void GSRendererHW10::VertexKick(bool skip)
+template<DWORD tme, DWORD fst>
+void GSRendererHW10::AddVertex()
 {
-	Vertex& v = m_vl.AddTail();
+	Vertex& dst = m_vl.AddTail();
 
-	v.m128i[0] = m_v.m128i[0];
-	v.m128i[1] = m_v.m128i[1];
+	dst.m128i[0] = m_v.m128i[0];
+	dst.m128i[1] = m_v.m128i[1];
 
-	if(PRIM->TME_FST())
+	if(tme && fst)
 	{
-		GSVector4::storel(&v.ST, m_v.GetUV());
+		GSVector4::storel(&dst.ST, m_v.GetUV());
 	}
-
-	__super::VertexKick(skip);
 }
 
-int GSRendererHW10::ScissorTest(const GSVector4i& p0, const GSVector4i& p1)
+template<int primclass>
+void GSRendererHW10::AddPrim(Vertex* v, DWORD& count)
 {
 	GSVector4i scissor = m_context->scissor.dx10;
 
-	GSVector4i v0 = p0 < scissor;
-	GSVector4i v1 = p1 > scissor.zwxy();
+	#if _M_SSE >= 0x401
 
-	return (v0 | v1).mask() & 0xff;
-}
+	GSVector4i pmin, pmax, v0, v1, v2;
 
-void GSRendererHW10::DrawingKickPoint(Vertex* v, int& count)
-{
-	GSVector4i v0 = GSVector4i::load((int)v[0].p.xy).upl16();
+	switch(primclass)
+	{
+	case GS_POINT_CLASS:
+		v0 = GSVector4i::load((int)v[0].p.xy).upl16();
+		pmin = v0;
+		pmax = v0;
+		break;
+	case GS_LINE_CLASS:
+	case GS_SPRITE_CLASS:
+		v0 = GSVector4i::load((int)v[0].p.xy);
+		v1 = GSVector4i::load((int)v[1].p.xy);
+		pmin = v0.min_u16(v1).upl16();
+		pmax = v0.max_u16(v1).upl16();
+		break;
+	case GS_TRIANGLE_CLASS:
+		v0 = GSVector4i::load((int)v[0].p.xy);
+		v1 = GSVector4i::load((int)v[1].p.xy);
+		v2 = GSVector4i::load((int)v[2].p.xy);
+		pmin = v0.min_u16(v1).min_u16(v2).upl16();
+		pmax = v0.max_u16(v1).max_u16(v2).upl16();
+		break;
+	}
 
-	GSVector4i p0 = v0;
-	GSVector4i p1 = v0;
+	GSVector4i test = (pmax < scissor) | (pmin > scissor.zwxy());
 
-	if(ScissorTest(p0, p1))
+	if(test.mask() & 0xff)
 	{
 		count = 0;
 		return;
 	}
-}
 
-#if _M_SSE >= 0x401
+	#else
 
-void GSRendererHW10::DrawingKickLine(Vertex* v, int& count)
-{
-	GSVector4i v0 = GSVector4i::load((int)v[0].p.xy);
-	GSVector4i v1 = GSVector4i::load((int)v[1].p.xy);
-
-	GSVector4i p0 = v0.max_u16(v1).upl16();
-	GSVector4i p1 = v0.min_u16(v1).upl16();
-
-	if(ScissorTest(p0, p1))
+	switch(primclass)
 	{
-		count = 0;
-		return;
-	}
-}
-
-void GSRendererHW10::DrawingKickTriangle(Vertex* v, int& count)
-{
-	GSVector4i v0 = GSVector4i::load((int)v[0].p.xy);
-	GSVector4i v1 = GSVector4i::load((int)v[1].p.xy);
-	GSVector4i v2 = GSVector4i::load((int)v[2].p.xy);
-
-	GSVector4i p0 = v0.max_u16(v1).max_u16(v2).upl16();
-	GSVector4i p1 = v0.min_u16(v1).min_u16(v2).upl16();
-
-	if(ScissorTest(p0, p1))
-	{
-		count = 0;
-		return;
-	}
-}
-
-void GSRendererHW10::DrawingKickSprite(Vertex* v, int& count)
-{
-	GSVector4i v0 = GSVector4i::load((int)v[0].p.xy);
-	GSVector4i v1 = GSVector4i::load((int)v[1].p.xy);
-
-	GSVector4i p0 = v0.max_u16(v1).upl16();
-	GSVector4i p1 = v0.min_u16(v1).upl16();
-
-	if(ScissorTest(p0, p1))
-	{
-		count = 0;
-		return;
-	}
-}
-
-#endif
-
-void GSRendererHW10::DrawingKick(Vertex* v, int& count)
-{
-	GSVector4i scissor = m_context->scissor.dx10;
-
-	switch(count)
-	{
-	case 1:
-		if(v[0].p.x < scissor.x
+	case GS_POINT_CLASS:
+		if(v[0].p.x < scissor.x 
 		|| v[0].p.x > scissor.z
-		|| v[0].p.y < scissor.y
+		|| v[0].p.y < scissor.y 
 		|| v[0].p.y > scissor.w)
 		{
 			count = 0;
 			return;
 		}
 		break;
-	case 2:
+	case GS_LINE_CLASS:
+	case GS_SPRITE_CLASS:
 		if(v[0].p.x < scissor.x && v[1].p.x < scissor.x
 		|| v[0].p.x > scissor.z && v[1].p.x > scissor.z
 		|| v[0].p.y < scissor.y && v[1].p.y < scissor.y
@@ -201,7 +160,7 @@ void GSRendererHW10::DrawingKick(Vertex* v, int& count)
 			return;
 		}
 		break;
-	case 3:
+	case GS_TRIANGLE_CLASS:
 		if(v[0].p.x < scissor.x && v[1].p.x < scissor.x && v[2].p.x < scissor.x
 		|| v[0].p.x > scissor.z && v[1].p.x > scissor.z && v[2].p.x > scissor.z
 		|| v[0].p.y < scissor.y && v[1].p.y < scissor.y && v[2].p.y < scissor.y
@@ -211,9 +170,9 @@ void GSRendererHW10::DrawingKick(Vertex* v, int& count)
 			return;
 		}
 		break;
-	default:
-		__assume(0);
 	}
+
+	#endif
 }
 
 void GSRendererHW10::Draw(int prim, Texture& rt, Texture& ds, GSTextureCache<Device>::GSTexture* tex)

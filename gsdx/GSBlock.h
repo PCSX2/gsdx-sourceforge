@@ -31,7 +31,6 @@ class GSBlock
 	static const GSVector4i m_r8mask;
 	static const GSVector4i m_r4mask;
 
-	static const GSVector4i m_rgbx;
 	static const GSVector4i m_xxxa;
 	static const GSVector4i m_xxbx;
 	static const GSVector4i m_xgxx;
@@ -1040,7 +1039,7 @@ public:
 	{
 		#if _M_SSE >= 0x200
 
-		GSVector4i rgbx = m_rgbx;
+		GSVector4i mask = GSVector4i::x00ffffff();
 
 		for(int i = 0; i < 4; i++, src += srcpitch * 2)
 		{
@@ -1048,19 +1047,19 @@ public:
 			GSVector4i v1 = GSVector4i::load(src + 16, src + srcpitch);
 			GSVector4i v2 = GSVector4i::load<false>(src + srcpitch + 8);
 
-			((GSVector4i*)dst)[i * 4 + 0] = v0.upl32(v0.srl<3>()).upl64(v0.srl<6>().upl32(v0.srl<9>())) & rgbx;
+			((GSVector4i*)dst)[i * 4 + 0] = v0.upl32(v0.srl<3>()).upl64(v0.srl<6>().upl32(v0.srl<9>())) & mask;
 
 			v0 = v0.srl<12>(v1);
 
-			((GSVector4i*)dst)[i * 4 + 1] = v0.upl32(v0.srl<3>()).upl64(v0.srl<6>().upl32(v0.srl<9>())) & rgbx;
+			((GSVector4i*)dst)[i * 4 + 1] = v0.upl32(v0.srl<3>()).upl64(v0.srl<6>().upl32(v0.srl<9>())) & mask;
 
 			v0 = v1.srl<8>(v2);
 
-			((GSVector4i*)dst)[i * 4 + 2] = v0.upl32(v0.srl<3>()).upl64(v0.srl<6>().upl32(v0.srl<9>())) & rgbx;
+			((GSVector4i*)dst)[i * 4 + 2] = v0.upl32(v0.srl<3>()).upl64(v0.srl<6>().upl32(v0.srl<9>())) & mask;
 
 			v0 = v2.srl<4>();
 
-			((GSVector4i*)dst)[i * 4 + 3] = v0.upl32(v0.srl<3>()).upl64(v0.srl<6>().upl32(v0.srl<9>())) & rgbx;
+			((GSVector4i*)dst)[i * 4 + 3] = v0.upl32(v0.srl<3>()).upl64(v0.srl<6>().upl32(v0.srl<9>())) & mask;
 		}
 
 		#else 
@@ -1215,7 +1214,7 @@ public:
 		const GSVector4i* s = (const GSVector4i*)src;
 
 		GSVector4i TA0(TEXA.TA0 << 24);
-		GSVector4i mask = m_rgbx;
+		GSVector4i mask = GSVector4i::x00ffffff();
 
 		for(int i = 0; i < 4; i++, dst += dstpitch * 2)
 		{
@@ -1880,7 +1879,7 @@ public:
 		const GSVector4i* s = (const GSVector4i*)src;
 
 		GSVector4i TA0(TEXA.TA0 << 24);
-		GSVector4i mask = m_rgbx;
+		GSVector4i mask = GSVector4i::x00ffffff();
 
 		for(int i = 0; i < 4; i++, dst += dstpitch * 2)
 		{

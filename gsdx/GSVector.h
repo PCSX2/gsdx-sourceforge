@@ -452,7 +452,15 @@ public:
 
 	GSVector4i upl8() const
 	{
+		#if 0 // _M_SSE >= 0x401 // TODO: compiler bug
+
+		return GSVector4i(_mm_cvtepu8_epi16(m));
+		
+		#else
+
 		return GSVector4i(_mm_unpacklo_epi8(m, _mm_setzero_si128()));
+
+		#endif
 	}
 
 	GSVector4i uph8() const
@@ -462,7 +470,15 @@ public:
 
 	GSVector4i upl16() const
 	{
+		#if 0 //_M_SSE >= 0x401 // TODO: compiler bug
+
+		return GSVector4i(_mm_cvtepu16_epi32(m));
+		
+		#else
+
 		return GSVector4i(_mm_unpacklo_epi16(m, _mm_setzero_si128()));
+
+		#endif
 	}
 
 	GSVector4i uph16() const
@@ -472,7 +488,15 @@ public:
 
 	GSVector4i upl32() const
 	{
+		#if 0 //_M_SSE >= 0x401 // TODO: compiler bug
+
+		return GSVector4i(_mm_cvtepu32_epi64(m));
+		
+		#else
+
 		return GSVector4i(_mm_unpacklo_epi32(m, _mm_setzero_si128()));
+
+		#endif
 	}
 
 	GSVector4i uph32() const
@@ -491,6 +515,11 @@ public:
 	}
 
 	#if _M_SSE >= 0x401
+
+	// WARNING!!!
+	//
+	// MSVC (2008, 2010 ctp) believes that there is a "mem, reg" form of the pmovz/sx* instructions,
+	// turning these intrinsics into a minefield, don't spill regs when using them...
 
 	GSVector4i i8to16() const
 	{

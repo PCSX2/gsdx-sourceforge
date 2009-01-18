@@ -103,7 +103,6 @@ void gs_main(point VS_OUTPUT input[1], inout PointStream<VS_OUTPUT> stream)
 void gs_main(line VS_OUTPUT input[2], inout LineStream<VS_OUTPUT> stream)
 {
 	#if IIP == 0
-	input[0].t.z = input[1].t.z;
 	input[0].c = input[1].c;
 	#endif
 
@@ -117,9 +116,7 @@ void gs_main(line VS_OUTPUT input[2], inout LineStream<VS_OUTPUT> stream)
 void gs_main(triangle VS_OUTPUT input[3], inout TriangleStream<VS_OUTPUT> stream)
 {
 	#if IIP == 0
-	input[0].t.z = input[2].t.z;
 	input[0].c = input[2].c;
-	input[1].t.z = input[2].t.z;
 	input[1].c = input[2].c;
 	#endif
 

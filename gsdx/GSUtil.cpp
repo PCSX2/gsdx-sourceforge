@@ -27,7 +27,6 @@
 static struct GSUtilMaps
 {
 	BYTE PrimClassField[8];
-	BYTE PrimVertexCount[8];
 	bool CompatibleBitsField[64][64];
 	bool SharedBitsField[64][64];
 
@@ -41,15 +40,6 @@ static struct GSUtilMaps
 		PrimClassField[GS_TRIANGLEFAN] = GS_TRIANGLE_CLASS;
 		PrimClassField[GS_SPRITE] = GS_SPRITE_CLASS;
 		PrimClassField[GS_INVALID] = GS_INVALID_CLASS;
-
-		PrimVertexCount[GS_POINTLIST] = 1;
-		PrimVertexCount[GS_LINELIST] = 2;
-		PrimVertexCount[GS_LINESTRIP] = 2;
-		PrimVertexCount[GS_TRIANGLELIST] = 3;
-		PrimVertexCount[GS_TRIANGLESTRIP] = 3;
-		PrimVertexCount[GS_TRIANGLEFAN] = 3;
-		PrimVertexCount[GS_SPRITE] = 2;
-		PrimVertexCount[GS_INVALID] = 1;
 
 		memset(CompatibleBitsField, 0, sizeof(CompatibleBitsField));
 
@@ -85,11 +75,6 @@ static struct GSUtilMaps
 GS_PRIM_CLASS GSUtil::GetPrimClass(DWORD prim)
 {
 	return (GS_PRIM_CLASS)s_maps.PrimClassField[prim];
-}
-
-DWORD GSUtil::GetPrimVertexCount(DWORD prim)
-{
-	return s_maps.PrimVertexCount[prim];
 }
 
 bool GSUtil::HasSharedBits(DWORD spsm, DWORD dpsm)

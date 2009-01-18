@@ -30,13 +30,18 @@ GSRendererHW9::GSRendererHW9(BYTE* base, bool mt, void (*irq)(), int nloophack, 
 	m_fba.enabled = !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("fba"), TRUE);
 	m_logz = !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("logz"), FALSE);
 
-	m_fpDrawingKickHandlers[GS_POINTLIST] = (DrawingKickHandler)&GSRendererHW9::DrawingKickPoint;
-	m_fpDrawingKickHandlers[GS_LINELIST] = (DrawingKickHandler)&GSRendererHW9::DrawingKickLine;
-	m_fpDrawingKickHandlers[GS_LINESTRIP] = (DrawingKickHandler)&GSRendererHW9::DrawingKickLine;
-	m_fpDrawingKickHandlers[GS_TRIANGLELIST] = (DrawingKickHandler)&GSRendererHW9::DrawingKickTriangle;
-	m_fpDrawingKickHandlers[GS_TRIANGLESTRIP] = (DrawingKickHandler)&GSRendererHW9::DrawingKickTriangle;
-	m_fpDrawingKickHandlers[GS_TRIANGLEFAN] = (DrawingKickHandler)&GSRendererHW9::DrawingKickTriangle;
-	m_fpDrawingKickHandlers[GS_SPRITE] = (DrawingKickHandler)&GSRendererHW9::DrawingKickSprite;
+	m_fpAddVertexHandlers[0][0] = (AddVertexHandler)&GSRendererHW9::AddVertex<0, 0>;
+	m_fpAddVertexHandlers[0][1] = (AddVertexHandler)&GSRendererHW9::AddVertex<0, 0>;
+	m_fpAddVertexHandlers[1][0] = (AddVertexHandler)&GSRendererHW9::AddVertex<1, 0>;
+	m_fpAddVertexHandlers[1][1] = (AddVertexHandler)&GSRendererHW9::AddVertex<1, 1>;
+
+	m_fpAddPrimHandlers[GS_POINTLIST] = (AddPrimHandler)&GSRendererHW9::AddPrim<GS_POINT_CLASS>;
+	m_fpAddPrimHandlers[GS_LINELIST] = (AddPrimHandler)&GSRendererHW9::AddPrim<GS_LINE_CLASS>;
+	m_fpAddPrimHandlers[GS_LINESTRIP] = (AddPrimHandler)&GSRendererHW9::AddPrim<GS_LINE_CLASS>;
+	m_fpAddPrimHandlers[GS_TRIANGLELIST] = (AddPrimHandler)&GSRendererHW9::AddPrim<GS_TRIANGLE_CLASS>;
+	m_fpAddPrimHandlers[GS_TRIANGLESTRIP] = (AddPrimHandler)&GSRendererHW9::AddPrim<GS_TRIANGLE_CLASS>;
+	m_fpAddPrimHandlers[GS_TRIANGLEFAN] = (AddPrimHandler)&GSRendererHW9::AddPrim<GS_TRIANGLE_CLASS>;
+	m_fpAddPrimHandlers[GS_SPRITE] = (AddPrimHandler)&GSRendererHW9::AddPrim<GS_SPRITE_CLASS>;
 }
 
 bool GSRendererHW9::Create(LPCTSTR title)
@@ -80,121 +85,91 @@ bool GSRendererHW9::Create(LPCTSTR title)
 	return true;
 }
 
-void GSRendererHW9::VertexKick(bool skip)
+template<DWORD tme, DWORD fst>
+void GSRendererHW9::AddVertex()
 {
-	Vertex& v = m_vl.AddTail();
+	Vertex& dst = m_vl.AddTail();
 
-	v.p.x = (float)m_v.XYZ.X;
-	v.p.y = (float)m_v.XYZ.Y;
-	v.p.z = (float)m_v.XYZ.Z;
+	dst.p.x = (float)m_v.XYZ.X;
+	dst.p.y = (float)m_v.XYZ.Y;
+	dst.p.z = (float)m_v.XYZ.Z;
 
-	v.c0 = m_v.RGBAQ.ai32[0];
-	v.c1 = m_v.FOG.ai32[1];
+	dst.c0 = m_v.RGBAQ.ai32[0];
+	dst.c1 = m_v.FOG.ai32[1];
 
-	if(PRIM->TME)
+	if(tme)
 	{
-		if(PRIM->FST)
+		if(fst)
 		{
-			GSVector4::storel(&v.t, m_v.GetUV());
+			GSVector4::storel(&dst.t, m_v.GetUV());
 		}
 		else
 		{
-			v.t.x = m_v.ST.S;
-			v.t.y = m_v.ST.T;
-			v.p.w = m_v.RGBAQ.Q;
+			dst.t.x = m_v.ST.S;
+			dst.t.y = m_v.ST.T;
+			dst.p.w = m_v.RGBAQ.Q;
 		}
 	}
-
-	__super::VertexKick(skip);
 }
 
-int GSRendererHW9::ScissorTest(const GSVector4& p0, const GSVector4& p1)
+template<int primclass>
+void GSRendererHW9::AddPrim(Vertex* v, DWORD& count)
 {
 	GSVector4 scissor = m_context->scissor.dx9;
 
-	GSVector4 v0 = p0 < scissor;
-	GSVector4 v1 = p1 > scissor.zwxy();
+	GSVector4 pmin, pmax;
 
-	return (v0 | v1).mask() & 3;
-}
+	switch(primclass)
+	{
+	case GS_POINT_CLASS:
+		pmin = v[0].p;
+		pmax = v[0].p;
+		break;
+	case GS_LINE_CLASS:
+	case GS_SPRITE_CLASS:
+		pmin = v[0].p.minv(v[1].p);
+		pmax = v[0].p.maxv(v[1].p);
+		break;
+	case GS_TRIANGLE_CLASS:
+		pmin = v[0].p.minv(v[1].p).minv(v[2].p);
+		pmax = v[0].p.maxv(v[1].p).maxv(v[2].p);
+		break;
+	}
 
-void GSRendererHW9::DrawingKickPoint(Vertex* v, int& count)
-{
-	GSVector4 p0 = v[0].p;
-	GSVector4 p1 = v[0].p;
+	GSVector4 test = (pmax < scissor) | (pmin > scissor.zwxy());
 
-	if(ScissorTest(p0, p1))
+	if(test.mask() & 3)
 	{
 		count = 0;
 		return;
 	}
-}
 
-void GSRendererHW9::DrawingKickLine(Vertex* v, int& count)
-{
-	GSVector4 p0 = v[0].p.maxv(v[1].p);
-	GSVector4 p1 = v[0].p.minv(v[1].p);
-
-	if(ScissorTest(p0, p1))
+	switch(primclass)
 	{
-		count = 0;
-		return;
-	}
-
-	if(PRIM->IIP == 0)
-	{
-		v[0].c0 = v[1].c0;
+	case GS_POINT_CLASS:
+		break;
+	case GS_LINE_CLASS:
+		if(PRIM->IIP == 0) {v[0].c0 = v[1].c0;}
+		break;
+	case GS_SPRITE_CLASS:
+		if(PRIM->IIP == 0) {v[0].c0 = v[1].c0;}
+		v[0].p.z = v[1].p.z;
+		v[0].p.w = v[1].p.w;
 		v[0].c1 = v[1].c1;
+		v[2] = v[1];
+		v[3] = v[1];
+		v[1].p.y = v[0].p.y;
+		v[1].t.y = v[0].t.y;
+		v[2].p.x = v[0].p.x;
+		v[2].t.x = v[0].t.x;
+		v[4] = v[1];
+		v[5] = v[2];
+		count += 4;
+		break;
+	case GS_TRIANGLE_CLASS:
+		if(PRIM->IIP == 0) {v[0].c0 = v[1].c0 = v[2].c0;}
+		break;
 	}
-}
-
-void GSRendererHW9::DrawingKickTriangle(Vertex* v, int& count)
-{
-	GSVector4 p0 = v[0].p.maxv(v[1].p).maxv(v[2].p);
-	GSVector4 p1 = v[0].p.minv(v[1].p).minv(v[2].p);
-
-	if(ScissorTest(p0, p1))
-	{
-		count = 0;
-		return;
-	}
-
-	if(PRIM->IIP == 0)
-	{
-		v[0].c0 = v[2].c0;
-		v[0].c1 = v[2].c1;
-	}
-}
-
-void GSRendererHW9::DrawingKickSprite(Vertex* v, int& count)
-{
-	GSVector4 p0 = v[0].p.maxv(v[1].p);
-	GSVector4 p1 = v[0].p.minv(v[1].p);
-
-	if(ScissorTest(p0, p1))
-	{
-		count = 0;
-		return;
-	}
-
-	if(PRIM->IIP == 0)
-	{
-		v[0].c0 = v[1].c0;
-	}
-
-	v[0].p.z = v[1].p.z;
-	v[0].p.w = v[1].p.w;
-	v[0].c1 = v[1].c1;
-	v[2] = v[1];
-	v[3] = v[1];
-	v[1].p.y = v[0].p.y;
-	v[1].t.y = v[0].t.y;
-	v[2].p.x = v[0].p.x;
-	v[2].t.x = v[0].t.x;
-	v[4] = v[1];
-	v[5] = v[2];
-
-	count += 4;
 }
 
 void GSRendererHW9::Draw(int prim, Texture& rt, Texture& ds, GSTextureCache<Device>::GSTexture* tex)

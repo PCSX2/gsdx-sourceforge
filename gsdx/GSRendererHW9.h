@@ -36,15 +36,13 @@ protected:
 	GSTextureFX9 m_tfx;
 	bool m_logz;
 
-	void VertexKick(bool skip);
+	template<DWORD tme, DWORD fst>
+	void AddVertex();
+
+	template<int primclass>
+	void AddPrim(Vertex* v, DWORD& count);
+
 	bool WrapZ(float maxz);
-
-	__forceinline int ScissorTest(const GSVector4& p0, const GSVector4& p1);
-
-	void DrawingKickPoint(Vertex* v, int& count);
-	void DrawingKickLine(Vertex* v, int& count);
-	void DrawingKickTriangle(Vertex* v, int& count);
-	void DrawingKickSprite(Vertex* v, int& count);
 
 	void Draw(int prim, Texture& rt, Texture& ds, GSTextureCache<Device>::GSTexture* tex);
 

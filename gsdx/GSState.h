@@ -125,6 +125,15 @@ class GSState : public GSAlignedClass<16>
 protected:
 	bool IsBadFrame(int& skip);
 
+	typedef void (GSState::*VertexKickHandler)(bool skip);
+
+	VertexKickHandler m_fpVertexKickHandlers[8];
+
+	void VertexKick(bool skip)
+	{
+		(this->*m_fpVertexKickHandlers[PRIM->PRIM])(skip);
+	}
+
 public:
 	GIFRegPRIM*		PRIM;
 	GSRegPMODE*		PMODE;
@@ -184,7 +193,6 @@ public:
 	virtual void Flush();
 	virtual void FlushPrim() = 0;
 	virtual void ResetPrim() = 0;
-	virtual void VertexKick(bool skip) = 0;
 	virtual void InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r) {}
 	virtual void InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r) {}
 	virtual void InvalidateTextureCache() {}

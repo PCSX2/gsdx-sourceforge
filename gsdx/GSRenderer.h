@@ -456,108 +456,6 @@ protected:
 		__super::Reset();
 	}
 
-	void VertexKick(bool skip)
-	{
-		if(m_vl.GetCount() < m_vprim)
-		{
-			return;
-		}
-
-		if(m_count > m_maxcount)
-		{
-			m_maxcount = max(10000, m_maxcount * 3/2);
-			m_vertices = (Vertex*)_aligned_realloc(m_vertices, sizeof(Vertex) * m_maxcount, 16);
-			m_maxcount -= 100;
-		}
-
-		Vertex* v = &m_vertices[m_count];
-
-		int count = 0;
-
-		switch(PRIM->PRIM)
-		{
-		case GS_POINTLIST:
-			m_vl.GetAt(0, v[0]);
-			m_vl.RemoveAll();
-			count = 1;
-			break;
-		case GS_LINELIST:
-			m_vl.GetAt(0, v[0]);
-			m_vl.GetAt(1, v[1]);
-			m_vl.RemoveAll();
-			count = 2;
-			break;
-		case GS_LINESTRIP:
-			m_vl.GetAt(0, v[0]);
-			m_vl.GetAt(1, v[1]);
-			m_vl.RemoveAt(0, 1);
-			count = 2;
-			break;
-		case GS_TRIANGLELIST:
-			m_vl.GetAt(0, v[0]);
-			m_vl.GetAt(1, v[1]);
-			m_vl.GetAt(2, v[2]);
-			m_vl.RemoveAll();
-			count = 3;
-			break;
-		case GS_TRIANGLESTRIP:
-			m_vl.GetAt(0, v[0]);
-			m_vl.GetAt(1, v[1]);
-			m_vl.GetAt(2, v[2]);
-			m_vl.RemoveAt(0, 2);
-			count = 3;
-			break;
-		case GS_TRIANGLEFAN:
-			m_vl.GetAt(0, v[0]);
-			m_vl.GetAt(1, v[1]);
-			m_vl.GetAt(2, v[2]);
-			m_vl.RemoveAt(1, 1);
-			count = 3;
-			break;
-		case GS_SPRITE:
-			m_vl.GetAt(0, v[0]);
-			m_vl.GetAt(1, v[1]);
-			m_vl.RemoveAll();
-			count = 2;
-			break;
-		case GS_INVALID:
-			ASSERT(0);
-			m_vl.RemoveAll();
-			return;
-		default:
-			__assume(0);
-		}
-
-		if(!skip)
-		{
-			(this->*m_fpDrawingKickHandlers[PRIM->PRIM])(v, count);
-
-			m_count += count;
-/*
-			if(m_context->TEST.DATE)
-			{
-				Flush();
-			}
-
-			if(m_env.COLCLAMP.CLAMP == 0)
-			{
-				Flush();
-			}
-*/
-		}
-	}
-
-	typedef void (GSRendererT<Device, Vertex>::*DrawingKickHandler)(Vertex* v, int& count);
-
-	DrawingKickHandler m_fpDrawingKickHandlers[8];
-
-	void DrawingKickNull(Vertex* v, int& count)
-	{
-		ASSERT(0);
-	}
-
-	virtual void Draw() = 0;
-
 	void ResetPrim()
 	{
 		m_vl.RemoveAll();
@@ -582,43 +480,140 @@ protected:
 				  PRIM->TME ? (int)m_context->TEX0.PSM : 0xff);
 			*/
 
-			/*
-			static bool first = true;
-			static GIFRegPRIM s_PRIM;
-			static GIFRegFRAME s_FRAME;
-			static GIFRegTEX0 s_TEX0;
-
-			if(first || PRIM->TME != s_PRIM.TME || m_context->FRAME.i64 != s_FRAME.i64 || m_context->TEX0.i64 != s_TEX0.i64)
-			{
-				first = false;
-				s_PRIM = *PRIM;
-				s_FRAME = m_context->FRAME;
-				s_TEX0 = m_context->TEX0;
-				printf("%05x %2d", s_FRAME.Block(), s_FRAME.PSM);
-				if(s_PRIM.TME) printf(" %05x %2d %05x %2d", s_TEX0.TBP0, s_TEX0.PSM, s_TEX0.CBP, s_TEX0.CPSM);
-				printf("\n");
-			}
-			*/
-
 			Draw();
 
 			m_count = 0;
 		}
 	}
 
+	void GrowVertexBuffer()
+	{
+		m_maxcount = max(10000, m_maxcount * 3/2);
+		m_vertices = (Vertex*)_aligned_realloc(m_vertices, sizeof(Vertex) * m_maxcount, 16);
+		m_maxcount -= 100;
+	}
+
+	template<DWORD prim> void VertexKick(bool skip)
+	{
+		(this->*m_fpAddVertexHandlers[PRIM->TME][PRIM->FST])();
+
+		DWORD count = 0;
+
+		switch(prim)
+		{
+		case GS_POINTLIST: count = 1; break;
+		case GS_LINELIST: count = 2; break;
+		case GS_LINESTRIP: count = 2; break;
+		case GS_TRIANGLELIST: count = 3; break;
+		case GS_TRIANGLESTRIP: count = 3; break;
+		case GS_TRIANGLEFAN: count = 3; break;
+		case GS_SPRITE: count = 2; break;
+		case GS_INVALID: count = 1; break;
+		default: __assume(0);
+		}
+
+		if(m_vl.GetCount() < count)
+		{
+			return;
+		}
+
+		if(m_count >= m_maxcount)
+		{
+			GrowVertexBuffer();
+		}
+
+		Vertex* v = &m_vertices[m_count];
+
+		switch(prim)
+		{
+		case GS_POINTLIST:
+			m_vl.GetAt(0, v[0]);
+			m_vl.RemoveAll();
+			break;
+		case GS_LINELIST:
+			m_vl.GetAt(0, v[0]);
+			m_vl.GetAt(1, v[1]);
+			m_vl.RemoveAll();
+			break;
+		case GS_LINESTRIP:
+			m_vl.GetAt(0, v[0]);
+			m_vl.GetAt(1, v[1]);
+			m_vl.RemoveAt(0, 1);
+			break;
+		case GS_TRIANGLELIST:
+			m_vl.GetAt(0, v[0]);
+			m_vl.GetAt(1, v[1]);
+			m_vl.GetAt(2, v[2]);
+			m_vl.RemoveAll();
+			break;
+		case GS_TRIANGLESTRIP:
+			m_vl.GetAt(0, v[0]);
+			m_vl.GetAt(1, v[1]);
+			m_vl.GetAt(2, v[2]);
+			m_vl.RemoveAt(0, 2);
+			break;
+		case GS_TRIANGLEFAN:
+			m_vl.GetAt(0, v[0]);
+			m_vl.GetAt(1, v[1]);
+			m_vl.GetAt(2, v[2]);
+			m_vl.RemoveAt(1, 1);
+			break;
+		case GS_SPRITE:
+			m_vl.GetAt(0, v[0]);
+			m_vl.GetAt(1, v[1]);
+			m_vl.RemoveAll();
+			break;
+		case GS_INVALID:
+			ASSERT(0);
+			m_vl.RemoveAll();
+			return;
+		default:
+			__assume(0);
+		}
+
+		if(!skip)
+		{
+			(this->*m_fpAddPrimHandlers[prim])(v, count);
+
+			m_count += count;
+		}
+	}
+
+	virtual void Draw() = 0;
+
+	typedef void (GSRendererT<Device, Vertex>::*AddVertexHandler)();
+	typedef void (GSRendererT<Device, Vertex>::*AddPrimHandler)(Vertex* v, DWORD& count);
+
+	AddVertexHandler m_fpAddVertexHandlers[2][2];
+	AddPrimHandler m_fpAddPrimHandlers[8];
+
+	void AddVertexNull() {ASSERT(0);}
+	void AddPrimNull(Vertex* v, DWORD& count) {ASSERT(0);}
+
 public:
 	GSRendererT(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs, bool psrr = true)
 		: GSRenderer<Device>(base, mt, irq, nloophack, rs, psrr)
 		, m_count(0)
-		, m_maxcount(10000)
+		, m_maxcount(0)
 		, m_vertices(NULL)
 	{
-		m_vertices = (Vertex*)_aligned_malloc(sizeof(Vertex) * m_maxcount, 16);
-		m_maxcount -= 100;
+		m_fpVertexKickHandlers[GS_POINTLIST] = (VertexKickHandler)&GSRendererT<Device, Vertex>::VertexKick<GS_POINTLIST>;
+		m_fpVertexKickHandlers[GS_LINELIST] = (VertexKickHandler)&GSRendererT<Device, Vertex>::VertexKick<GS_LINELIST>;
+		m_fpVertexKickHandlers[GS_LINESTRIP] = (VertexKickHandler)&GSRendererT<Device, Vertex>::VertexKick<GS_LINESTRIP>;
+		m_fpVertexKickHandlers[GS_TRIANGLELIST] = (VertexKickHandler)&GSRendererT<Device, Vertex>::VertexKick<GS_TRIANGLELIST>;
+		m_fpVertexKickHandlers[GS_TRIANGLESTRIP] = (VertexKickHandler)&GSRendererT<Device, Vertex>::VertexKick<GS_TRIANGLESTRIP>;
+		m_fpVertexKickHandlers[GS_TRIANGLEFAN] = (VertexKickHandler)&GSRendererT<Device, Vertex>::VertexKick<GS_TRIANGLEFAN>;
+		m_fpVertexKickHandlers[GS_SPRITE] = (VertexKickHandler)&GSRendererT<Device, Vertex>::VertexKick<GS_SPRITE>;
+		m_fpVertexKickHandlers[GS_INVALID] = (VertexKickHandler)&GSRendererT<Device, Vertex>::VertexKick<GS_INVALID>;
 
-		for(int i = 0; i < countof(m_fpDrawingKickHandlers); i++)
+		m_fpAddVertexHandlers[0][0] = &GSRendererT<Device, Vertex>::AddVertexNull;
+		m_fpAddVertexHandlers[0][1] = &GSRendererT<Device, Vertex>::AddVertexNull;
+		m_fpAddVertexHandlers[1][0] = &GSRendererT<Device, Vertex>::AddVertexNull;
+		m_fpAddVertexHandlers[1][1] = &GSRendererT<Device, Vertex>::AddVertexNull;
+
+		for(int i = 0; i < countof(m_fpAddPrimHandlers); i++)
 		{
-			m_fpDrawingKickHandlers[i] = &GSRendererT<Device, Vertex>::DrawingKickNull;
+			m_fpAddPrimHandlers[i] = &GSRendererT<Device, Vertex>::AddPrimNull;
 		}
 	}
 
