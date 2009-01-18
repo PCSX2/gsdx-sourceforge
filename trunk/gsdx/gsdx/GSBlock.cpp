@@ -26,7 +26,6 @@ const GSVector4i GSBlock::m_r16mask(0, 1, 4, 5, 2, 3, 6, 7, 8, 9, 12, 13, 10, 11
 const GSVector4i GSBlock::m_r8mask(0, 4, 2, 6, 8, 12, 10, 14, 1, 5, 3, 7, 9, 13, 11, 15);
 const GSVector4i GSBlock::m_r4mask(0, 1, 4, 5, 8, 9, 12, 13, 2, 3, 6, 7, 10, 11, 14, 15);
 
-const GSVector4i GSBlock::m_rgbx(0x00ffffff);
 const GSVector4i GSBlock::m_xxxa(0x00008000);
 const GSVector4i GSBlock::m_xxbx(0x00007c00);
 const GSVector4i GSBlock::m_xgxx(0x000003e0);

@@ -117,7 +117,7 @@ protected:
 		return true;
 	}
 
-	void VertexKick(bool skip)
+	template<DWORD tme, DWORD fst> void AddVertex()
 	{
 		GSVertexSW v;
 
@@ -125,15 +125,14 @@ protected:
 		GSVector4i o((int)m_context->XYOFFSET.OFX, (int)m_context->XYOFFSET.OFY);
 
 		v.p = GSVector4(p - o) * g_pos_scale;
-		v.p.z = (float)min(m_v.XYZ.Z, 0xffffff00); // max value which can survive the DWORD=>float=>DWORD conversion
 
-		v.c = GSVector4((DWORD)m_v.RGBAQ.ai32[0]) * 128.0f;
+		v.c = GSVector4(GSVector4i::load((int)m_v.RGBAQ.ai32[0]).u8to32() << 7);
 
-		if(PRIM->TME)
+		if(tme)
 		{
 			float q;
 
-			if(PRIM->FST)
+			if(fst)
 			{
 				v.t = GSVector4(GSVector4i(m_v.UV.U, m_v.UV.V) << (16 - 4));
 				q = 1.0f;
@@ -148,13 +147,14 @@ protected:
 			v.t = v.t.xyxy(GSVector4::load(q));
 		}
 
-		m_vl.AddTail() = v;
+		GSVertexSW& dst = m_vl.AddTail();
 
-		__super::VertexKick(skip);
+		dst = v;
+
+		dst.p.z = (float)min(m_v.XYZ.Z, 0xffffff00); // max value which can survive the DWORD => float => DWORD conversion
 	}
 
-	template<int primclass>
-	void DrawingKick(GSVertexSW* v, int& count)
+	template<int primclass> void AddPrim(GSVertexSW* v, DWORD& count)
 	{
 		GSVector4 pmin, pmax;
 
@@ -213,10 +213,10 @@ protected:
 			break;
 		case GS_TRIANGLE_CLASS:
 			if(PRIM->IIP == 0) {v[0].c = v[2].c; v[1].c = v[2].c;}
-			m_vtrace.min.t = m_vtrace.min.t.minv(v[0].t).minv(v[1].t).minv(v[2].t);
-			m_vtrace.max.t = m_vtrace.max.t.maxv(v[0].t).maxv(v[1].t).maxv(v[2].t);
-			m_vtrace.min.c = m_vtrace.min.c.minv(v[0].c).minv(v[1].c).minv(v[2].c);
-			m_vtrace.max.c = m_vtrace.max.c.maxv(v[0].c).maxv(v[1].c).maxv(v[2].c);
+			m_vtrace.min.t = m_vtrace.min.t.minv(v[0].t).minv(v[1].t.minv(v[2].t));
+			m_vtrace.max.t = m_vtrace.max.t.maxv(v[0].t).maxv(v[1].t.maxv(v[2].t));
+			m_vtrace.min.c = m_vtrace.min.c.minv(v[0].c).minv(v[1].c.minv(v[2].c));
+			m_vtrace.max.c = m_vtrace.max.c.maxv(v[0].c).maxv(v[1].c.maxv(v[2].c));
 			break;
 		case GS_SPRITE_CLASS:
 			m_vtrace.min.t = m_vtrace.min.t.minv(v[0].t).minv(v[1].t);
@@ -457,40 +457,92 @@ protected:
 					{
 						p.sel.fst = 1;
 
-						GSVector4 w = v[0].t.zzzz().rcpnr();
-
-						for(int i = 0, j = m_count; i < j; i++)
+						if(v[0].t.z != 1.0f)
 						{
-							v[i].t *= w;
+							GSVector4 w = v[0].t.zzzz().rcpnr();
+
+							for(int i = 0, j = m_count; i < j; i++)
+							{
+								v[i].t *= w;
+							}
+
+							m_vtrace.min.t *= w;
+							m_vtrace.max.t *= w;
 						}
 					}
 					else if(prim == GS_SPRITE)
 					{
 						p.sel.fst = 1;
 
+						GSVector4 tmin = GSVector4(FLT_MAX);
+						GSVector4 tmax = GSVector4(-FLT_MAX);
+
 						for(int i = 0, j = m_count; i < j; i += 2)
 						{
 							GSVector4 w = v[i + 1].t.zzzz().rcpnr();
 
-							v[i + 0].t *= w;
-							v[i + 1].t *= w;
+							GSVector4 v0 = v[i + 0].t * w;
+							GSVector4 v1 = v[i + 1].t * w;
+
+							v[i + 0].t = v0;
+							v[i + 1].t = v1;
+
+							tmin = tmin.minv(v0).minv(v1);
+							tmax = tmax.maxv(v0).maxv(v1);
 						}
+
+						m_vtrace.max.t = tmax;
+						m_vtrace.min.t = tmin;
 					}
 				}
 
-				if(p.sel.fst && p.sel.ltf)
+				if(p.sel.fst)
 				{
 					// if q is constant we can do the half pel shift for bilinear sampling on the vertices
 
-					GSVertexSW* v = m_vertices;
+					if(p.sel.ltf)
+					{
+						GSVector4 half(0x8000, 0x8000);
 
-					GSVector4 half(0x8000, 0x8000);
+						GSVertexSW* v = m_vertices;
+
+						for(int i = 0, j = m_count; i < j; i++)
+						{
+							v[i].t -= half;
+						}
+
+						m_vtrace.min.t -= half;
+						m_vtrace.max.t += half;
+					}
+				}
+				/*
+				else
+				{
+					GSVector4 tmin = GSVector4(FLT_MAX);
+					GSVector4 tmax = GSVector4(-FLT_MAX);
+
+					GSVertexSW* v = m_vertices;
 
 					for(int i = 0, j = m_count; i < j; i++)
 					{
-						v[i].t -= half;
+						GSVector4 v0 = v[i].t * v[i].t.zzzz().rcpnr();
+
+						tmin = tmin.minv(v0);
+						tmax = tmax.maxv(v0);
 					}
+
+					if(p.sel.ltf)
+					{
+						GSVector4 half(0x8000, 0x8000);
+
+						tmin -= half;
+						tmax += half;
+					}
+
+					m_vtrace.min.t = tmin;
+					m_vtrace.max.t = tmax;
 				}
+				*/
 
 				CRect r;
 				
@@ -522,15 +574,11 @@ protected:
 					p.sel.abe = context->ALPHA.ai32[0];
 					p.sel.pabe = env.PABE.PABE;
 				}
-				else
-				{
-					// printf("opaque\n");
-				}
+			}
 
-				if(PRIM->AA1)
-				{
-					// TODO: automatic alpha blending (ABE=1, A=0 B=1 C=0 D=1)
-				}
+			if(PRIM->AA1)
+			{
+				// TODO: automatic alpha blending (ABE=1, A=0 B=1 C=0 D=1)
 			}
 
 			if(p.sel.date 
@@ -642,7 +690,7 @@ protected:
 		m_tc->InvalidateVideoMem(BITBLTBUF, r);
 	}
 
-	void MinMaxUV(int w, int h, CRect& r, bool fst)
+	void MinMaxUV(int w, int h, CRect& r, DWORD fst)
 	{
 		const GSDrawingContext* context = m_context;
 
@@ -694,16 +742,34 @@ protected:
 
 		if(fst)
 		{
-			GSVector4i v = GSVector4i(m_vtrace.min.t.xyxy(m_vtrace.max.t) / (m_vtrace.min.t.zzzz() * 0x10000));
+			GSVector4i uv = GSVector4i(m_vtrace.min.t.xyxy(m_vtrace.max.t)).sra32(16);
+/*
+			int tw = context->TEX0.TW;
+			int th = context->TEX0.TH;
 
+			GSVector4i u = uv & GSVector4i::xffffffff().srl32(32 - tw);
+			GSVector4i v = uv & GSVector4i::xffffffff().srl32(32 - th);
+
+			GSVector4i uu = uv.sra32(tw);
+			GSVector4i vv = uv.sra32(th);
+
+			int mask = (uu.upl32(vv) == uu.uph32(vv)).mask();
+*/
 			switch(wms)
 			{
-			case CLAMP_REPEAT: // TODO
+			case CLAMP_REPEAT:
+/*
+				if(mask & 0x000f)
+				{
+					if(vr.x < u.x) vr.x = u.x;
+					if(vr.z > u.z + 1) vr.z = u.z + 1;
+				}
+*/
 				break;
 			case CLAMP_CLAMP:
 			case CLAMP_REGION_CLAMP:
-				if(vr.x < v.x) vr.x = v.x;
-				if(vr.z > v.z + 1) vr.z = v.z + 1;
+				if(vr.x < uv.x) vr.x = uv.x;
+				if(vr.z > uv.z + 1) vr.z = uv.z + 1;
 				break;
 			case CLAMP_REGION_REPEAT: // TODO
 				break;
@@ -713,12 +779,19 @@ protected:
 
 			switch(wmt)
 			{
-			case CLAMP_REPEAT: // TODO
+			case CLAMP_REPEAT:
+/*
+				if(mask & 0xf000)
+				{
+					if(vr.y < v.y) vr.y = v.y;
+					if(vr.w > v.w + 1) vr.w = v.w + 1;
+				}
+*/
 				break;
 			case CLAMP_CLAMP:
 			case CLAMP_REGION_CLAMP:
-				if(vr.y < v.y) vr.y = v.y;
-				if(vr.w > v.w + 1) vr.w = v.w + 1;
+				if(vr.y < uv.y) vr.y = uv.y;
+				if(vr.w > uv.w + 1) vr.w = uv.w + 1;
 				break;
 			case CLAMP_REGION_REPEAT: // TODO
 				break;
@@ -740,13 +813,18 @@ public:
 
 		m_tc = new GSTextureCacheSW(this);
 
-		m_fpDrawingKickHandlers[GS_POINTLIST] = (DrawingKickHandler)&GSRendererSW::DrawingKick<GS_POINT_CLASS>;
-		m_fpDrawingKickHandlers[GS_LINELIST] = (DrawingKickHandler)&GSRendererSW::DrawingKick<GS_LINE_CLASS>;
-		m_fpDrawingKickHandlers[GS_LINESTRIP] = (DrawingKickHandler)&GSRendererSW::DrawingKick<GS_LINE_CLASS>;
-		m_fpDrawingKickHandlers[GS_TRIANGLELIST] = (DrawingKickHandler)&GSRendererSW::DrawingKick<GS_TRIANGLE_CLASS>;
-		m_fpDrawingKickHandlers[GS_TRIANGLESTRIP] = (DrawingKickHandler)&GSRendererSW::DrawingKick<GS_TRIANGLE_CLASS>;
-		m_fpDrawingKickHandlers[GS_TRIANGLEFAN] = (DrawingKickHandler)&GSRendererSW::DrawingKick<GS_TRIANGLE_CLASS>;
-		m_fpDrawingKickHandlers[GS_SPRITE] = (DrawingKickHandler)&GSRendererSW::DrawingKick<GS_SPRITE_CLASS>;
+		m_fpAddVertexHandlers[0][0] = (AddVertexHandler)&GSRendererSW::AddVertex<0, 0>;
+		m_fpAddVertexHandlers[0][1] = (AddVertexHandler)&GSRendererSW::AddVertex<0, 0>;
+		m_fpAddVertexHandlers[1][0] = (AddVertexHandler)&GSRendererSW::AddVertex<1, 0>;
+		m_fpAddVertexHandlers[1][1] = (AddVertexHandler)&GSRendererSW::AddVertex<1, 1>;
+
+		m_fpAddPrimHandlers[GS_POINTLIST] = (AddPrimHandler)&GSRendererSW::AddPrim<GS_POINT_CLASS>;
+		m_fpAddPrimHandlers[GS_LINELIST] = (AddPrimHandler)&GSRendererSW::AddPrim<GS_LINE_CLASS>;
+		m_fpAddPrimHandlers[GS_LINESTRIP] = (AddPrimHandler)&GSRendererSW::AddPrim<GS_LINE_CLASS>;
+		m_fpAddPrimHandlers[GS_TRIANGLELIST] = (AddPrimHandler)&GSRendererSW::AddPrim<GS_TRIANGLE_CLASS>;
+		m_fpAddPrimHandlers[GS_TRIANGLESTRIP] = (AddPrimHandler)&GSRendererSW::AddPrim<GS_TRIANGLE_CLASS>;
+		m_fpAddPrimHandlers[GS_TRIANGLEFAN] = (AddPrimHandler)&GSRendererSW::AddPrim<GS_TRIANGLE_CLASS>;
+		m_fpAddPrimHandlers[GS_SPRITE] = (AddPrimHandler)&GSRendererSW::AddPrim<GS_SPRITE_CLASS>;
 	}
 
 	virtual ~GSRendererSW()

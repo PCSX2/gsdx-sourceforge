@@ -35,21 +35,13 @@ class GSRendererHW10 : public GSRendererHW<GSDevice10, GSVertexHW10, GSTextureCa
 protected:
 	GSTextureFX10 m_tfx;
 
-	void VertexKick(bool skip);
-	void DrawingKick(Vertex* v, int& count); // TODO
+	template<DWORD tme, DWORD fst> 
+	void AddVertex();
+	
+	template<int primclass> 
+	void AddPrim(Vertex* v, DWORD& count);
+
 	bool WrapZ(DWORD maxz);
-
-	__forceinline int ScissorTest(const GSVector4i& p0, const GSVector4i& p1);
-
-	void DrawingKickPoint(Vertex* v, int& count);
-
-	#if _M_SSE >= 0x401
-
-	void DrawingKickLine(Vertex* v, int& count);
-	void DrawingKickTriangle(Vertex* v, int& count);
-	void DrawingKickSprite(Vertex* v, int& count);
-
-	#endif
 
 	void Draw(int prim, Texture& rt, Texture& ds, GSTextureCache<Device>::GSTexture* tex);
 

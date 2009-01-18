@@ -153,8 +153,8 @@ class GSDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 	__forceinline GSVector4i Wrap(const GSVector4i& t);
 
 	__forceinline void SampleTexture(DWORD ltf, DWORD tlu, const GSVector4i& u, const GSVector4i& v, GSVector4i* c);
-	__forceinline void ColorTFX(DWORD tfx, const GSVector4i& rbf, const GSVector4i& gaf, GSVector4i& rbt, GSVector4i& gat);
-	__forceinline void AlphaTFX(DWORD tfx, DWORD tcc, const GSVector4i& gaf, GSVector4i& gat);
+	__forceinline void ColorTFX(DWORD iip, DWORD tfx, const GSVector4i& rbf, const GSVector4i& gaf, GSVector4i& rbt, GSVector4i& gat);
+	__forceinline void AlphaTFX(DWORD iip, DWORD tfx, DWORD tcc, const GSVector4i& gaf, GSVector4i& gat);
 	__forceinline void Fog(DWORD fge, const GSVector4i& f, GSVector4i& rb, GSVector4i& ga);
 	__forceinline bool TestZ(DWORD zpsm, DWORD ztst, const GSVector4i& zs, const GSVector4i& zd, GSVector4i& test);
 	__forceinline bool TestAlpha(DWORD atst, DWORD afail, const GSVector4i& ga, GSVector4i& fm, GSVector4i& zm, GSVector4i& test);

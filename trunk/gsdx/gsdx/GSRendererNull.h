@@ -27,14 +27,11 @@
 template<class Device> class GSRendererNull : public GSRendererT<Device, GSVertexNull>
 {
 protected:
-	void VertexKick(bool skip)
+	void AddVertex()
 	{
-		m_vl.AddTail();
-
-		__super::VertexKick(skip);
 	}
 
-	void DrawingKick(GSVertexNull* v, int& count)
+	void AddPrim(GSVertexNull* v, DWORD& count)
 	{
 		m_perfmon.Put(GSPerfMon::Prim, 1);
 	}
@@ -52,9 +49,14 @@ public:
 	GSRendererNull(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs)
 		: GSRendererT<Device, GSVertexNull>(base, mt, irq, nloophack, rs)
 	{
-		for(int i = 0; i < countof(m_fpDrawingKickHandlers); i++)
+		m_fpAddVertexHandlers[0][0] = (AddVertexHandler)&GSRendererNull::AddVertex;
+		m_fpAddVertexHandlers[0][1] = (AddVertexHandler)&GSRendererNull::AddVertex;
+		m_fpAddVertexHandlers[1][0] = (AddVertexHandler)&GSRendererNull::AddVertex;
+		m_fpAddVertexHandlers[1][1] = (AddVertexHandler)&GSRendererNull::AddVertex;
+
+		for(int i = 0; i < countof(m_fpAddPrimHandlers); i++)
 		{
-			m_fpDrawingKickHandlers[i] = (DrawingKickHandler)&GSRendererNull::DrawingKick;
+			m_fpAddPrimHandlers[i] = (AddPrimHandler)&GSRendererNull::AddPrim;
 		}
 	}
 };

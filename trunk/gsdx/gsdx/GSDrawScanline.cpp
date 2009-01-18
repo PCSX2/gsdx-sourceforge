@@ -176,7 +176,8 @@ void GSDrawScanline::BeginDraw(const GSRasterizerData* data, Functions* f)
 		|| m_env.sel.abe != 255 
 		|| m_env.sel.ztst > 1 
 		|| m_env.sel.atst > 1
-		|| m_env.sel.date)
+		|| m_env.sel.date
+		|| m_env.sel.fge)
 		{
 			f->sr = NULL;
 		}
@@ -308,6 +309,8 @@ void GSDrawScanline::SetupPrim(const GSVertexSW* vertices, const GSVertexSW& dsc
 		
 		c = c.upl16(c.zwxy());
 
+		if(!tme) c = c.srl16(7);
+
 		m_env.c.rb = c.xxxx();
 		m_env.c.ga = c.zzzz();
 	}
@@ -371,20 +374,21 @@ void GSDrawScanline::SampleTexture(DWORD ltf, DWORD tlu, const GSVector4i& u, co
 		GSVector4i rb10 = c10 & mask;
 		GSVector4i rb11 = c11 & mask;
 
+		rb00 = rb00.lerp16<0>(rb01, uf);
+		rb10 = rb10.lerp16<0>(rb11, uf);
+		rb00 = rb00.lerp16<0>(rb10, vf);
+
+		c[0] = rb00;
+
 		GSVector4i ga00 = (c00 >> 8) & mask;
 		GSVector4i ga01 = (c01 >> 8) & mask;
 		GSVector4i ga10 = (c10 >> 8) & mask;
 		GSVector4i ga11 = (c11 >> 8) & mask;
 
-		rb00 = rb00.lerp16<0>(rb01, uf);
-		rb10 = rb10.lerp16<0>(rb11, uf);
-		rb00 = rb00.lerp16<0>(rb10, vf);
-
 		ga00 = ga00.lerp16<0>(ga01, uf);
 		ga10 = ga10.lerp16<0>(ga11, uf);
 		ga00 = ga00.lerp16<0>(ga10, vf);
 
-		c[0] = rb00;
 		c[1] = ga00;
 	}
 	else
@@ -409,49 +413,54 @@ void GSDrawScanline::SampleTexture(DWORD ltf, DWORD tlu, const GSVector4i& u, co
 	}
 }
 
-void GSDrawScanline::ColorTFX(DWORD tfx, const GSVector4i& rbf, const GSVector4i& gaf, GSVector4i& rbt, GSVector4i& gat)
+void GSDrawScanline::ColorTFX(DWORD iip, DWORD tfx, const GSVector4i& rbf, const GSVector4i& gaf, GSVector4i& rbt, GSVector4i& gat)
 {
+	GSVector4i rb = iip ? rbf : m_env.c.rb;
+	GSVector4i ga = iip ? gaf : m_env.c.ga;
+
 	GSVector4i af;
 
 	switch(tfx)
 	{
 	case TFX_MODULATE:
-		rbt = rbt.modulate16<1>(rbf).clamp8();
+		rbt = rbt.modulate16<1>(rb).clamp8();
 		break;
 	case TFX_DECAL:
 		break;
 	case TFX_HIGHLIGHT:
 	case TFX_HIGHLIGHT2:
-		af = gaf.yywwlh().srl16(7);
-		rbt = rbt.modulate16<1>(rbf).add16(af).clamp8();
-		gat = gat.modulate16<1>(gaf).add16(af).clamp8().mix16(gat);
+		af = ga.yywwlh().srl16(7);
+		rbt = rbt.modulate16<1>(rb).add16(af).clamp8();
+		gat = gat.modulate16<1>(ga).add16(af).clamp8().mix16(gat);
 		break;
 	case TFX_NONE:
-		rbt = rbf.srl16(7);
+		rbt = iip ? rb.srl16(7) : rb;
 		break;
 	default:
 		__assume(0);
 	}
 }
 
-void GSDrawScanline::AlphaTFX(DWORD tfx, DWORD tcc, const GSVector4i& gaf, GSVector4i& gat)
+void GSDrawScanline::AlphaTFX(DWORD iip, DWORD tfx, DWORD tcc, const GSVector4i& gaf, GSVector4i& gat)
 {
+	GSVector4i ga = iip ? gaf : m_env.c.ga;
+
 	switch(tfx)
 	{
 	case TFX_MODULATE:
-		gat = gat.modulate16<1>(gaf).clamp8(); // mul16hrs rounds and breaks fogging in resident evil 4 (only modulate16<0> uses mul16hrs, but watch out)
-		if(!tcc) gat = gat.mix16(gaf.srl16(7));
+		gat = gat.modulate16<1>(ga).clamp8(); // mul16hrs rounds and breaks fogging in resident evil 4 (only modulate16<0> uses mul16hrs, but watch out)
+		if(!tcc) gat = gat.mix16(ga.srl16(7));
 		break;
 	case TFX_DECAL: 
 		break;
 	case TFX_HIGHLIGHT: 
-		gat = gat.mix16(!tcc ? gaf.srl16(7) : gat.addus8(gaf.srl16(7)));
+		gat = gat.mix16(!tcc ? ga.srl16(7) : gat.addus8(ga.srl16(7)));
 		break;
 	case TFX_HIGHLIGHT2:
-		if(!tcc) gat = gat.mix16(gaf.srl16(7));
+		if(!tcc) gat = gat.mix16(ga.srl16(7));
 		break;
 	case TFX_NONE: 
-		gat = gaf.srl16(7);
+		gat = iip ? ga.srl16(7) : ga;
 		break; 
 	default: 
 		__assume(0);
@@ -716,11 +725,6 @@ void GSDrawScanline::DrawScanline(int top, int left, int right, const GSVertexSW
 		rb = vc.xxxx().add16(m_env.d[skip].rb);
 		ga = vc.zzzz().add16(m_env.d[skip].ga);
 	}
-	else
-	{
-		rb = m_env.c.rb;
-		ga = m_env.c.ga;
-	}
 
 	//
 
@@ -772,7 +776,7 @@ void GSDrawScanline::DrawScanline(int top, int left, int right, const GSVertexSW
 				SampleTexture(m_env.sel.ltf, m_env.sel.tlu, u, v, c);
 			}
 
-			AlphaTFX(m_env.sel.tfx, m_env.sel.tcc, ga, c[1]);
+			AlphaTFX(iip, m_env.sel.tfx, m_env.sel.tcc, ga, c[1]);
 
 			GSVector4i fm = m_env.fm;
 			GSVector4i zm = m_env.zm;
@@ -782,7 +786,7 @@ void GSDrawScanline::DrawScanline(int top, int left, int right, const GSVertexSW
 				continue;
 			}
 
-			ColorTFX(m_env.sel.tfx, rb, ga, c[0], c[1]);
+			ColorTFX(iip, m_env.sel.tfx, rb, ga, c[0], c[1]);
 
 			Fog(m_env.sel.fge, f, c[0], c[1]);
 
@@ -975,11 +979,6 @@ void GSDrawScanline::DrawScanlineEx(int top, int left, int right, const GSVertex
 		rb = vc.xxxx().add16(m_env.d[skip].rb);
 		ga = vc.zzzz().add16(m_env.d[skip].ga);
 	}
-	else
-	{
-		rb = m_env.c.rb;
-		ga = m_env.c.ga;
-	}
 
 	//
 
@@ -1031,7 +1030,7 @@ void GSDrawScanline::DrawScanlineEx(int top, int left, int right, const GSVertex
 				SampleTexture(ltf, tlu, u, v, c);
 			}
 
-			AlphaTFX(tfx, tcc, ga, c[1]);
+			AlphaTFX(iip, tfx, tcc, ga, c[1]);
 
 			GSVector4i fm = m_env.fm;
 			GSVector4i zm = m_env.zm;
@@ -1041,7 +1040,7 @@ void GSDrawScanline::DrawScanlineEx(int top, int left, int right, const GSVertex
 				continue;
 			}
 
-			ColorTFX(tfx, rb, ga, c[0], c[1]);
+			ColorTFX(iip, tfx, rb, ga, c[0], c[1]);
 
 			Fog(fge, f, c[0], c[1]);
 
@@ -1091,7 +1090,7 @@ void GSDrawScanline::DrawScanlineEx(int top, int left, int right, const GSVertex
 					rb = c[abea * 2 + 0];
 					ga = c[abea * 2 + 1];
 
-					if(abeb != 2)
+					if(abeb < 2)
 					{
 						rb = rb.sub16(c[abeb * 2 + 0]);
 						ga = ga.sub16(c[abeb * 2 + 1]);
