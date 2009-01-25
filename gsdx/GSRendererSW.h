@@ -117,127 +117,6 @@ protected:
 		return true;
 	}
 
-	template<DWORD tme, DWORD fst> void AddVertex()
-	{
-		GSVertexSW v;
-
-		GSVector4i p((int)m_v.XYZ.X, (int)m_v.XYZ.Y, 0, (int)m_v.FOG.F);
-		GSVector4i o((int)m_context->XYOFFSET.OFX, (int)m_context->XYOFFSET.OFY);
-
-		v.p = GSVector4(p - o) * g_pos_scale;
-
-		v.c = GSVector4(GSVector4i::load((int)m_v.RGBAQ.ai32[0]).u8to32() << 7);
-
-		if(tme)
-		{
-			float q;
-
-			if(fst)
-			{
-				v.t = GSVector4(GSVector4i(m_v.UV.U, m_v.UV.V) << (16 - 4));
-				q = 1.0f;
-			}
-			else
-			{
-				v.t = GSVector4(m_v.ST.S, m_v.ST.T);
-				v.t *= GSVector4(0x10000 << m_context->TEX0.TW, 0x10000 << m_context->TEX0.TH);
-				q = m_v.RGBAQ.Q;
-			}
-
-			v.t = v.t.xyxy(GSVector4::load(q));
-		}
-
-		GSVertexSW& dst = m_vl.AddTail();
-
-		dst = v;
-
-		dst.p.z = (float)min(m_v.XYZ.Z, 0xffffff00); // max value which can survive the DWORD => float => DWORD conversion
-	}
-
-	template<int primclass> void AddPrim(GSVertexSW* v, DWORD& count)
-	{
-		GSVector4 pmin, pmax;
-
-		switch(primclass)
-		{
-		case GS_POINT_CLASS:
-			pmin = v[0].p;
-			pmax = v[0].p;
-			break;
-		case GS_LINE_CLASS:
-			pmin = v[0].p.minv(v[1].p);
-			pmax = v[0].p.maxv(v[1].p);
-			break;
-		case GS_TRIANGLE_CLASS:
-			pmin = v[0].p.minv(v[1].p).minv(v[2].p);
-			pmax = v[0].p.maxv(v[1].p).maxv(v[2].p);
-			break;
-		case GS_SPRITE_CLASS:
-			pmin = v[0].p.minv(v[1].p);
-			pmax = v[0].p.maxv(v[1].p);
-			break;
-		}
-
-		GSVector4 scissor = m_context->scissor.ex;
-
-		GSVector4 test = (pmax < scissor) | (pmin > scissor.zwxy());
-
-		if(primclass != GS_POINT_CLASS && primclass != GS_LINE_CLASS)
-		{
-			test |= pmin.ceil() == pmax.ceil();
-		}
-
-		if(test.mask() & 3)
-		{
-			count = 0;
-			return;
-		}
-
-		m_vtrace.min.p = m_vtrace.min.p.minv(pmin);
-		m_vtrace.max.p = m_vtrace.max.p.maxv(pmax);
-
-		switch(primclass)
-		{
-		case GS_POINT_CLASS:
-			m_vtrace.min.t = m_vtrace.min.t.minv(v[0].t);
-			m_vtrace.max.t = m_vtrace.max.t.maxv(v[0].t);
-			m_vtrace.min.c = m_vtrace.min.c.minv(v[0].c);
-			m_vtrace.max.c = m_vtrace.max.c.maxv(v[0].c);
-			break;
-		case GS_LINE_CLASS:
-			if(PRIM->IIP == 0) {v[0].c = v[1].c;}
-			m_vtrace.min.t = m_vtrace.min.t.minv(v[0].t).minv(v[1].t);
-			m_vtrace.max.t = m_vtrace.max.t.maxv(v[0].t).maxv(v[1].t);
-			m_vtrace.min.c = m_vtrace.min.c.minv(v[0].c).minv(v[1].c);
-			m_vtrace.max.c = m_vtrace.max.c.maxv(v[0].c).maxv(v[1].c);
-			break;
-		case GS_TRIANGLE_CLASS:
-			if(PRIM->IIP == 0) {v[0].c = v[2].c; v[1].c = v[2].c;}
-			m_vtrace.min.t = m_vtrace.min.t.minv(v[0].t).minv(v[1].t.minv(v[2].t));
-			m_vtrace.max.t = m_vtrace.max.t.maxv(v[0].t).maxv(v[1].t.maxv(v[2].t));
-			m_vtrace.min.c = m_vtrace.min.c.minv(v[0].c).minv(v[1].c.minv(v[2].c));
-			m_vtrace.max.c = m_vtrace.max.c.maxv(v[0].c).maxv(v[1].c.maxv(v[2].c));
-			break;
-		case GS_SPRITE_CLASS:
-			m_vtrace.min.t = m_vtrace.min.t.minv(v[0].t).minv(v[1].t);
-			m_vtrace.max.t = m_vtrace.max.t.maxv(v[0].t).maxv(v[1].t);
-			m_vtrace.min.c = m_vtrace.min.c.minv(v[1].c);
-			m_vtrace.max.c = m_vtrace.max.c.maxv(v[1].c);
-			break;
-		}
-	}
-
-	GSVector4i GetScissor()
-	{
-		GSVector4i v = GSVector4i(m_context->scissor.in);
-
-		// TODO: find a game that overflows and check which one is the right behaviour
-
-		v.z = min(v.z, (int)m_context->FRAME.FBW * 64);
-
-		return v;
-	}
-
 	bool TryAlphaTest(DWORD& fm, DWORD& zm)
 	{
 		const GSDrawingEnvironment& env = m_env;
@@ -388,6 +267,7 @@ protected:
 		p.sel.atst = ATST_ALWAYS;
 		p.sel.tfx = TFX_NONE;
 		p.sel.abe = 255;
+		p.sel.sprite = primclass == GS_SPRITE_CLASS ? 1 : 0;
 
 		p.fm = context->FRAME.FBMSK;
 		p.zm = context->ZBUF.ZMSK || context->TEST.ZTE == 0 ? 0xffffffff : 0;
@@ -625,7 +505,8 @@ protected:
 
 			GSRasterizerData data;
 
-			data.scissor = GetScissor();
+			data.scissor = GSVector4i(m_context->scissor.in);
+			data.scissor.z = min(data.scissor.z, (int)m_context->FRAME.FBW * 64); // TODO: find a game that overflows and check which one is the right behaviour
 			data.primclass = GSUtil::GetPrimClass(PRIM->PRIM);
 			data.vertices = m_vertices;
 			data.count = m_count;
@@ -813,22 +694,138 @@ public:
 
 		m_tc = new GSTextureCacheSW(this);
 
-		m_fpAddVertexHandlers[0][0] = (AddVertexHandler)&GSRendererSW::AddVertex<0, 0>;
-		m_fpAddVertexHandlers[0][1] = (AddVertexHandler)&GSRendererSW::AddVertex<0, 0>;
-		m_fpAddVertexHandlers[1][0] = (AddVertexHandler)&GSRendererSW::AddVertex<1, 0>;
-		m_fpAddVertexHandlers[1][1] = (AddVertexHandler)&GSRendererSW::AddVertex<1, 1>;
-
-		m_fpAddPrimHandlers[GS_POINTLIST] = (AddPrimHandler)&GSRendererSW::AddPrim<GS_POINT_CLASS>;
-		m_fpAddPrimHandlers[GS_LINELIST] = (AddPrimHandler)&GSRendererSW::AddPrim<GS_LINE_CLASS>;
-		m_fpAddPrimHandlers[GS_LINESTRIP] = (AddPrimHandler)&GSRendererSW::AddPrim<GS_LINE_CLASS>;
-		m_fpAddPrimHandlers[GS_TRIANGLELIST] = (AddPrimHandler)&GSRendererSW::AddPrim<GS_TRIANGLE_CLASS>;
-		m_fpAddPrimHandlers[GS_TRIANGLESTRIP] = (AddPrimHandler)&GSRendererSW::AddPrim<GS_TRIANGLE_CLASS>;
-		m_fpAddPrimHandlers[GS_TRIANGLEFAN] = (AddPrimHandler)&GSRendererSW::AddPrim<GS_TRIANGLE_CLASS>;
-		m_fpAddPrimHandlers[GS_SPRITE] = (AddPrimHandler)&GSRendererSW::AddPrim<GS_SPRITE_CLASS>;
+		InitVertexKick<GSRendererSW<Device> >();
 	}
 
 	virtual ~GSRendererSW()
 	{
 		delete m_tc;
+	}
+
+	template<DWORD prim, DWORD tme, DWORD fst> 
+	void VertexKick(bool skip)
+	{
+		const GSDrawingContext* context = m_context;
+
+		GSVector4i xy = GSVector4i::load((int)m_v.XYZ.ai32[0]);
+		
+		xy = xy.insert16<3>(m_v.FOG.F);
+		xy = xy.upl16();
+		xy -= context->XYOFFSET;
+
+		GSVertexSW v;
+
+		v.p = GSVector4(xy) * g_pos_scale;
+
+		v.c = GSVector4(GSVector4i::load((int)m_v.RGBAQ.ai32[0]).u8to32() << 7);
+
+		if(tme)
+		{
+			float q;
+
+			if(fst)
+			{
+				v.t = GSVector4(((GSVector4i)m_v.UV).upl16() << (16 - 4));
+				q = 1.0f;
+			}
+			else
+			{
+				v.t = GSVector4(m_v.ST.S, m_v.ST.T);
+				v.t *= GSVector4(0x10000 << context->TEX0.TW, 0x10000 << context->TEX0.TH);
+				q = m_v.RGBAQ.Q;
+			}
+
+			v.t = v.t.xyxy(GSVector4::load(q));
+		}
+
+		GSVertexSW& dst = m_vl.AddTail();
+
+		dst = v;
+
+		dst.p.z = (float)min(m_v.XYZ.Z, 0xffffff00); // max value which can survive the DWORD => float => DWORD conversion
+
+		DWORD count = 0;
+		
+		if(GSVertexSW* v = DrawingKick<prim>(skip, count))
+		{
+			GSVector4 pmin, pmax;
+
+			switch(prim)
+			{
+			case GS_POINTLIST:
+				pmin = v[0].p;
+				pmax = v[0].p;
+				break;
+			case GS_LINELIST:
+			case GS_LINESTRIP:
+			case GS_SPRITE:
+				pmin = v[0].p.minv(v[1].p);
+				pmax = v[0].p.maxv(v[1].p);
+				break;
+			case GS_TRIANGLELIST:
+			case GS_TRIANGLESTRIP:
+			case GS_TRIANGLEFAN:
+				pmin = v[0].p.minv(v[1].p).minv(v[2].p);
+				pmax = v[0].p.maxv(v[1].p).maxv(v[2].p);
+				break;
+			}
+
+			GSVector4 scissor = context->scissor.ex;
+
+			GSVector4 test = (pmax < scissor) | (pmin > scissor.zwxy());
+
+			switch(prim)
+			{
+			case GS_TRIANGLELIST:
+			case GS_TRIANGLESTRIP:
+			case GS_TRIANGLEFAN:
+			case GS_SPRITE:
+				test |= pmin.ceil() == pmax.ceil();
+				break;
+			}
+
+			if(test.mask() & 3)
+			{
+				return;
+			}
+
+			m_vtrace.min.p = m_vtrace.min.p.minv(pmin);
+			m_vtrace.max.p = m_vtrace.max.p.maxv(pmax);
+
+			switch(prim)
+			{
+			case GS_POINTLIST:
+				if(tme) m_vtrace.min.t = m_vtrace.min.t.minv(v[0].t);
+				if(tme) m_vtrace.max.t = m_vtrace.max.t.maxv(v[0].t);
+				m_vtrace.min.c = m_vtrace.min.c.minv(v[0].c);
+				m_vtrace.max.c = m_vtrace.max.c.maxv(v[0].c);
+				break;
+			case GS_LINELIST:
+			case GS_LINESTRIP:
+				if(PRIM->IIP == 0) {v[0].c = v[1].c;}
+				if(tme) m_vtrace.min.t = m_vtrace.min.t.minv(v[0].t).minv(v[1].t);
+				if(tme) m_vtrace.max.t = m_vtrace.max.t.maxv(v[0].t).maxv(v[1].t);
+				m_vtrace.min.c = m_vtrace.min.c.minv(v[0].c).minv(v[1].c);
+				m_vtrace.max.c = m_vtrace.max.c.maxv(v[0].c).maxv(v[1].c);
+				break;
+			case GS_TRIANGLELIST:
+			case GS_TRIANGLESTRIP:
+			case GS_TRIANGLEFAN:
+				if(PRIM->IIP == 0) {v[0].c = v[2].c; v[1].c = v[2].c;}
+				if(tme) m_vtrace.min.t = m_vtrace.min.t.minv(v[0].t).minv(v[1].t.minv(v[2].t));
+				if(tme) m_vtrace.max.t = m_vtrace.max.t.maxv(v[0].t).maxv(v[1].t.maxv(v[2].t));
+				m_vtrace.min.c = m_vtrace.min.c.minv(v[0].c).minv(v[1].c.minv(v[2].c));
+				m_vtrace.max.c = m_vtrace.max.c.maxv(v[0].c).maxv(v[1].c.maxv(v[2].c));
+				break;
+			case GS_SPRITE:
+				if(tme) m_vtrace.min.t = m_vtrace.min.t.minv(v[0].t).minv(v[1].t);
+				if(tme) m_vtrace.max.t = m_vtrace.max.t.maxv(v[0].t).maxv(v[1].t);
+				m_vtrace.min.c = m_vtrace.min.c.minv(v[1].c);
+				m_vtrace.max.c = m_vtrace.max.c.maxv(v[1].c);
+				break;
+			}
+
+			m_count += count;
+		}
 	}
 };

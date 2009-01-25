@@ -32,17 +32,11 @@ class GSRendererHW9 : public GSRendererHW<GSDevice9, GSVertexHW9, GSTextureCache
 	typedef GSVertexHW9 Vertex;
 	typedef GSTextureCache9 TextureCache;
 
+	bool WrapZ(float maxz);
+
 protected:
 	GSTextureFX9 m_tfx;
 	bool m_logz;
-
-	template<DWORD tme, DWORD fst>
-	void AddVertex();
-
-	template<int primclass>
-	void AddPrim(Vertex* v, DWORD& count);
-
-	bool WrapZ(float maxz);
 
 	void Draw(int prim, Texture& rt, Texture& ds, GSTextureCache<Device>::GSTexture* tex);
 
@@ -66,4 +60,6 @@ public:
 	GSRendererHW9(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs);
 
 	bool Create(LPCTSTR title);
+
+	template<DWORD prim, DWORD tme, DWORD fst> void VertexKick(bool skip);
 };

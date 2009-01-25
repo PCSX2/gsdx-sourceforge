@@ -48,6 +48,7 @@ union GSScanlineSelector
 		DWORD abed:2; // 27
 		DWORD pabe:1; // 29
 		DWORD rfb:1; // 30
+		DWORD sprite:1; // 31
 	};
 
 	struct
@@ -59,7 +60,19 @@ union GSScanlineSelector
 
 	DWORD dw;
 
-	operator DWORD() {return dw & 0x7fffffff;}
+	operator DWORD() {return dw;}
+
+	bool IsSolidRect()
+	{
+		return sprite
+			&& iip == 0
+			&& tfx == TFX_NONE
+			&& abe == 255 
+			&& ztst <= 1 
+			&& atst <= 1
+			&& date == 0
+			&& fge == 0;
+	}
 };
 
 __declspec(align(16)) struct GSScanlineEnvironment
@@ -90,6 +103,7 @@ __declspec(align(16)) struct GSScanlineEnvironment
 	struct {GSVector4 z, s, t, q; GSVector4i rb, ga, f, si, ti, _pad[3];} d[4];
 	struct {GSVector4 z, stq; GSVector4i c, f, st;} d4;
 	struct {GSVector4i rb, ga;} c;
+	struct {GSVector4i z, f;} p;
 };
 
 __declspec(align(16)) struct GSScanlineParam
@@ -125,6 +139,8 @@ class GSDrawScanline : public GSAlignedClass<16>, public IDrawScanline
 		GSDrawScanlineMap();
 
 		DrawScanlinePtr GetDefaultFunction(DWORD dw);
+
+		void PrintStats();
 	};
 	
 	GSDrawScanlineMap m_ds;

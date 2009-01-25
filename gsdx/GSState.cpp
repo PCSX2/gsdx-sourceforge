@@ -34,6 +34,7 @@ GSState::GSState(BYTE* base, bool mt, void (*irq)(), int nloophack)
 	, m_vprim(1)
 	, m_version(5)
 	, m_frameskip(0)
+	, m_vkf(NULL)
 {
 	m_sssize = 0;
 	
@@ -516,6 +517,8 @@ void GSState::GIFRegHandlerPRIM(GIFReg* r)
 
 	m_context = &m_env.CTXT[PRIM->CTXT];
 
+	UpdateVertexKick();
+
 	ResetPrim();
 }
 
@@ -649,12 +652,14 @@ template<int i> void GSState::GIFRegHandlerTEX2(GIFReg* r)
 
 template<int i> void GSState::GIFRegHandlerXYOFFSET(GIFReg* r)
 {
-	if(!(m_env.CTXT[i].XYOFFSET == (GSVector4i)r->XYOFFSET).alltrue())
+	GSVector4i o = (GSVector4i)r->XYOFFSET & GSVector4i::x0000ffff();
+
+	if(!(m_env.CTXT[i].XYOFFSET == o).alltrue())
 	{
 		Flush();
 	}
 
-	m_env.CTXT[i].XYOFFSET = (GSVector4i)r->XYOFFSET;
+	m_env.CTXT[i].XYOFFSET = o;
 
 	m_env.CTXT[i].UpdateScissor();
 }
@@ -673,6 +678,8 @@ void GSState::GIFRegHandlerPRMODECONT(GIFReg* r)
 	if(PRIM->PRIM == 7) TRACE(_T("Invalid PRMODECONT/PRIM\n"));
 
 	m_context = &m_env.CTXT[PRIM->CTXT];
+
+	UpdateVertexKick();
 }
 
 void GSState::GIFRegHandlerPRMODE(GIFReg* r)
@@ -687,6 +694,8 @@ void GSState::GIFRegHandlerPRMODE(GIFReg* r)
 	m_env.PRMODE._PRIM = _PRIM;
 
 	m_context = &m_env.CTXT[PRIM->CTXT];
+
+	UpdateVertexKick();
 }
 
 void GSState::GIFRegHandlerTEXCLUT(GIFReg* r)
@@ -956,9 +965,9 @@ void GSState::GIFRegHandlerTRXDIR(GIFReg* r)
 
 void GSState::GIFRegHandlerHWREG(GIFReg* r)
 {
-	// TODO
+	ASSERT(m_env.TRXDIR.XDIR == 0); // host => local
 
-	ASSERT(0);
+	Write((BYTE*)r, 8); // hunting ground
 }
 
 void GSState::GIFRegHandlerSIGNAL(GIFReg* r)
@@ -1221,7 +1230,7 @@ template<int index> void GSState::Transfer(BYTE* mem, UINT32 size)
 
 			if(path.tag.PRE)
 			{
-				ASSERT(path.tag.FLG != GIF_FLG_IMAGE); // kingdom hearts, ffxii, tales of abyss
+				ASSERT(path.tag.FLG != GIF_FLG_IMAGE); // kingdom hearts, ffxii, tales of abyss, berserk
 
 				if((path.tag.FLG & 2) == 0)
 				{
@@ -1530,6 +1539,9 @@ int GSState::Defrost(const GSFreezeData* fd)
 		ReadState(&m_env.CTXT[i].FRAME, data);
 		ReadState(&m_env.CTXT[i].ZBUF, data);
 
+		m_env.CTXT[i].XYOFFSET.OFX &= 0xffff;
+		m_env.CTXT[i].XYOFFSET.OFY &= 0xffff;
+
 		if(version <= 4)
 		{
 			data += sizeof(DWORD) * 7; // skip 
@@ -1558,6 +1570,8 @@ int GSState::Defrost(const GSFreezeData* fd)
 	PRIM = !m_env.PRMODECONT.AC ? (GIFRegPRIM*)&m_env.PRMODE : &m_env.PRIM;
 
 	m_context = &m_env.CTXT[PRIM->CTXT];
+
+	UpdateVertexKick();
 
 	m_env.CTXT[0].UpdateScissor();
 	m_env.CTXT[1].UpdateScissor();

@@ -42,6 +42,7 @@ struct GSRasterizerStats
 
 template<class T> class GSFunctionMap
 {
+protected:
 	struct ActivePtr
 	{
 		UINT64 frame, frames;
@@ -53,7 +54,6 @@ template<class T> class GSFunctionMap
 	CRBMap<DWORD, ActivePtr*> m_map_active;
 	ActivePtr* m_active;
 
-protected:
 	virtual T GetDefaultFunction(DWORD sel) = 0;
 
 public:
@@ -118,72 +118,43 @@ public:
 		}
 	}
 
-	void PrintStats()
+	virtual void PrintStats()
 	{
-		if(FILE* fp = fopen("c:\\1.txt", "w"))
+		__int64 ttpf = 0;
+
+		POSITION pos = m_map_active.GetHeadPosition();
+
+		while(pos)
 		{
-			POSITION pos = m_map_active.GetHeadPosition();
-
-			while(pos)
+			ActivePtr* p = m_map_active.GetNextValue(pos);
+			
+			if(p->frames)
 			{
-				DWORD sel;
-				ActivePtr* p;
-				
-				m_map_active.GetNextAssoc(pos, sel, p);
-
-				if(m_map.Lookup(sel))
-				{
-					continue;
-				}
-
-				if(p->frames > 30)
-				{
-					int tpf = (int)((p->ticks / p->frames) * 10000 / (3000000000 / 60)); // 3 GHz, 60 fps
-
-					if(tpf >= 500)
-					{
-						_ftprintf(fp, _T("InitDS_Sel(0x%08x); // %6.2f%%\n"), sel, (float)tpf / 100);
-					}
-				}
-			}
-
-			fclose(fp);
-		}
-
-		{
-			__int64 ttpf = 0;
-
-			POSITION pos = m_map_active.GetHeadPosition();
-
-			while(pos)
-			{
-				ActivePtr* p = m_map_active.GetNextValue(pos);
-				
 				ttpf += p->ticks / p->frames;
 			}
+		}
 
-			pos = m_map_active.GetHeadPosition();
+		pos = m_map_active.GetHeadPosition();
 
-			while(pos)
+		while(pos)
+		{
+			DWORD sel;
+			ActivePtr* p;
+
+			m_map_active.GetNextAssoc(pos, sel, p);
+
+			if(p->frames > 0)
 			{
-				DWORD sel;
-				ActivePtr* p;
+				__int64 tpp = p->pixels > 0 ? p->ticks / p->pixels : 0;
+				__int64 tpf = p->frames > 0 ? p->ticks / p->frames : 0;
+				__int64 ppf = p->frames > 0 ? p->pixels / p->frames : 0;
 
-				m_map_active.GetNextAssoc(pos, sel, p);
-
-				if(p->frames > 0)
-				{
-					__int64 tpp = p->pixels > 0 ? p->ticks / p->pixels : 0;
-					__int64 tpf = p->frames > 0 ? p->ticks / p->frames : 0;
-					__int64 ppf = p->frames > 0 ? p->pixels / p->frames : 0;
-
-					printf("[%08x]%c %6.2f%% | %5.2f%% | f %4I64d | p %10I64d | tpp %4I64d | tpf %9I64d | ppf %7I64d\n", 
-						sel, !m_map.Lookup(sel) ? '*' : ' ',
-						(float)(tpf * 10000 / 50000000) / 100, 
-						(float)(tpf * 10000 / ttpf) / 100, 
-						p->frames, p->pixels, 
-						tpp, tpf, ppf);
-				}
+				printf("[%08x]%c %6.2f%% | %5.2f%% | f %4I64d | p %10I64d | tpp %4I64d | tpf %9I64d | ppf %7I64d\n", 
+					sel, !m_map.Lookup(sel) ? '*' : ' ',
+					(float)(tpf * 10000 / 50000000) / 100, 
+					(float)(tpf * 10000 / ttpf) / 100, 
+					p->frames, p->pixels, 
+					tpp, tpf, ppf);
 			}
 		}
 	}

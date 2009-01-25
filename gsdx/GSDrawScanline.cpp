@@ -19,6 +19,10 @@
  *
  */
 
+// TODO: 
+// - if iip == 0 && tfx == TFX_NONE && fog == 0 && abe a/b/c != 1 => e = (a - b) * c, dst = e + d (simple addus8)
+// - detect and convert quads to sprite
+
 #include "StdAfx.h"
 #include "GSDrawScanline.h"
 #include "GSTextureCacheSW.h"
@@ -101,8 +105,8 @@ void GSDrawScanline::BeginDraw(const GSRasterizerData* data, Functions* f)
 		m_env.clut = p->clut;
 		m_env.tw = p->tw;
 
-		short tw = (short)(1 << context->TEX0.TW);
-		short th = (short)(1 << context->TEX0.TH);
+		unsigned short tw = (unsigned short)(1 << context->TEX0.TW);
+		unsigned short th = (unsigned short)(1 << context->TEX0.TH);
 
 		switch(context->CLAMP.WMS)
 		{
@@ -117,8 +121,8 @@ void GSDrawScanline::BeginDraw(const GSRasterizerData* data, Functions* f)
 			m_env.t.mask.u32[0] = 0; 
 			break;
 		case CLAMP_REGION_CLAMP: 
-			m_env.t.min.u16[0] = context->CLAMP.MINU;
-			m_env.t.max.u16[0] = context->CLAMP.MAXU;
+			m_env.t.min.u16[0] = min(context->CLAMP.MINU, tw - 1);
+			m_env.t.max.u16[0] = min(context->CLAMP.MAXU, tw - 1);
 			m_env.t.mask.u32[0] = 0; 
 			break;
 		case CLAMP_REGION_REPEAT: 
@@ -143,8 +147,8 @@ void GSDrawScanline::BeginDraw(const GSRasterizerData* data, Functions* f)
 			m_env.t.mask.u32[2] = 0; 
 			break;
 		case CLAMP_REGION_CLAMP: 
-			m_env.t.min.u16[4] = context->CLAMP.MINV;
-			m_env.t.max.u16[4] = context->CLAMP.MAXV;
+			m_env.t.min.u16[4] = min(context->CLAMP.MINV, th - 1);
+			m_env.t.max.u16[4] = min(context->CLAMP.MAXV, th - 1); // ffx anima summon scene, when the anchor appears (th = 256, maxv > 256)
 			m_env.t.mask.u32[2] = 0; 
 			break;
 		case CLAMP_REGION_REPEAT: 
@@ -167,20 +171,9 @@ void GSDrawScanline::BeginDraw(const GSRasterizerData* data, Functions* f)
 
 	//
 
-	if(data->primclass == GS_SPRITE_CLASS)
+	if(m_env.sel.IsSolidRect())
 	{
 		f->sr = (DrawSolidRectPtr)&GSDrawScanline::DrawSolidRect;
-
-		if(m_env.sel.iip 
-		|| m_env.sel.tfx != TFX_NONE
-		|| m_env.sel.abe != 255 
-		|| m_env.sel.ztst > 1 
-		|| m_env.sel.atst > 1
-		|| m_env.sel.date
-		|| m_env.sel.fge)
-		{
-			f->sr = NULL;
-		}
 	}
 
 	//
@@ -236,6 +229,23 @@ void GSDrawScanline::SetupPrim(const GSVertexSW* vertices, const GSVertexSW& dsc
 		if(fge)
 		{
 			m_env.d[i].f = GSVector4i(df * v).xxzzlh();
+		}
+	}
+
+	if(iip == 0) // should be sprite == 1, but close enough
+	{
+		GSVector4 p = vertices[0].p;
+
+		if(zbe)
+		{
+			GSVector4 z = p.zzzz();
+
+			m_env.p.z = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::x00000001());
+		}
+
+		if(fge)
+		{
+			m_env.p.f = GSVector4i(p).zzzzh().zzzz();
 		}
 	}
 
@@ -919,6 +929,7 @@ void GSDrawScanline::DrawScanlineEx(int top, int left, int right, const GSVertex
 	const DWORD abed = (sel >> 27) & 3;
 	const DWORD pabe = (sel >> 29) & 1;
 	const DWORD rfb = (sel >> 30) & 1;
+	const DWORD sprite = (sel >> 31) & 1;
 
 	//
 
@@ -936,7 +947,7 @@ void GSDrawScanline::DrawScanlineEx(int top, int left, int right, const GSVertex
 	GSVector2i* fza_offset;
 
 	GSVector4 z, s, t, q;
-	GSVector4i si, ti, f, rb, ga;
+	GSVector4i zi, si, ti, f, rb, ga;
 
 	// fza
 
@@ -947,8 +958,16 @@ void GSDrawScanline::DrawScanlineEx(int top, int left, int right, const GSVertex
 
 	GSVector4 vp = v.p;
 
-	z = vp.zzzz() + m_env.d[skip].z;
-	f = GSVector4i(vp).zzzzh().zzzz().add16(m_env.d[skip].f);
+	if(sprite)
+	{
+		zi = m_env.p.z;
+		f = m_env.p.f;
+	}
+	else
+	{
+		z = vp.zzzz() + m_env.d[skip].z;
+		f = GSVector4i(vp).zzzzh().zzzz().add16(m_env.d[skip].f);
+	}
 
 	// v.t
 
@@ -958,8 +977,11 @@ void GSDrawScanline::DrawScanlineEx(int top, int left, int right, const GSVertex
 	{
 		GSVector4i vti(vt);
 
-		si = vti.xxxx() + m_env.d[skip].si;
-		ti = vti.yyyy() + m_env.d[skip].ti;
+		si = vti.xxxx();
+		ti = vti.yyyy();
+
+		si += m_env.d[skip].si;
+		if(!sprite) ti += m_env.d[skip].ti;
 	}
 	else
 	{
@@ -989,7 +1011,7 @@ void GSDrawScanline::DrawScanlineEx(int top, int left, int right, const GSVertex
 			int fa = fza_base.x + fza_offset->x;
 			int za = fza_base.y + fza_offset->y;
 
-			GSVector4i zs = (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::x00000001());
+			GSVector4i zs = sprite ? zi : (GSVector4i(z * 0.5f) << 1) | (GSVector4i(z) & GSVector4i::x00000001());
 			GSVector4i zd;
 
 			if(ztst > 1)
@@ -1140,15 +1162,18 @@ void GSDrawScanline::DrawScanlineEx(int top, int left, int right, const GSVertex
 
 		fza_offset++;
 
-		z += m_env.d4.z;
-		f = f.add16(m_env.d4.f);
+		if(!sprite)
+		{
+			z += m_env.d4.z;
+			f = f.add16(m_env.d4.f);
+		}
 
 		if(fst)
 		{
 			GSVector4i st = m_env.d4.st;
 
 			si += st.xxxx();
-			ti += st.yyyy();
+			if(!sprite) ti += st.yyyy();
 		}
 		else
 		{
@@ -1180,12 +1205,41 @@ int size = (r.z - r.x) * (r.w - r.y);
 	ASSERT(r.y >= 0);
 	ASSERT(r.w >= 0);
 
-	DWORD m = m_env.fm.u32[0];
+	// FIXME: sometimes the frame and z buffer may overlap, the outcome is undefined
 
-	if(m_env.sel.fpsm == 1)
+	DWORD m;
+
+	m = m_env.zm.u32[0];
+
+	if(m != 0xffffffff)
 	{
-		m |= 0xff000000;
+		DWORD z = (DWORD)(float)v.p.z;
+
+		if(m_env.sel.zpsm != 2)
+		{
+			if(m == 0)
+			{
+				DrawSolidRectT<DWORD, false>(m_env.zbr, m_env.zbc[0], r, z, m);
+			}
+			else
+			{
+				DrawSolidRectT<DWORD, true>(m_env.zbr, m_env.zbc[0], r, z, m);
+			}
+		}
+		else
+		{
+			if(m == 0)
+			{
+				DrawSolidRectT<WORD, false>(m_env.zbr, m_env.zbc[0], r, z, m);
+			}
+			else
+			{
+				DrawSolidRectT<WORD, true>(m_env.zbr, m_env.zbc[0], r, z, m);
+			}
+		}
 	}
+
+	m = m_env.fm.u32[0];
 
 	if(m != 0xffffffff)
 	{
@@ -1218,41 +1272,6 @@ int size = (r.z - r.x) * (r.w - r.y);
 			else
 			{
 				DrawSolidRectT<WORD, true>(m_env.fbr, m_env.fbc[0], r, c, m);
-			}
-		}
-	}
-
-	m = m_env.zm.u32[0];
-
-	if(m_env.sel.zpsm == 1)
-	{
-		m |= 0xff000000;
-	}
-
-	if(m != 0xffffffff)
-	{
-		DWORD z = (DWORD)(float)v.p.z;
-
-		if(m_env.sel.zpsm != 2)
-		{
-			if(m == 0)
-			{
-				DrawSolidRectT<DWORD, false>(m_env.zbr, m_env.zbc[0], r, z, m);
-			}
-			else
-			{
-				DrawSolidRectT<DWORD, true>(m_env.zbr, m_env.zbc[0], r, z, m);
-			}
-		}
-		else
-		{
-			if(m == 0)
-			{
-				DrawSolidRectT<WORD, false>(m_env.zbr, m_env.zbc[0], r, z, m);
-			}
-			else
-			{
-				DrawSolidRectT<WORD, true>(m_env.zbr, m_env.zbc[0], r, z, m);
 			}
 		}
 	}
@@ -1371,1174 +1390,1179 @@ GSDrawScanline::GSDrawScanlineMap::GSDrawScanlineMap()
 	InitDS(3, 2);
 
 	#define InitDS_Sel(sel) \
-		SetAt(sel, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineEx<##sel##>); \
+		SetAt(sel, (DrawScanlinePtr)&GSDrawScanline::DrawScanlineEx<##sel##>);
 
 	#ifdef FAST_DRAWSCANLINE
 
 	// bios
 
-	InitDS_Sel(0x1fe04850); //   7.36%
-	InitDS_Sel(0x1fe28870); //  24.11%
-	InitDS_Sel(0x1fe38050); //  19.32%
-	InitDS_Sel(0x1fe38060); //   7.28%
-	InitDS_Sel(0x1fe38064); //  15.07%
-	InitDS_Sel(0x1fe39050); // 104.01%
-	InitDS_Sel(0x1fe39054); //   7.04%
-	InitDS_Sel(0x48428050); //   7.93%
-	InitDS_Sel(0x48428060); //   6.00%
-	InitDS_Sel(0x48804050); //  10.05%
-	InitDS_Sel(0x48804860); //  21.21%
-	InitDS_Sel(0x49004050); //  10.94%
-	InitDS_Sel(0x49028060); //   5.88%
-	InitDS_Sel(0x4902904c); //   5.25%
-	InitDS_Sel(0x49038050); //  12.30%
-	InitDS_Sel(0x49039050); //  10.95%
-	InitDS_Sel(0x4b02804c); //   5.60%
-	InitDS_Sel(0x4c40404c); //   5.58%
-	InitDS_Sel(0x4c804050); //  10.27%
-	InitDS_Sel(0x4d019050); //  93.35%
-	InitDS_Sel(0x4d038864); // 124.19%
+	InitDS_Sel(0x1fe04850); //   5.33%
+	InitDS_Sel(0x1fe28870); //  21.51%
+	InitDS_Sel(0x1fe38050); //   9.64%
+	InitDS_Sel(0x1fe38060); //   6.07%
+	InitDS_Sel(0x48428050); //   6.74%
+	InitDS_Sel(0x48428060); //   6.36%
+	InitDS_Sel(0x48804860); //  15.48%
+	InitDS_Sel(0x49028060); //   6.32%
+	InitDS_Sel(0x4d00484c); //   6.65%
+	InitDS_Sel(0x4d02884c); // 103.04%
+	InitDS_Sel(0x4d038864); //  92.65%
+	InitDS_Sel(0x9fe3804c); //  44.43%
+	InitDS_Sel(0x9fe38050); //  10.78%
+	InitDS_Sel(0x9fe39050); //  72.37%
+	InitDS_Sel(0x9fe39064); //   8.55%
+	InitDS_Sel(0xc880404c); //   9.30%
+	InitDS_Sel(0xc8804050); //   6.78%
+	InitDS_Sel(0xc8839050); //   6.87%
+	InitDS_Sel(0xc9038050); //  10.83%
+	InitDS_Sel(0xc9039050); //   8.62%
+	InitDS_Sel(0xcc804050); //   7.20%
+	InitDS_Sel(0xcc83904c); //  11.05%
+	InitDS_Sel(0xcd03804c); //  36.79%
+	InitDS_Sel(0xcd019050); //  70.44%
 
 	// ffx
 
-	InitDS_Sel(0x1100404d); //  30.17%
-	InitDS_Sel(0x11004055); //  34.43%
-	InitDS_Sel(0x11020865); //  17.61%
-	InitDS_Sel(0x1fe68075); //  21.18%
-	InitDS_Sel(0x1fe68155); //  16.25%
-	InitDS_Sel(0x1fe68875); //   6.49%
-	InitDS_Sel(0x1fe68975); //  15.53%
-	InitDS_Sel(0x1fe69075); //  11.47%
-	InitDS_Sel(0x1fe78075); //  21.17%
-	InitDS_Sel(0x1fe78155); //  14.43%
-	InitDS_Sel(0x1fe84075); //  11.45%
-	InitDS_Sel(0x1fee8875); //  42.51%
-	InitDS_Sel(0x1fee8975); //   8.37%
-	InitDS_Sel(0x48404965); //   5.56%
-	InitDS_Sel(0x48804055); //  41.48%
-	InitDS_Sel(0x48804855); //  36.61%
-	InitDS_Sel(0x48804865); //  62.03%
-	InitDS_Sel(0x4883004d); //  18.65%
-	InitDS_Sel(0x48868865); //  25.19%
-	InitDS_Sel(0x48868965); //  10.31%
-	InitDS_Sel(0x4887814d); //  11.23%
-	InitDS_Sel(0x48878165); //  26.34%
-	InitDS_Sel(0x48879065); //  34.92%
-	InitDS_Sel(0x488e8965); //   5.30%
-	InitDS_Sel(0x488f89f5); //  32.85%
-	InitDS_Sel(0x49004065); //  20.86%
-	InitDS_Sel(0x49004865); //   5.15%
-	InitDS_Sel(0x49004875); //  50.37%
-	InitDS_Sel(0x49004965); //  11.36%
-	InitDS_Sel(0x49068165); //  10.53%
-	InitDS_Sel(0x49068865); //  37.21%
-	InitDS_Sel(0x49068965); //  15.39%
-	InitDS_Sel(0x4907814d); //  12.24%
-	InitDS_Sel(0x49078165); //   7.42%
-	InitDS_Sel(0x4c819055); //  15.71%
-	InitDS_Sel(0x4c839065); //   9.33%
-	InitDS_Sel(0x4c83914d); //  18.24%
-	InitDS_Sel(0x4d068075); //  10.04%
-	InitDS_Sel(0x4d078075); //  10.02%
-	InitDS_Sel(0x54204055); //  13.26%
-	InitDS_Sel(0x55204055); //  28.55%
-	InitDS_Sel(0x488791e5);
-	InitDS_Sel(0x48868065); //   5.11%
-	InitDS_Sel(0x4887914d); //   8.48%
-	InitDS_Sel(0x11028965); //   5.57%
-	InitDS_Sel(0x1fe3914d); //  13.66%
-	InitDS_Sel(0x48468965); //  20.70%
-	InitDS_Sel(0x4880494d); //   5.51%
-	InitDS_Sel(0x48810055); //  15.53%
-	InitDS_Sel(0x48820065); //   9.72%
-	InitDS_Sel(0x48820865); //  10.73%
-	InitDS_Sel(0x48869065); //   6.26%
-	InitDS_Sel(0x488789cd); //   7.70%
-	InitDS_Sel(0x49078065); //   8.15%
+	InitDS_Sel(0x11020865); //   9.83%
+	InitDS_Sel(0x1fe68875); //   8.41%
+	InitDS_Sel(0x1fe69075); //  10.39%
+	InitDS_Sel(0x1fe78075); //  19.27%
+	InitDS_Sel(0x1fe78155); //  13.51%
+	InitDS_Sel(0x1fee8875); //  40.85%
+	InitDS_Sel(0x1fee8975); //   6.22%
+	InitDS_Sel(0x48804855); //  12.08%
+	InitDS_Sel(0x48804865); //  13.11%
+	InitDS_Sel(0x4880494d); //   5.75%
+	InitDS_Sel(0x48868065); //   5.24%
+	InitDS_Sel(0x48868865); //  24.79%
+	InitDS_Sel(0x48868965); //  10.88%
+	InitDS_Sel(0x48878165); //  28.50%
+	InitDS_Sel(0x488789cd); //   6.28%
+	InitDS_Sel(0x48879065); //  24.07%
+	InitDS_Sel(0x488791e5); //  82.67%
+	InitDS_Sel(0x488e8965); //   6.02%
+	InitDS_Sel(0x488f89f5); //  24.31%
+	InitDS_Sel(0x49004875); //  11.54%
+	InitDS_Sel(0x49068065); //  20.63%
+	InitDS_Sel(0x49068165); //   8.94%
+	InitDS_Sel(0x49068865); //   8.02%
+	InitDS_Sel(0x49068965); //   6.38%
+	InitDS_Sel(0x49078165); //   6.35%
+	InitDS_Sel(0x4d078075); //   9.90%
+	InitDS_Sel(0x9100404d); //   8.42%
+	InitDS_Sel(0x9fe3914d); //  14.47%
+	InitDS_Sel(0xc8804055); //  11.50%
+	InitDS_Sel(0xc883004d); //  18.83%
+	InitDS_Sel(0xc887814d); //  10.96%
+	InitDS_Sel(0xc887914d); //   6.60%
+	InitDS_Sel(0xc9078065); //   6.85%
+	InitDS_Sel(0xc907814d); //   9.30%
+	InitDS_Sel(0xcc819055); //  14.47%
+	InitDS_Sel(0xcc839065); //  11.17%
+	InitDS_Sel(0xd5204055); //  10.62%
+	InitDS_Sel(0x1fea8965); //  11.36%
+	InitDS_Sel(0x1fee8075); //   5.65%
+	InitDS_Sel(0x48804055); //  11.32%
+	InitDS_Sel(0x4883004d); //  18.03%
+	InitDS_Sel(0x48830965); //  15.39%
+	InitDS_Sel(0x91004055); //  11.63%
+	InitDS_Sel(0xc9004065); //  12.81%
+	InitDS_Sel(0xcc83914d); //  16.73%
+	InitDS_Sel(0x1fee8876); //  21.71%
+	InitDS_Sel(0x48404865); //   7.73%
+	InitDS_Sel(0x48468865); //  16.38%
+	InitDS_Sel(0x48478065); //  14.08%
+	InitDS_Sel(0x48479065); //  14.14%
+	InitDS_Sel(0x4883084d); //  34.87%
+	InitDS_Sel(0x488781f5); //   6.82%
+	InitDS_Sel(0x488f89f6); //  26.11%
+	InitDS_Sel(0x49078065); //  26.07%
+	InitDS_Sel(0x49078865); //   6.26%
+	InitDS_Sel(0x9101004e); //  11.91%
 
 	// ffx-2
 
-	InitDS_Sel(0x1fe0404e); //   6.66%
-	InitDS_Sel(0x1fe30069); //  15.98%
-	InitDS_Sel(0x4880404d); //   9.16%
-	InitDS_Sel(0x4880484d); //   7.76%
-	InitDS_Sel(0x4881814d); //  28.01%
-	InitDS_Sel(0x4881884d); //   5.59%
-	InitDS_Sel(0x4881904d); //  13.02%
-	InitDS_Sel(0x48820965); //   6.06%
-	InitDS_Sel(0x4883904d); //  18.26%
-	InitDS_Sel(0x4885004d); //  13.69%
-	InitDS_Sel(0x4885904d); //  13.68%
-	InitDS_Sel(0x48878865); //   6.43%
-	InitDS_Sel(0x49004059); //  13.20%
-	InitDS_Sel(0x49004859); //  20.52%
-	InitDS_Sel(0x49004869); //   8.54%
-	InitDS_Sel(0x4900494d); //   5.05%
-	InitDS_Sel(0x49059155); //  12.96%
-	InitDS_Sel(0x49078965); //  10.10%
-	InitDS_Sel(0x49079165); //   9.52%
-	InitDS_Sel(0x490e8165); //  16.46%
-	InitDS_Sel(0x4c850055); //  17.31%
-	InitDS_Sel(0x4d05884d); //   5.74%
-	InitDS_Sel(0x1fe1004d); //  15.06%
-	InitDS_Sel(0x1fe5884d); //  10.50%
-	InitDS_Sel(0x4881004d); //  13.37%
-	InitDS_Sel(0x488781f5); //   7.04%
-	InitDS_Sel(0x49004055); //  12.90%
-	InitDS_Sel(0x49068065); //   5.26%
-	InitDS_Sel(0x4907804d); //  39.35%
-	InitDS_Sel(0x49078865); //  19.40%
+	InitDS_Sel(0x1fe0404e); //  25.27%
+	InitDS_Sel(0x1fe30069); //  19.52%
+	InitDS_Sel(0x48804065); //  15.28%
+	InitDS_Sel(0x4880484d); //  12.54%
+	InitDS_Sel(0x488049cd); //   5.49%
+	InitDS_Sel(0x4885884d); //   5.73%
+	InitDS_Sel(0x48878865); //   6.14%
+	InitDS_Sel(0x488e8165); //   5.90%
+	InitDS_Sel(0x4890404c); //  18.46%
+	InitDS_Sel(0x4893084c); //  18.84%
+	InitDS_Sel(0x49004859); //  15.49%
+	InitDS_Sel(0x49004869); //   9.52%
+	InitDS_Sel(0x49078965); //   9.70%
+	InitDS_Sel(0x49079165); //   9.69%
+	InitDS_Sel(0x490e8165); //  13.52%
+	InitDS_Sel(0x4c45884d); //   5.58%
+	InitDS_Sel(0x4d05884d); //   5.53%
+	InitDS_Sel(0xc880404d); //  25.08%
+	InitDS_Sel(0xc881814d); //  26.06%
+	InitDS_Sel(0xc883904d); //  18.71%
+	InitDS_Sel(0xc885004d); //  11.09%
+	InitDS_Sel(0xc885904d); //  12.54%
+	InitDS_Sel(0xc8878165); //   5.43%
+	InitDS_Sel(0xc893004c); // 103.92%
+	InitDS_Sel(0xc895004c); //  12.04%
+	InitDS_Sel(0xc9004059); //  11.58%
+	InitDS_Sel(0xc9059155); //  10.72%
+	InitDS_Sel(0xcc850055); //  14.49%
+	InitDS_Sel(0x1fe5884d); //   9.56%
+	InitDS_Sel(0x1fe68075); //  13.61%
+	InitDS_Sel(0x4907804d); //  28.18%
+	InitDS_Sel(0x4907814d); //  18.38%
+	InitDS_Sel(0xc881004d); //  10.92%
+	InitDS_Sel(0xc881904d); //  11.90%
+	InitDS_Sel(0xc9004055); //  10.58%
 
 	// ffxii
 
-	InitDS_Sel(0x1fe3804c); //   5.57%
-	InitDS_Sel(0x1fe3904c); //   8.74%
-	InitDS_Sel(0x1fe6804c); //   8.34%
-	InitDS_Sel(0x1fe68064); //   6.52%
-	InitDS_Sel(0x1fe6884c); //  17.15%
-	InitDS_Sel(0x1fee8864); //  56.66%
-	InitDS_Sel(0x1fee8964); //  12.42%
-	InitDS_Sel(0x48404064); //   5.95%
-	InitDS_Sel(0x4847004c); //  19.50%
-	InitDS_Sel(0x48828064); //  76.92%
-	InitDS_Sel(0x48828864); //   6.81%
-	InitDS_Sel(0x4883004c); //  19.63%
-	InitDS_Sel(0x4883084c); //  13.67%
-	InitDS_Sel(0x4883804c); //  21.19%
-	InitDS_Sel(0x4883884c); //  29.32%
-	InitDS_Sel(0x4883904c); //  70.94%
-	InitDS_Sel(0x48868064); //   6.14%
-	InitDS_Sel(0x4886884c); //  13.80%
-	InitDS_Sel(0x4887084c); // 307.95%
-	InitDS_Sel(0x4887804c); //   5.54%
-	InitDS_Sel(0x48878064); //   5.43%
-	InitDS_Sel(0x48879064); //  21.30%
-	InitDS_Sel(0x488e8b64); //  17.25%
-	InitDS_Sel(0x48904064); //   5.34%
-	InitDS_Sel(0x48c0404c); //  10.58%
-	InitDS_Sel(0x48c0484c); //  11.69%
-	InitDS_Sel(0x48c7804c); //  22.92%
-	InitDS_Sel(0x48c7884c); //   6.32%
-	InitDS_Sel(0x4903804c); //  14.11%
-	InitDS_Sel(0x4907804c); //  92.69%
-	InitDS_Sel(0x49078064); //   7.59%
-	InitDS_Sel(0x4907884c); //  10.83%
-	InitDS_Sel(0x49278064); //  98.56%
-	InitDS_Sel(0x5fe0404c); //  22.56%
-	InitDS_Sel(0x5fe04064); //  31.46%
-	InitDS_Sel(0x4886804c); //   5.08%
-	InitDS_Sel(0x4887904c); //   6.91%
-	InitDS_Sel(0x488e8864); //   6.02%
+	InitDS_Sel(0x1fe6804c); //  10.03%
+	InitDS_Sel(0x1fe68064); //   6.15%
+	InitDS_Sel(0x1fe6884c); //  11.87%
+	InitDS_Sel(0x1fee8864); //  76.59%
+	InitDS_Sel(0x1fee8964); //  30.41%
+	InitDS_Sel(0x48404064); //   5.99%
+	InitDS_Sel(0x4847004c); //  16.70%
+	InitDS_Sel(0x4880404c); //   6.22%
+	InitDS_Sel(0x48828864); //   6.62%
+	InitDS_Sel(0x4883004c); //  19.90%
+	InitDS_Sel(0x4883084c); //  12.05%
+	InitDS_Sel(0x4883804c); //  18.03%
+	InitDS_Sel(0x4883884c); //  16.82%
+	InitDS_Sel(0x4887084c); // 234.03%
+	InitDS_Sel(0x4887804c); //  10.79%
+	InitDS_Sel(0x48878064); //  11.52%
+	InitDS_Sel(0x4887904c); //   8.31%
+	InitDS_Sel(0x488e8b64); //  18.21%
+	InitDS_Sel(0x48904064); //   5.01%
+	InitDS_Sel(0x48c7804c); //  18.99%
+	InitDS_Sel(0x4903804c); //  16.28%
+	InitDS_Sel(0x4907804c); //  90.96%
+	InitDS_Sel(0x49078064); //  19.62%
+	InitDS_Sel(0x49278064); //  73.20%
+	InitDS_Sel(0x5fe0404c); //  36.89%
+	InitDS_Sel(0x9fe3904c); //   9.62%
 
 	// kingdom hearts
 
-	InitDS_Sel(0x1fe1804c); //   7.77%
-	InitDS_Sel(0x1fe3004d); //  21.62%
-	InitDS_Sel(0x1fe3804d); //  17.61%
-	InitDS_Sel(0x1fe3904d); //  15.93%
-	InitDS_Sel(0x4840404c); //  15.07%
-	InitDS_Sel(0x48478174); //  41.16%
-	InitDS_Sel(0x4880404c); //   8.17%
-	InitDS_Sel(0x4881004c); //  11.20%
-	InitDS_Sel(0x48818054); //  14.25%
-	InitDS_Sel(0x48819054); //  15.30%
-	InitDS_Sel(0x48829164); //   5.41%
-	InitDS_Sel(0x48830064); // 157.08%
-	InitDS_Sel(0x48858054); //  11.76%
-	InitDS_Sel(0x4886814c); //   6.36%
-	InitDS_Sel(0x48868154); //   6.83%
-	InitDS_Sel(0x4886904c); //  21.61%
-	InitDS_Sel(0x488e8064); //   5.23%
-	InitDS_Sel(0x488e8964); //  17.77%
-	InitDS_Sel(0x4900404c); //   7.52%
-	InitDS_Sel(0x49004054); //  13.01%
-	InitDS_Sel(0x49068874); //  18.89%
-	InitDS_Sel(0x4907814c); //  13.77%
-	InitDS_Sel(0x490e8974); //  48.61%
-	InitDS_Sel(0x48830054); //  22.39%
-	InitDS_Sel(0x48830874); //  10.81%
-	InitDS_Sel(0x49078174); //  10.79%
+	InitDS_Sel(0x4840404c); //  13.34%
+	InitDS_Sel(0x48829164); //   5.20%
+	InitDS_Sel(0x48830874); //  13.83%
+	InitDS_Sel(0x4886804c); //  17.44%
+	InitDS_Sel(0x48868154); //   8.08%
+	InitDS_Sel(0x4886884c); //  24.36%
+	InitDS_Sel(0x4886904c); //  15.57%
+	InitDS_Sel(0x488e8064); //   7.43%
+	InitDS_Sel(0x488e8964); //  14.92%
+	InitDS_Sel(0x4900404c); //   6.64%
+	InitDS_Sel(0x4907814c); //  12.95%
+	InitDS_Sel(0x9fe3004d); //  22.66%
+	InitDS_Sel(0x9fe3804d); //  18.36%
+	InitDS_Sel(0x9fe3904d); //  15.00%
+	InitDS_Sel(0xc8818054); //  12.48%
+	InitDS_Sel(0xc8819054); //  12.83%
+	InitDS_Sel(0xc8830064); // 142.61%
+	InitDS_Sel(0xc883804c); // 112.14%
+	InitDS_Sel(0xc8858054); //  10.55%
+	InitDS_Sel(0xc8859054); //   5.21%
+	InitDS_Sel(0xc9078174); //  14.38%
+	InitDS_Sel(0xdfe3904c); //   5.38%
 
 	// kingdom hearts 2
 
-	InitDS_Sel(0x1fee9164); //   5.14%
-	InitDS_Sel(0x48804060); //  14.51%
-	InitDS_Sel(0x48810054); //  31.18%
-	InitDS_Sel(0x4883814c); //   5.12%
-	InitDS_Sel(0x48858854); //   9.46%
-	InitDS_Sel(0x4887884d); //   9.38%
-	InitDS_Sel(0x48878854); //  53.51%
-	InitDS_Sel(0x488a8964); //  14.66%
-	InitDS_Sel(0x49004874); //  12.01%
-	InitDS_Sel(0x49078054); //  28.91%
-	InitDS_Sel(0x490e8964); //  10.43%
-	InitDS_Sel(0x4c83004d); //  61.82%
-	InitDS_Sel(0x4d03004d); //  21.62%
+	InitDS_Sel(0x1fee9064); //   9.56%
+	InitDS_Sel(0x48804060); //   5.66%
+	InitDS_Sel(0x48810054); //  14.13%
+	InitDS_Sel(0x4887884d); //   5.37%
+	InitDS_Sel(0x48878854); //   9.68%
+	InitDS_Sel(0x488a8964); //  16.42%
+	InitDS_Sel(0x488e8164); //   7.96%
+	InitDS_Sel(0x490e8964); //  12.17%
+	InitDS_Sel(0xc883814c); //   5.78%
+	InitDS_Sel(0xcc83004d); //  43.52%
+	InitDS_Sel(0xcd03004d); //  15.94%
+	InitDS_Sel(0x1fee9164); //   6.64%
+	InitDS_Sel(0x48858854); //   6.58%
+	InitDS_Sel(0x48859054); //   6.51%
+	InitDS_Sel(0x49078054); //  18.24%
+	InitDS_Sel(0x9fe39054); //  13.49%
+	InitDS_Sel(0xc8810054); //  28.72%
+	InitDS_Sel(0xc9004054); //  11.39%
 
 	// persona 3
 
-	InitDS_Sel(0x484e8068); //  26.83%
-	InitDS_Sel(0x48804868); //  21.74%
-	InitDS_Sel(0x4881884c); //  19.25%
-	InitDS_Sel(0x48858068); //  27.71%
-	InitDS_Sel(0x48858868); //  16.62%
-	InitDS_Sel(0x48878b68); //  12.58%
-	InitDS_Sel(0x4907904c); //  12.22%
-	InitDS_Sel(0x490e8068); //   9.27%
-	InitDS_Sel(0x4a43004c); //  17.50%
-	InitDS_Sel(0x4b07904c); //  55.71%
-	InitDS_Sel(0x4b07934c); //  10.74%
-	InitDS_Sel(0x4d47804c); //  99.37%
-	InitDS_Sel(0x4d47834c); //  57.10%
-	InitDS_Sel(0x4d478b4c); //  17.94%
-	InitDS_Sel(0x4d47934c); //  26.77%
+	InitDS_Sel(0x4881904c); //  16.87%
+	InitDS_Sel(0x48878b68); //  13.03%
+	InitDS_Sel(0x4907884c); //  26.82%
+	InitDS_Sel(0x4907904c); //  13.53%
+	InitDS_Sel(0x4b07904c); //  44.27%
+	InitDS_Sel(0x4d47804c); //  73.78%
+	InitDS_Sel(0x4d47834c); //  50.33%
+	InitDS_Sel(0x4d47934c); //  21.51%
 
 	// persona 4
 
-	InitDS_Sel(0x1fe04858); //   5.96%
-	InitDS_Sel(0x4840484c); //  13.30%
-	InitDS_Sel(0x48804058); //  99.10%
-	InitDS_Sel(0x48804068); //  20.25%
-	InitDS_Sel(0x48804b68); //   5.22%
-	InitDS_Sel(0x4881834c); //  19.38%
-	InitDS_Sel(0x4881934c); //  17.88%
-	InitDS_Sel(0x48828868); //  10.94%
-	InitDS_Sel(0x48828b68); //   8.89%
-	InitDS_Sel(0x48859368); //   7.38%
-	InitDS_Sel(0x48868f68); //  26.82%
-	InitDS_Sel(0x48869068); //  17.27%
-	InitDS_Sel(0x4887884c); //   5.23%
-	InitDS_Sel(0x48879068); //  30.31%
-	InitDS_Sel(0x48879168); //   6.16%
-	InitDS_Sel(0x48879368); //   5.66%
-	InitDS_Sel(0x4900484c); //  10.85%
-	InitDS_Sel(0x4903004c); //  24.17%
-	InitDS_Sel(0x49068068); //  10.00%
-	InitDS_Sel(0x49068868); //  16.15%
-	InitDS_Sel(0x49078068); //  56.68%
-	InitDS_Sel(0x49079068); //  55.22%
-	InitDS_Sel(0x490e8868); //  19.40%
-	InitDS_Sel(0x4a47804c); //  67.17%
-	InitDS_Sel(0x4a47904c); //  24.27%
-	InitDS_Sel(0x4a80404c); //  47.00%
-	InitDS_Sel(0x4a87804c); //  26.55%
-	InitDS_Sel(0x4a878068); //  30.30%
-	InitDS_Sel(0x4a878868); //  22.16%
-	InitDS_Sel(0x4a879068); //  11.09%
-	InitDS_Sel(0x4b00404c); //  25.00%
-	InitDS_Sel(0x4b004868); //  10.46%
-	InitDS_Sel(0x4b07804c); //  23.27%
-	InitDS_Sel(0x4b07884c); //  23.97%
-	InitDS_Sel(0x4d0e8868); //   6.84%
-	InitDS_Sel(0x5fe04858); //  19.04%
+	InitDS_Sel(0x1fe04058); //   9.41%
+	InitDS_Sel(0x4840484c); //  11.79%
+	InitDS_Sel(0x48804058); //  62.08%
+	InitDS_Sel(0x48804068); //  14.60%
+	InitDS_Sel(0x4880484c); //  16.29%
+	InitDS_Sel(0x4881834c); //  19.60%
+	InitDS_Sel(0x4881934c); //  18.66%
+	InitDS_Sel(0x48828368); //   6.84%
+	InitDS_Sel(0x48859368); //   6.15%
+	InitDS_Sel(0x48868868); // 503.31%
+	InitDS_Sel(0x48868f68); //  24.99%
+	InitDS_Sel(0x48869068); //  16.84%
+	InitDS_Sel(0x48879068); //  26.80%
+	InitDS_Sel(0x48879168); //   5.30%
+	InitDS_Sel(0x488e8868); //  55.07%
+	InitDS_Sel(0x488e8b68); //  13.11%
+	InitDS_Sel(0x4900484c); //  10.70%
+	InitDS_Sel(0x4903004c); //  22.97%
+	InitDS_Sel(0x49068068); //   8.85%
+	InitDS_Sel(0x49068868); //   7.91%
+	InitDS_Sel(0x49078068); //  15.89%
+	InitDS_Sel(0x49079068); //  45.74%
+	InitDS_Sel(0x490e8868); //  19.83%
+	InitDS_Sel(0x4a47804c); //  30.59%
+	InitDS_Sel(0x4a47904c); //  20.97%
+	InitDS_Sel(0x4a80404c); //  42.08%
+	InitDS_Sel(0x4a83004c); //  75.41%
+	InitDS_Sel(0x4a87804c); //  23.46%
+	InitDS_Sel(0x4a878068); //  25.53%
+	InitDS_Sel(0x4a878868); //  20.03%
+	InitDS_Sel(0x4a879068); //   9.94%
+	InitDS_Sel(0x4b00404c); //  11.42%
+	InitDS_Sel(0x4b004868); //   8.70%
+	InitDS_Sel(0x4b07804c); //  20.68%
+	InitDS_Sel(0x4b07884c); //  21.61%
+	InitDS_Sel(0x4d0e8868); //   7.02%
+	InitDS_Sel(0x5fe04058); //   5.85%
+	InitDS_Sel(0x5fe04858); //  31.10%
 
 	// sfex3
 
-	InitDS_Sel(0x1fe1004e); //   6.65%
-	InitDS_Sel(0x1fe3004e); //  12.59%
-	InitDS_Sel(0x1fe6b068); //  15.24%
-	InitDS_Sel(0x1fe6b868); //   5.18%
-	InitDS_Sel(0x41268068); //   7.42%
-	InitDS_Sel(0x41269068); //   7.07%
-	InitDS_Sel(0x48859058); //  10.06%
-	InitDS_Sel(0x4886b068); //  15.43%
-	InitDS_Sel(0x4886b868); //  32.83%
-	InitDS_Sel(0x4886b968); //   5.69%
-	InitDS_Sel(0x49079078); //   5.22%
-	InitDS_Sel(0x4c804058); //   7.25%
+	InitDS_Sel(0x1fe6b068); //  13.61%
+	InitDS_Sel(0x1fe6b868); //   5.51%
+	InitDS_Sel(0x41268068); //   6.97%
+	InitDS_Sel(0x41269068); //   6.32%
+	InitDS_Sel(0x4886b068); //  13.15%
+	InitDS_Sel(0x4886b868); //  29.78%
+	InitDS_Sel(0x49079078); //   5.78%
+	InitDS_Sel(0x9fe1004e); //   5.93%
+	InitDS_Sel(0x9fe3004e); //  11.34%
+	InitDS_Sel(0xc8804058); //   6.14%
+	InitDS_Sel(0xc881004e); //   8.83%
 
 	// gt4
 
-	InitDS_Sel(0x1fe1904c); //  16.10%
-	InitDS_Sel(0x1fe1904d); //   7.80%
-	InitDS_Sel(0x1fe5904d); //   9.49%
-	InitDS_Sel(0x1fe7804d); //  11.90%
-	InitDS_Sel(0x1fe7904d); //  11.44%
-	InitDS_Sel(0x1fee8064); //   5.26%
-	InitDS_Sel(0x1fee9064); //  13.01%
-	InitDS_Sel(0x488181d4); //  18.94%
-	InitDS_Sel(0x488191d4); //  20.50%
-	InitDS_Sel(0x4887804d); //   7.01%
-	InitDS_Sel(0x4887904d); //  10.49%
-	InitDS_Sel(0x48884064); //  48.69%
-	InitDS_Sel(0x48884864); //  69.60%
-	InitDS_Sel(0x488e804c); //   5.53%
-	InitDS_Sel(0x488e8065); //  30.74%
-	InitDS_Sel(0x488e8865); //  39.25%
-	InitDS_Sel(0x488e8f64); //   7.44%
-	InitDS_Sel(0x488e9764); //  34.11%
-	InitDS_Sel(0x4b03804c); //  27.01%
-	InitDS_Sel(0x4b1a8864); //   8.64%
-	InitDS_Sel(0x4c81904c); //  27.70%
-	InitDS_Sel(0x4c81904d); //  10.41%
-	InitDS_Sel(0x4c83804d); //  14.36%
-	InitDS_Sel(0x4c83904d); //  13.05%
-	InitDS_Sel(0x4d05804c); //  22.18%
-	InitDS_Sel(0x5520404c); //  19.08%
-	InitDS_Sel(0x5fe1904c); //   7.73%
-	InitDS_Sel(0x5fe3804c); //   7.28%
-	InitDS_Sel(0x5fe5804c); //   9.38%
-	InitDS_Sel(0x5fee8864); //  11.11%
-	InitDS_Sel(0x1fe04054); //   5.18%
-	InitDS_Sel(0x5fe2884e); //   5.23%
+	InitDS_Sel(0x1fe84864); //   7.28%
+	InitDS_Sel(0x4881904d); //  11.12%
+	InitDS_Sel(0x4887904d); //   9.99%
+	InitDS_Sel(0x48884064); //  10.15%
+	InitDS_Sel(0x488e8065); //  30.36%
+	InitDS_Sel(0x488e8865); //  34.65%
+	InitDS_Sel(0x488e9764); //  37.33%
+	InitDS_Sel(0x4b1a8864); //   7.92%
+	InitDS_Sel(0x5fe3804c); //   8.48%
+	InitDS_Sel(0x5fe3904e); //   9.05%
+	InitDS_Sel(0x5fee8864); //  16.67%
+	InitDS_Sel(0x9fe5904d); //   8.89%
+	InitDS_Sel(0x9fe7804d); //  11.18%
+	InitDS_Sel(0xc88181d4); //  15.53%
+	InitDS_Sel(0xc88191d4); //  19.28%
+	InitDS_Sel(0xcb03804c); //  26.25%
+	InitDS_Sel(0xcc80404d); //   5.93%
+	InitDS_Sel(0xcc81904d); //  10.92%
+	InitDS_Sel(0xcc83804d); //  12.73%
+	InitDS_Sel(0xcd05804c); //  21.20%
+	InitDS_Sel(0xd520404c); //  12.33%
+	InitDS_Sel(0xdfe5804c); //   8.97%
 
 	// katamary damacy
 
-	InitDS_Sel(0x488181cc); //   7.16%
-	InitDS_Sel(0x48858064); //  50.67%
-	InitDS_Sel(0x48859064); //  16.13%
-	InitDS_Sel(0x488e89e4); //   9.52%
-	InitDS_Sel(0x488e91d4); //  17.20%
-	InitDS_Sel(0x48904054); //   9.73%
+	InitDS_Sel(0xc88181cc); //   6.79%
+	InitDS_Sel(0xc8904054); //  10.66%
 
 	// grandia 3
 
-	InitDS_Sel(0x41268060); //  21.76%
-	InitDS_Sel(0x48869060); //  12.07%
-	InitDS_Sel(0x48869360); //   6.46%
-	InitDS_Sel(0x48869760); //  32.54%
-	InitDS_Sel(0x48878060); //  29.61%
-	InitDS_Sel(0x48879760); //  26.66%
-	InitDS_Sel(0x488a8060); //  16.62%
-	InitDS_Sel(0x488a8860); //  19.44%
-	InitDS_Sel(0x488e8360); //  21.74%
-	InitDS_Sel(0x488e8860); //  49.04%
-	InitDS_Sel(0x488e8b60); //  42.75%
-	InitDS_Sel(0x488e8f60); //  14.06%
-	InitDS_Sel(0x488e9060); //   9.02%
-	InitDS_Sel(0x488e9360); //   5.11%
-	InitDS_Sel(0x488f8860); //  44.99%
-	InitDS_Sel(0x4906804c); //  41.10%
-	InitDS_Sel(0x49078060); //   7.74%
-	InitDS_Sel(0x49078860); //  22.69%
-	InitDS_Sel(0x4c81804c); //  57.62%
-	InitDS_Sel(0x4c839060); //  67.22%
-	InitDS_Sel(0x50368060); //  10.65%
-	InitDS_Sel(0x488e8060); //   5.70%
+	InitDS_Sel(0x41268060); //  18.14%
+	InitDS_Sel(0x48868060); //  15.88%
+	InitDS_Sel(0x48868360); //   5.80%
+	InitDS_Sel(0x48868760); //  15.76%
+	InitDS_Sel(0x48868860); //   7.13%
+	InitDS_Sel(0x48868870); //  27.65%
+	InitDS_Sel(0x48869060); //  10.18%
+	InitDS_Sel(0x48869760); //  28.17%
+	InitDS_Sel(0x48878060); //  16.38%
+	InitDS_Sel(0x48879760); //  22.64%
+	InitDS_Sel(0x488a8060); //  20.40%
+	InitDS_Sel(0x488a8860); //  18.09%
+	InitDS_Sel(0x488e8060); //   6.50%
+	InitDS_Sel(0x488e8360); //   8.63%
+	InitDS_Sel(0x488e8860); //  43.48%
+	InitDS_Sel(0x488e8870); //   5.65%
+	InitDS_Sel(0x488e8b60); //  34.62%
+	InitDS_Sel(0x488e8f60); //  11.74%
+	InitDS_Sel(0x488e9060); //   9.09%
+	InitDS_Sel(0x488e9360); //   6.75%
+	InitDS_Sel(0x488f8860); //  40.02%
+	InitDS_Sel(0x4906804c); //  34.84%
+	InitDS_Sel(0x49068860); //  16.96%
+	InitDS_Sel(0x49078060); //   6.45%
+	InitDS_Sel(0x49078860); //  22.80%
+	InitDS_Sel(0x50368060); //  11.49%
+	InitDS_Sel(0xcc81804c); //  43.58%
+	InitDS_Sel(0xcc81904c); //  14.12%
+	InitDS_Sel(0xcc839060); //  55.69%
 
 	// rumble roses
 
-	InitDS_Sel(0x1fe78064); //  26.77%
-	InitDS_Sel(0x1fe79064); //   9.97%
-	InitDS_Sel(0x48838164); //  13.17%
-	InitDS_Sel(0x4887b864); //  35.77%
-	InitDS_Sel(0x4c830064); //  39.43%
-	InitDS_Sel(0x4c8e8864); //   5.79%
+	InitDS_Sel(0x1fe79064); //  10.59%
+	InitDS_Sel(0x4c8e8864); //   5.38%
+	InitDS_Sel(0xcc830064); //  43.47%
 
 	// dmc
 
-	InitDS_Sel(0x1fe78158); //   3.30%
-	InitDS_Sel(0x1fea8968); //   2.26%
-	InitDS_Sel(0x1fee8068); //   0.45%
-	InitDS_Sel(0x1fee8168); //   0.00%
-	InitDS_Sel(0x4423904c); //   8.75%
-	InitDS_Sel(0x4427904c); //  28.36%
-	InitDS_Sel(0x4520404c); //   8.75%
-	InitDS_Sel(0x45204078); //   2.93%
-	InitDS_Sel(0x48830068); //  10.63%
-	InitDS_Sel(0x48859078); //   4.66%
-	InitDS_Sel(0x488e8168); //   0.01%
-	InitDS_Sel(0x49068168); //   0.21%
-	InitDS_Sel(0x4c43804c); //  19.18%
-	InitDS_Sel(0x4c87914c); //  45.13%
-	InitDS_Sel(0x4c8a8968); //   0.33%
-	InitDS_Sel(0x4d07904c); //   1.68%
-	InitDS_Sel(0x54204078); //   3.00%
-	InitDS_Sel(0x5fe30868); //   0.44%
+	InitDS_Sel(0x4423904c); //   7.90%
+	InitDS_Sel(0x4427904c); //  25.37%
+	InitDS_Sel(0x45204078); //   7.83%
+	InitDS_Sel(0x4c87914c); //  42.27%
+	InitDS_Sel(0x54204078); //   7.84%
+	InitDS_Sel(0x9fe39058); //   7.33%
+	InitDS_Sel(0x9fe78068); //   9.11%
+	InitDS_Sel(0xc520404c); //   8.24%
+	InitDS_Sel(0xc8804078); //   6.61%
+	InitDS_Sel(0xc8830068); //  10.15%
+	InitDS_Sel(0xc8878168); //  53.94%
+	InitDS_Sel(0xc9078168); //  36.71%
+	InitDS_Sel(0xcc43804c); //  17.76%
+	InitDS_Sel(0xcc839068); //  11.83%
+	InitDS_Sel(0xd4204078); //   6.35%
 
 	// xenosaga 2
 
-	InitDS_Sel(0x1fe68864); //  14.31%
-	InitDS_Sel(0x1fee804c); //  13.85%
-	InitDS_Sel(0x48804074); //  14.06%
-	InitDS_Sel(0x48878164); //  75.85%
-	InitDS_Sel(0x49078164); //  54.70%
-	InitDS_Sel(0x49079064); //  28.67%
-	InitDS_Sel(0x4c404054); //  13.72%
-	InitDS_Sel(0x4c804054); //  15.00%
-	InitDS_Sel(0x4c839054); //  21.34%
-	InitDS_Sel(0x4d004054); //  13.62%
-	InitDS_Sel(0x4d069064); //   5.22%
-	InitDS_Sel(0x51229064); //   7.80%
+	InitDS_Sel(0x1fee804c); //  13.51%
+	InitDS_Sel(0x1fee8064); //  18.76%
+	InitDS_Sel(0x49079064); //  31.97%
+	InitDS_Sel(0x4d069064); //   5.57%
+	InitDS_Sel(0x51229064); //   7.30%
+	InitDS_Sel(0x9fe58174); //   5.60%
+	InitDS_Sel(0xc8804074); //  14.08%
+	InitDS_Sel(0xc9078054); //   8.37%
+	InitDS_Sel(0xc9079054); //  13.30%
+	InitDS_Sel(0xcc404054); //  14.84%
+	InitDS_Sel(0xcc804054); //  12.87%
+	InitDS_Sel(0xcc839054); //  20.69%
+	InitDS_Sel(0xcd004054); //  12.32%
+	InitDS_Sel(0xdfe3804c); //   5.27%
 
 	// nfs mw
 
-	InitDS_Sel(0x1fe68068); //  13.79%
-	InitDS_Sel(0x1fe6806a); //   9.59%
-	InitDS_Sel(0x1fe68868); //  92.05%
-	InitDS_Sel(0x1fe6886a); //   6.20%
-	InitDS_Sel(0x1fe68964); //  29.40%
-	InitDS_Sel(0x1fe78068); //  22.75%
-	InitDS_Sel(0x4805904c); //  13.74%
-	InitDS_Sel(0x4927904c); //  19.12%
-	InitDS_Sel(0x4b004064); //  14.63%
-	InitDS_Sel(0x4b004068); //  23.06%
-	InitDS_Sel(0x4b004864); //  20.42%
-	InitDS_Sel(0x4b028064); //  15.98%
-	InitDS_Sel(0x4b028068); //  22.27%
-	InitDS_Sel(0x4b028864); //  19.58%
-	InitDS_Sel(0x4b028868); //  22.32%
-	InitDS_Sel(0x4b038864); //  15.46%
-	InitDS_Sel(0x4c83804e); //   5.42%
-	InitDS_Sel(0x5420404c); //   9.61%
-	InitDS_Sel(0x5fe19064); //  21.51%
+	InitDS_Sel(0x1fe68068); //  10.83%
+	InitDS_Sel(0x1fe68868); //  79.01%
+	InitDS_Sel(0x1fe78068); //  20.74%
+	InitDS_Sel(0x4b004068); //  13.74%
+	InitDS_Sel(0x4b028068); //  12.42%
+	InitDS_Sel(0x4b028868); //  11.91%
+	InitDS_Sel(0xcc83804e); //   5.02%
+	InitDS_Sel(0xd420404c); //  11.30%
 
 	// berserk
 
+	InitDS_Sel(0x4c8fb864); //   7.02%
+
 	// castlevania
 
-	InitDS_Sel(0x1fe1004c); //  11.56%
-	InitDS_Sel(0x1fe5904c); //  14.91%
-	InitDS_Sel(0x1fe78868); //  25.25%
-	InitDS_Sel(0x4881004e); //  21.92%
-	InitDS_Sel(0x48878868); // 112.75%
-	InitDS_Sel(0x488c8968); //   5.71%
-	InitDS_Sel(0x4d00407a); //  22.67%
+	InitDS_Sel(0x1fe78868); //  19.55%
+	InitDS_Sel(0x48878868); //  87.66%
+	InitDS_Sel(0x48884068); //  17.84%
+	InitDS_Sel(0x49078868); //  25.88%
+	InitDS_Sel(0x490e8068); //  12.36%
+	InitDS_Sel(0x4d00407a); //  21.79%
+	InitDS_Sel(0x9fe04068); //   8.94%
+	InitDS_Sel(0x9fe3904e); //  14.50%
+	InitDS_Sel(0xc8804068); //  13.13%
+	InitDS_Sel(0xc8838058); //  18.48%
+	InitDS_Sel(0xca80404c); //   8.59%
+	InitDS_Sel(0xcc838058); //  71.04%
+	InitDS_Sel(0xcc93904c); //  19.73%
 
 	// okami
 
-	InitDS_Sel(0x1fe18058); //  14.39%
-	InitDS_Sel(0x45218058); //  35.05%
-	InitDS_Sel(0x4881804c); //  15.42%
-	InitDS_Sel(0x48839158); //  25.68%
-	InitDS_Sel(0x48868168); //  33.36%
-	InitDS_Sel(0x48878058); //  39.16%
-	InitDS_Sel(0x48878158); //   5.61%
-	InitDS_Sel(0x48878168); // 291.53%
-	InitDS_Sel(0x48879058); //   9.03%
-	InitDS_Sel(0x488e8968); //  48.19%
-	InitDS_Sel(0x49078168); //  30.95%
-	InitDS_Sel(0x4a83804c); //  21.71%
-	InitDS_Sel(0x4c43904c); //  98.78%
-	InitDS_Sel(0x5127904c); //   5.66%
-	InitDS_Sel(0x5fe59068); //  83.06%
+	InitDS_Sel(0x48878058); //  19.04%
+	InitDS_Sel(0x48878168); // 155.22%
+	InitDS_Sel(0x488e8068); //  27.58%
+	InitDS_Sel(0x488e8168); //   5.45%
+	InitDS_Sel(0x488e8968); //  34.71%
+	InitDS_Sel(0x49078168); //  28.25%
+	InitDS_Sel(0x9fe18058); //  10.97%
+	InitDS_Sel(0x9fe1904c); //   8.21%
+	InitDS_Sel(0xc5218058); //  26.60%
+	InitDS_Sel(0xc881804c); //  11.83%
+	InitDS_Sel(0xc8839158); //  22.18%
+	InitDS_Sel(0xc8879168); //   6.43%
+	InitDS_Sel(0xca83804c); //  16.68%
+	InitDS_Sel(0xcc43904c); //  76.08%
+	InitDS_Sel(0xdfe1904c); //  11.42%
+	InitDS_Sel(0xdfe59068); //  64.33%
+	InitDS_Sel(0xdfe7904c); //  27.67%
 
 	// bully
 
-	InitDS_Sel(0x110e8864); //  60.50%
-	InitDS_Sel(0x110e8964); //  59.73%
-	InitDS_Sel(0x1fe04077); //  11.64%
-	InitDS_Sel(0x1fe04864); //   7.71%
-	InitDS_Sel(0x48804864); //  11.88%
-	InitDS_Sel(0x48878b4c); //  11.57%
-	InitDS_Sel(0x4901004c); //  20.73%
-	InitDS_Sel(0x4d068364); //  16.32%
-	InitDS_Sel(0x4d068864); //  22.99%
-	InitDS_Sel(0x4d068b64); //  18.38%
-	InitDS_Sel(0x4d07804c); //  12.98%
-	InitDS_Sel(0x5480404d); //  15.97%
-	InitDS_Sel(0x5501904e); //  27.90%
-	InitDS_Sel(0x4c20404c); //  12.05%
-	InitDS_Sel(0x4d068064); //   9.92%
+	InitDS_Sel(0x110e8864); //  41.06%
+	InitDS_Sel(0x110e8964); //  42.81%
+	InitDS_Sel(0x1fe04864); //   5.32%
+	InitDS_Sel(0x48804864); //  10.60%
+	InitDS_Sel(0x48878b4c); //  13.64%
+	InitDS_Sel(0x4d068364); //   8.75%
+	InitDS_Sel(0x4d068864); //  33.00%
+	InitDS_Sel(0x4d068b64); //  13.93%
+	InitDS_Sel(0x4d07804c); //   8.65%
+	InitDS_Sel(0x9fe04077); //   7.45%
+	InitDS_Sel(0xc901004c); //  18.47%
+	InitDS_Sel(0xca83904c); //  42.32%
+	InitDS_Sel(0xd480404d); //  13.79%
+	InitDS_Sel(0xd501904e); //  21.26%
 
 	// culdcept
 
-	InitDS_Sel(0x1fe04866); //  12.73%
-	InitDS_Sel(0x1fe191e6); //   6.19%
-	InitDS_Sel(0x1fe2a1e6); //  13.34%
-	InitDS_Sel(0x1fe2a9e6); //  19.49%
-	InitDS_Sel(0x1fe391e6); //  26.82%
-	InitDS_Sel(0x1fe3a1e6); //  14.27%
-	InitDS_Sel(0x1fe59066); //  19.01%
-	InitDS_Sel(0x1fe991e6); //  19.86%
-	InitDS_Sel(0x488089e6); //   5.01%
-	InitDS_Sel(0x488181e6); //   5.99%
-	InitDS_Sel(0x488291e6); //   7.19%
-	InitDS_Sel(0x4d02a1e6); //  10.61%
+	InitDS_Sel(0x1fe04866); //   6.87%
+	InitDS_Sel(0x1fe2a1e6); //  13.37%
+	InitDS_Sel(0x1fe2a9e6); //  14.44%
+	InitDS_Sel(0x1fe3a1e6); //  12.39%
+	InitDS_Sel(0x488291e6); //   5.86%
+	InitDS_Sel(0x4d02a1e6); //  12.21%
+	InitDS_Sel(0x9fe39066); //  29.01%
+	InitDS_Sel(0x9fe391e6); //  25.68%
+	InitDS_Sel(0x9fe59066); //  17.30%
+	InitDS_Sel(0x9fe991e6); //  18.01%
 
 	// suikoden 5
 
-	InitDS_Sel(0x00428868); //   9.89%
-	InitDS_Sel(0x40428868); //  18.61%
-	InitDS_Sel(0x4846804c); //  26.43%
-	InitDS_Sel(0x48819368); //  22.82%
-	InitDS_Sel(0x48828368); //   5.10%
-	InitDS_Sel(0x48829368); //  14.96%
-	InitDS_Sel(0x48859068); //  21.58%
-	InitDS_Sel(0x488a8b68); //  10.48%
-	InitDS_Sel(0x49028868); //  14.05%
-	InitDS_Sel(0x4d068868); //  32.13%
+	InitDS_Sel(0x00428868); //  11.84%
+	InitDS_Sel(0x40428868); //  21.26%
+	InitDS_Sel(0x4846804c); //  25.64%
+	InitDS_Sel(0x4847804c); //  22.20%
+	InitDS_Sel(0x48819368); //  26.62%
+	InitDS_Sel(0x488a8b68); //  11.64%
+	InitDS_Sel(0x49028868); //  11.82%
+	InitDS_Sel(0x4d068868); //  31.18%
 
 	// dq8
 
-	InitDS_Sel(0x1103b04c); //   6.34%
-	InitDS_Sel(0x1fe0484c); //  11.25%
-	InitDS_Sel(0x1fee8164); //  14.23%
-	InitDS_Sel(0x4883914c); //  11.56%
-	InitDS_Sel(0x48859054); //   9.41%
-	InitDS_Sel(0x488e8164); //  17.36%
-	InitDS_Sel(0x48c3804c); //  41.24%
-	InitDS_Sel(0x490a8164); //  12.94%
-	InitDS_Sel(0x490a8964); //   5.17%
-	InitDS_Sel(0x490e904c); //  28.19%
-	InitDS_Sel(0x490f904c); //  21.14%
-	InitDS_Sel(0x4c83914c); //   8.19%
-	InitDS_Sel(0x5fe3904e); //   7.26%
+	InitDS_Sel(0x1fe0484c); //   5.43%
+	InitDS_Sel(0x1fee8164); //  11.40%
+	InitDS_Sel(0x48830064); //   7.50%
+	InitDS_Sel(0x48869164); //   7.43%
+	InitDS_Sel(0x49004064); //  78.04%
+	InitDS_Sel(0x490e904c); //  19.01%
+	InitDS_Sel(0x490f904c); //  15.78%
+	InitDS_Sel(0x9103b04c); //   5.16%
+	InitDS_Sel(0xc883004c); //  18.05%
+	InitDS_Sel(0xc883914c); //   7.89%
+	InitDS_Sel(0xc885804c); //  15.10%
+	InitDS_Sel(0xc8878054); //  81.76%
+	InitDS_Sel(0xc887904c); //  34.44%
+	InitDS_Sel(0xc8c3804c); //  37.01%
+	InitDS_Sel(0xcc83914c); //  10.40%
+	InitDS_Sel(0xdfe3904e); //   5.61%
 
 	// resident evil 4
 
-	InitDS_Sel(0x1fe04057); //   8.21%
-	InitDS_Sel(0x1fe18064); //  13.95%
-	InitDS_Sel(0x4887814c); //  15.55%
-	InitDS_Sel(0x4903904c); //  20.28%
-	InitDS_Sel(0x4b068064); //   6.98%
-	InitDS_Sel(0x4d07814c); //  10.56%
-	InitDS_Sel(0x5483904c); //   5.85%
-	InitDS_Sel(0x5fe68864); //   6.81%
+	InitDS_Sel(0x1fe04057); //   6.23%
+	InitDS_Sel(0x4883814c); //   6.85%
+	InitDS_Sel(0x48868164); //   6.40%
+	InitDS_Sel(0x4887814c); //  16.25%
+	InitDS_Sel(0x48878164); //  66.20%
+	InitDS_Sel(0x49078164); //   6.95%
+	InitDS_Sel(0x4b068064); //   6.55%
+	InitDS_Sel(0x4d07814c); //   8.50%
+	InitDS_Sel(0x9fe18064); //  10.66%
+	InitDS_Sel(0xc903904c); //  15.28%
+	InitDS_Sel(0xcc879064); //  24.68%
+	InitDS_Sel(0xcd004064); //  63.34%
+	InitDS_Sel(0xcd03904c); //  16.52%
+	InitDS_Sel(0xdfe5904c); //  12.35%
 
 	// tomoyo after 
 
-	InitDS_Sel(0x1fe04058); //   5.59%
-	InitDS_Sel(0x1fe38059); //  24.74%
-	InitDS_Sel(0x1fe39059); //  24.19%
-	InitDS_Sel(0x48478068); //   9.16%
-	InitDS_Sel(0x48818068); //  34.42%
-	InitDS_Sel(0x49004068); //  19.67%
-	InitDS_Sel(0x49058068); //  17.71%
-	InitDS_Sel(0x4a858068); //  17.72%
+	InitDS_Sel(0x48478068); //   8.58%
+	InitDS_Sel(0x48818068); //  23.60%
+	InitDS_Sel(0x48878068); //  25.75%
+	InitDS_Sel(0x49058068); //  17.22%
+	InitDS_Sel(0x4a858068); //  16.11%
+	InitDS_Sel(0x9fe38059); //  21.20%
+	InitDS_Sel(0x9fe39059); //  20.53%
 
 	// .hack redemption
 
-	InitDS_Sel(0x1fe1914c); //   5.09%
-	InitDS_Sel(0x4123004c); //  19.45%
-	InitDS_Sel(0x48868364); //  14.72%
-	InitDS_Sel(0x48469064); //  12.96%
-	InitDS_Sel(0x48869364); //  21.30%
-	InitDS_Sel(0x488e9064); //  16.46%
-	InitDS_Sel(0x488e9364); //   5.74%
-	InitDS_Sel(0x49004864); //   7.13%
-	InitDS_Sel(0x4c41804c); //  14.43%
-	InitDS_Sel(0x4d00404c); //   9.80%
-	InitDS_Sel(0x5fe1004c); //  12.16%
+	InitDS_Sel(0x48404074); //   7.33%
+	InitDS_Sel(0x48404864); //   5.62%
+	InitDS_Sel(0x48469064); //  12.02%
+	InitDS_Sel(0x48478864); //   5.18%
+	InitDS_Sel(0x48868364); //   7.31%
+	InitDS_Sel(0x48869364); //  26.06%
+	InitDS_Sel(0x488e9064); //  14.62%
+	InitDS_Sel(0x488f9364); //  10.66%
+	InitDS_Sel(0x49004074); //   7.07%
+	InitDS_Sel(0x49004864); //   6.97%
+	InitDS_Sel(0xc123004c); //  18.56%
+	InitDS_Sel(0xc903004c); //  17.59%
+	InitDS_Sel(0xcc41804c); //  11.57%
+	InitDS_Sel(0xcd00404c); //   8.36%
+	InitDS_Sel(0xdfe1004c); //  11.79%
 
 	// wild arms 5
 
-	InitDS_Sel(0x4845804c); //  14.90%
-	InitDS_Sel(0x4845904c); //  13.24%
-	InitDS_Sel(0x48804854); //  13.40%
-	InitDS_Sel(0x4885884c); //  11.46%
-	InitDS_Sel(0x488e8764); //  21.61%
-	InitDS_Sel(0x48c68864); //   7.86%
-	InitDS_Sel(0x5fe39054); //  21.06%
+	InitDS_Sel(0x48804854); //  10.69%
+	InitDS_Sel(0x4885884c); //   9.25%
+	InitDS_Sel(0x488e8764); //  21.58%
+	InitDS_Sel(0x488e8f64); //   9.52%
+	InitDS_Sel(0x48c68864); //   5.69%
+	InitDS_Sel(0xc845804c); //  13.47%
+	InitDS_Sel(0xc845904c); //  12.48%
+	InitDS_Sel(0xdfe39054); //  19.85%
 
 	// shadow of the colossus
 
-	InitDS_Sel(0x48868b64); //  29.96%
-	InitDS_Sel(0x48938064); //  52.63%
-	InitDS_Sel(0x48939064); //  19.79%
-	InitDS_Sel(0x49004064); //  92.76%
-	InitDS_Sel(0x490e8864); // 134.30%
-	InitDS_Sel(0x4d004064); // 254.80%
-	InitDS_Sel(0x1fe0404c); //   5.78%
-	InitDS_Sel(0x48878364); //  81.37%
-	InitDS_Sel(0x48879364); //  29.65%
-	InitDS_Sel(0x488f8864); //   8.60%
-	InitDS_Sel(0x4c030064); //  27.75%
+	InitDS_Sel(0x48868064); //   5.56%
+	InitDS_Sel(0x48868b64); //  18.53%
+	InitDS_Sel(0x48869064); //  27.01%
+	InitDS_Sel(0x48879064); //  25.34%
+	InitDS_Sel(0x488e8864); // 141.70%
+	InitDS_Sel(0x488e9364); //   5.08%
+	InitDS_Sel(0x490e8064); //  51.78%
+	InitDS_Sel(0x490e8864); //   9.22%
+	InitDS_Sel(0x490f8064); //   5.03%
+	InitDS_Sel(0x4d004064); //  99.19%
+	InitDS_Sel(0x9fe04064); //   8.61%
+	InitDS_Sel(0x9fe1004d); //  10.53%
+	InitDS_Sel(0xc8938064); //  42.57%
+	InitDS_Sel(0xc8939064); //  15.38%
+	InitDS_Sel(0xc900404c); //   8.59%
+	InitDS_Sel(0xc9004064); //  59.82%
+	InitDS_Sel(0xc903804c); //  36.96%
+	InitDS_Sel(0x48858064); //  14.86%
+	InitDS_Sel(0x48859364); //   5.16%
+	InitDS_Sel(0x48878364); //  54.92%
+	InitDS_Sel(0x48879364); //  21.03%
+	InitDS_Sel(0xcc030064); //  20.97%
 
 	// tales of redemption
 
-	InitDS_Sel(0x48404054); //  10.38%
-	InitDS_Sel(0x48478054); //  13.88%
-	InitDS_Sel(0x48878b64); //  12.96%
-	InitDS_Sel(0x488b9054); //   7.70%
-	InitDS_Sel(0x4c838064); //  13.79%
-	InitDS_Sel(0x4c838854); //  13.95%
+	InitDS_Sel(0x4827804c); //  33.63%
+	InitDS_Sel(0x48404054); //   8.79%
+	InitDS_Sel(0x48478054); //  12.49%
+	InitDS_Sel(0x48879164); //  30.25%
+	InitDS_Sel(0x4c838064); //  17.71%
+	InitDS_Sel(0x4c838854); //  12.15%
+	InitDS_Sel(0xc88b9054); //   5.72%
 
 	// digital devil saga
 
-	InitDS_Sel(0x1fe39070); //   6.52%
-	InitDS_Sel(0x40204050); //   5.58%
-	InitDS_Sel(0x48404050); //   5.81%
-	InitDS_Sel(0x48868870); //   6.60%
-	InitDS_Sel(0x48878150); //   9.22%
-	InitDS_Sel(0x48879060); //  11.85%
-	InitDS_Sel(0x48879360); //   8.67%
-	InitDS_Sel(0x48884870); //  21.76%
-	InitDS_Sel(0x488e8870); //   8.94%
-	InitDS_Sel(0x4890404c); //   5.89%
-	InitDS_Sel(0x48904070); //  34.36%
-	InitDS_Sel(0x49078360); //   8.78%
-	InitDS_Sel(0x49079360); //   5.20%
-	InitDS_Sel(0x490e8860); //   5.57%
-	InitDS_Sel(0x4a878060); //   7.39%
+	InitDS_Sel(0x48404050); //   5.08%
+	InitDS_Sel(0x48804050); //  13.51%
+	InitDS_Sel(0x48878150); //   8.47%
+	InitDS_Sel(0x48879060); //  10.22%
+	InitDS_Sel(0x48879360); //   7.08%
+	InitDS_Sel(0x48884870); //  15.96%
+	InitDS_Sel(0x48904070); //  12.91%
+	InitDS_Sel(0x49078360); //   5.47%
+	InitDS_Sel(0x4a83804c); //   7.14%
+	InitDS_Sel(0x4a878060); //   6.04%
+	InitDS_Sel(0x9fe39070); //   5.97%
+	InitDS_Sel(0xc8879060); //  10.09%
+	InitDS_Sel(0xc907804c); //  20.53%
 
 	// dbzbt2
 
-	InitDS_Sel(0x48868164); //  15.63%
-	InitDS_Sel(0x48878074); //   7.87%
-	InitDS_Sel(0x4906884c); //  19.06%
-	InitDS_Sel(0x49079054); //   5.73%
-	InitDS_Sel(0x543081e4); //  11.49%
-	InitDS_Sel(0x4c904064); //  10.28%
+	InitDS_Sel(0x4906884c); //  15.87%
+	InitDS_Sel(0x4c904064); //   7.13%
+	InitDS_Sel(0x543081e4); //   6.89%
+	InitDS_Sel(0xc8804064); //  18.56%
+	InitDS_Sel(0xc8878064); // 103.86%
+	InitDS_Sel(0xc8878074); //  74.44%
+	InitDS_Sel(0xc8879064); //  11.80%
 
 	// dbzbt3
 
-	InitDS_Sel(0x48478064); //  23.95%
-	InitDS_Sel(0x48804054); //  21.55%
-	InitDS_Sel(0x4881904c); //  15.10%
-	InitDS_Sel(0x488391cc); //  12.58%
-	InitDS_Sel(0x4885904c); //  35.18%
-	InitDS_Sel(0x4885904e); //  15.45%
-	InitDS_Sel(0x48859074); //  14.82%
-	InitDS_Sel(0x48868864); //  77.06%
-	InitDS_Sel(0x48868964); //  21.51%
-	InitDS_Sel(0x48878054); //  22.08%
-	InitDS_Sel(0x48879054); //  66.77%
-	InitDS_Sel(0x489081e4); //   8.28%
-	InitDS_Sel(0x48968864); //  13.81%
-	InitDS_Sel(0x4905904c); //  26.55%
-	InitDS_Sel(0x49068064); //  19.22%
-	InitDS_Sel(0x49068864); //  60.78%
-	InitDS_Sel(0x49078864); //  12.20%
-	InitDS_Sel(0x4910404c); //  21.21%
-	InitDS_Sel(0x4917804c); //   5.99%
-	InitDS_Sel(0x4a40404c); //   9.32%
-	InitDS_Sel(0x4a83004c); //  18.31%
-	InitDS_Sel(0x4c45904e); //  31.06%
-	InitDS_Sel(0x4c469064); //  17.98%
-	InitDS_Sel(0x4c80404c); //  10.48%
-	InitDS_Sel(0x4c80404e); //  14.32%
-	InitDS_Sel(0x4c83004c); //  17.82%
-	InitDS_Sel(0x4c8391cc); //  25.17%
-	InitDS_Sel(0x4c869064); //  19.54%
-	InitDS_Sel(0x4d03004c); //  33.10%
-	InitDS_Sel(0x5fe1904e); //  18.47%
+	InitDS_Sel(0x48868864); //  57.55%
+	InitDS_Sel(0x48868964); //   9.17%
+	InitDS_Sel(0x48878054); //  11.45%
+	InitDS_Sel(0x48878864); //  63.04%
+	InitDS_Sel(0x48879054); //  55.85%
+	InitDS_Sel(0x48968864); //  14.54%
+	InitDS_Sel(0x49068064); //   6.31%
+	InitDS_Sel(0x49068864); //  12.58%
+	InitDS_Sel(0x49078864); //  37.30%
+	InitDS_Sel(0x4917804c); //   5.54%
+	InitDS_Sel(0x4c469064); //  15.18%
+	InitDS_Sel(0x4c80404c); //  29.01%
+	InitDS_Sel(0x4c869064); //  16.34%
+	InitDS_Sel(0xc8804054); //  26.19%
+	InitDS_Sel(0xc881904c); //  14.57%
+	InitDS_Sel(0xc883904c); //  15.84%
+	InitDS_Sel(0xc88391cc); //  11.42%
+	InitDS_Sel(0xc885904c); //  37.12%
+	InitDS_Sel(0xc885904e); //  14.35%
+	InitDS_Sel(0xc8859074); //  14.06%
+	InitDS_Sel(0xc887804c); //   9.99%
+	InitDS_Sel(0xc8879054); //  18.76%
+	InitDS_Sel(0xc905904c); //  23.52%
+	InitDS_Sel(0xca40404c); //   8.78%
+	InitDS_Sel(0xca83004c); //  15.90%
+	InitDS_Sel(0xcc45904e); //  29.99%
+	InitDS_Sel(0xcc80404c); //  11.80%
+	InitDS_Sel(0xcc80404e); //  37.55%
+	InitDS_Sel(0xcc83004c); //  17.00%
+	InitDS_Sel(0xcc8391cc); //  22.83%
+	InitDS_Sel(0xcd03004c); //  31.59%
+	InitDS_Sel(0xdfe1904e); //  14.28%
+	InitDS_Sel(0x48468064); //   7.59%
+	InitDS_Sel(0x48478064); //  19.34%
+	InitDS_Sel(0x489081e4); //   6.18%
+	InitDS_Sel(0x49268064); //  10.71%
+
+	// dbz iw
+
+	InitDS_Sel(0x1fe48864); //  11.82%
+	InitDS_Sel(0x1fec8864); //  30.49%
+	InitDS_Sel(0x48808064); //  10.31%
+	InitDS_Sel(0x48848064); //   7.22%
+	InitDS_Sel(0x48848864); //  23.80%
+	InitDS_Sel(0x48849064); //   6.00%
+	InitDS_Sel(0x48859064); //   6.29%
+	InitDS_Sel(0x4904804c); //   9.48%
+	InitDS_Sel(0x49058064); //   7.06%
+	InitDS_Sel(0x49084064); //   7.95%
+	InitDS_Sel(0x9fe19064); //  19.39%
+	InitDS_Sel(0xc8858064); //  33.31%
+	InitDS_Sel(0xc8859064); //  25.36%
+	InitDS_Sel(0xc9058064); //   8.61%
+	InitDS_Sel(0xc9084064); //  12.48%
+	InitDS_Sel(0xc90d8064); //  16.16%
+	InitDS_Sel(0xcd404054); //  21.86%
 
 	// disgaea 2
 
-	InitDS_Sel(0x1fe04064); //   6.74%
-	InitDS_Sel(0x1fe69074); //   8.31%
-	InitDS_Sel(0x48804064); //   9.18%
-	InitDS_Sel(0x48820864); //  15.24%
-	InitDS_Sel(0x48869064); //   9.41%
-	InitDS_Sel(0x48869164); //   5.06%
-	InitDS_Sel(0x48878964); //  42.60%
-	InitDS_Sel(0x48879164); //   6.60%
+	InitDS_Sel(0x1fe04064); //   5.64%
+	InitDS_Sel(0x1fe69074); //   7.01%
+	InitDS_Sel(0x48878964); //  55.59%
 
 	// gradius 5
 
-	InitDS_Sel(0x1fee8868); //  40.55%
-	InitDS_Sel(0x48868968); //   5.40%
-	InitDS_Sel(0x48878968); //   7.07%
-	InitDS_Sel(0x5fe04058); //   6.57%
-	InitDS_Sel(0x5fe3814c); //  25.91%
-	InitDS_Sel(0x5fe68068); //  30.24%
-	InitDS_Sel(0x5fe68968); //   9.87%
-	InitDS_Sel(0x5fee8868); //  42.47%
-	InitDS_Sel(0x5fee8968); //  11.96%
-	InitDS_Sel(0x5ffe8868); //   5.85%
+	InitDS_Sel(0x1fee8868); //  40.39%
+	InitDS_Sel(0x1fee8968); //   5.24%
+	InitDS_Sel(0x4881804c); //  21.16%
+	InitDS_Sel(0x48868968); //  36.31%
+	InitDS_Sel(0x48878968); //   6.78%
+	InitDS_Sel(0x490e884c); //  32.03%
+	InitDS_Sel(0x5fe68068); //  28.29%
+	InitDS_Sel(0x5fe68968); //  13.35%
+	InitDS_Sel(0x5fee8868); //  32.59%
+	InitDS_Sel(0x5fee8968); //  14.03%
+	InitDS_Sel(0x5ffe8868); //   6.10%
 
 	// tales of abyss
 
-	InitDS_Sel(0x1fe39368); //   7.18%
-	InitDS_Sel(0x4121004c); //  26.89%
-	InitDS_Sel(0x4121084c); //  14.62%
-	InitDS_Sel(0x4880484c); //  19.77%
-	InitDS_Sel(0x4885804c); //  14.20%
-	InitDS_Sel(0x48868068); //  14.98%
-	InitDS_Sel(0x48868868); //  21.78%
-	InitDS_Sel(0x4886934c); //   6.07%
-	InitDS_Sel(0x4887834c); //  13.72%
-	InitDS_Sel(0x4887934c); //   6.34%
-	InitDS_Sel(0x488c8868); //   6.70%
-	InitDS_Sel(0x488c8b68); //  11.36%
-	InitDS_Sel(0x488e8068); //  35.41%
-	InitDS_Sel(0x488e8368); //  13.38%
-	InitDS_Sel(0x488e8868); //  76.29%
-	InitDS_Sel(0x488e8b68); //   5.87%
-	InitDS_Sel(0x48cf89e8); //  55.96%
-	InitDS_Sel(0x4903834c); //  19.08%
-	InitDS_Sel(0x490c8b68); //   7.74%
-	InitDS_Sel(0x490e8b68); //   7.26%
-	InitDS_Sel(0x490f89e8); //  58.70%
-	InitDS_Sel(0x4a83904c); //  26.75%
-	InitDS_Sel(0x4d03914c); //  16.34%
-	InitDS_Sel(0x5fe3904c); //   7.09%
-	InitDS_Sel(0x5fe59078); //  21.02%
+	InitDS_Sel(0x1fe39368); //   8.05%
+	InitDS_Sel(0x4121004c); //  23.01%
+	InitDS_Sel(0x4885804c); //  12.31%
+	InitDS_Sel(0x48868068); //   8.41%
+	InitDS_Sel(0x4886934c); //   5.66%
+	InitDS_Sel(0x4887834c); //   8.65%
+	InitDS_Sel(0x48878368); //   9.17%
+	InitDS_Sel(0x4887934c); //   5.16%
+	InitDS_Sel(0x488c8868); //   6.06%
+	InitDS_Sel(0x488c8b68); //  16.42%
+	InitDS_Sel(0x488e8368); //  15.39%
+	InitDS_Sel(0x48cf89e8); //  35.13%
+	InitDS_Sel(0x4903834c); //  18.22%
+	InitDS_Sel(0x4906834c); //   8.97%
+	InitDS_Sel(0x49068b4c); //   8.99%
+	InitDS_Sel(0x490e8b68); //   7.01%
+	InitDS_Sel(0x490f89e8); //  37.03%
+	InitDS_Sel(0x4d03914c); //  16.36%
+	InitDS_Sel(0xdfe59078); //  19.07%
 
 	// Gundam Seed Destiny OMNI VS ZAFT II PLUS 
 
-	InitDS_Sel(0x1fe19075); //  18.00%
-	InitDS_Sel(0x1fee8b75); //  20.52%
-	InitDS_Sel(0x48818075); //  31.08%
-	InitDS_Sel(0x48819075); //  21.08%
-	InitDS_Sel(0x4885804d); //  17.79%
-	InitDS_Sel(0x48868875); //   8.89%
-	InitDS_Sel(0x48868b75); //  16.39%
-	InitDS_Sel(0x48878375); //  13.91%
-	InitDS_Sel(0x48878875); //  11.87%
-	InitDS_Sel(0x48878b75); //  25.83%
-	InitDS_Sel(0x488e8075); //  18.58%
-	InitDS_Sel(0x488e8375); //  30.75%
-	InitDS_Sel(0x488e8875); //  51.11%
-	InitDS_Sel(0x488e8b75); //  31.87%
-	InitDS_Sel(0x488f8075); //  16.32%
-	InitDS_Sel(0x488f8875); //  33.68%
-	InitDS_Sel(0x488f8b75); //  15.37%
-	InitDS_Sel(0x49068075); //  33.13%
-	InitDS_Sel(0x4906884d); //   6.62%
-	InitDS_Sel(0x490e8375); //  30.00%
-	InitDS_Sel(0x490e8875); //  47.29%
-	InitDS_Sel(0x490e8b75); //  82.46%
-	InitDS_Sel(0x490f8075); //  25.85%
-	InitDS_Sel(0x490f8b75); //  31.42%
-	InitDS_Sel(0x490f9075); //  15.09%
-	InitDS_Sel(0x1febb075); //  62.57%
-	InitDS_Sel(0x488e9075); //  11.62%
+	InitDS_Sel(0x1febb075); //  36.61%
+	InitDS_Sel(0x48868875); //   8.59%
+	InitDS_Sel(0x4887804d); //   6.51%
+	InitDS_Sel(0x48878075); //   5.63%
+	InitDS_Sel(0x48878375); //   9.61%
+	InitDS_Sel(0x48878875); //  11.63%
+	InitDS_Sel(0x48878b75); //  41.46%
+	InitDS_Sel(0x488e8075); //  27.19%
+	InitDS_Sel(0x488e8375); //  32.64%
+	InitDS_Sel(0x488e8875); //  26.24%
+	InitDS_Sel(0x488e8b75); //  36.39%
+	InitDS_Sel(0x488e9075); //  19.17%
+	InitDS_Sel(0x49068075); //  30.48%
+	InitDS_Sel(0x4906884d); //   6.16%
+	InitDS_Sel(0x490e8375); //  28.07%
+	InitDS_Sel(0x490e8875); //  32.56%
+	InitDS_Sel(0x490e8b75); //  51.42%
+	InitDS_Sel(0x9fe19075); //  18.31%
+	InitDS_Sel(0xc8818075); //  26.92%
+	InitDS_Sel(0xc8819075); //  24.40%
+	InitDS_Sel(0xc885804d); //  16.76%
 
 	// nba 2k8
 
-	InitDS_Sel(0x1fe04856); //  14.62%
-	InitDS_Sel(0x1fe28956); //  27.38%
-	InitDS_Sel(0x1fe38966); //  27.24%
-	InitDS_Sel(0x1fe39156); //  24.67%
-	InitDS_Sel(0x1fe79056); //  25.00%
-	InitDS_Sel(0x4883804e); //  25.73%
-	InitDS_Sel(0x48838166); //   5.95%
-	InitDS_Sel(0x48868166); //  13.72%
-	InitDS_Sel(0x48868866); //  27.19%
-	InitDS_Sel(0x48868966); //  16.70%
-	InitDS_Sel(0x48879066); //   8.64%
-	InitDS_Sel(0x48879166); //  20.80%
-	InitDS_Sel(0x49028966); //   6.49%
-	InitDS_Sel(0x5fe48866); //  10.30%
-	InitDS_Sel(0x5fe68866); //  15.19%
-	InitDS_Sel(0x5fe79066); //  28.78%
-	InitDS_Sel(0x1fe68866); //   6.12%
-	InitDS_Sel(0x48868066); //   8.67%
-	InitDS_Sel(0x49068066); //  22.19%
-	InitDS_Sel(0x49068866); //   6.66%
-	InitDS_Sel(0x49068966); //  11.88%
-	InitDS_Sel(0x49068976); //  12.74%
+	InitDS_Sel(0x1fe04056); //  19.56%
+	InitDS_Sel(0x1fe38966); //  23.69%
+	InitDS_Sel(0x1fe39156); //  21.42%
+	InitDS_Sel(0x1fe79056); //  24.33%
+	InitDS_Sel(0x4883804e); //  24.58%
+	InitDS_Sel(0x48838166); //   5.58%
+	InitDS_Sel(0x48868166); //  13.24%
+	InitDS_Sel(0x48868866); //  25.67%
+	InitDS_Sel(0x48868966); //  19.61%
+	InitDS_Sel(0x48879066); //   7.34%
+	InitDS_Sel(0x48879166); //  14.62%
+	InitDS_Sel(0x49028966); //   6.37%
+	InitDS_Sel(0x49068066); //  25.16%
+	InitDS_Sel(0x49068966); //   9.38%
+	InitDS_Sel(0x49068976); //  46.00%
+	InitDS_Sel(0x5fe48866); //  10.67%
+	InitDS_Sel(0x5fe68866); //  18.90%
+	InitDS_Sel(0x5fe79066); //  25.19%
 
 	// onimusha 3
 
-	InitDS_Sel(0x1fe18068); //   5.81%
-	InitDS_Sel(0x1fe3904e); //   5.28%
-	InitDS_Sel(0x1fee0868); //  42.87%
-	InitDS_Sel(0x1fee8968); //  10.05%
-	InitDS_Sel(0x48839168); //   7.30%
-	InitDS_Sel(0x48878068); //  25.82%
-	InitDS_Sel(0x48878368); //  11.30%
-	InitDS_Sel(0x48c28368); //   6.98%
-	InitDS_Sel(0x4903884c); //  38.57%
-	InitDS_Sel(0x4c878168); //   9.48%
-	InitDS_Sel(0x4d004068); //  31.77%
-	InitDS_Sel(0x4d03804c); //   8.38%
-	InitDS_Sel(0x4d05884c); //   8.39%
-	InitDS_Sel(0x5125904c); //   5.30%
-	InitDS_Sel(0x5425904c); //   6.52%
-	InitDS_Sel(0x5fe04078); //  32.17%
-	InitDS_Sel(0x5fe5904c); //   5.61%
-	InitDS_Sel(0x5fe78368); //   6.84%
-	InitDS_Sel(0x5fe7904c); //   8.82%
-	InitDS_Sel(0x5fe79368); //  11.11%
-	InitDS_Sel(0x49204068); //   6.26%
-	InitDS_Sel(0x4c804068); //   5.45%
+	InitDS_Sel(0x1fee004c); //   9.89%
+	InitDS_Sel(0x1fee0868); //  47.83%
+	InitDS_Sel(0x4903884c); //  37.05%
+	InitDS_Sel(0x4c878168); //  11.00%
+	InitDS_Sel(0x4d05884c); //   6.81%
+	InitDS_Sel(0x5fe04078); //  31.14%
+	InitDS_Sel(0x9fe18068); //   5.36%
+	InitDS_Sel(0xc8839168); //   7.01%
+	InitDS_Sel(0xcd004068); //  28.15%
+	InitDS_Sel(0xd125904c); //   5.60%
+	InitDS_Sel(0xd425904c); //   5.88%
+	InitDS_Sel(0xdfe78368); //   6.56%
+	InitDS_Sel(0xdfe79368); //  11.21%
 
 	// resident evil code veronica
 
-	InitDS_Sel(0x1fe39068); //  19.35%
-	InitDS_Sel(0x1fe78168); //  26.62%
-	InitDS_Sel(0x4c819058); //  23.05%
+	InitDS_Sel(0x1fee8168); //  11.91%
+	InitDS_Sel(0x48804b68); //   7.61%
+	InitDS_Sel(0x9fe39068); //  17.32%
+	InitDS_Sel(0x9fe79068); //  24.37%
+	InitDS_Sel(0x9fe79168); //  25.25%
+	InitDS_Sel(0xc8878368); //   9.51%
+	InitDS_Sel(0xcc819058); //  22.37%
 
 	// armored core 3
 
-	InitDS_Sel(0x1fe04074); //   9.18%
-	InitDS_Sel(0x1fe84074); //   5.53%
-	InitDS_Sel(0x1fee0874); //  48.94%
-	InitDS_Sel(0x48404854); //   5.10%
-	InitDS_Sel(0x48850054); //   9.46%
-	InitDS_Sel(0x48878874); //  12.18%
-	InitDS_Sel(0x488791d4); //   5.25%
-	InitDS_Sel(0x488e8074); //  18.21%
-	InitDS_Sel(0x49059054); //   9.87%
-	InitDS_Sel(0x490e8074); //  53.97%
-	InitDS_Sel(0x4c4e8074); //   7.40%
-	InitDS_Sel(0x4c4e8874); //   9.56%
-	InitDS_Sel(0x4d0e8074); //   6.18%
+	InitDS_Sel(0x1fe84074); //  18.36%
+	InitDS_Sel(0x1fee0874); //  50.89%
+	InitDS_Sel(0x48404854); //   5.39%
+	InitDS_Sel(0x48858054); //  13.21%
+	InitDS_Sel(0x48878074); //   7.66%
+	InitDS_Sel(0x488781d4); //   5.36%
+	InitDS_Sel(0x48878874); //  12.35%
+	InitDS_Sel(0x488791d4); //   5.12%
+	InitDS_Sel(0x488e8074); //  17.11%
+	InitDS_Sel(0x49058054); //   6.01%
+	InitDS_Sel(0x49059054); //   9.52%
+	InitDS_Sel(0x490e8074); //  51.58%
+	InitDS_Sel(0x4c4e8074); //  15.89%
+	InitDS_Sel(0x4d0e8074); //   5.73%
+	InitDS_Sel(0x9fe04074); //  12.94%
+	InitDS_Sel(0xc8404054); //   9.27%
+	InitDS_Sel(0xc881004c); //   9.63%
+	InitDS_Sel(0xc8850054); //   9.42%
 
 	// aerial planet
 
-	InitDS_Sel(0x4820404c); //  14.64%
-	InitDS_Sel(0x48478164); //  10.58%
-	InitDS_Sel(0x4847914c); //   6.89%
-	InitDS_Sel(0x4886894c); //  21.89%
-	InitDS_Sel(0x4887914c); //   7.83%
-	InitDS_Sel(0x488e814c); //  15.48%
-	InitDS_Sel(0x488e894c); //  20.22%
-	InitDS_Sel(0x488f8164); //  16.26%
-	InitDS_Sel(0x4c868074); //  41.43%
-	InitDS_Sel(0x4c868874); //   8.71%
-	InitDS_Sel(0x4c868934); //  17.36%
-	InitDS_Sel(0x4c8e8074); //  12.51%
-	InitDS_Sel(0x4c8e8874); //  13.21%
-	InitDS_Sel(0x4cc0404c); //  13.77%
-	InitDS_Sel(0x4d068074); //   8.22%
+	InitDS_Sel(0x48478164); //   9.96%
+	InitDS_Sel(0x4847914c); //  12.69%
+	InitDS_Sel(0x4886814c); //  25.36%
+	InitDS_Sel(0x4887914c); //   7.49%
+	InitDS_Sel(0x488e814c); //  19.25%
+	InitDS_Sel(0x488f8164); //  16.66%
+	InitDS_Sel(0x4c868074); //  42.55%
+	InitDS_Sel(0x4c868934); //  18.04%
+	InitDS_Sel(0x4c8e8074); //  11.29%
+	InitDS_Sel(0x4c8e8874); //  19.85%
+	InitDS_Sel(0x4cc0404c); //  15.74%
+	InitDS_Sel(0x4d068074); //   9.04%
+	InitDS_Sel(0xc820404c); //  15.19%
+	InitDS_Sel(0xcc83804c); //  49.18%
 
 	// one piece grand battle 3
 
-	InitDS_Sel(0x1fe1904e); //  10.06%
-	InitDS_Sel(0x48839054); //  22.82%
-	InitDS_Sel(0x48868174); //   5.85%
-	InitDS_Sel(0x49068174); //   5.54%
-	InitDS_Sel(0x49068964); //   7.75%
-	InitDS_Sel(0x49068974); //   5.18%
-	InitDS_Sel(0x49078974); //  12.39%
-	InitDS_Sel(0x49079174); //   7.20%
-	InitDS_Sel(0x4ac0404c); //   9.04%
-	InitDS_Sel(0x4c41904c); //  12.25%
-	InitDS_Sel(0x4c4190cc); //   8.15%
-	InitDS_Sel(0x5321914c); //   8.06%
+	InitDS_Sel(0x48839054); //  20.48%
+	InitDS_Sel(0x49068174); //   5.30%
+	InitDS_Sel(0x49068874); //  34.91%
+	InitDS_Sel(0x49068964); //  16.76%
+	InitDS_Sel(0x49078174); //  15.70%
+	InitDS_Sel(0xcac0404c); //   8.20%
+	InitDS_Sel(0xcc41904c); //  11.07%
+	InitDS_Sel(0xcc4190cc); //   6.72%
+	InitDS_Sel(0xd321914c); //   6.72%
 
 	// one piece grand adventure
 
-	InitDS_Sel(0x4421814c); //   7.91%
-	InitDS_Sel(0x4843b04c); //  19.34%
-	InitDS_Sel(0x4881984c); //  16.30%
-	InitDS_Sel(0x48849164); //  16.24%
-	InitDS_Sel(0x48869154); //   5.56%
-	InitDS_Sel(0x48879154); //   6.81%
-	InitDS_Sel(0x5fe7804c); //  15.70%
+	InitDS_Sel(0x1fe0404c); //   6.83%
+	InitDS_Sel(0x48849164); //  44.38%
+	InitDS_Sel(0x48879154); //   8.48%
+	InitDS_Sel(0xc421814c); //   6.58%
+	InitDS_Sel(0xc843b04c); //  18.58%
 
 	// shadow hearts
 
-	InitDS_Sel(0x1fe3004c); //  23.52%
-	InitDS_Sel(0x4881814c); //   5.40%
-	InitDS_Sel(0x4881904e); //   5.52%
-	InitDS_Sel(0x48819168); //  14.09%
-	InitDS_Sel(0x48830058); //  13.41%
-	InitDS_Sel(0x48839058); //  13.17%
-	InitDS_Sel(0x48868078); //   9.80%
-	InitDS_Sel(0x48868778); //  10.54%
-	InitDS_Sel(0x48868f78); //   5.33%
-	InitDS_Sel(0x49004858); //   7.59%
-	InitDS_Sel(0x49030058); //  44.51%
-	InitDS_Sel(0x49039058); //  12.79%
-	InitDS_Sel(0x4c870878); //   7.17%
+	InitDS_Sel(0x48804868); //  69.52%
+	InitDS_Sel(0x48868078); //  11.74%
+	InitDS_Sel(0x48868778); //  10.34%
+	InitDS_Sel(0x49004058); //   7.72%
+	InitDS_Sel(0x49030058); //  41.88%
+	InitDS_Sel(0x4c870878); //   7.00%
+	InitDS_Sel(0x9fe3004c); //  21.51%
+	InitDS_Sel(0xc881904e); //   5.22%
+	InitDS_Sel(0xc8819168); //  14.01%
+	InitDS_Sel(0xc8830058); //  13.22%
+	InitDS_Sel(0xc8839058); //  12.81%
+	InitDS_Sel(0xc8878058); //  11.50%
+	InitDS_Sel(0xc8879058); //   6.63%
+	InitDS_Sel(0xc9039058); //  12.58%
+	InitDS_Sel(0xc9078068); //  30.88%
 
 	// the punisher
 
-	InitDS_Sel(0x48420864); //   8.61%
-	InitDS_Sel(0x48468864); //   8.94%
-	InitDS_Sel(0x4880474c); //  26.47%
-	InitDS_Sel(0x48868764); //   5.28%
-	InitDS_Sel(0x48868f64); //  53.49%
-	InitDS_Sel(0x4886bf64); //  16.79%
-	InitDS_Sel(0x4906904c); //  12.19%
-	InitDS_Sel(0x4d068f64); //  13.01%
-	InitDS_Sel(0x5fe0404e); //   5.82%
-	InitDS_Sel(0x5fe3974c); //  26.82%
-	InitDS_Sel(0x5fe68f64); //  79.62%
+	InitDS_Sel(0x48420864); //   7.51%
+	InitDS_Sel(0x48468864); //  12.84%
+	InitDS_Sel(0x48868764); //  22.52%
+	InitDS_Sel(0x48868f64); //  44.09%
+	InitDS_Sel(0x4886b764); //   5.67%
+	InitDS_Sel(0x4886bf64); //  24.55%
+	InitDS_Sel(0x4906904c); //  13.98%
+	InitDS_Sel(0x4d068f64); //  11.33%
+	InitDS_Sel(0x5fe0404e); //   5.05%
+	InitDS_Sel(0x5fe68864); //  16.21%
+	InitDS_Sel(0x5fe68f64); //  53.26%
+	InitDS_Sel(0xc880474c); //  21.71%
+	InitDS_Sel(0xc883974c); //   6.02%
+	InitDS_Sel(0xc887874c); //  10.22%
+	InitDS_Sel(0xc887974c); //   8.51%
+	InitDS_Sel(0xdfe3974c); //  17.48%
+	InitDS_Sel(0x4906874c); //   6.30%
+	InitDS_Sel(0x49068764); //  13.02%
+	InitDS_Sel(0xc9038764); //   9.38%
+	InitDS_Sel(0xc9078064); //  36.67%
 
 	// guitar hero
 
-	InitDS_Sel(0x1503204e); //  19.41%
-	InitDS_Sel(0x1fe3906a); //  10.58%
-	InitDS_Sel(0x1fe6887a); //   9.57%
-	InitDS_Sel(0x48804d4e); //  18.77%
-	InitDS_Sel(0x48804d7a); //   7.59%
-	InitDS_Sel(0x4886804e); //  20.45%
-	InitDS_Sel(0x4886854e); //   7.64%
-	InitDS_Sel(0x4886887a); //  43.47%
-	InitDS_Sel(0x48868d5a); //   6.72%
-	InitDS_Sel(0x48868d6a); //   7.60%
-	InitDS_Sel(0x48868d7a); //   8.22%
-	InitDS_Sel(0x4887804e); //  22.36%
-	InitDS_Sel(0x4887854e); //   8.45%
-	InitDS_Sel(0x4887857a); //  26.38%
-	InitDS_Sel(0x48878d7a); //  29.82%
-	InitDS_Sel(0x4887904e); //  20.65%
-	InitDS_Sel(0x4887917a); //  24.36%
-	InitDS_Sel(0x4887954e); //  13.80%
-	InitDS_Sel(0x4887957a); //  24.41%
-	InitDS_Sel(0x488a917a); //  23.02%
-	InitDS_Sel(0x488e887a); //  10.25%
-	InitDS_Sel(0x488e8d7a); //  61.93%
-	InitDS_Sel(0x4900487a); //  16.70%
-	InitDS_Sel(0x4906806a); //  21.86%
-	InitDS_Sel(0x4906886a); //   5.62%
-	InitDS_Sel(0x4d03204e); //  64.14%
-	InitDS_Sel(0x4d06a06a); //  19.34%
-	InitDS_Sel(0x4d06a86a); //  11.29%
-	InitDS_Sel(0x4d07806a); //   7.00%
+	InitDS_Sel(0x1fe0407b); //   7.43%
+	InitDS_Sel(0x1fe6887a); //  10.06%
+	InitDS_Sel(0x4880484e); //  33.80%
+	InitDS_Sel(0x4880487a); //  15.13%
+	InitDS_Sel(0x4886804e); //  21.96%
+	InitDS_Sel(0x4886807a); //   9.20%
+	InitDS_Sel(0x4886854e); //   8.79%
+	InitDS_Sel(0x4886857a); //  10.05%
+	InitDS_Sel(0x4886887a); //  42.97%
+	InitDS_Sel(0x48868d4e); //   5.41%
+	InitDS_Sel(0x4886907a); //  18.66%
+	InitDS_Sel(0x4886956a); //   7.54%
+	InitDS_Sel(0x4887804e); //  24.39%
+	InitDS_Sel(0x4887854e); //   9.97%
+	InitDS_Sel(0x4887857a); //  29.02%
+	InitDS_Sel(0x4887887a); //  31.58%
+	InitDS_Sel(0x48878d5a); //   7.12%
+	InitDS_Sel(0x4887904e); //  22.78%
+	InitDS_Sel(0x4887917a); //  26.89%
+	InitDS_Sel(0x4887954e); //  14.99%
+	InitDS_Sel(0x4887957a); //  27.93%
+	InitDS_Sel(0x488e887a); //  77.76%
+	InitDS_Sel(0x4900487a); //  18.48%
+	InitDS_Sel(0x4906806a); //  17.69%
+	InitDS_Sel(0x4d06a06a); //  21.65%
+	InitDS_Sel(0x4d06a86a); //  16.11%
+	InitDS_Sel(0x4d0ea06a); //   5.65%
+	InitDS_Sel(0xcd07806a); //   8.60%
+	InitDS_Sel(0x488e8d7a); //   5.26%
+	InitDS_Sel(0x9503204e); //  22.34%
+	InitDS_Sel(0x9fe3906a); //   9.16%
+	InitDS_Sel(0xcd03204e); //  69.88%
 
 	// ico
 
-	InitDS_Sel(0x1fe04060); //   6.61%
-	InitDS_Sel(0x1fe28060); //  15.02%
-	InitDS_Sel(0x1fe380cc); //  15.50%
-	InitDS_Sel(0x1fe3a04c); //  44.78%
-	InitDS_Sel(0x1fe68860); //  46.02%
-	InitDS_Sel(0x48859060); //  11.74%
-	InitDS_Sel(0x48868060); //   7.60%
-	InitDS_Sel(0x48868360); //   9.54%
-	InitDS_Sel(0x48868860); //  11.90%
-	InitDS_Sel(0x48868b60); //  88.70%
-	InitDS_Sel(0x4893814c); //  39.42%
-	InitDS_Sel(0x49004060); //   6.10%
-	InitDS_Sel(0x49068860); //   7.74%
-	InitDS_Sel(0x49068b60); //  15.40%
-	InitDS_Sel(0x4c468b60); //  39.43%
-	InitDS_Sel(0x4c478860); //  10.81%
-	InitDS_Sel(0x4c83804c); //  18.81%
-	InitDS_Sel(0x4c83904c); //  18.90%
-	InitDS_Sel(0x4d004060); // 105.33%
-	InitDS_Sel(0x4d028060); //  14.56%
-	InitDS_Sel(0x4d03904c); //  19.21%
-	InitDS_Sel(0x4d068360); //  16.48%
-	InitDS_Sel(0x4d068860); //  18.17%
-	InitDS_Sel(0x4d068b60); // 219.11%
-	InitDS_Sel(0x4d078060); //   5.63%
-	InitDS_Sel(0x4d078360); //   8.35%
+	InitDS_Sel(0x1fe28060); //  14.34%
+	InitDS_Sel(0x1fe68860); //  39.24%
+	InitDS_Sel(0x48868b60); //  91.17%
+	InitDS_Sel(0x49068b60); //   7.39%
+	InitDS_Sel(0x4d004060); //  48.88%
+	InitDS_Sel(0x4d028060); //  14.64%
+	InitDS_Sel(0x4d068360); //  15.33%
+	InitDS_Sel(0x4d068860); //  20.67%
+	InitDS_Sel(0x4d068b60); // 230.02%
+	InitDS_Sel(0x4d078360); //   8.81%
+	InitDS_Sel(0x9fe04060); //   6.07%
+	InitDS_Sel(0x9fe380cc); //  13.34%
+	InitDS_Sel(0x9fe3a04c); //  40.11%
+	InitDS_Sel(0xc8859060); //  11.96%
+	InitDS_Sel(0xc893814c); //  33.66%
+	InitDS_Sel(0xc9004060); //   6.19%
 
 	// kuon
 
-	InitDS_Sel(0x1fee0865); //  12.82%
-	InitDS_Sel(0x4847004d); //  22.09%
-	InitDS_Sel(0x4847084d); //   6.13%
-	InitDS_Sel(0x48860865); //  19.79%
-	InitDS_Sel(0x48868365); //  14.13%
-	InitDS_Sel(0x48868b65); //  15.02%
-	InitDS_Sel(0x4887004d); //  20.99%
-	InitDS_Sel(0x48870065); //  28.27%
-	InitDS_Sel(0x48878b65); //  26.37%
-	InitDS_Sel(0x488e0865); //  40.97%
-	InitDS_Sel(0x488e0b65); //  23.33%
-	InitDS_Sel(0x488e8b65); //  13.20%
-	InitDS_Sel(0x4907004d); //  19.95%
-	InitDS_Sel(0x4907084d); //   7.77%
-	InitDS_Sel(0x4907884d); //  11.31%
-	InitDS_Sel(0x4c429065); //  23.69%
-	InitDS_Sel(0x4d068b65); //   8.78%
+	InitDS_Sel(0x1fee0865); //  15.33%
+	InitDS_Sel(0x48860065); //   6.36%
+	InitDS_Sel(0x48860865); //  21.12%
+	InitDS_Sel(0x48868365); //  14.57%
+	InitDS_Sel(0x48868b65); //  14.32%
+	InitDS_Sel(0x48870065); //  25.94%
+	InitDS_Sel(0x48878b65); //  13.59%
+	InitDS_Sel(0x488e0865); //  34.62%
+	InitDS_Sel(0x488e0b65); //  21.01%
+	InitDS_Sel(0x488e8b65); //  11.71%
+	InitDS_Sel(0x4907004d); //  26.20%
+	InitDS_Sel(0x4907084d); //   5.18%
+	InitDS_Sel(0x4c429065); //  23.90%
+	InitDS_Sel(0x4d068365); //   7.66%
+	InitDS_Sel(0xc847004d); //  11.21%
+	InitDS_Sel(0xc887004d); //  16.73%
+	InitDS_Sel(0xc887904d); //   6.03%
+	InitDS_Sel(0xcc83904d); //  15.84%
 
 	// hxh
 
-	InitDS_Sel(0x1fe04876); //   6.18%
-	InitDS_Sel(0x1fe79076); //  12.32%
-	InitDS_Sel(0x1fee8876); //  43.00%
-	InitDS_Sel(0x1fee8976); //  10.43%
-	InitDS_Sel(0x48838176); //   6.08%
-	InitDS_Sel(0x48839176); //   5.87%
-	InitDS_Sel(0x48878176); //   5.74%
-
 	// grandia extreme
 
-	InitDS_Sel(0x1fe3884c); //  27.75%
-	InitDS_Sel(0x1fe3934c); //  19.29%
-	InitDS_Sel(0x45269070); //   5.21%
-	InitDS_Sel(0x452e9070); //   6.70%
-	InitDS_Sel(0x48868070); //  13.30%
-	InitDS_Sel(0x48869070); //  23.46%
-	InitDS_Sel(0x48878370); //  24.55%
-	InitDS_Sel(0x48879070); //  23.58%
-	InitDS_Sel(0x48879370); //  13.95%
-	InitDS_Sel(0x4888404c); //  12.23%
-	InitDS_Sel(0x48884050); //  14.23%
-	InitDS_Sel(0x488e8b70); //  33.31%
-	InitDS_Sel(0x488e9370); //  14.62%
-	InitDS_Sel(0x4c81934c); //  61.93%
+	InitDS_Sel(0x1fe3884c); //  30.28%
+	InitDS_Sel(0x45269070); //   5.92%
+	InitDS_Sel(0x452e9070); //   7.18%
+	InitDS_Sel(0x48868070); //  13.48%
+	InitDS_Sel(0x48869070); //  26.50%
+	InitDS_Sel(0x48878370); //  27.62%
+	InitDS_Sel(0x48879070); //  26.45%
+	InitDS_Sel(0x48879370); //  15.48%
+	InitDS_Sel(0x4888404c); //  12.35%
+	InitDS_Sel(0x48884050); //  15.31%
+	InitDS_Sel(0x488e8b70); //  47.58%
+	InitDS_Sel(0x488e9370); //  16.74%
+	InitDS_Sel(0x9fe3934c); //  18.59%
+	InitDS_Sel(0xcc81934c); //  63.56%
 
-	// enthusa
+	// enthusia
 
-	InitDS_Sel(0x1fe04854); //  23.09%
-	InitDS_Sel(0x1fe60064); //   6.78%
-	InitDS_Sel(0x1fee0864); //  13.58%
-	InitDS_Sel(0x48860f64); //  14.83%
-	InitDS_Sel(0x488e0f64); //  13.48%
-	InitDS_Sel(0x4a46884c); //   6.65%
-	InitDS_Sel(0x4b020864); //  13.03%
-	InitDS_Sel(0x4b060864); //  15.89%
-	InitDS_Sel(0x4b068864); //  13.96%
-	InitDS_Sel(0x4d40404c); //  11.94%
+	InitDS_Sel(0x1fe04854); //  23.37%
+	InitDS_Sel(0x1fee0864); //  30.31%
+	InitDS_Sel(0x48860f64); //  15.00%
+	InitDS_Sel(0x488e804c); //  10.47%
+	InitDS_Sel(0x4a46884c); //  14.52%
+	InitDS_Sel(0x4b020864); //  20.34%
+	InitDS_Sel(0x4b060864); //  18.55%
+	InitDS_Sel(0x9fe04067); //   5.04%
+	InitDS_Sel(0xcd40404c); //  11.00%
 
 	// ys 1/2 eternal story
 
-	InitDS_Sel(0x4907004c); //   7.77%
-	InitDS_Sel(0x4c8791cc); //  10.50%
-
 	// bloody roar
 
-	InitDS_Sel(0x1fe84868); //   6.32%
-	InitDS_Sel(0x1fee8b68); //   6.47%
-	InitDS_Sel(0x48810068); //  23.23%
-	InitDS_Sel(0x48818368); //   9.85%
-	InitDS_Sel(0x48848068); //  58.71%
-	InitDS_Sel(0x488e9368); //  13.27%
-	InitDS_Sel(0x49004868); //  13.50%
-	InitDS_Sel(0x49018368); //  12.68%
-	InitDS_Sel(0x49019368); //  12.45%
-	InitDS_Sel(0x4b068068); //  19.94%
-	InitDS_Sel(0x4b078068); //  13.35%
-	InitDS_Sel(0x4c469068); //   8.70%
-	InitDS_Sel(0x4c8e8868); //   8.89%
+	InitDS_Sel(0x48810068); //  23.83%
+	InitDS_Sel(0x48848068); //  60.93%
+	InitDS_Sel(0x488789e8); //  28.90%
+	InitDS_Sel(0x488791e8); //   5.13%
+	InitDS_Sel(0x49004068); //  21.53%
+	InitDS_Sel(0x49004868); //  20.45%
+	InitDS_Sel(0x49018368); //  13.81%
+	InitDS_Sel(0x49019368); //  13.32%
+	InitDS_Sel(0x49020b4c); //  15.90%
+	InitDS_Sel(0x4b068068); //  15.38%
 
 	// ferrari f355 challenge
 
-	InitDS_Sel(0x48804b64); //  17.19%
-	InitDS_Sel(0x48858168); //  34.57%
-	InitDS_Sel(0x489e8b64); //   7.69%
-	InitDS_Sel(0x5fe04068); //  14.18%
-	InitDS_Sel(0x5fe04868); //   8.42%
-	InitDS_Sel(0x5fe60064); //  15.16%
-	InitDS_Sel(0x5fee0064); //  10.10%
-	InitDS_Sel(0x5fee0864); //  27.25%
-	InitDS_Sel(0x5feeb864); //   6.29%
-	InitDS_Sel(0x5ff60064); //  17.90%
-	InitDS_Sel(0x5ffe0064); //  20.20%
-	InitDS_Sel(0x5ffe0864); //  24.20%
+	InitDS_Sel(0x489e8b64); //   6.29%
+	InitDS_Sel(0x5fe04064); //  11.66%
+	InitDS_Sel(0x5fe04068); //  13.72%
+	InitDS_Sel(0x5fe04868); //   6.54%
+	InitDS_Sel(0x5fe60064); //  13.47%
+	InitDS_Sel(0x5fee0064); //  12.73%
+	InitDS_Sel(0x5fee0864); //  27.22%
+	InitDS_Sel(0x5feeb864); //   7.27%
+	InitDS_Sel(0x5fef0064); //   6.96%
+	InitDS_Sel(0x5ff60064); //  18.27%
+	InitDS_Sel(0x5ffe0064); //  18.52%
+	InitDS_Sel(0x5ffe0864); //  32.08%
+	InitDS_Sel(0xc8858168); //  39.47%
+	InitDS_Sel(0xc8878068); //  21.76%
+	InitDS_Sel(0xc890404c); //   6.69%
 
 	// king of fighters xi
 
-	InitDS_Sel(0x488589e0); //  84.55%
-	InitDS_Sel(0x488591e0); //  43.87%
-	InitDS_Sel(0x74819050); //   9.68%
+	InitDS_Sel(0x488589e8); // 118.65%
+	InitDS_Sel(0x488591e8); //  53.51%
+	InitDS_Sel(0xf4819050); //  11.50%
 
 	// mana khemia
 
-	InitDS_Sel(0x488e8369); //  96.66%
-	InitDS_Sel(0x49078b69); //  21.54%
-	InitDS_Sel(0x490f8069); //  35.98%
-	InitDS_Sel(0x490f8369); //  17.82%
+	InitDS_Sel(0x488e8369); // 100.59%
+	InitDS_Sel(0xc9038059); //  29.02%
+	InitDS_Sel(0xc907804d); //  55.66%
+	InitDS_Sel(0xc90f8369); //   6.99%
 
 	// ar tonelico 2
 
-	InitDS_Sel(0x484f8369); //   7.83%
-	InitDS_Sel(0x48804059); //  16.56%
-	InitDS_Sel(0x48859059); //  12.16%
-	InitDS_Sel(0x488e8069); //  23.62%
-	InitDS_Sel(0x488e9069); //  38.70%
-	InitDS_Sel(0x488e9369); // 114.72%
-	InitDS_Sel(0x488f8069); //   5.62%
-	InitDS_Sel(0x488f8369); //  22.95%
-	InitDS_Sel(0x488f9069); //  35.98%
-	InitDS_Sel(0x4905904d); //   6.16%
-	InitDS_Sel(0x4907904d); //   5.39%
-	InitDS_Sel(0x49079059); //  98.11%
+	InitDS_Sel(0x484f8369); //   6.67%
+	InitDS_Sel(0x488e8069); //  18.92%
+	InitDS_Sel(0x488e9069); //  30.64%
+	InitDS_Sel(0x488e9369); //  93.72%
+	InitDS_Sel(0x488f8069); //   5.15%
+	InitDS_Sel(0x488f8369); //  19.12%
+	InitDS_Sel(0x49079059); //  74.64%
+	InitDS_Sel(0xc8804059); //  13.31%
+	InitDS_Sel(0xc8859059); //  13.51%
+	InitDS_Sel(0xc887804d); //   5.79%
 
 	// rouge galaxy
 
-	InitDS_Sel(0x484e8164); //  53.59%
-	InitDS_Sel(0x48858154); //  12.97%
-	InitDS_Sel(0x490e8164); //  14.44%
-	InitDS_Sel(0x5ff0404c); //   7.34%
+	InitDS_Sel(0x484e8164); //  38.29%
+	InitDS_Sel(0x490a8164); //   6.45%
+	InitDS_Sel(0x9fe1804c); //   8.57%
+	InitDS_Sel(0xc8858154); //   6.83%
+	InitDS_Sel(0xdff0404c); //   8.09%
 
 	// mobile suit gundam seed battle assault 3
 
-	InitDS_Sel(0x488390cc); //  21.55%
-	InitDS_Sel(0x488781cc); //   8.13%
-	InitDS_Sel(0x488791cc); //   5.77%
-	InitDS_Sel(0x490781cc); //  10.40%
-	InitDS_Sel(0x490e9164); //   6.89%
-	InitDS_Sel(0x4c81004d); //  11.28%
-	InitDS_Sel(0x5fee8074); //   9.50%
-	InitDS_Sel(0x5fee8874); //  32.63%
-	InitDS_Sel(0x5fef8074); // 133.09%
-	InitDS_Sel(0x5fef8874); //  64.27%
+	InitDS_Sel(0x48804054); //  23.35%
+	InitDS_Sel(0x488e88f4); //  11.56%
+	InitDS_Sel(0x49004054); //  11.59%
+	InitDS_Sel(0x49004854); //   5.41%
+	InitDS_Sel(0x490e8164); //  17.59%
+	InitDS_Sel(0x490e9074); //   6.56%
+	InitDS_Sel(0x490e9164); //  14.35%
+	InitDS_Sel(0x5fee8174); //   5.56%
+	InitDS_Sel(0x5fee8874); //  33.51%
+	InitDS_Sel(0x5fee8974); //  14.23%
+	InitDS_Sel(0xc88390cc); //  19.25%
+	InitDS_Sel(0xcc81004d); //  10.11%
 
 	// hajime no ippo all stars
 
-	InitDS_Sel(0x48848368); //   7.59%
-	InitDS_Sel(0x48848868); //  14.98%
-	InitDS_Sel(0x48848b68); //   5.46%
-	InitDS_Sel(0x48858368); //   8.55%
-	InitDS_Sel(0x48868b68); //  20.92%
-	InitDS_Sel(0x488e9068); //  10.44%
-	InitDS_Sel(0x49028368); //   5.22%
-	InitDS_Sel(0x4b068868); //   9.10%
-	InitDS_Sel(0x4b0e8868); //  19.19%
+	InitDS_Sel(0x4881004c); //  18.60%
+	InitDS_Sel(0x48828b68); //  27.89%
+	InitDS_Sel(0x48829368); //  29.39%
+	InitDS_Sel(0x48848868); //  19.61%
+	InitDS_Sel(0x48858068); //  25.24%
+	InitDS_Sel(0x48858368); //   6.23%
+	InitDS_Sel(0x48859068); //  21.74%
+	InitDS_Sel(0x48868b68); //  37.30%
+	InitDS_Sel(0x48879368); //  11.75%
+	InitDS_Sel(0x488e9068); //  15.88%
+	InitDS_Sel(0x4b068868); //  10.33%
+	InitDS_Sel(0x4b0e8868); //  13.65%
+	InitDS_Sel(0x48858868); //   5.38%
+	InitDS_Sel(0x48858b68); //   5.72%
+	InitDS_Sel(0x48c28368); //  10.86%
+	InitDS_Sel(0x49028368); //  10.40%
+
+	// hajime no ippo 2
+
+	InitDS_Sel(0x1fe04068); //  11.18%
+	InitDS_Sel(0x48839368); //  29.25%
+	InitDS_Sel(0x488c8968); //   5.46%
+	InitDS_Sel(0x488e9368); //   5.97%
+	InitDS_Sel(0x49028b68); //  35.91%
+	InitDS_Sel(0x4d0e8068); //   8.25%
 
 	// virtual tennis 2
 
-	InitDS_Sel(0x1540404d); //   6.50%
-	InitDS_Sel(0x48859065); //  12.77%
-	InitDS_Sel(0x48868075); //  19.46%
-	InitDS_Sel(0x4c818055); //  14.22%
-	InitDS_Sel(0x4c8781f5); //  12.24%
+	InitDS_Sel(0x1100404d); //   7.08%
+	InitDS_Sel(0x48859065); //   8.71%
+	InitDS_Sel(0x48868075); //  19.93%
+	InitDS_Sel(0x4c868875); //   8.50%
+	InitDS_Sel(0x4c8781f5); //   8.59%
+	InitDS_Sel(0x9540404d); //   8.65%
+	InitDS_Sel(0xc8859065); //   7.41%
 
 	// crash wrath of cortex
 
-	InitDS_Sel(0x1fe1804d); //   7.61%
-	InitDS_Sel(0x1fe20864); //  16.10%
-	InitDS_Sel(0x48818364); //   8.35%
-	InitDS_Sel(0x48828764); //   6.50%
-	InitDS_Sel(0x48828f64); //  13.99%
-	InitDS_Sel(0x48838364); //  14.12%
-	InitDS_Sel(0x49028f64); //  19.37%
-	InitDS_Sel(0x49030064); // 179.29%
-	InitDS_Sel(0x49038f64); //  13.57%
-	InitDS_Sel(0x4a838364); //   7.88%
-	InitDS_Sel(0x4d05834c); //   9.20%
+	InitDS_Sel(0x1fe20864); //  12.48%
+	InitDS_Sel(0x1fe68864); //  32.98%
+	InitDS_Sel(0x1fe78064); //   7.49%
+	InitDS_Sel(0x48828f64); //  12.90%
+	InitDS_Sel(0x48838364); //   5.97%
+	InitDS_Sel(0x48838f64); //   6.07%
+	InitDS_Sel(0x49028f64); //  14.07%
+	InitDS_Sel(0x49038f64); //  11.50%
+	InitDS_Sel(0x9fe5904c); //   5.45%
+	InitDS_Sel(0xc840404c); //   5.82%
+	InitDS_Sel(0xc8818364); //   6.96%
+	InitDS_Sel(0xc9030064); //  25.15%
+	InitDS_Sel(0xca838364); //   6.51%
+	InitDS_Sel(0xcd05834c); //   7.35%
 
 	// sbam 2
 
-	InitDS_Sel(0x1fe04068); //   7.71%
-	InitDS_Sel(0x1fe59068); //  10.44%
-	InitDS_Sel(0x1fe591e8); //  12.80%
-	InitDS_Sel(0x488591e8); //  13.43%
-	InitDS_Sel(0x55204068); //  12.19%
-
 	// remember 11
-
-	InitDS_Sel(0x48819068); //  23.39%
-	InitDS_Sel(0x48839068); //  51.74%
-	InitDS_Sel(0x4c818068); //  28.92%
-	InitDS_Sel(0x4c839068); //  33.82%
 
 	// prince of tennis
 
-	InitDS_Sel(0x4885894c); //   9.05%
-	InitDS_Sel(0x48859164); //  16.37%
-	InitDS_Sel(0x488d8164); //  17.59%
-	InitDS_Sel(0x488d81cc); //   5.09%
-	InitDS_Sel(0x488d8964); //  22.85%
-	InitDS_Sel(0x488d9064); //  21.53%
-	InitDS_Sel(0x488d9164); //  39.14%
-	InitDS_Sel(0x48958164); //  10.99%
-	InitDS_Sel(0x489d814c); //   8.12%
-	InitDS_Sel(0x4d458064); //  14.21%
-
 	// ar tonelico
 
-	InitDS_Sel(0x48804069); //  14.91%
-	InitDS_Sel(0x4881804d); //  17.27%
-	InitDS_Sel(0x48819059); //  19.32%
-	InitDS_Sel(0x48868369); //  16.49%
-	InitDS_Sel(0x48869369); //  18.98%
-	InitDS_Sel(0x48878069); //  29.82%
-	InitDS_Sel(0x48878369); //  12.77%
-	InitDS_Sel(0x48879069); //  29.43%
-	InitDS_Sel(0x48879369); //   9.79%
-	InitDS_Sel(0x488f9369); //  78.06%
-	InitDS_Sel(0x49038069); // 225.23%
-	InitDS_Sel(0x490d804d); //   5.50%
-	InitDS_Sel(0x490f804d); //  43.68%
+	InitDS_Sel(0x48868369); //  15.13%
+	InitDS_Sel(0x48869369); //  16.64%
+	InitDS_Sel(0x48878069); //  28.59%
+	InitDS_Sel(0x48878369); //  10.05%
+	InitDS_Sel(0x48879069); //  28.56%
+	InitDS_Sel(0x48879369); //  17.10%
+	InitDS_Sel(0x488f9369); //   5.35%
+	InitDS_Sel(0x49078b69); //  48.28%
+	InitDS_Sel(0x490f8069); //  39.04%
+	InitDS_Sel(0x490f8369); // 128.93%
+	InitDS_Sel(0xc8804069); //  14.41%
+	InitDS_Sel(0xc881804d); //  13.77%
+	InitDS_Sel(0xc8819059); //  19.64%
+	InitDS_Sel(0xc88f9369); //  70.39%
+	InitDS_Sel(0xc9038069); // 218.42%
+	InitDS_Sel(0xc90f804d); //  41.70%
 
 	// dbz sagas
 
+	InitDS_Sel(0x48828964); //  40.29%
+
 	// tourist trophy
 
-	InitDS_Sel(0x1fe7904c); //   6.40%
-	InitDS_Sel(0x1fe84064); //  15.82%
-	InitDS_Sel(0x1fe84864); //  16.96%
-	InitDS_Sel(0x488a8064); //  20.47%
-	InitDS_Sel(0x488e9065); //  19.88%
-	InitDS_Sel(0x5fe84064); //   8.14%
-	InitDS_Sel(0x5fee9064); //   5.91%
+	InitDS_Sel(0x1fe84064); //  11.57%
+	InitDS_Sel(0x488a8064); //  15.87%
+	InitDS_Sel(0x488e9065); //  16.45%
+	InitDS_Sel(0x5fe3904c); //   7.75%
+	InitDS_Sel(0x5fe84064); //  10.70%
+	InitDS_Sel(0x5fee9064); //  11.56%
+	InitDS_Sel(0x9fe181d4); //  10.21%
+	InitDS_Sel(0xcc87904d); //  33.79%
 
 	// svr2k8
 
-	InitDS_Sel(0x1fe79066); //  16.07%
-	InitDS_Sel(0x4880494c); //  19.04%
-	InitDS_Sel(0x48804b4c); //   8.73%
-	InitDS_Sel(0x488a0064); //   5.01%
-	InitDS_Sel(0x488a0864); //  13.95%
-	InitDS_Sel(0x490e8064); //  24.40%
-	InitDS_Sel(0x490e8364); //  28.17%
-	InitDS_Sel(0x4c839064); // 136.71%
-	InitDS_Sel(0x55384874); //   5.80%
+	InitDS_Sel(0x1fe79066); //  15.77%
+	InitDS_Sel(0x48804b4c); //   8.25%
+	InitDS_Sel(0x48838164); //  36.19%
+	InitDS_Sel(0x4887b864); //  27.81%
+	InitDS_Sel(0x490e8364); //  44.11%
 
 	// tokyo bus guide
+
+	InitDS_Sel(0x1fe04870); //  11.69%
+	InitDS_Sel(0x1fee8170); //  14.67%
+	InitDS_Sel(0x1fee8970); //  80.07%
+	InitDS_Sel(0x1fee89f0); //  28.98%
+	InitDS_Sel(0x48804870); //  16.61%
+	InitDS_Sel(0x488a8850); //  19.66%
+	InitDS_Sel(0xc8804070); //   9.86%
+	InitDS_Sel(0xc8879070); //  29.38%
+	InitDS_Sel(0xc88791f0); //  11.44%
 
 	// 12riven
 
@@ -2546,24 +2570,95 @@ GSDrawScanline::GSDrawScanlineMap::GSDrawScanlineMap()
 
 	// mgs3s1
 
+	InitDS_Sel(0x484e8864); //  14.51%
+	InitDS_Sel(0x488e8364); //  39.86%
+	InitDS_Sel(0x4b0e8b64); //  14.57%
+	InitDS_Sel(0xc8804364); //  12.93%
+	InitDS_Sel(0xc8819364); //  20.22%
+	InitDS_Sel(0xc8878364); //  15.28%
+	InitDS_Sel(0xcc830074); //  75.61%
+	InitDS_Sel(0xcd404074); //   9.54%
+	InitDS_Sel(0x482e8864); //  14.97%
+	InitDS_Sel(0x48828ae4); //  13.37%
+	InitDS_Sel(0x488f8064); //  30.49%
+	InitDS_Sel(0x490e9364); //  41.95%
+	InitDS_Sel(0x49268864); //   6.24%
+	InitDS_Sel(0x4b0e8864); //   8.42%
+	InitDS_Sel(0x9fe1804d); //   9.26%
+	InitDS_Sel(0x9fe7904c); //  12.19%
+	InitDS_Sel(0xc8830074); //  21.08%
+
 	// god of war
+
+	// gta sa
+
+	InitDS_Sel(0x48810064); //   9.47%
+	InitDS_Sel(0x4887884c); //   6.78%
+	InitDS_Sel(0x488f8864); //  11.05%
+	InitDS_Sel(0x4d078864); //  10.48%
+	InitDS_Sel(0x4d0c8064); //   6.42%
+	InitDS_Sel(0x4d0c8864); //   5.48%
+	InitDS_Sel(0x9fe1004c); //  12.95%
+	InitDS_Sel(0x9fe1904d); //  12.55%
+	InitDS_Sel(0x9fe1904e); //  10.98%
+
+	// hunting ground
+
+	InitDS_Sel(0x1fe689e4); //  48.20%
+	InitDS_Sel(0x48804064); //  14.53%
+	InitDS_Sel(0x488689e4); //   6.96%
+	InitDS_Sel(0x5fe59064); //   5.56%
+	InitDS_Sel(0x9fe7904d); //  19.72%
+	InitDS_Sel(0x9fe79064); //  21.53%
+	InitDS_Sel(0xc843904c); //  16.51%
+	InitDS_Sel(0xc88791e4); //   9.59%
+	InitDS_Sel(0xcc23804c); //  16.15%
+	InitDS_Sel(0xcd01904c); //  97.26%
+	InitDS_Sel(0xdfe04064); //  14.96%
+	InitDS_Sel(0xdff1904e); //  14.66%
+
+	// odin sphere
+
+	InitDS_Sel(0x4880404d); //   6.81%
+	InitDS_Sel(0x4881004d); //  18.90%
+	InitDS_Sel(0x4885804d); //   5.55%
+	InitDS_Sel(0x4885904c); //   9.92%
+	InitDS_Sel(0x488f904c); //   6.29%
+	InitDS_Sel(0x488f904d); //   6.25%
+	InitDS_Sel(0x4907884d); //   8.37%
+
+	// kingdom hearts re:com
+
+	InitDS_Sel(0x1fe04078); //   5.22%
+	InitDS_Sel(0x4880494c); //   7.16%
+	InitDS_Sel(0x4885814c); //  15.39%
+	InitDS_Sel(0x4887894c); //   8.46%
+	InitDS_Sel(0x4907894c); //  16.66%
+	InitDS_Sel(0x490e8974); // 102.78%
+	InitDS_Sel(0x9fe10054); //  12.50%
+	InitDS_Sel(0x9fe3814d); //  12.91%
+	InitDS_Sel(0xd120404c); //   8.42%
+
+	// hyper street fighter 2 anniversary edition
+
+	InitDS_Sel(0xc8804060); //  27.72%
+	InitDS_Sel(0xc88391e0); //  70.48%
+	InitDS_Sel(0xc88791e0); //  16.48%
 
 	// aura for laura
 
-	InitDS_Sel(0x1fe04070); // 269.55%
-	InitDS_Sel(0x1fe19050); //   8.51%
-	InitDS_Sel(0x1fe38070); //  26.29%
-	InitDS_Sel(0x1fe68070); //  18.16%
-	InitDS_Sel(0x1fe6904c); //   9.38%
-	InitDS_Sel(0x1fe78050); //  13.57%
-	InitDS_Sel(0x1fe78070); // 102.99%
-	InitDS_Sel(0x1fe79070); //  53.21%
-	InitDS_Sel(0x1fefb04c); //  16.50%
-	InitDS_Sel(0x4523804c); // 115.55%
-	InitDS_Sel(0x48839050); //  14.89%
-	InitDS_Sel(0x49058050); // 321.36%
-	InitDS_Sel(0x4c818050); //  46.00%
-	InitDS_Sel(0x55204050); //  24.81%
+	InitDS_Sel(0x1fe04070); //  89.38%
+	InitDS_Sel(0x1fe38070); //  29.97%
+	InitDS_Sel(0x1fe3904c); //  18.79%
+	InitDS_Sel(0x1fe39050); //   5.48%
+	InitDS_Sel(0x1fe68070); //  18.85%
+	InitDS_Sel(0x1fe6904c); //  10.03%
+	InitDS_Sel(0x1fe79070); //  73.43%
+	InitDS_Sel(0x1fefb04c); //  17.16%
+	InitDS_Sel(0x9fe19050); //   7.40%
+	InitDS_Sel(0x9fe78050); //  11.67%
+	InitDS_Sel(0xc523804c); //  78.85%
+	InitDS_Sel(0xcc818050); //  45.96%
 
 	#endif
 }
@@ -2575,6 +2670,45 @@ IDrawScanline::DrawScanlinePtr GSDrawScanline::GSDrawScanlineMap::GetDefaultFunc
 	sel.dw = dw;
 
 	return m_default[sel.fpsm][sel.zpsm][sel.ztst][sel.iip];
+}
+
+void GSDrawScanline::GSDrawScanlineMap::PrintStats()
+{
+	__super::PrintStats();
+
+	if(FILE* fp = fopen("c:\\1.txt", "w"))
+	{
+		POSITION pos = m_map_active.GetHeadPosition();
+
+		while(pos)
+		{
+			DWORD dw;
+			ActivePtr* p;
+			
+			m_map_active.GetNextAssoc(pos, dw, p);
+
+			if(m_map.Lookup(dw))
+			{
+				continue;
+			}
+
+			GSScanlineSelector sel;
+
+			sel.dw = dw;
+
+			if(p->frames > 30 && !sel.IsSolidRect())
+			{
+				int tpf = (int)((p->ticks / p->frames) * 10000 / (3000000000 / 60)); // 3 GHz, 60 fps
+
+				if(tpf >= 500)
+				{
+					_ftprintf(fp, _T("InitDS_Sel(0x%08x); // %6.2f%%\n"), sel.dw, (float)tpf / 100);
+				}
+			}
+		}
+
+		fclose(fp);
+	}
 }
 
 //
