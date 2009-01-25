@@ -30,18 +30,7 @@ GSRendererHW9::GSRendererHW9(BYTE* base, bool mt, void (*irq)(), int nloophack, 
 	m_fba.enabled = !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("fba"), TRUE);
 	m_logz = !!AfxGetApp()->GetProfileInt(_T("Settings"), _T("logz"), FALSE);
 
-	m_fpAddVertexHandlers[0][0] = (AddVertexHandler)&GSRendererHW9::AddVertex<0, 0>;
-	m_fpAddVertexHandlers[0][1] = (AddVertexHandler)&GSRendererHW9::AddVertex<0, 0>;
-	m_fpAddVertexHandlers[1][0] = (AddVertexHandler)&GSRendererHW9::AddVertex<1, 0>;
-	m_fpAddVertexHandlers[1][1] = (AddVertexHandler)&GSRendererHW9::AddVertex<1, 1>;
-
-	m_fpAddPrimHandlers[GS_POINTLIST] = (AddPrimHandler)&GSRendererHW9::AddPrim<GS_POINT_CLASS>;
-	m_fpAddPrimHandlers[GS_LINELIST] = (AddPrimHandler)&GSRendererHW9::AddPrim<GS_LINE_CLASS>;
-	m_fpAddPrimHandlers[GS_LINESTRIP] = (AddPrimHandler)&GSRendererHW9::AddPrim<GS_LINE_CLASS>;
-	m_fpAddPrimHandlers[GS_TRIANGLELIST] = (AddPrimHandler)&GSRendererHW9::AddPrim<GS_TRIANGLE_CLASS>;
-	m_fpAddPrimHandlers[GS_TRIANGLESTRIP] = (AddPrimHandler)&GSRendererHW9::AddPrim<GS_TRIANGLE_CLASS>;
-	m_fpAddPrimHandlers[GS_TRIANGLEFAN] = (AddPrimHandler)&GSRendererHW9::AddPrim<GS_TRIANGLE_CLASS>;
-	m_fpAddPrimHandlers[GS_SPRITE] = (AddPrimHandler)&GSRendererHW9::AddPrim<GS_SPRITE_CLASS>;
+	InitVertexKick<GSRendererHW9>();
 }
 
 bool GSRendererHW9::Create(LPCTSTR title)
@@ -85,8 +74,8 @@ bool GSRendererHW9::Create(LPCTSTR title)
 	return true;
 }
 
-template<DWORD tme, DWORD fst>
-void GSRendererHW9::AddVertex()
+template<DWORD prim, DWORD tme, DWORD fst> 
+void GSRendererHW9::VertexKick(bool skip)
 {
 	Vertex& dst = m_vl.AddTail();
 
@@ -110,65 +99,73 @@ void GSRendererHW9::AddVertex()
 			dst.p.w = m_v.RGBAQ.Q;
 		}
 	}
-}
 
-template<int primclass>
-void GSRendererHW9::AddPrim(Vertex* v, DWORD& count)
-{
-	GSVector4 scissor = m_context->scissor.dx9;
-
-	GSVector4 pmin, pmax;
-
-	switch(primclass)
+	DWORD count = 0;
+	
+	if(Vertex* v = DrawingKick<prim>(skip, count))
 	{
-	case GS_POINT_CLASS:
-		pmin = v[0].p;
-		pmax = v[0].p;
-		break;
-	case GS_LINE_CLASS:
-	case GS_SPRITE_CLASS:
-		pmin = v[0].p.minv(v[1].p);
-		pmax = v[0].p.maxv(v[1].p);
-		break;
-	case GS_TRIANGLE_CLASS:
-		pmin = v[0].p.minv(v[1].p).minv(v[2].p);
-		pmax = v[0].p.maxv(v[1].p).maxv(v[2].p);
-		break;
-	}
+		GSVector4 scissor = m_context->scissor.dx9;
 
-	GSVector4 test = (pmax < scissor) | (pmin > scissor.zwxy());
+		GSVector4 pmin, pmax;
 
-	if(test.mask() & 3)
-	{
-		count = 0;
-		return;
-	}
+		switch(prim)
+		{
+		case GS_POINTLIST:
+			pmin = v[0].p;
+			pmax = v[0].p;
+			break;
+		case GS_LINELIST:
+		case GS_LINESTRIP:
+		case GS_SPRITE:
+			pmin = v[0].p.minv(v[1].p);
+			pmax = v[0].p.maxv(v[1].p);
+			break;
+		case GS_TRIANGLELIST:
+		case GS_TRIANGLESTRIP:
+		case GS_TRIANGLEFAN:
+			pmin = v[0].p.minv(v[1].p).minv(v[2].p);
+			pmax = v[0].p.maxv(v[1].p).maxv(v[2].p);
+			break;
+		}
 
-	switch(primclass)
-	{
-	case GS_POINT_CLASS:
-		break;
-	case GS_LINE_CLASS:
-		if(PRIM->IIP == 0) {v[0].c0 = v[1].c0;}
-		break;
-	case GS_SPRITE_CLASS:
-		if(PRIM->IIP == 0) {v[0].c0 = v[1].c0;}
-		v[0].p.z = v[1].p.z;
-		v[0].p.w = v[1].p.w;
-		v[0].c1 = v[1].c1;
-		v[2] = v[1];
-		v[3] = v[1];
-		v[1].p.y = v[0].p.y;
-		v[1].t.y = v[0].t.y;
-		v[2].p.x = v[0].p.x;
-		v[2].t.x = v[0].t.x;
-		v[4] = v[1];
-		v[5] = v[2];
-		count += 4;
-		break;
-	case GS_TRIANGLE_CLASS:
-		if(PRIM->IIP == 0) {v[0].c0 = v[1].c0 = v[2].c0;}
-		break;
+		GSVector4 test = (pmax < scissor) | (pmin > scissor.zwxy());
+
+		if(test.mask() & 3)
+		{
+			return;
+		}
+
+		switch(prim)
+		{
+		case GS_POINTLIST:
+			break;
+		case GS_LINELIST:
+		case GS_LINESTRIP:
+			if(PRIM->IIP == 0) {v[0].c0 = v[1].c0;}
+			break;
+		case GS_TRIANGLELIST:
+		case GS_TRIANGLESTRIP:
+		case GS_TRIANGLEFAN:
+			if(PRIM->IIP == 0) {v[0].c0 = v[1].c0 = v[2].c0;}
+			break;
+		case GS_SPRITE:
+			if(PRIM->IIP == 0) {v[0].c0 = v[1].c0;}
+			v[0].p.z = v[1].p.z;
+			v[0].p.w = v[1].p.w;
+			v[0].c1 = v[1].c1;
+			v[2] = v[1];
+			v[3] = v[1];
+			v[1].p.y = v[0].p.y;
+			v[1].t.y = v[0].t.y;
+			v[2].p.x = v[0].p.x;
+			v[2].t.x = v[0].t.x;
+			v[4] = v[1];
+			v[5] = v[2];
+			count += 4;
+			break;
+		}
+
+		m_count += count;
 	}
 }
 

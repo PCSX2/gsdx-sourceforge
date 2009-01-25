@@ -27,18 +27,7 @@
 GSRendererHW10::GSRendererHW10(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs)
 	: GSRendererHW<Device, Vertex, TextureCache>(base, mt, irq, nloophack, rs, true)
 {
-	m_fpAddVertexHandlers[0][0] = (AddVertexHandler)&GSRendererHW10::AddVertex<0, 0>;
-	m_fpAddVertexHandlers[0][1] = (AddVertexHandler)&GSRendererHW10::AddVertex<0, 0>;
-	m_fpAddVertexHandlers[1][0] = (AddVertexHandler)&GSRendererHW10::AddVertex<1, 0>;
-	m_fpAddVertexHandlers[1][1] = (AddVertexHandler)&GSRendererHW10::AddVertex<1, 1>;
-
-	m_fpAddPrimHandlers[GS_POINTLIST] = (AddPrimHandler)&GSRendererHW10::AddPrim<GS_POINT_CLASS>;
-	m_fpAddPrimHandlers[GS_LINELIST] = (AddPrimHandler)&GSRendererHW10::AddPrim<GS_LINE_CLASS>;
-	m_fpAddPrimHandlers[GS_LINESTRIP] = (AddPrimHandler)&GSRendererHW10::AddPrim<GS_LINE_CLASS>;
-	m_fpAddPrimHandlers[GS_TRIANGLELIST] = (AddPrimHandler)&GSRendererHW10::AddPrim<GS_TRIANGLE_CLASS>;
-	m_fpAddPrimHandlers[GS_TRIANGLESTRIP] = (AddPrimHandler)&GSRendererHW10::AddPrim<GS_TRIANGLE_CLASS>;
-	m_fpAddPrimHandlers[GS_TRIANGLEFAN] = (AddPrimHandler)&GSRendererHW10::AddPrim<GS_TRIANGLE_CLASS>;
-	m_fpAddPrimHandlers[GS_SPRITE] = (AddPrimHandler)&GSRendererHW10::AddPrim<GS_SPRITE_CLASS>;
+	InitVertexKick<GSRendererHW10>();
 }
 
 bool GSRendererHW10::Create(LPCTSTR title)
@@ -81,8 +70,8 @@ bool GSRendererHW10::Create(LPCTSTR title)
 	return true;
 }
 
-template<DWORD tme, DWORD fst>
-void GSRendererHW10::AddVertex()
+template<DWORD prim, DWORD tme, DWORD fst> 
+void GSRendererHW10::VertexKick(bool skip)
 {
 	Vertex& dst = m_vl.AddTail();
 
@@ -93,86 +82,91 @@ void GSRendererHW10::AddVertex()
 	{
 		GSVector4::storel(&dst.ST, m_v.GetUV());
 	}
-}
 
-template<int primclass>
-void GSRendererHW10::AddPrim(Vertex* v, DWORD& count)
-{
-	GSVector4i scissor = m_context->scissor.dx10;
-
-	#if _M_SSE >= 0x401
-
-	GSVector4i pmin, pmax, v0, v1, v2;
-
-	switch(primclass)
+	DWORD count = 0;
+	
+	if(Vertex* v = DrawingKick<prim>(skip, count))
 	{
-	case GS_POINT_CLASS:
-		v0 = GSVector4i::load((int)v[0].p.xy).upl16();
-		pmin = v0;
-		pmax = v0;
-		break;
-	case GS_LINE_CLASS:
-	case GS_SPRITE_CLASS:
-		v0 = GSVector4i::load((int)v[0].p.xy);
-		v1 = GSVector4i::load((int)v[1].p.xy);
-		pmin = v0.min_u16(v1).upl16();
-		pmax = v0.max_u16(v1).upl16();
-		break;
-	case GS_TRIANGLE_CLASS:
-		v0 = GSVector4i::load((int)v[0].p.xy);
-		v1 = GSVector4i::load((int)v[1].p.xy);
-		v2 = GSVector4i::load((int)v[2].p.xy);
-		pmin = v0.min_u16(v1).min_u16(v2).upl16();
-		pmax = v0.max_u16(v1).max_u16(v2).upl16();
-		break;
-	}
+		GSVector4i scissor = m_context->scissor.dx10;
 
-	GSVector4i test = (pmax < scissor) | (pmin > scissor.zwxy());
+		#if _M_SSE >= 0x401
 
-	if(test.mask() & 0xff)
-	{
-		count = 0;
-		return;
-	}
+		GSVector4i pmin, pmax, v0, v1, v2;
 
-	#else
-
-	switch(primclass)
-	{
-	case GS_POINT_CLASS:
-		if(v[0].p.x < scissor.x 
-		|| v[0].p.x > scissor.z
-		|| v[0].p.y < scissor.y 
-		|| v[0].p.y > scissor.w)
+		switch(prim)
 		{
-			count = 0;
+		case GS_POINTLIST:
+			v0 = GSVector4i::load((int)v[0].p.xy).upl16();
+			pmin = v0;
+			pmax = v0;
+			break;
+		case GS_LINELIST:
+		case GS_LINESTRIP:
+		case GS_SPRITE:
+			v0 = GSVector4i::load((int)v[0].p.xy);
+			v1 = GSVector4i::load((int)v[1].p.xy);
+			pmin = v0.min_u16(v1).upl16();
+			pmax = v0.max_u16(v1).upl16();
+			break;
+		case GS_TRIANGLELIST:
+		case GS_TRIANGLESTRIP:
+		case GS_TRIANGLEFAN:
+			v0 = GSVector4i::load((int)v[0].p.xy);
+			v1 = GSVector4i::load((int)v[1].p.xy);
+			v2 = GSVector4i::load((int)v[2].p.xy);
+			pmin = v0.min_u16(v1).min_u16(v2).upl16();
+			pmax = v0.max_u16(v1).max_u16(v2).upl16();
+			break;
+		}
+
+		GSVector4i test = (pmax < scissor) | (pmin > scissor.zwxy());
+
+		if(test.mask() & 0xff)
+		{
 			return;
 		}
-		break;
-	case GS_LINE_CLASS:
-	case GS_SPRITE_CLASS:
-		if(v[0].p.x < scissor.x && v[1].p.x < scissor.x
-		|| v[0].p.x > scissor.z && v[1].p.x > scissor.z
-		|| v[0].p.y < scissor.y && v[1].p.y < scissor.y
-		|| v[0].p.y > scissor.w && v[1].p.y > scissor.w)
-		{
-			count = 0;
-			return;
-		}
-		break;
-	case GS_TRIANGLE_CLASS:
-		if(v[0].p.x < scissor.x && v[1].p.x < scissor.x && v[2].p.x < scissor.x
-		|| v[0].p.x > scissor.z && v[1].p.x > scissor.z && v[2].p.x > scissor.z
-		|| v[0].p.y < scissor.y && v[1].p.y < scissor.y && v[2].p.y < scissor.y
-		|| v[0].p.y > scissor.w && v[1].p.y > scissor.w && v[2].p.y > scissor.w)
-		{
-			count = 0;
-			return;
-		}
-		break;
-	}
 
-	#endif
+		#else
+
+		switch(prim)
+		{
+		case GS_POINTLIST:
+			if(v[0].p.x < scissor.x 
+			|| v[0].p.x > scissor.z
+			|| v[0].p.y < scissor.y 
+			|| v[0].p.y > scissor.w)
+			{
+				return;
+			}
+			break;
+		case GS_LINELIST:
+		case GS_LINESTRIP:
+		case GS_SPRITE:
+			if(v[0].p.x < scissor.x && v[1].p.x < scissor.x
+			|| v[0].p.x > scissor.z && v[1].p.x > scissor.z
+			|| v[0].p.y < scissor.y && v[1].p.y < scissor.y
+			|| v[0].p.y > scissor.w && v[1].p.y > scissor.w)
+			{
+				return;
+			}
+			break;
+		case GS_TRIANGLELIST:
+		case GS_TRIANGLESTRIP:
+		case GS_TRIANGLEFAN:
+			if(v[0].p.x < scissor.x && v[1].p.x < scissor.x && v[2].p.x < scissor.x
+			|| v[0].p.x > scissor.z && v[1].p.x > scissor.z && v[2].p.x > scissor.z
+			|| v[0].p.y < scissor.y && v[1].p.y < scissor.y && v[2].p.y < scissor.y
+			|| v[0].p.y > scissor.w && v[1].p.y > scissor.w && v[2].p.y > scissor.w)
+			{
+				return;
+			}
+			break;
+		}
+
+		#endif
+
+		m_count += count;
+	}
 }
 
 void GSRendererHW10::Draw(int prim, Texture& rt, Texture& ds, GSTextureCache<Device>::GSTexture* tex)

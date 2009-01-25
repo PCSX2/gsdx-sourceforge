@@ -201,38 +201,6 @@ protected:
 		}
 	}
 
-	int DrawAsync(GSRasterizer* r)
-	{
-		GSVector4i scissor = GetScissor();
-
-		//
-
-		int prims = 0;
-
-		switch(m_env.PRIM.TYPE)
-		{
-		case GPU_POLYGON:
-			ASSERT(!(m_count % 3));
-			prims = m_count / 3;
-			for(int i = 0, j = m_count; i < j; i += 3) r->DrawTriangle(&m_vertices[i], scissor);
-			break;
-		case GPU_LINE:
-			ASSERT(!(m_count & 1));
-			prims = m_count / 2;
-			for(int i = 0, j = m_count; i < j; i += 2) r->DrawLine(&m_vertices[i], scissor);
-			break;
-		case GPU_SPRITE:
-			ASSERT(!(m_count & 1));
-			prims = m_count / 2;
-			for(int i = 0, j = m_count; i < j; i += 2) r->DrawSprite(&m_vertices[i], scissor, false);
-			break;
-		default:
-			__assume(0);
-		}
-
-		return prims;
-	}
-
 public:
 	GPURendererSW(const GPURendererSettings& rs, int threads)
 		: GPURenderer(rs)

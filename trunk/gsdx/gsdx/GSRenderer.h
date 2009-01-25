@@ -480,7 +480,12 @@ protected:
 				  PRIM->TME ? (int)m_context->TEX0.PSM : 0xff);
 			*/
 
-			Draw();
+			if(GSUtil::EncodePSM(m_context->FRAME.PSM) != 3 && GSUtil::EncodePSM(m_context->ZBUF.PSM) != 3)
+			{
+				// FIXME: berserk fpsm = 27 (8H)
+
+				Draw();
+			}
 
 			m_count = 0;
 		}
@@ -493,12 +498,8 @@ protected:
 		m_maxcount -= 100;
 	}
 
-	template<DWORD prim> void VertexKick(bool skip)
+	template<DWORD prim> __forceinline Vertex* DrawingKick(bool skip, DWORD& count)
 	{
-		(this->*m_fpAddVertexHandlers[PRIM->TME][PRIM->FST])();
-
-		DWORD count = 0;
-
 		switch(prim)
 		{
 		case GS_POINTLIST: count = 1; break;
@@ -514,7 +515,7 @@ protected:
 
 		if(m_vl.GetCount() < count)
 		{
-			return;
+			return NULL;
 		}
 
 		if(m_count >= m_maxcount)
@@ -566,29 +567,15 @@ protected:
 		case GS_INVALID:
 			ASSERT(0);
 			m_vl.RemoveAll();
-			return;
+			return NULL;
 		default:
 			__assume(0);
 		}
 
-		if(!skip)
-		{
-			(this->*m_fpAddPrimHandlers[prim])(v, count);
-
-			m_count += count;
-		}
+		return !skip ? v : NULL;
 	}
 
 	virtual void Draw() = 0;
-
-	typedef void (GSRendererT<Device, Vertex>::*AddVertexHandler)();
-	typedef void (GSRendererT<Device, Vertex>::*AddPrimHandler)(Vertex* v, DWORD& count);
-
-	AddVertexHandler m_fpAddVertexHandlers[2][2];
-	AddPrimHandler m_fpAddPrimHandlers[8];
-
-	void AddVertexNull() {ASSERT(0);}
-	void AddPrimNull(Vertex* v, DWORD& count) {ASSERT(0);}
 
 public:
 	GSRendererT(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs, bool psrr = true)
@@ -597,24 +584,6 @@ public:
 		, m_maxcount(0)
 		, m_vertices(NULL)
 	{
-		m_fpVertexKickHandlers[GS_POINTLIST] = (VertexKickHandler)&GSRendererT<Device, Vertex>::VertexKick<GS_POINTLIST>;
-		m_fpVertexKickHandlers[GS_LINELIST] = (VertexKickHandler)&GSRendererT<Device, Vertex>::VertexKick<GS_LINELIST>;
-		m_fpVertexKickHandlers[GS_LINESTRIP] = (VertexKickHandler)&GSRendererT<Device, Vertex>::VertexKick<GS_LINESTRIP>;
-		m_fpVertexKickHandlers[GS_TRIANGLELIST] = (VertexKickHandler)&GSRendererT<Device, Vertex>::VertexKick<GS_TRIANGLELIST>;
-		m_fpVertexKickHandlers[GS_TRIANGLESTRIP] = (VertexKickHandler)&GSRendererT<Device, Vertex>::VertexKick<GS_TRIANGLESTRIP>;
-		m_fpVertexKickHandlers[GS_TRIANGLEFAN] = (VertexKickHandler)&GSRendererT<Device, Vertex>::VertexKick<GS_TRIANGLEFAN>;
-		m_fpVertexKickHandlers[GS_SPRITE] = (VertexKickHandler)&GSRendererT<Device, Vertex>::VertexKick<GS_SPRITE>;
-		m_fpVertexKickHandlers[GS_INVALID] = (VertexKickHandler)&GSRendererT<Device, Vertex>::VertexKick<GS_INVALID>;
-
-		m_fpAddVertexHandlers[0][0] = &GSRendererT<Device, Vertex>::AddVertexNull;
-		m_fpAddVertexHandlers[0][1] = &GSRendererT<Device, Vertex>::AddVertexNull;
-		m_fpAddVertexHandlers[1][0] = &GSRendererT<Device, Vertex>::AddVertexNull;
-		m_fpAddVertexHandlers[1][1] = &GSRendererT<Device, Vertex>::AddVertexNull;
-
-		for(int i = 0; i < countof(m_fpAddPrimHandlers); i++)
-		{
-			m_fpAddPrimHandlers[i] = &GSRendererT<Device, Vertex>::AddPrimNull;
-		}
 	}
 
 	~GSRendererT()

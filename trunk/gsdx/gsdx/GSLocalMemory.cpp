@@ -417,7 +417,7 @@ GSLocalMemory::Offset* GSLocalMemory::GetOffset(DWORD bp, DWORD bw, DWORD psm)
 {
 	if(bw == 0) {ASSERT(0); return NULL;}
 
-	ASSERT(m_psm[psm].trbpp > 8); // only for 16/24/32/8h/4hh/4hl formats where all columns are the same
+	ASSERT(m_psm[psm].bpp > 8); // only for 16/24/32/8h/4hh/4hl formats where all columns are the same
 
 	DWORD hash = bp | (bw << 14) | (psm << 20);
 
@@ -459,11 +459,14 @@ GSLocalMemory::Offset4* GSLocalMemory::GetOffset4(const GIFRegFRAME& FRAME, cons
 	DWORD zpsm = ZBUF.PSM;
 	DWORD bw = FRAME.FBW;
 
-	ASSERT(m_psm[fpsm].bpp > 8 || m_psm[zpsm].bpp > 8);
+	ASSERT(m_psm[fpsm].trbpp > 8 || m_psm[zpsm].trbpp > 8);
 
-	// "(psm & 3) | (psm >> 3)" makes 4 bit unique identifiers for render target formats (only)
+	// "(psm & 0x0f) ^ ((psm & 0xf0) >> 2)" creates 4 bit unique identifiers for render target formats (only)
 
-	DWORD hash = (FRAME.FBP << 0) | (ZBUF.ZBP << 9) | (bw << 18) | (((fpsm & 3) | (fpsm >> 3)) << 24) | (((zpsm & 3) | (zpsm >> 3)) << 28);
+	DWORD fpsm_hash = (fpsm & 0x0f) ^ ((fpsm & 0x30) >> 2);
+	DWORD zpsm_hash = (zpsm & 0x0f) ^ ((zpsm & 0x30) >> 2);
+
+	DWORD hash = (FRAME.FBP << 0) | (ZBUF.ZBP << 9) | (bw << 18) | (fpsm_hash << 24) | (zpsm_hash << 28);
 
 	if(CRBMap<DWORD, Offset4*>::CPair* pair = m_o4map.Lookup(hash))
 	{

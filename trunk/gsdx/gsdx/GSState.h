@@ -125,13 +125,59 @@ class GSState : public GSAlignedClass<16>
 protected:
 	bool IsBadFrame(int& skip);
 
-	typedef void (GSState::*VertexKickHandler)(bool skip);
+	typedef void (GSState::*VertexKickPtr)(bool skip);
 
-	VertexKickHandler m_fpVertexKickHandlers[8];
+	VertexKickPtr m_vk[8][2][2];
+	VertexKickPtr m_vkf;
+
+	template<class T> void InitVertexKick()
+	{
+		m_vk[GS_POINTLIST][0][0] = (VertexKickPtr)&T::VertexKick<GS_POINTLIST, 0, 0>;
+		m_vk[GS_POINTLIST][0][1] = (VertexKickPtr)&T::VertexKick<GS_POINTLIST, 0, 0>;
+		m_vk[GS_POINTLIST][1][0] = (VertexKickPtr)&T::VertexKick<GS_POINTLIST, 1, 0>;
+		m_vk[GS_POINTLIST][1][1] = (VertexKickPtr)&T::VertexKick<GS_POINTLIST, 1, 1>;
+
+		m_vk[GS_LINELIST][0][0] = (VertexKickPtr)&T::VertexKick<GS_LINELIST, 0, 0>;
+		m_vk[GS_LINELIST][0][1] = (VertexKickPtr)&T::VertexKick<GS_LINELIST, 0, 0>;
+		m_vk[GS_LINELIST][1][0] = (VertexKickPtr)&T::VertexKick<GS_LINELIST, 1, 0>;
+		m_vk[GS_LINELIST][1][1] = (VertexKickPtr)&T::VertexKick<GS_LINELIST, 1, 1>;
+
+		m_vk[GS_LINESTRIP][0][0] = (VertexKickPtr)&T::VertexKick<GS_LINESTRIP, 0, 0>;
+		m_vk[GS_LINESTRIP][0][1] = (VertexKickPtr)&T::VertexKick<GS_LINESTRIP, 0, 0>;
+		m_vk[GS_LINESTRIP][1][0] = (VertexKickPtr)&T::VertexKick<GS_LINESTRIP, 1, 0>;
+		m_vk[GS_LINESTRIP][1][1] = (VertexKickPtr)&T::VertexKick<GS_LINESTRIP, 1, 1>;
+
+		m_vk[GS_TRIANGLELIST][0][0] = (VertexKickPtr)&T::VertexKick<GS_TRIANGLELIST, 0, 0>;
+		m_vk[GS_TRIANGLELIST][0][1] = (VertexKickPtr)&T::VertexKick<GS_TRIANGLELIST, 0, 0>;
+		m_vk[GS_TRIANGLELIST][1][0] = (VertexKickPtr)&T::VertexKick<GS_TRIANGLELIST, 1, 0>;
+		m_vk[GS_TRIANGLELIST][1][1] = (VertexKickPtr)&T::VertexKick<GS_TRIANGLELIST, 1, 1>;
+
+		m_vk[GS_TRIANGLESTRIP][0][0] = (VertexKickPtr)&T::VertexKick<GS_TRIANGLESTRIP, 0, 0>;
+		m_vk[GS_TRIANGLESTRIP][0][1] = (VertexKickPtr)&T::VertexKick<GS_TRIANGLESTRIP, 0, 0>;
+		m_vk[GS_TRIANGLESTRIP][1][0] = (VertexKickPtr)&T::VertexKick<GS_TRIANGLESTRIP, 1, 0>;
+		m_vk[GS_TRIANGLESTRIP][1][1] = (VertexKickPtr)&T::VertexKick<GS_TRIANGLESTRIP, 1, 1>;
+
+		m_vk[GS_TRIANGLEFAN][0][0] = (VertexKickPtr)&T::VertexKick<GS_TRIANGLEFAN, 0, 0>;
+		m_vk[GS_TRIANGLEFAN][0][1] = (VertexKickPtr)&T::VertexKick<GS_TRIANGLEFAN, 0, 0>;
+		m_vk[GS_TRIANGLEFAN][1][0] = (VertexKickPtr)&T::VertexKick<GS_TRIANGLEFAN, 1, 0>;
+		m_vk[GS_TRIANGLEFAN][1][1] = (VertexKickPtr)&T::VertexKick<GS_TRIANGLEFAN, 1, 1>;
+
+		m_vk[GS_SPRITE][0][0] = (VertexKickPtr)&T::VertexKick<GS_SPRITE, 0, 0>;
+		m_vk[GS_SPRITE][0][1] = (VertexKickPtr)&T::VertexKick<GS_SPRITE, 0, 0>;
+		m_vk[GS_SPRITE][1][0] = (VertexKickPtr)&T::VertexKick<GS_SPRITE, 1, 0>;
+		m_vk[GS_SPRITE][1][1] = (VertexKickPtr)&T::VertexKick<GS_SPRITE, 1, 1>;
+	}
+
+	void UpdateVertexKick()
+	{
+		m_vkf = m_vk[PRIM->PRIM][PRIM->TME][PRIM->FST];
+
+		ASSERT(m_vkf != NULL);
+	}
 
 	void VertexKick(bool skip)
 	{
-		(this->*m_fpVertexKickHandlers[PRIM->PRIM])(skip);
+		(this->*m_vkf)(skip);
 	}
 
 public:

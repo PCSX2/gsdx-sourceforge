@@ -27,15 +27,6 @@
 template<class Device> class GSRendererNull : public GSRendererT<Device, GSVertexNull>
 {
 protected:
-	void AddVertex()
-	{
-	}
-
-	void AddPrim(GSVertexNull* v, DWORD& count)
-	{
-		m_perfmon.Put(GSPerfMon::Prim, 1);
-	}
-
 	void Draw() 
 	{
 	}
@@ -49,14 +40,10 @@ public:
 	GSRendererNull(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs)
 		: GSRendererT<Device, GSVertexNull>(base, mt, irq, nloophack, rs)
 	{
-		m_fpAddVertexHandlers[0][0] = (AddVertexHandler)&GSRendererNull::AddVertex;
-		m_fpAddVertexHandlers[0][1] = (AddVertexHandler)&GSRendererNull::AddVertex;
-		m_fpAddVertexHandlers[1][0] = (AddVertexHandler)&GSRendererNull::AddVertex;
-		m_fpAddVertexHandlers[1][1] = (AddVertexHandler)&GSRendererNull::AddVertex;
+		InitVertexKick<GSRendererNull<Device> >();
+	}
 
-		for(int i = 0; i < countof(m_fpAddPrimHandlers); i++)
-		{
-			m_fpAddPrimHandlers[i] = (AddPrimHandler)&GSRendererNull::AddPrim;
-		}
+	template<DWORD prim, DWORD tme, DWORD fst> void VertexKick(bool skip)
+	{
 	}
 };
