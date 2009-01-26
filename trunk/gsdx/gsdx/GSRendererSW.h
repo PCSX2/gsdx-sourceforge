@@ -247,12 +247,10 @@ protected:
 		return true;
 	}
 
-	void GetScanlineParam(GSScanlineParam& p)
+	void GetScanlineParam(GSScanlineParam& p, GS_PRIM_CLASS primclass)
 	{
 		const GSDrawingEnvironment& env = m_env;
 		const GSDrawingContext* context = m_context;
-		const GS_PRIM prim = (GS_PRIM)PRIM->PRIM;
-		const GS_PRIM_CLASS primclass = GSUtil::GetPrimClass(prim);
 
 		p.vm = m_mem.m_vm32;
 
@@ -350,7 +348,7 @@ protected:
 							m_vtrace.max.t *= w;
 						}
 					}
-					else if(prim == GS_SPRITE)
+					else if(primclass == GS_SPRITE_CLASS)
 					{
 						p.sel.fst = 1;
 
@@ -486,9 +484,11 @@ protected:
 	{
 		m_vtrace.Update();
 
+		GS_PRIM_CLASS primclass = GSUtil::GetPrimClass(PRIM->PRIM);
+
 		GSScanlineParam p;
 
-		GetScanlineParam(p);
+		GetScanlineParam(p, primclass);
 
 		if((p.fm & p.zm) != 0xffffffff)
 		{
@@ -507,7 +507,7 @@ protected:
 
 			data.scissor = GSVector4i(m_context->scissor.in);
 			data.scissor.z = min(data.scissor.z, (int)m_context->FRAME.FBW * 64); // TODO: find a game that overflows and check which one is the right behaviour
-			data.primclass = GSUtil::GetPrimClass(PRIM->PRIM);
+			data.primclass = primclass;
 			data.vertices = m_vertices;
 			data.count = m_count;
 			data.param = &p;
