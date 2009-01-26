@@ -2568,6 +2568,22 @@ GSDrawScanline::GSDrawScanlineMap::GSDrawScanlineMap()
 
 	// xenosaga
 
+	InitDS_Sel(0x1fe38054); //  60.59%
+	InitDS_Sel(0x1fe38074); //  25.26%
+	InitDS_Sel(0x4c468064); //  23.70%
+	InitDS_Sel(0x4c818134); //   7.20%
+	InitDS_Sel(0x4c868864); //  11.57%
+	InitDS_Sel(0x4c938064); //  53.69%
+	InitDS_Sel(0x4d004864); //   8.70%
+	InitDS_Sel(0x4d084864); //  13.85%
+	InitDS_Sel(0x5fe04074); //  52.81%
+	InitDS_Sel(0x9fe19074); //  16.94%
+	InitDS_Sel(0x9fe39174); //  21.89%
+	InitDS_Sel(0xcc819074); //  20.62%
+	InitDS_Sel(0xcc839074); //  26.80%
+	InitDS_Sel(0xd5204064); //  14.16%
+	InitDS_Sel(0xdfe04074); //  14.86%
+
 	// mgs3s1
 
 	InitDS_Sel(0x484e8864); //  14.51%
