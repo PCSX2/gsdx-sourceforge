@@ -166,13 +166,21 @@ protected:
 		m_vk[GS_SPRITE][0][1] = (VertexKickPtr)&T::VertexKick<GS_SPRITE, 0, 0>;
 		m_vk[GS_SPRITE][1][0] = (VertexKickPtr)&T::VertexKick<GS_SPRITE, 1, 0>;
 		m_vk[GS_SPRITE][1][1] = (VertexKickPtr)&T::VertexKick<GS_SPRITE, 1, 1>;
+
+		m_vk[GS_INVALID][0][0] = &GSState::VertexKickNull;
+		m_vk[GS_INVALID][0][1] = &GSState::VertexKickNull;
+		m_vk[GS_INVALID][1][0] = &GSState::VertexKickNull;
+		m_vk[GS_INVALID][1][1] = &GSState::VertexKickNull;
 	}
 
 	void UpdateVertexKick()
 	{
 		m_vkf = m_vk[PRIM->PRIM][PRIM->TME][PRIM->FST];
+	}
 
-		ASSERT(m_vkf != NULL);
+	void VertexKickNull(bool skip)
+	{
+		ASSERT(0);
 	}
 
 	void VertexKick(bool skip)
