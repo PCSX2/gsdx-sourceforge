@@ -686,6 +686,59 @@ protected:
 		r &= CRect(0, 0, w, h);
 	}
 
+	template<int i0, int i1, int i2, int i3>
+	static bool IsQuad(GSVertexSW* v)
+	{
+		GSVector4 v0 = v[i0].p.xyxy(v[i0].t);
+		GSVector4 v1 = v[i1].p.xyxy(v[i1].t);
+		GSVector4 v2 = v[i2].p.xyxy(v[i2].t);
+		GSVector4 v3 = v[i3].p.xyxy(v[i3].t);
+
+		GSVector4 v4 = v0 == v1;
+		GSVector4 v5 = v0 == v2;
+		GSVector4 v6 = v3 == v1;
+		GSVector4 v7 = v3 == v2;
+
+		v1 = (v4 ^ v5) & (v6 ^ v7);
+		v2 = (v4 ^ v5.zwxy()) & (v6 ^ v7.zwxy());
+
+		if((v1 & v2 & (v0 != v3)).alltrue())
+		{
+			v0 = v[i0].p.zwzw(v[i0].t);
+			v1 = v[i1].p.zwzw(v[i1].t);
+			v2 = v[i2].p.zwzw(v[i2].t);
+			v3 = v[i3].p.zwzw(v[i3].t);
+
+			if(((v0 == v1) & (v0 == v2) & (v0 == v3)).alltrue())
+			{
+				v0 = v[i0].c;
+				v1 = v[i1].c;
+				v2 = v[i2].c;
+				v3 = v[i3].c;
+
+				if(((v0 == v1) & (v0 == v2) & (v0 == v3)).alltrue())
+				{
+					/*
+					printf("quad\n");
+
+					for(int i = 0; i < 6; i++)
+					{
+						printf("p = %.3f %.3f %.3f %.3f t = %.3f %.3f %.3f %.3f c = %.0f %.0f %.0f %.0f\n", 
+							v[i].p.x, v[i].p.y, v[i].p.z, v[i].p.w,
+							v[i].t.x, v[i].t.y, v[i].t.z, v[i].t.w,
+							v[i].c.x / 128, v[i].c.y / 128, v[i].c.z / 128, v[i].c.w / 128);
+					}
+					*/
+					
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+
 public:
 	GSRendererSW(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs, int threads)
 		: GSRendererT(base, mt, irq, nloophack, rs)
@@ -826,6 +879,34 @@ public:
 			}
 
 			m_count += count;
+
+			if(m_count == 6)
+			{
+				bool isquad = false;
+
+				switch(prim)
+				{
+				case GS_TRIANGLESTRIP:
+					isquad = IsQuad<0, 1, 2, 5>(m_vertices);
+					break;
+				case GS_TRIANGLEFAN:
+					isquad = IsQuad<1, 0, 2, 5>(m_vertices);
+					break;
+				// TODO: case GS_TRIANGLELIST:
+				}
+
+				if(isquad)
+				{
+					m_vertices[prim == GS_TRIANGLESTRIP ? 1 : 0] = m_vertices[5];
+					m_count = 2;
+					UINT32 tmp = PRIM->PRIM;
+					PRIM->PRIM = GS_SPRITE;
+					Flush();
+					PRIM->PRIM = tmp;
+					m_count = 0;
+					m_perfmon.Put(GSPerfMon::Quad, 1);
+				}
+			}
 		}
 	}
 };
