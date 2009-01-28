@@ -350,11 +350,12 @@ public:
 			double fps = 1000.0f / m_perfmon.Get(GSPerfMon::Frame);
 			
 			s_stats.Format(
-				_T("%I64d | %d x %d | %.2f fps (%d%%) | %s - %s | %s | %d/%d | %d%% CPU | %.2f | %.2f"), 
+				_T("%I64d | %d x %d | %.2f fps (%d%%) | %s - %s | %s | %d/%d/%d | %d%% CPU | %.2f | %.2f"), 
 				m_perfmon.GetFrame(), GetDisplaySize().cx, GetDisplaySize().cy, fps, (int)(100.0 * fps / GetFPS()),
 				SMODE2->INT ? (CString(_T("Interlaced ")) + (SMODE2->FFMD ? _T("(frame)") : _T("(field)"))) : _T("Progressive"),
 				GSSettingsDlg::g_interlace[m_interlace].name,
 				GSSettingsDlg::g_aspectratio[m_aspectratio].name,
+				(int)m_perfmon.Get(GSPerfMon::Quad),
 				(int)m_perfmon.Get(GSPerfMon::Prim),
 				(int)m_perfmon.Get(GSPerfMon::Draw),
 				m_perfmon.CPU(),
