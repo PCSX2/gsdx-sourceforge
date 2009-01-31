@@ -2341,6 +2341,11 @@ public:
 		return _mm_movemask_ps(m) == 0xf;
 	}
 
+	bool allfalse() const
+	{
+		return _mm_movemask_ps(m) == 0;
+	}
+
 	// TODO: insert
 
 	template<int i> int extract() const

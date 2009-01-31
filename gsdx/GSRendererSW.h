@@ -44,8 +44,6 @@ protected:
 
 		m_reset = true;
 
-		m_vtrace.Reset();
-
 		__super::Reset();
 	}
 
@@ -130,7 +128,7 @@ protected:
 		}
 		else if(context->TEST.ATST != ATST_ALWAYS)
 		{
-			GSVector4i af = GSVector4i(m_vtrace.min.c.wwww(m_vtrace.max.c)) >> 7;
+			GSVector4i af = GSVector4i(m_vtrace.m_min.c.wwww(m_vtrace.m_max.c)) >> 7;
 
 			int amin, amax;
 
@@ -297,7 +295,7 @@ protected:
 		{
 			p.sel.fpsm = GSUtil::EncodePSM(context->FRAME.PSM);
 
-			if((primclass == GS_LINE_CLASS || primclass == GS_TRIANGLE_CLASS) && m_vtrace.eq.rgba != 15)
+			if((primclass == GS_LINE_CLASS || primclass == GS_TRIANGLE_CLASS) && m_vtrace.m_eq.rgba != 15)
 			{
 				p.sel.iip = PRIM->IIP;
 			}
@@ -312,7 +310,7 @@ protected:
 
 				if(p.sel.iip == 0 && p.sel.tfx == TFX_MODULATE && p.sel.tcc)
 				{
-					if(m_vtrace.eq.rgba == 15 && (m_vtrace.min.c == GSVector4(128.0f * 128.0f)).alltrue())
+					if(m_vtrace.m_eq.rgba == 15 && (m_vtrace.m_min.c == GSVector4(128.0f * 128.0f)).alltrue())
 					{
 						// modulate does not do anything when vertex color is 0x80
 
@@ -331,7 +329,7 @@ protected:
 
 					GSVertexSW* v = m_vertices;
 
-					if(m_vtrace.eq.q)
+					if(m_vtrace.m_eq.q)
 					{
 						p.sel.fst = 1;
 
@@ -344,8 +342,8 @@ protected:
 								v[i].t *= w;
 							}
 
-							m_vtrace.min.t *= w;
-							m_vtrace.max.t *= w;
+							m_vtrace.m_min.t *= w;
+							m_vtrace.m_max.t *= w;
 						}
 					}
 					else if(primclass == GS_SPRITE_CLASS)
@@ -369,8 +367,8 @@ protected:
 							tmax = tmax.maxv(v0).maxv(v1);
 						}
 
-						m_vtrace.max.t = tmax;
-						m_vtrace.min.t = tmin;
+						m_vtrace.m_max.t = tmax;
+						m_vtrace.m_min.t = tmin;
 					}
 				}
 
@@ -389,8 +387,8 @@ protected:
 							v[i].t -= half;
 						}
 
-						m_vtrace.min.t -= half;
-						m_vtrace.max.t += half;
+						m_vtrace.m_min.t -= half;
+						m_vtrace.m_max.t += half;
 					}
 				}
 				/*
@@ -482,7 +480,7 @@ protected:
 
 	void Draw()
 	{
-		m_vtrace.Update();
+		m_vtrace.Update(m_vertices, m_count);
 
 		GS_PRIM_CLASS primclass = GSUtil::GetPrimClass(PRIM->PRIM);
 
@@ -490,80 +488,80 @@ protected:
 
 		GetScanlineParam(p, primclass);
 
-		if((p.fm & p.zm) != 0xffffffff)
+		if((p.fm & p.zm) == 0xffffffff)
 		{
-			if(s_dump)
-			{
-				CString str;
-				str.Format(_T("c:\\temp1\\_%05d_f%I64d_tex_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), (int)m_context->TEX0.TBP0, (int)m_context->TEX0.PSM);
-				if(PRIM->TME) if(s_save) {m_mem.SaveBMP(str, m_context->TEX0.TBP0, m_context->TEX0.TBW, m_context->TEX0.PSM, 1 << m_context->TEX0.TW, 1 << m_context->TEX0.TH);}
-				str.Format(_T("c:\\temp1\\_%05d_f%I64d_rt0_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), m_context->FRAME.Block(), m_context->FRAME.PSM);
-				if(s_save) {m_mem.SaveBMP(str, m_context->FRAME.Block(), m_context->FRAME.FBW, m_context->FRAME.PSM, GetFrameSize(1).cx, 512);}//GetFrameSize(1).cy);
-				str.Format(_T("c:\\temp1\\_%05d_f%I64d_rz0_%05x_%d.bmp"), s_n-1, m_perfmon.GetFrame(), m_context->ZBUF.Block(), m_context->ZBUF.PSM);
-				if(s_savez) {m_mem.SaveBMP(str, m_context->ZBUF.Block(), m_context->FRAME.FBW, m_context->ZBUF.PSM, GetFrameSize(1).cx, 512);}
-			}
-
-			GSRasterizerData data;
-
-			data.scissor = GSVector4i(m_context->scissor.in);
-			data.scissor.z = min(data.scissor.z, (int)m_context->FRAME.FBW * 64); // TODO: find a game that overflows and check which one is the right behaviour
-			data.primclass = primclass;
-			data.vertices = m_vertices;
-			data.count = m_count;
-			data.param = &p;
-
-			m_rl.Draw(&data);
-
-			GSRasterizerStats stats;
-
-			m_rl.GetStats(stats);
-		
-			m_perfmon.Put(GSPerfMon::Draw, 1);
-			m_perfmon.Put(GSPerfMon::Prim, stats.prims);
-			m_perfmon.Put(GSPerfMon::Fillrate, stats.pixels);
-
-			GSVector4i pos(m_vtrace.min.p.xyxy(m_vtrace.max.p));
-
-			GSVector4i scissor = data.scissor;
-
-			CRect r;
-
-			r.left = max(scissor.x, min(scissor.z, pos.x));
-			r.top = max(scissor.y, min(scissor.w, pos.y));
-			r.right = max(scissor.x, min(scissor.z, pos.z));
-			r.bottom = max(scissor.y, min(scissor.w, pos.w));
-
-			GIFRegBITBLTBUF BITBLTBUF;
-
-			BITBLTBUF.DBW = m_context->FRAME.FBW;
-
-			if(p.fm != 0xffffffff)
-			{
-				BITBLTBUF.DBP = m_context->FRAME.Block();
-				BITBLTBUF.DPSM = m_context->FRAME.PSM;
-
-				m_tc->InvalidateVideoMem(BITBLTBUF, r);
-			}
-
-			if(p.zm != 0xffffffff)
-			{
-				BITBLTBUF.DBP = m_context->ZBUF.Block();
-				BITBLTBUF.DPSM = m_context->ZBUF.PSM;
-
-				m_tc->InvalidateVideoMem(BITBLTBUF, r);
-			}
-
-			if(s_dump)
-			{
-				CString str;
-				str.Format(_T("c:\\temp1\\_%05d_f%I64d_rt1_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), m_context->FRAME.Block(), m_context->FRAME.PSM);
-				if(s_save) {m_mem.SaveBMP(str, m_context->FRAME.Block(), m_context->FRAME.FBW, m_context->FRAME.PSM, GetFrameSize(1).cx, 512);}//GetFrameSize(1).cy);
-				str.Format(_T("c:\\temp1\\_%05d_f%I64d_rz1_%05x_%d.bmp"), s_n-1, m_perfmon.GetFrame(), m_context->ZBUF.Block(), m_context->ZBUF.PSM);
-				if(s_savez) {m_mem.SaveBMP(str, m_context->ZBUF.Block(), m_context->FRAME.FBW, m_context->ZBUF.PSM, GetFrameSize(1).cx, 512);}
-			}
+			return;
 		}
 
-		m_vtrace.Reset();
+		if(s_dump)
+		{
+			CString str;
+			str.Format(_T("c:\\temp1\\_%05d_f%I64d_tex_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), (int)m_context->TEX0.TBP0, (int)m_context->TEX0.PSM);
+			if(PRIM->TME) if(s_save) {m_mem.SaveBMP(str, m_context->TEX0.TBP0, m_context->TEX0.TBW, m_context->TEX0.PSM, 1 << m_context->TEX0.TW, 1 << m_context->TEX0.TH);}
+			str.Format(_T("c:\\temp1\\_%05d_f%I64d_rt0_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), m_context->FRAME.Block(), m_context->FRAME.PSM);
+			if(s_save) {m_mem.SaveBMP(str, m_context->FRAME.Block(), m_context->FRAME.FBW, m_context->FRAME.PSM, GetFrameSize(1).cx, 512);}//GetFrameSize(1).cy);
+			str.Format(_T("c:\\temp1\\_%05d_f%I64d_rz0_%05x_%d.bmp"), s_n-1, m_perfmon.GetFrame(), m_context->ZBUF.Block(), m_context->ZBUF.PSM);
+			if(s_savez) {m_mem.SaveBMP(str, m_context->ZBUF.Block(), m_context->FRAME.FBW, m_context->ZBUF.PSM, GetFrameSize(1).cx, 512);}
+		}
+
+		GSRasterizerData data;
+
+		data.scissor = GSVector4i(m_context->scissor.in);
+		data.scissor.z = min(data.scissor.z, (int)m_context->FRAME.FBW * 64); // TODO: find a game that overflows and check which one is the right behaviour
+		data.primclass = primclass;
+		data.vertices = m_vertices;
+		data.count = m_count;
+		data.param = &p;
+
+		m_rl.Draw(&data);
+
+		GSRasterizerStats stats;
+
+		m_rl.GetStats(stats);
+	
+		m_perfmon.Put(GSPerfMon::Draw, 1);
+		m_perfmon.Put(GSPerfMon::Prim, stats.prims);
+		m_perfmon.Put(GSPerfMon::Fillrate, stats.pixels);
+
+		GSVector4i pos(m_vtrace.m_min.p.xyxy(m_vtrace.m_max.p));
+
+		GSVector4i scissor = data.scissor;
+
+		CRect r;
+
+		r.left = max(scissor.x, min(scissor.z, pos.x));
+		r.top = max(scissor.y, min(scissor.w, pos.y));
+		r.right = max(scissor.x, min(scissor.z, pos.z));
+		r.bottom = max(scissor.y, min(scissor.w, pos.w));
+
+		GIFRegBITBLTBUF BITBLTBUF;
+
+		BITBLTBUF.DBW = m_context->FRAME.FBW;
+
+		if(p.fm != 0xffffffff)
+		{
+			BITBLTBUF.DBP = m_context->FRAME.Block();
+			BITBLTBUF.DPSM = m_context->FRAME.PSM;
+
+			m_tc->InvalidateVideoMem(BITBLTBUF, r);
+		}
+
+		if(p.zm != 0xffffffff)
+		{
+			BITBLTBUF.DBP = m_context->ZBUF.Block();
+			BITBLTBUF.DPSM = m_context->ZBUF.PSM;
+
+			m_tc->InvalidateVideoMem(BITBLTBUF, r);
+		}
+
+		if(s_dump)
+		{
+			CString str;
+			str.Format(_T("c:\\temp1\\_%05d_f%I64d_rt1_%05x_%d.bmp"), s_n++, m_perfmon.GetFrame(), m_context->FRAME.Block(), m_context->FRAME.PSM);
+			if(s_save) {m_mem.SaveBMP(str, m_context->FRAME.Block(), m_context->FRAME.FBW, m_context->FRAME.PSM, GetFrameSize(1).cx, 512);}//GetFrameSize(1).cy);
+			str.Format(_T("c:\\temp1\\_%05d_f%I64d_rz1_%05x_%d.bmp"), s_n-1, m_perfmon.GetFrame(), m_context->ZBUF.Block(), m_context->ZBUF.PSM);
+			if(s_savez) {m_mem.SaveBMP(str, m_context->ZBUF.Block(), m_context->FRAME.FBW, m_context->ZBUF.PSM, GetFrameSize(1).cx, 512);}
+		}
 	}
 
 	void InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, CRect r)
@@ -623,7 +621,7 @@ protected:
 
 		if(fst)
 		{
-			GSVector4i uv = GSVector4i(m_vtrace.min.t.xyxy(m_vtrace.max.t)).sra32(16);
+			GSVector4i uv = GSVector4i(m_vtrace.m_min.t.xyxy(m_vtrace.m_max.t)).sra32(16);
 /*
 			int tw = context->TEX0.TW;
 			int th = context->TEX0.TH;
@@ -685,59 +683,6 @@ protected:
 
 		r &= CRect(0, 0, w, h);
 	}
-
-	template<int i0, int i1, int i2, int i3>
-	static bool IsQuad(GSVertexSW* v)
-	{
-		GSVector4 v0 = v[i0].p.xyxy(v[i0].t);
-		GSVector4 v1 = v[i1].p.xyxy(v[i1].t);
-		GSVector4 v2 = v[i2].p.xyxy(v[i2].t);
-		GSVector4 v3 = v[i3].p.xyxy(v[i3].t);
-
-		GSVector4 v4 = v0 == v1;
-		GSVector4 v5 = v0 == v2;
-		GSVector4 v6 = v3 == v1;
-		GSVector4 v7 = v3 == v2;
-
-		v1 = (v4 ^ v5) & (v6 ^ v7);
-		v2 = (v4 ^ v5.zwxy()) & (v6 ^ v7.zwxy());
-
-		if((v1 & v2 & (v0 != v3)).alltrue())
-		{
-			v0 = v[i0].p.zwzw(v[i0].t);
-			v1 = v[i1].p.zwzw(v[i1].t);
-			v2 = v[i2].p.zwzw(v[i2].t);
-			v3 = v[i3].p.zwzw(v[i3].t);
-
-			if(((v0 == v1) & (v0 == v2) & (v0 == v3)).alltrue())
-			{
-				v0 = v[i0].c;
-				v1 = v[i1].c;
-				v2 = v[i2].c;
-				v3 = v[i3].c;
-
-				if(((v0 == v1) & (v0 == v2) & (v0 == v3)).alltrue())
-				{
-					/*
-					printf("quad\n");
-
-					for(int i = 0; i < 6; i++)
-					{
-						printf("p = %.3f %.3f %.3f %.3f t = %.3f %.3f %.3f %.3f c = %.0f %.0f %.0f %.0f\n", 
-							v[i].p.x, v[i].p.y, v[i].p.z, v[i].p.w,
-							v[i].t.x, v[i].t.y, v[i].t.z, v[i].t.w,
-							v[i].c.x / 128, v[i].c.y / 128, v[i].c.z / 128, v[i].c.w / 128);
-					}
-					*/
-					
-					return true;
-				}
-			}
-		}
-
-		return false;
-	}
-
 
 public:
 	GSRendererSW(BYTE* base, bool mt, void (*irq)(), int nloophack, const GSRendererSettings& rs, int threads)
@@ -842,71 +787,72 @@ public:
 				return;
 			}
 
-			m_vtrace.min.p = m_vtrace.min.p.minv(pmin);
-			m_vtrace.max.p = m_vtrace.max.p.maxv(pmax);
-
 			switch(prim)
 			{
 			case GS_POINTLIST:
-				if(tme) m_vtrace.min.t = m_vtrace.min.t.minv(v[0].t);
-				if(tme) m_vtrace.max.t = m_vtrace.max.t.maxv(v[0].t);
-				m_vtrace.min.c = m_vtrace.min.c.minv(v[0].c);
-				m_vtrace.max.c = m_vtrace.max.c.maxv(v[0].c);
 				break;
 			case GS_LINELIST:
 			case GS_LINESTRIP:
 				if(PRIM->IIP == 0) {v[0].c = v[1].c;}
-				if(tme) m_vtrace.min.t = m_vtrace.min.t.minv(v[0].t).minv(v[1].t);
-				if(tme) m_vtrace.max.t = m_vtrace.max.t.maxv(v[0].t).maxv(v[1].t);
-				m_vtrace.min.c = m_vtrace.min.c.minv(v[0].c).minv(v[1].c);
-				m_vtrace.max.c = m_vtrace.max.c.maxv(v[0].c).maxv(v[1].c);
 				break;
 			case GS_TRIANGLELIST:
 			case GS_TRIANGLESTRIP:
 			case GS_TRIANGLEFAN:
 				if(PRIM->IIP == 0) {v[0].c = v[2].c; v[1].c = v[2].c;}
-				if(tme) m_vtrace.min.t = m_vtrace.min.t.minv(v[0].t).minv(v[1].t.minv(v[2].t));
-				if(tme) m_vtrace.max.t = m_vtrace.max.t.maxv(v[0].t).maxv(v[1].t.maxv(v[2].t));
-				m_vtrace.min.c = m_vtrace.min.c.minv(v[0].c).minv(v[1].c.minv(v[2].c));
-				m_vtrace.max.c = m_vtrace.max.c.maxv(v[0].c).maxv(v[1].c.maxv(v[2].c));
 				break;
 			case GS_SPRITE:
-				if(tme) m_vtrace.min.t = m_vtrace.min.t.minv(v[0].t).minv(v[1].t);
-				if(tme) m_vtrace.max.t = m_vtrace.max.t.maxv(v[0].t).maxv(v[1].t);
-				m_vtrace.min.c = m_vtrace.min.c.minv(v[1].c);
-				m_vtrace.max.c = m_vtrace.max.c.maxv(v[1].c);
 				break;
 			}
 
-			m_count += count;
-
-			if(m_count == 6)
+			if(m_count >= 3 && m_count < 30)
 			{
+				GSVertexSW* v = &m_vertices[m_count - 3];
+
+				int tl = 0;
+				int br = 0;
+
 				bool isquad = false;
 
 				switch(prim)
 				{
 				case GS_TRIANGLESTRIP:
-					isquad = IsQuad<0, 1, 2, 5>(m_vertices);
-					break;
 				case GS_TRIANGLEFAN:
-					isquad = IsQuad<1, 0, 2, 5>(m_vertices);
+				case GS_TRIANGLELIST:
+					isquad = GSVertexSW::IsQuad(v, tl, br);
 					break;
-				// TODO: case GS_TRIANGLELIST:
 				}
 
 				if(isquad)
 				{
-					m_vertices[prim == GS_TRIANGLESTRIP ? 1 : 0] = m_vertices[5];
+					m_count -= 3;
+
+					if(m_count > 0)
+					{
+						tl += m_count;
+						br += m_count;
+
+						Flush();
+					}
+
+					if(tl != 0) m_vertices[0] = m_vertices[tl];
+					if(br != 1) m_vertices[1] = m_vertices[br];
+
 					m_count = 2;
+
 					UINT32 tmp = PRIM->PRIM;
 					PRIM->PRIM = GS_SPRITE;
+
 					Flush();
+
 					PRIM->PRIM = tmp;
-					m_count = 0;
+
 					m_perfmon.Put(GSPerfMon::Quad, 1);
+
+					return;
 				}
 			}
+
+			m_count += count;
 		}
 	}
 };

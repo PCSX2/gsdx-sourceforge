@@ -518,7 +518,7 @@ REG64_(GIFReg, ALPHA)
 	UINT32 FIX:8;
 	UINT32 _PAD2:24;
 REG_END2
-	bool IsOpaque() const {return (A == B || C == 2 && FIX == 0) && D == 0 || (A == 0 && B == 2 && C == 2 && D == 2 && FIX == 0x80);} // output will be Cs/As
+	__forceinline bool IsOpaque() const {return (A == B || C == 2 && FIX == 0) && D == 0 || (A == 0 && B == 2 && C == 2 && D == 2 && FIX == 0x80);} // output will be Cs/As
 REG_END2
 
 REG64_(GIFReg, BITBLTBUF)
