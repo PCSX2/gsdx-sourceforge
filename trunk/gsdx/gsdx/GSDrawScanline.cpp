@@ -21,7 +21,6 @@
 
 // TODO: 
 // - if iip == 0 && tfx == TFX_NONE && fog == 0 && abe a/b/c != 1 => e = (a - b) * c, dst = e + d (simple addus8)
-// - detect and convert quads to sprite
 
 #include "StdAfx.h"
 #include "GSDrawScanline.h"

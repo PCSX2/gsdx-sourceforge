@@ -783,7 +783,7 @@ void GSClut::Expand16(const WORD* RESTRICT src, DWORD* RESTRICT dst, int w, cons
 	const GSVector4i rm = s_rm;
 	const GSVector4i gm = s_gm;
 	const GSVector4i bm = s_bm;
-	const GSVector4i am = s_am;
+	// const GSVector4i am = s_am;
 
 	GSVector4i TA0(TEXA.TA0 << 24);
 	GSVector4i TA1(TEXA.TA1 << 24);
@@ -798,10 +798,16 @@ void GSClut::Expand16(const WORD* RESTRICT src, DWORD* RESTRICT dst, int w, cons
 		for(int i = 0, j = w >> 3; i < j; i++)
 		{
 			c = s[i];
+			/*
 			cl = c.upl16();
 			ch = c.uph16();
 			d[i * 2 + 0] = ((cl & rm) << 3) | ((cl & gm) << 6) | ((cl & bm) << 9) | TA1.blend(TA0, cl < am);
 			d[i * 2 + 1] = ((ch & rm) << 3) | ((ch & gm) << 6) | ((ch & bm) << 9) | TA1.blend(TA0, ch < am);
+			*/
+			cl = c.upl16(c);
+			ch = c.uph16(c);
+			d[i * 2 + 0] = ((cl & rm) << 3) | ((cl & gm) << 6) | ((cl & bm) << 9) | TA0.blend8(TA1, cl.sra16(15));
+			d[i * 2 + 1] = ((ch & rm) << 3) | ((ch & gm) << 6) | ((ch & bm) << 9) | TA0.blend8(TA1, ch.sra16(15));
 		}
 	}
 	else
@@ -809,10 +815,16 @@ void GSClut::Expand16(const WORD* RESTRICT src, DWORD* RESTRICT dst, int w, cons
 		for(int i = 0, j = w >> 3; i < j; i++)
 		{
 			c = s[i];
+			/*
 			cl = c.upl16();
 			ch = c.uph16();
 			d[i * 2 + 0] = ((cl & rm) << 3) | ((cl & gm) << 6) | ((cl & bm) << 9) | TA1.blend(TA0, cl < am).andnot(cl == GSVector4i::zero());
 			d[i * 2 + 1] = ((ch & rm) << 3) | ((ch & gm) << 6) | ((ch & bm) << 9) | TA1.blend(TA0, ch < am).andnot(ch == GSVector4i::zero());
+			*/
+			cl = c.upl16(c);
+			ch = c.uph16(c);
+			d[i * 2 + 0] = ((cl & rm) << 3) | ((cl & gm) << 6) | ((cl & bm) << 9) | TA0.blend8(TA1, cl.sra16(15)).andnot(cl == GSVector4i::zero());
+			d[i * 2 + 1] = ((ch & rm) << 3) | ((ch & gm) << 6) | ((ch & bm) << 9) | TA0.blend8(TA1, ch.sra16(15)).andnot(ch == GSVector4i::zero());
 		}
 	}
 
